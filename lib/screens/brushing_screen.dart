@@ -400,7 +400,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   Widget _buildBrushing() {
     final damageProgress = 1.0 - (_phaseSecondsLeft / 30.0);
     final screenHeight = MediaQuery.of(context).size.height;
-    final monsterSize = (screenHeight * 0.40).clamp(280.0, 400.0);
+    final monsterSize = (screenHeight * 0.32).clamp(240.0, 340.0);
 
     return Scaffold(
       body: SpaceBackground(
@@ -411,65 +411,56 @@ class _BrushingScreenState extends State<BrushingScreen>
                 children: [
                   const SizedBox(height: 8),
 
-                  // Phase label — full-width glass card, unmissable
+                  // Phase label — full width, single line (right padding for controls overlay)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, -1),
-                              end: Offset.zero,
-                            ).animate(CurvedAnimation(
-                              parent: _phaseTransitionController,
-                              curve: Curves.elasticOut,
-                            )),
-                            child: GlassCard(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 20, vertical: 12),
-                              child: Center(
-                                child: Text(
-                                  _phaseLabels[_phase] ?? '',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall
-                                      ?.copyWith(
-                                        color: const Color(0xFF00E5FF),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 28,
-                                        letterSpacing: 3,
-                                      ),
-                                ),
-                              ),
+                    padding: const EdgeInsets.only(left: 16, right: 76),
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, -1),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(
+                        parent: _phaseTransitionController,
+                        curve: Curves.elasticOut,
+                      )),
+                      child: GlassCard(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 14),
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _phaseLabels[_phase] ?? '',
+                              maxLines: 1,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF00E5FF),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 32,
+                                    letterSpacing: 3,
+                                  ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const MuteButton(),
-                        IconButton(
-                          onPressed: _togglePause,
-                          icon: const Icon(Icons.pause,
-                              color: Colors.white70, size: 28),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   // Tooth diagram
                   ToothDiagram(
                     activeQuadrant: _phaseToQuadrant(_phase),
                     completedQuadrants: _getCompletedQuadrants(),
-                    size: 120,
+                    size: 140,
                   ),
 
                   const Spacer(),
 
                   // Monster area — the star of the show
                   SizedBox(
-                    height: monsterSize + 60,
+                    height: monsterSize + 20,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
@@ -480,8 +471,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                             return Opacity(
                               opacity: _zapOpacity.value,
                               child: Container(
-                                width: monsterSize + 60,
-                                height: monsterSize + 60,
+                                width: monsterSize + 40,
+                                height: monsterSize + 40,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   boxShadow: [
@@ -508,7 +499,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 48),
                     child: Column(
                       children: [
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(14),
                           child: SizedBox(
@@ -552,7 +543,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                   Text(
                     _phaseSecondsLeft.toString().padLeft(2, '0'),
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontSize: (screenHeight * 0.10).clamp(64.0, 96.0),
+                          fontSize: (screenHeight * 0.08).clamp(56.0, 80.0),
                           fontWeight: FontWeight.bold,
                           color: _phaseSecondsLeft <= 5
                               ? Colors.orangeAccent
@@ -572,8 +563,29 @@ class _BrushingScreenState extends State<BrushingScreen>
                         ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
                 ],
+              ),
+            ),
+
+            // Mute/Pause controls — overlaid top-right
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8, right: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const MuteButton(),
+                      IconButton(
+                        onPressed: _togglePause,
+                        icon: const Icon(Icons.pause,
+                            color: Colors.white70, size: 24),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
 
@@ -609,11 +621,39 @@ class _BrushingScreenState extends State<BrushingScreen>
           child: child,
         );
       },
-      child: Image.asset(
-        _monsterImages[_monsterOrder[_currentMonsterIndex]],
+      child: SizedBox(
         width: monsterSize,
         height: monsterSize,
-        fit: BoxFit.contain,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            ClipOval(
+              child: Image.asset(
+                _monsterImages[_monsterOrder[_currentMonsterIndex]],
+                width: monsterSize,
+                height: monsterSize,
+                fit: BoxFit.cover,
+              ),
+            ),
+            // Radial gradient fade to blend edges into background
+            Container(
+              width: monsterSize,
+              height: monsterSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.6),
+                    Colors.black.withValues(alpha: 0.95),
+                  ],
+                  stops: const [0.0, 0.5, 0.8, 1.0],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
 
