@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/achievement_service.dart';
+import '../services/world_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
@@ -20,6 +21,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _audio = AudioService();
   final _streakService = StreakService();
   final _achievementService = AchievementService();
+  final _worldService = WorldService();
 
   late AnimationController _starController;
   late Animation<double> _starScale;
@@ -68,6 +70,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   Future<void> _recordAndAnimate() async {
     await _streakService.recordBrush();
+    await _worldService.recordMission();
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
 

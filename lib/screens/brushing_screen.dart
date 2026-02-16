@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
+import '../services/hero_service.dart';
+import '../services/world_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import '../widgets/glass_card.dart';
@@ -28,6 +30,10 @@ const brushPhaseOrder = [
 class _BrushingScreenState extends State<BrushingScreen>
     with TickerProviderStateMixin {
   final _audio = AudioService();
+  final _heroService = HeroService();
+  final _worldService = WorldService();
+
+  HeroCharacter _hero = HeroService.allHeroes[0];
 
   BrushPhase _phase = BrushPhase.countdown;
   int _countdownValue = 3;
@@ -44,6 +50,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   late AnimationController _monsterDefeatController;
   late AnimationController _monsterEntranceController;
   late AnimationController _flashController;
+  late AnimationController _heroAttackController;
 
   bool _monsterDefeating = false;
   bool _monsterEntering = false;
@@ -123,7 +130,29 @@ class _BrushingScreenState extends State<BrushingScreen>
       vsync: this,
     );
 
+    _heroAttackController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _loadHeroAndWorld();
     _startCountdown();
+  }
+
+  Future<void> _loadHeroAndWorld() async {
+    final hero = await _heroService.getSelectedHero();
+    final world = await _worldService.getCurrentWorld();
+    if (mounted) {
+      setState(() {
+        _hero = hero;
+        // Build monster order from world's monster indices
+        _monsterOrder = List<int>.from(world.monsterIndices)..shuffle(_random);
+        // Pad to 4 entries by cycling through world's monsters
+        while (_monsterOrder.length < 4) {
+          _monsterOrder.add(world.monsterIndices[_monsterOrder.length % world.monsterIndices.length]);
+        }
+      });
+    }
   }
 
   @override
@@ -135,6 +164,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _monsterDefeatController.dispose();
     _monsterEntranceController.dispose();
     _flashController.dispose();
+    _heroAttackController.dispose();
     super.dispose();
   }
 
@@ -249,6 +279,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _flashController.forward(from: 0).then((_) {
       _flashController.reverse();
     });
+    _heroAttackController.forward(from: 0);
   }
 
   void _togglePause() {
@@ -493,6 +524,55 @@ class _BrushingScreenState extends State<BrushingScreen>
                       ],
                     ),
                   ),
+
+                  // Hero avatar — positioned below monster
+                  AnimatedBuilder(
+                    animation: _heroAttackController,
+                    builder: (context, child) {
+                      final t = _heroAttackController.value;
+                      final jumpY = -sin(t * pi) * 20;
+                      final scale = 1.0 + sin(t * pi) * 0.2;
+                      return Transform.translate(
+                        offset: Offset(0, jumpY),
+                        child: Transform.scale(
+                          scale: scale,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: ClipOval(
+                            child: Image.asset(_hero.imagePath,
+                                fit: BoxFit.cover),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Attack projectile (visible during attack)
+                        AnimatedBuilder(
+                          animation: _heroAttackController,
+                          builder: (context, _) {
+                            final t = _heroAttackController.value;
+                            if (t < 0.1 || t > 0.9) {
+                              return const SizedBox(width: 40);
+                            }
+                            return Icon(
+                              Icons.flash_on,
+                              color: _hero.attackColor
+                                  .withValues(alpha: 1.0 - t),
+                              size: 24 + t * 16,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
 
                   // Health bar
                   Padding(

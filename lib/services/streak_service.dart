@@ -59,6 +59,20 @@ class StreakService {
     return prefs.getInt(_keyTotalStars) ?? 0;
   }
 
+  Future<bool> spendStars(int amount) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getInt(_keyTotalStars) ?? 0;
+    if (current < amount) return false;
+    await prefs.setInt(_keyTotalStars, current - amount);
+    return true;
+  }
+
+  Future<void> addBonusStars(int amount) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getInt(_keyTotalStars) ?? 0;
+    await prefs.setInt(_keyTotalStars, current + amount);
+  }
+
   Future<int> getTodayBrushCount() async {
     final prefs = await SharedPreferences.getInstance();
     final savedDate = prefs.getString(_keyTodayDate) ?? '';

@@ -19,6 +19,17 @@ class _AssetPreloaderState extends State<AssetPreloader> {
     'assets/images/monster_green.png',
     'assets/images/monster_orange.png',
     'assets/images/monster_red.png',
+    'assets/images/hero_blaze.png',
+    'assets/images/hero_frost.png',
+    'assets/images/hero_bolt.png',
+    'assets/images/hero_shadow.png',
+    'assets/images/hero_leaf.png',
+    'assets/images/hero_nova.png',
+    'assets/images/planet_candy.png',
+    'assets/images/planet_slime.png',
+    'assets/images/planet_volcano.png',
+    'assets/images/planet_shadow.png',
+    'assets/images/planet_fortress.png',
   ];
 
   @override
