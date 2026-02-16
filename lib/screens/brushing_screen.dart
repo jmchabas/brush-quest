@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/tooth_diagram.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -30,9 +32,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   BrushPhase _phase = BrushPhase.countdown;
   int _countdownValue = 3;
   int _phaseSecondsLeft = 30;
-  int _totalSecondsLeft = 120;
   Timer? _timer;
-  int _monstersDefeated = 0;
   bool _isPaused = false;
   bool _showGoText = false;
 
@@ -50,14 +50,13 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   final _random = Random();
 
-  // Shuffled monster order for variety (4.3)
   late List<int> _monsterOrder;
 
   static const _phaseLabels = {
-    BrushPhase.topLeft: 'TOP LEFT',
-    BrushPhase.topRight: 'TOP RIGHT',
-    BrushPhase.bottomLeft: 'BOTTOM LEFT',
-    BrushPhase.bottomRight: 'BOTTOM RIGHT',
+    BrushPhase.topLeft: 'BRUSH TOP LEFT!',
+    BrushPhase.topRight: 'BRUSH TOP RIGHT!',
+    BrushPhase.bottomLeft: 'BRUSH BOTTOM LEFT!',
+    BrushPhase.bottomRight: 'BRUSH BOTTOM RIGHT!',
   };
 
   static const _phaseVoiceFiles = {
@@ -88,7 +87,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   void initState() {
     super.initState();
 
-    // Shuffle monster order each session (4.3)
     _monsterOrder = [0, 1, 2, 3]..shuffle(_random);
 
     _monsterController = AnimationController(
@@ -148,7 +146,6 @@ class _BrushingScreenState extends State<BrushingScreen>
         _audio.playSfx('countdown_beep.mp3');
       } else {
         timer.cancel();
-        // Show "GO!" for 800ms before starting
         setState(() {
           _countdownValue = 0;
           _showGoText = true;
@@ -171,15 +168,12 @@ class _BrushingScreenState extends State<BrushingScreen>
 
       setState(() {
         _phaseSecondsLeft--;
-        _totalSecondsLeft--;
       });
 
-      // Random zap effect — 30% chance per second (2.4)
       if (_random.nextDouble() < 0.30) {
         _triggerZap();
       }
 
-      // Mid-brushing encouragement (2.6)
       if (_phaseSecondsLeft == 20 && !_playedEncouragement) {
         _playedEncouragement = true;
         final voice =
@@ -192,20 +186,17 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
 
       if (_phaseSecondsLeft <= 0) {
-        _monstersDefeated++;
         _playedEncouragement = false;
         _playedAlmostThere = false;
 
         final currentIndex = brushPhaseOrder.indexOf(_phase);
         if (currentIndex < brushPhaseOrder.length - 1) {
-          // Defeat animation then entrance of next monster
           _playDefeatAnimation(() {
             _currentMonsterIndex = currentIndex + 1;
             _switchToPhase(brushPhaseOrder[currentIndex + 1]);
             _playEntranceAnimation();
           });
         } else {
-          // Final monster defeat
           _playDefeatAnimation(() {
             timer.cancel();
             _finishBrushing();
@@ -255,7 +246,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     _zapController.forward(from: 0).then((_) {
       _zapController.reverse();
     });
-    // Brief white screen flash (2.4)
     _flashController.forward(from: 0).then((_) {
       _flashController.reverse();
     });
@@ -289,7 +279,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     );
   }
 
-  // Dynamic encouragement text based on time left (2.7)
   String _getEncouragementText() {
     if (_phaseSecondsLeft > 20) return 'FIGHT THAT MONSTER!';
     if (_phaseSecondsLeft > 10) return 'KEEP BRUSHING!';
@@ -297,13 +286,36 @@ class _BrushingScreenState extends State<BrushingScreen>
     return 'FINISH IT OFF!';
   }
 
-  // Health bar text (2.3)
   String _getHealthText() {
     final damageProgress = 1.0 - (_phaseSecondsLeft / 30.0);
     if (damageProgress < 0.25) return 'MONSTER IS STRONG!';
     if (damageProgress < 0.50) return 'KEEP BRUSHING!';
     if (damageProgress < 0.75) return 'ALMOST DEFEATED!';
     return 'FINISH IT!';
+  }
+
+  ToothQuadrant _phaseToQuadrant(BrushPhase phase) {
+    switch (phase) {
+      case BrushPhase.topLeft:
+        return ToothQuadrant.topLeft;
+      case BrushPhase.topRight:
+        return ToothQuadrant.topRight;
+      case BrushPhase.bottomLeft:
+        return ToothQuadrant.bottomLeft;
+      case BrushPhase.bottomRight:
+        return ToothQuadrant.bottomRight;
+      default:
+        return ToothQuadrant.topLeft;
+    }
+  }
+
+  Set<ToothQuadrant> _getCompletedQuadrants() {
+    final completed = <ToothQuadrant>{};
+    final currentIndex = brushPhaseOrder.indexOf(_phase);
+    for (int i = 0; i < currentIndex; i++) {
+      completed.add(_phaseToQuadrant(brushPhaseOrder[i]));
+    }
+    return completed;
   }
 
   @override
@@ -329,7 +341,6 @@ class _BrushingScreenState extends State<BrushingScreen>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Green radial burst behind GO! (3.3)
               if (_showGoText)
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: 200),
@@ -387,11 +398,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Widget _buildBrushing() {
-    final progress = 1.0 - (_totalSecondsLeft / 120.0);
     final damageProgress = 1.0 - (_phaseSecondsLeft / 30.0);
     final screenHeight = MediaQuery.of(context).size.height;
-    // Responsive monster size (4.4)
-    final monsterSize = (screenHeight * 0.35).clamp(250.0, 340.0);
+    final monsterSize = (screenHeight * 0.40).clamp(280.0, 400.0);
 
     return Scaffold(
       body: SpaceBackground(
@@ -402,46 +411,41 @@ class _BrushingScreenState extends State<BrushingScreen>
                 children: [
                   const SizedBox(height: 8),
 
-                  // Top bar: phase label + controls
+                  // Phase label — full-width glass card, unmissable
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
-                        const Spacer(),
-                        // Phase label
-                        SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0, -1),
-                            end: Offset.zero,
-                          ).animate(CurvedAnimation(
-                            parent: _phaseTransitionController,
-                            curve: Curves.elasticOut,
-                          )),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                  color: const Color(0xFF00E5FF)
-                                      .withValues(alpha: 0.5)),
-                            ),
-                            child: Text(
-                              _phaseLabels[_phase] ?? '',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
-                                  ?.copyWith(
-                                    color: const Color(0xFF00E5FF),
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 4,
-                                  ),
+                        Expanded(
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, -1),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: _phaseTransitionController,
+                              curve: Curves.elasticOut,
+                            )),
+                            child: GlassCard(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              child: Center(
+                                child: Text(
+                                  _phaseLabels[_phase] ?? '',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall
+                                      ?.copyWith(
+                                        color: const Color(0xFF00E5FF),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 28,
+                                        letterSpacing: 3,
+                                      ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                        const Spacer(),
-                        // Mute + Pause buttons
+                        const SizedBox(width: 8),
                         const MuteButton(),
                         IconButton(
                           onPressed: _togglePause,
@@ -452,17 +456,18 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
 
-                  // Quadrant indicator (2.8)
-                  _QuadrantIndicator(
-                    activePhase: _phase,
-                    monstersDefeated: _monstersDefeated,
+                  // Tooth diagram
+                  ToothDiagram(
+                    activeQuadrant: _phaseToQuadrant(_phase),
+                    completedQuadrants: _getCompletedQuadrants(),
+                    size: 120,
                   ),
 
                   const Spacer(),
 
-                  // Monster area
+                  // Monster area — the star of the show
                   SizedBox(
                     height: monsterSize + 60,
                     child: Stack(
@@ -498,16 +503,16 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                   ),
 
-                  // Health bar (2.3)
+                  // Health bar
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 60),
+                    padding: const EdgeInsets.symmetric(horizontal: 48),
                     child: Column(
                       children: [
                         const SizedBox(height: 8),
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(14),
                           child: SizedBox(
-                            height: 20,
+                            height: 28,
                             child: LinearProgressIndicator(
                               value: 1.0 - damageProgress,
                               backgroundColor:
@@ -534,7 +539,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                                     ),
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 2,
-                                    fontSize: 12,
+                                    fontSize: 14,
                                   ),
                         ),
                       ],
@@ -543,11 +548,11 @@ class _BrushingScreenState extends State<BrushingScreen>
 
                   const Spacer(),
 
-                  // Timer + encouragement text (2.7)
+                  // Timer — HUGE
                   Text(
                     _phaseSecondsLeft.toString().padLeft(2, '0'),
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontSize: (screenHeight * 0.08).clamp(48.0, 72.0),
+                          fontSize: (screenHeight * 0.10).clamp(64.0, 96.0),
                           fontWeight: FontWeight.bold,
                           color: _phaseSecondsLeft <= 5
                               ? Colors.orangeAccent
@@ -563,91 +568,16 @@ class _BrushingScreenState extends State<BrushingScreen>
                               : const Color(0xFF00E5FF),
                           fontWeight: FontWeight.bold,
                           letterSpacing: 2,
+                          fontSize: 16,
                         ),
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // Overall progress bar with star markers (2.9)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'MISSION PROGRESS',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white54,
-                                    letterSpacing: 2,
-                                    fontSize: 10,
-                                  ),
-                            ),
-                            Text(
-                              '$_monstersDefeated/4',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white70,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        SizedBox(
-                          height: 28,
-                          child: Stack(
-                            alignment: Alignment.centerLeft,
-                            children: [
-                              // Bar
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: SizedBox(
-                                  height: 20,
-                                  child: LinearProgressIndicator(
-                                    value: progress,
-                                    backgroundColor:
-                                        Colors.white.withValues(alpha: 0.1),
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                      Color(0xFF00E5FF),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Star markers at 25/50/75/100%
-                              for (int i = 1; i <= 4; i++)
-                                Positioned(
-                                  left: (MediaQuery.of(context).size.width -
-                                              80) *
-                                          (i / 4.0) -
-                                      14,
-                                  child: Icon(
-                                    Icons.star,
-                                    size: 28,
-                                    color: _monstersDefeated >= i
-                                        ? const Color(0xFFFFD54F)
-                                        : Colors.white24,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
 
-            // White screen flash overlay (2.4)
+            // White screen flash overlay
             AnimatedBuilder(
               animation: _flashController,
               builder: (context, _) {
@@ -660,7 +590,7 @@ class _BrushingScreenState extends State<BrushingScreen>
               },
             ),
 
-            // Pause overlay (1.4)
+            // Pause overlay
             if (_isPaused) _buildPauseOverlay(),
           ],
         ),
@@ -669,7 +599,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Widget _buildMonster(double damageProgress, double monsterSize) {
-    // Dynamic shake multiplier (2.1)
     final shakeMult = 1.0 + damageProgress * 2.0;
 
     Widget monster = AnimatedBuilder(
@@ -688,7 +617,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       ),
     );
 
-    // Apply damage effects (2.2)
     final opacity = 0.15 + (1.0 - damageProgress) * 0.85;
     final scale = 0.5 + (1.0 - damageProgress) * 0.5;
 
@@ -700,7 +628,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       ),
     );
 
-    // Red tint overlay that intensifies (2.2)
     monster = ColorFiltered(
       colorFilter: ColorFilter.mode(
         Colors.red.withValues(alpha: damageProgress * 0.4),
@@ -709,7 +636,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       child: monster,
     );
 
-    // Defeat animation: scale to 0, spin 720deg, flash white (2.5)
     if (_monsterDefeating) {
       monster = AnimatedBuilder(
         animation: _monsterDefeatController,
@@ -733,7 +659,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       );
     }
 
-    // Entrance animation: drop from above, scale 2.0→1.0, bounceOut (2.5)
     if (_monsterEntering) {
       monster = AnimatedBuilder(
         animation: _monsterEntranceController,
@@ -776,7 +701,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                   ),
             ),
             const SizedBox(height: 48),
-            // Resume button (big)
             GestureDetector(
               onTap: _togglePause,
               child: Container(
@@ -806,7 +730,6 @@ class _BrushingScreenState extends State<BrushingScreen>
               ),
             ),
             const SizedBox(height: 20),
-            // Quit button (smaller)
             GestureDetector(
               onTap: _quitBrushing,
               child: Container(
@@ -828,80 +751,6 @@ class _BrushingScreenState extends State<BrushingScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _QuadrantIndicator extends StatelessWidget {
-  final BrushPhase activePhase;
-  final int monstersDefeated;
-
-  const _QuadrantIndicator({
-    required this.activePhase,
-    required this.monstersDefeated,
-  });
-
-  static const _labels = ['TL', 'TR', 'BL', 'BR'];
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 140,
-      height: 140,
-      child: GridView.count(
-        crossAxisCount: 2,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-        padding: const EdgeInsets.all(4),
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          _quadrant(context, BrushPhase.topLeft, 0),
-          _quadrant(context, BrushPhase.topRight, 1),
-          _quadrant(context, BrushPhase.bottomLeft, 2),
-          _quadrant(context, BrushPhase.bottomRight, 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _quadrant(BuildContext context, BrushPhase phase, int index) {
-    final isActive = activePhase == phase;
-    final isPast =
-        brushPhaseOrder.indexOf(phase) < brushPhaseOrder.indexOf(activePhase);
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: isPast
-            ? const Color(0xFF00E5FF).withValues(alpha: 0.6)
-            : isActive
-                ? const Color(0xFF7C4DFF)
-                : Colors.white.withValues(alpha: 0.1),
-        border: isActive
-            ? Border.all(color: const Color(0xFF00E5FF), width: 2)
-            : null,
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
-                  blurRadius: 12,
-                ),
-              ]
-            : null,
-      ),
-      child: Center(
-        child: isPast
-            ? const Icon(Icons.check, color: Colors.white, size: 22)
-            : Text(
-                _labels[index],
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: isActive ? Colors.white : Colors.white38,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-              ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/achievement_service.dart';
 import '../widgets/space_background.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
 import 'home_screen.dart';
 
@@ -42,13 +43,11 @@ class _VictoryScreenState extends State<VictoryScreen>
       CurvedAnimation(parent: _starController, curve: Curves.elasticOut),
     );
 
-    // Continuous slow rotation (3.4)
     _starRotationController = AnimationController(
       duration: const Duration(seconds: 8),
       vsync: this,
     );
 
-    // Pulsing glow (3.4)
     _starGlowController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -59,7 +58,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       vsync: this,
     );
 
-    // Done button pulse (3.4)
     _doneButtonController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -73,7 +71,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
 
-    // Check achievements (4.1)
     _newAchievements = await _achievementService.checkAndUnlock(
       streak: _newStreak,
       totalStars: _newStars,
@@ -90,12 +87,10 @@ class _VictoryScreenState extends State<VictoryScreen>
       _starGlowController.repeat(reverse: true);
       _confettiController.repeat();
 
-      // Start done button pulse after 2s delay (3.4)
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) _doneButtonController.repeat(reverse: true);
       });
 
-      // Show achievement popups with delay
       for (int i = 0; i < _newAchievements.length; i++) {
         Future.delayed(Duration(milliseconds: 1500 + i * 1200), () {
           if (mounted) {
@@ -141,7 +136,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         child: SafeArea(
           child: Stack(
             children: [
-              // Confetti layer (3.4 — 120 particles, varied shapes)
+              // Confetti layer
               AnimatedBuilder(
                 animation: _confettiController,
                 builder: (context, child) {
@@ -159,7 +154,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                   children: [
                     const Spacer(flex: 2),
 
-                    // Big star with rotation + glow (3.4)
+                    // Big star with rotation + glow
                     AnimatedBuilder(
                       animation: Listenable.merge([
                         _starScale,
@@ -235,25 +230,19 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const SizedBox(height: 40),
 
-                    // Stats with animated count-up (3.4)
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 40),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
-                        ),
-                      ),
+                    // Stats in glass card with bigger values
+                    GlassCard(
+                      margin: const EdgeInsets.symmetric(horizontal: 32),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 24),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           Column(
                             children: [
                               const Icon(Icons.local_fire_department,
-                                  color: Colors.orangeAccent, size: 36),
-                              const SizedBox(height: 4),
+                                  color: Colors.orangeAccent, size: 40),
+                              const SizedBox(height: 6),
                               TweenAnimationBuilder<int>(
                                 tween: IntTween(begin: 0, end: _newStreak),
                                 duration: const Duration(milliseconds: 1500),
@@ -261,10 +250,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   '$val day${val == 1 ? '' : 's'}',
                                   style: Theme.of(context)
                                       .textTheme
-                                      .titleMedium
-                                      ?.copyWith(color: Colors.white),
+                                      .titleLarge
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 28,
+                                      ),
                                 ),
                               ),
+                              const SizedBox(height: 2),
                               Text(
                                 'STREAK',
                                 style: Theme.of(context)
@@ -273,20 +267,21 @@ class _VictoryScreenState extends State<VictoryScreen>
                                     ?.copyWith(
                                       color: Colors.white54,
                                       letterSpacing: 2,
+                                      fontSize: 14,
                                     ),
                               ),
                             ],
                           ),
                           Container(
                             width: 1,
-                            height: 50,
+                            height: 60,
                             color: Colors.white24,
                           ),
                           Column(
                             children: [
                               const Icon(Icons.star,
-                                  color: Colors.yellowAccent, size: 36),
-                              const SizedBox(height: 4),
+                                  color: Colors.yellowAccent, size: 40),
+                              const SizedBox(height: 6),
                               TweenAnimationBuilder<int>(
                                 tween: IntTween(begin: 0, end: _newStars),
                                 duration: const Duration(milliseconds: 1500),
@@ -294,10 +289,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   '$val total',
                                   style: Theme.of(context)
                                       .textTheme
-                                      .titleMedium
-                                      ?.copyWith(color: Colors.white),
+                                      .titleLarge
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 28,
+                                      ),
                                 ),
                               ),
+                              const SizedBox(height: 2),
                               Text(
                                 'STARS',
                                 style: Theme.of(context)
@@ -306,6 +306,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                     ?.copyWith(
                                       color: Colors.white54,
                                       letterSpacing: 2,
+                                      fontSize: 14,
                                     ),
                               ),
                             ],
@@ -316,7 +317,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const Spacer(flex: 2),
 
-                    // Done button with pulse (3.4)
+                    // DONE button — bigger
                     AnimatedBuilder(
                       animation: _doneButtonController,
                       builder: (context, child) {
@@ -331,7 +332,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         onTap: _goHome,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 48, vertical: 16),
+                              horizontal: 60, vertical: 20),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
@@ -353,6 +354,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 ?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 24,
                                   letterSpacing: 4,
                                 ),
                           ),
@@ -389,7 +391,6 @@ class _ConfettiPainter extends CustomPainter {
       const Color(0xFFFF6E40),
     ];
 
-    // 120 particles with varied shapes and horizontal sine drift (3.4)
     for (int i = 0; i < 120; i++) {
       final baseX = _random.nextDouble() * size.width;
       final sineDrift = sin((progress * 4 + i * 0.3)) * 30;
@@ -406,21 +407,17 @@ class _ConfettiPainter extends CustomPainter {
       canvas.translate(x, y);
       canvas.rotate(progress * 4 + i.toDouble());
 
-      // Varied shapes: rect, circle, star-like
       final shapeType = i % 3;
       if (shapeType == 0) {
-        // Rectangle
         final w = 4.0 + _random.nextDouble() * 8;
         canvas.drawRect(
           Rect.fromCenter(center: Offset.zero, width: w, height: w * 0.5),
           paint,
         );
       } else if (shapeType == 1) {
-        // Circle
         canvas.drawCircle(
             Offset.zero, 2.0 + _random.nextDouble() * 4, paint);
       } else {
-        // Small star (triangle approximation)
         final s = 3.0 + _random.nextDouble() * 5;
         final path = Path()
           ..moveTo(0, -s)

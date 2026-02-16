@@ -4,6 +4,7 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
+import '../widgets/glass_card.dart';
 import 'brushing_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
 
-  // Tap feedback (3.2)
   bool _buttonPressed = false;
 
   @override
@@ -37,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(milliseconds: 3000),
       vsync: this,
     )..repeat(reverse: true);
-    _floatAnimation = Tween<double>(begin: -8, end: 8).animate(
+    _floatAnimation = Tween<double>(begin: -6, end: 6).animate(
       CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
   }
@@ -96,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen>
         .then((_) => _loadStats());
   }
 
-  // Morning/evening greeting (4.2)
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'GOOD MORNING';
@@ -123,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen>
         child: SafeArea(
           child: Stack(
             children: [
-              // Mute button top-right (3.5)
               const Positioned(
                 top: 8,
                 right: 8,
@@ -132,51 +130,66 @@ class _HomeScreenState extends State<HomeScreen>
 
               Column(
                 children: [
-                  const SizedBox(height: 40),
-                  // Title
-                  Text(
-                    'BRUSH QUEST',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 3,
-                          shadows: [
-                            Shadow(
-                              color: const Color(0xFF7C4DFF)
-                                  .withValues(alpha: 0.8),
-                              blurRadius: 20,
+                  const SizedBox(height: 32),
+
+                  // Title with paint stroke outline
+                  Stack(
+                    children: [
+                      // Stroke layer
+                      Text(
+                        'BRUSH QUEST',
+                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              fontSize: 56,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 3,
+                              foreground: Paint()
+                                ..style = PaintingStyle.stroke
+                                ..strokeWidth = 4
+                                ..color = const Color(0xFF7C4DFF),
                             ),
-                            Shadow(
-                              color: const Color(0xFF00E5FF)
-                                  .withValues(alpha: 0.5),
-                              blurRadius: 40,
+                      ),
+                      // Fill layer
+                      Text(
+                        'BRUSH QUEST',
+                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                              fontSize: 56,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 3,
+                              shadows: [
+                                Shadow(
+                                  color: const Color(0xFF7C4DFF)
+                                      .withValues(alpha: 0.8),
+                                  blurRadius: 20,
+                                ),
+                                Shadow(
+                                  color: const Color(0xFF00E5FF)
+                                      .withValues(alpha: 0.5),
+                                  blurRadius: 40,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  // Greeting with time icon (4.2)
+
+                  const SizedBox(height: 6),
+
+                  // Subtle greeting
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(_getTimeIcon(),
-                          color: _getTimeIconColor(), size: 18),
+                          color: _getTimeIconColor(), size: 16),
                       const SizedBox(width: 6),
                       Text(
                         _getGreeting(),
                         style:
-                            Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: const Color(0xFF00E5FF),
-                                  letterSpacing: 6,
-                                  fontSize: 16,
-                                  shadows: [
-                                    Shadow(
-                                      color: const Color(0xFF00E5FF)
-                                          .withValues(alpha: 0.5),
-                                      blurRadius: 10,
-                                    ),
-                                  ],
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: const Color(0xFF00E5FF)
+                                      .withValues(alpha: 0.7),
+                                  letterSpacing: 4,
+                                  fontSize: 13,
                                 ),
                       ),
                     ],
@@ -184,34 +197,44 @@ class _HomeScreenState extends State<HomeScreen>
 
                   const Spacer(),
 
-                  // Stats row (3.1)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _StatBadge(
-                        icon: Icons.local_fire_department,
-                        iconColor: Colors.orangeAccent,
-                        value: '$_streak',
-                        label: 'STREAK',
-                      ),
-                      _StatBadge(
-                        icon: Icons.star,
-                        iconColor: Colors.yellowAccent,
-                        value: '$_totalStars',
-                        label: 'STARS',
-                      ),
-                      _StatBadge(
-                        icon: Icons.today,
-                        iconColor: Colors.greenAccent,
-                        value: '$_todayCount/2',
-                        label: 'TODAY',
-                      ),
-                    ],
+                  // Stats row in glass cards
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.local_fire_department,
+                            iconColor: Colors.orangeAccent,
+                            value: '$_streak',
+                            label: 'STREAK',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.star,
+                            iconColor: Colors.yellowAccent,
+                            value: '$_totalStars',
+                            label: 'STARS',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.today,
+                            iconColor: Colors.greenAccent,
+                            value: '$_todayCount/2',
+                            label: 'TODAY',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
 
                   const Spacer(),
 
-                  // Brush button with tap feedback (1.5, 3.2)
+                  // BRUSH button - THE HERO
                   AnimatedBuilder(
                     animation:
                         Listenable.merge([_pulseAnimation, _floatAnimation]),
@@ -236,8 +259,8 @@ class _HomeScreenState extends State<HomeScreen>
                       onTapCancel: () =>
                           setState(() => _buttonPressed = false),
                       child: Container(
-                        width: 200,
-                        height: 200,
+                        width: 280,
+                        height: 280,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: const RadialGradient(
@@ -267,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen>
                           children: [
                             const Icon(
                               Icons.rocket_launch,
-                              size: 60,
+                              size: 80,
                               color: Colors.white,
                             ),
                             const SizedBox(height: 8),
@@ -275,10 +298,11 @@ class _HomeScreenState extends State<HomeScreen>
                               'BRUSH!',
                               style: Theme.of(context)
                                   .textTheme
-                                  .headlineSmall
+                                  .headlineMedium
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: 28,
                                     letterSpacing: 2,
                                   ),
                             ),
@@ -299,13 +323,13 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-class _StatBadge extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String value;
   final String label;
 
-  const _StatBadge({
+  const _StatCard({
     required this.icon,
     required this.iconColor,
     required this.value,
@@ -314,34 +338,21 @@ class _StatBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: iconColor.withValues(alpha: 0.2),
-            blurRadius: 12,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       child: Column(
         children: [
-          Icon(icon, color: iconColor, size: 40),
-          const SizedBox(height: 4),
+          Icon(icon, color: iconColor, size: 48),
+          const SizedBox(height: 6),
           Text(
             value,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 28,
+                  fontSize: 36,
                 ),
           ),
+          const SizedBox(height: 2),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(

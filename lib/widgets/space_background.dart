@@ -15,7 +15,22 @@ class SpaceBackground extends StatelessWidget {
           fit: BoxFit.cover,
         ),
       ),
-      child: child,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.5),
+              Colors.black.withValues(alpha: 0.2),
+              Colors.black.withValues(alpha: 0.2),
+              Colors.black.withValues(alpha: 0.6),
+            ],
+            stops: const [0.0, 0.3, 0.7, 1.0],
+          ),
+        ),
+        child: child,
+      ),
     );
   }
 }
