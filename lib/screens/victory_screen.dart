@@ -2,6 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
+import '../services/achievement_service.dart';
+import '../widgets/space_background.dart';
+import '../widgets/achievement_popup.dart';
 import 'home_screen.dart';
 
 class VictoryScreen extends StatefulWidget {
@@ -15,12 +18,17 @@ class _VictoryScreenState extends State<VictoryScreen>
     with TickerProviderStateMixin {
   final _audio = AudioService();
   final _streakService = StreakService();
+  final _achievementService = AchievementService();
 
   late AnimationController _starController;
   late Animation<double> _starScale;
+  late AnimationController _starRotationController;
+  late AnimationController _starGlowController;
   late AnimationController _confettiController;
+  late AnimationController _doneButtonController;
   int _newStreak = 0;
   int _newStars = 0;
+  List<Achievement> _newAchievements = [];
 
   @override
   void initState() {
@@ -34,8 +42,26 @@ class _VictoryScreenState extends State<VictoryScreen>
       CurvedAnimation(parent: _starController, curve: Curves.elasticOut),
     );
 
+    // Continuous slow rotation (3.4)
+    _starRotationController = AnimationController(
+      duration: const Duration(seconds: 8),
+      vsync: this,
+    );
+
+    // Pulsing glow (3.4)
+    _starGlowController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
     _confettiController = AnimationController(
       duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+
+    // Done button pulse (3.4)
+    _doneButtonController = AnimationController(
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
 
@@ -46,6 +72,13 @@ class _VictoryScreenState extends State<VictoryScreen>
     await _streakService.recordBrush();
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
+
+    // Check achievements (4.1)
+    _newAchievements = await _achievementService.checkAndUnlock(
+      streak: _newStreak,
+      totalStars: _newStars,
+    );
+
     if (mounted) setState(() {});
 
     _audio.playSfx('victory.mp3');
@@ -53,14 +86,38 @@ class _VictoryScreenState extends State<VictoryScreen>
     if (mounted) {
       _audio.playVoice('voice_great_job.mp3');
       _starController.forward();
+      _starRotationController.repeat();
+      _starGlowController.repeat(reverse: true);
       _confettiController.repeat();
+
+      // Start done button pulse after 2s delay (3.4)
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) _doneButtonController.repeat(reverse: true);
+      });
+
+      // Show achievement popups with delay
+      for (int i = 0; i < _newAchievements.length; i++) {
+        Future.delayed(Duration(milliseconds: 1500 + i * 1200), () {
+          if (mounted) {
+            _showAchievement(_newAchievements[i]);
+          }
+        });
+      }
     }
+  }
+
+  void _showAchievement(Achievement achievement) {
+    _audio.playSfx('whoosh.mp3');
+    showAchievementPopup(context, achievement);
   }
 
   @override
   void dispose() {
     _starController.dispose();
+    _starRotationController.dispose();
+    _starGlowController.dispose();
     _confettiController.dispose();
+    _doneButtonController.dispose();
     super.dispose();
   }
 
@@ -80,17 +137,11 @@ class _VictoryScreenState extends State<VictoryScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/background_space.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
+      body: SpaceBackground(
         child: SafeArea(
           child: Stack(
             children: [
-              // Confetti layer
+              // Confetti layer (3.4 — 120 particles, varied shapes)
               AnimatedBuilder(
                 animation: _confettiController,
                 builder: (context, child) {
@@ -108,36 +159,51 @@ class _VictoryScreenState extends State<VictoryScreen>
                   children: [
                     const Spacer(flex: 2),
 
-                    // Big star
-                    ScaleTransition(
-                      scale: _starScale,
-                      child: Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const RadialGradient(
-                            colors: [
-                              Color(0xFFFFD54F),
-                              Color(0xFFFFA000),
-                              Color(0xFFFF6F00),
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFFD54F)
-                                  .withValues(alpha: 0.6),
-                              blurRadius: 40,
-                              spreadRadius: 10,
+                    // Big star with rotation + glow (3.4)
+                    AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _starScale,
+                        _starRotationController,
+                        _starGlowController,
+                      ]),
+                      builder: (context, child) {
+                        final glowIntensity =
+                            0.4 + _starGlowController.value * 0.4;
+                        return ScaleTransition(
+                          scale: _starScale,
+                          child: Transform.rotate(
+                            angle:
+                                _starRotationController.value * 2 * pi * 0.1,
+                            child: Container(
+                              width: 180,
+                              height: 180,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const RadialGradient(
+                                  colors: [
+                                    Color(0xFFFFD54F),
+                                    Color(0xFFFFA000),
+                                    Color(0xFFFF6F00),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFFD54F)
+                                        .withValues(alpha: glowIntensity),
+                                    blurRadius: 50,
+                                    spreadRadius: 15,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.star,
+                                size: 100,
+                                color: Colors.white,
+                              ),
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.star,
-                          size: 100,
-                          color: Colors.white,
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 32),
@@ -169,7 +235,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const SizedBox(height: 40),
 
-                    // Stats
+                    // Stats with animated count-up (3.4)
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 40),
                       padding: const EdgeInsets.all(20),
@@ -188,12 +254,16 @@ class _VictoryScreenState extends State<VictoryScreen>
                               const Icon(Icons.local_fire_department,
                                   color: Colors.orangeAccent, size: 36),
                               const SizedBox(height: 4),
-                              Text(
-                                '$_newStreak day${_newStreak == 1 ? '' : 's'}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(color: Colors.white),
+                              TweenAnimationBuilder<int>(
+                                tween: IntTween(begin: 0, end: _newStreak),
+                                duration: const Duration(milliseconds: 1500),
+                                builder: (context, val, _) => Text(
+                                  '$val day${val == 1 ? '' : 's'}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(color: Colors.white),
+                                ),
                               ),
                               Text(
                                 'STREAK',
@@ -217,12 +287,16 @@ class _VictoryScreenState extends State<VictoryScreen>
                               const Icon(Icons.star,
                                   color: Colors.yellowAccent, size: 36),
                               const SizedBox(height: 4),
-                              Text(
-                                '$_newStars total',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(color: Colors.white),
+                              TweenAnimationBuilder<int>(
+                                tween: IntTween(begin: 0, end: _newStars),
+                                duration: const Duration(milliseconds: 1500),
+                                builder: (context, val, _) => Text(
+                                  '$val total',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(color: Colors.white),
+                                ),
                               ),
                               Text(
                                 'STARS',
@@ -242,35 +316,46 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const Spacer(flex: 2),
 
-                    // Done button
-                    GestureDetector(
-                      onTap: _goHome,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 48, vertical: 16),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
-                          ),
-                          borderRadius: BorderRadius.circular(40),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C4DFF)
-                                  .withValues(alpha: 0.5),
-                              blurRadius: 20,
+                    // Done button with pulse (3.4)
+                    AnimatedBuilder(
+                      animation: _doneButtonController,
+                      builder: (context, child) {
+                        final scale =
+                            1.0 + _doneButtonController.value * 0.05;
+                        return Transform.scale(
+                          scale: scale,
+                          child: child,
+                        );
+                      },
+                      child: GestureDetector(
+                        onTap: _goHome,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 48, vertical: 16),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          'DONE',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 4,
+                            borderRadius: BorderRadius.circular(40),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7C4DFF)
+                                    .withValues(alpha: 0.5),
+                                blurRadius: 20,
                               ),
+                            ],
+                          ),
+                          child: Text(
+                            'DONE',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 4,
+                                ),
+                          ),
                         ),
                       ),
                     ),
@@ -304,22 +389,47 @@ class _ConfettiPainter extends CustomPainter {
       const Color(0xFFFF6E40),
     ];
 
-    for (int i = 0; i < 60; i++) {
-      final x = _random.nextDouble() * size.width;
+    // 120 particles with varied shapes and horizontal sine drift (3.4)
+    for (int i = 0; i < 120; i++) {
+      final baseX = _random.nextDouble() * size.width;
+      final sineDrift = sin((progress * 4 + i * 0.3)) * 30;
+      final x = baseX + sineDrift;
+      final speed = 0.6 + _random.nextDouble() * 0.8;
       final startY = -20.0 + _random.nextDouble() * -100;
-      final y = startY + (size.height + 120) * ((progress + i * 0.02) % 1.0);
+      final y =
+          startY + (size.height + 120) * ((progress * speed + i * 0.015) % 1.0);
       final color = colors[i % colors.length];
-      final rectSize = 4.0 + _random.nextDouble() * 8;
 
       final paint = Paint()..color = color.withValues(alpha: 0.8);
 
       canvas.save();
       canvas.translate(x, y);
       canvas.rotate(progress * 4 + i.toDouble());
-      canvas.drawRect(
-        Rect.fromCenter(center: Offset.zero, width: rectSize, height: rectSize * 0.5),
-        paint,
-      );
+
+      // Varied shapes: rect, circle, star-like
+      final shapeType = i % 3;
+      if (shapeType == 0) {
+        // Rectangle
+        final w = 4.0 + _random.nextDouble() * 8;
+        canvas.drawRect(
+          Rect.fromCenter(center: Offset.zero, width: w, height: w * 0.5),
+          paint,
+        );
+      } else if (shapeType == 1) {
+        // Circle
+        canvas.drawCircle(
+            Offset.zero, 2.0 + _random.nextDouble() * 4, paint);
+      } else {
+        // Small star (triangle approximation)
+        final s = 3.0 + _random.nextDouble() * 5;
+        final path = Path()
+          ..moveTo(0, -s)
+          ..lineTo(s * 0.6, s * 0.4)
+          ..lineTo(-s * 0.6, s * 0.4)
+          ..close();
+        canvas.drawPath(path, paint);
+      }
+
       canvas.restore();
     }
   }
