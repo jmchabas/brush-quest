@@ -4,11 +4,9 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/world_service.dart';
-import '../services/daily_reward_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/daily_reward_popup.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
@@ -25,22 +23,17 @@ class _HomeScreenState extends State<HomeScreen>
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _worldService = WorldService();
-  final _dailyRewardService = DailyRewardService();
-
   int _streak = 0;
   int _totalStars = 0;
   int _todayCount = 0;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WorldData _currentWorld = WorldService.allWorlds[0];
   int _worldProgress = 0;
-  bool _dailyRewardAvailable = false;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
-  late AnimationController _giftBounceController;
-
   bool _buttonPressed = false;
 
   @override
@@ -64,17 +57,12 @@ class _HomeScreenState extends State<HomeScreen>
       CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
 
-    _giftBounceController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
     _floatController.dispose();
-    _giftBounceController.dispose();
     super.dispose();
   }
 
@@ -85,7 +73,6 @@ class _HomeScreenState extends State<HomeScreen>
     final hero = await _heroService.getSelectedHero();
     final world = await _worldService.getCurrentWorld();
     final worldProgress = await _worldService.getWorldProgress(world.id);
-    final dailyAvail = await _dailyRewardService.canClaimToday();
 
     if (mounted) {
       setState(() {
@@ -95,7 +82,6 @@ class _HomeScreenState extends State<HomeScreen>
         _selectedHero = hero;
         _currentWorld = world;
         _worldProgress = worldProgress;
-        _dailyRewardAvailable = dailyAvail;
       });
     }
   }
@@ -136,14 +122,6 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const WorldMapScreen()))
         .then((_) => _loadStats());
-  }
-
-  void _claimDailyReward() async {
-    final stars = await showDailyRewardPopup(context);
-    if (stars != null) {
-      AudioService().playSfx('victory.mp3');
-      await _loadStats();
-    }
   }
 
   String _getGreeting() {
@@ -422,9 +400,9 @@ class _HomeScreenState extends State<HomeScreen>
 
                   const SizedBox(height: 16),
 
-                  // Bottom navigation — Map, Heroes, Daily Gift
+                  // Bottom navigation — Map and Heroes
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 48),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -439,14 +417,6 @@ class _HomeScreenState extends State<HomeScreen>
                           label: 'HEROES',
                           color: const Color(0xFF7C4DFF),
                           onTap: _openHeroShop,
-                        ),
-                        _NavButton(
-                          icon: Icons.card_giftcard,
-                          label: 'GIFT',
-                          color: const Color(0xFFFFD54F),
-                          onTap: _claimDailyReward,
-                          showBadge: _dailyRewardAvailable,
-                          bounceController: _giftBounceController,
                         ),
                       ],
                     ),
@@ -511,59 +481,30 @@ class _NavButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  final bool showBadge;
-  final AnimationController? bounceController;
 
   const _NavButton({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
-    this.showBadge = false,
-    this.bounceController,
   });
 
   @override
   Widget build(BuildContext context) {
-    Widget button = GestureDetector(
+    return GestureDetector(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha: 0.5)),
-                ),
-                child: Icon(icon, color: color, size: 28),
-              ),
-              if (showBadge)
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF5252),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Text('!',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ),
-            ],
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: 0.5)),
+            ),
+            child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 4),
           Text(
@@ -578,22 +519,5 @@ class _NavButton extends StatelessWidget {
         ],
       ),
     );
-
-    if (showBadge && bounceController != null) {
-      button = AnimatedBuilder(
-        animation: bounceController!,
-        builder: (context, child) {
-          final bounce =
-              Curves.easeInOut.transform(bounceController!.value) * 4;
-          return Transform.translate(
-            offset: Offset(0, -bounce),
-            child: child,
-          );
-        },
-        child: button,
-      );
-    }
-
-    return button;
   }
 }

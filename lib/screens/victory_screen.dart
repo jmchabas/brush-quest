@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
+import '../services/hero_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
 import '../widgets/space_background.dart';
@@ -20,6 +21,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     with TickerProviderStateMixin {
   final _audio = AudioService();
   final _streakService = StreakService();
+  final _heroService = HeroService();
   final _achievementService = AchievementService();
   final _worldService = WorldService();
 
@@ -69,7 +71,9 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
   Future<void> _recordAndAnimate() async {
-    await _streakService.recordBrush();
+    final hero = await _heroService.getSelectedHero();
+    final world = await _worldService.getCurrentWorld();
+    await _streakService.recordBrush(heroId: hero.id, worldId: world.id);
     await _worldService.recordMission();
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();

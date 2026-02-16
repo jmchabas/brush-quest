@@ -9,6 +9,8 @@ class WorldData {
   final Color themeColor;
   final String imagePath;
   final List<int> monsterIndices;
+  final List<Color> gradientColors;
+  final String particleType; // 'sparkle', 'bubble', 'ember', 'twinkle', 'crack'
 
   const WorldData({
     required this.id,
@@ -18,6 +20,8 @@ class WorldData {
     required this.themeColor,
     required this.imagePath,
     required this.monsterIndices,
+    required this.gradientColors,
+    required this.particleType,
   });
 }
 
@@ -34,6 +38,8 @@ class WorldService {
       themeColor: Color(0xFFFF80AB),
       imagePath: 'assets/images/planet_candy.png',
       monsterIndices: [0, 1],
+      gradientColors: [Color(0xFFFF80AB), Color(0xFFC2185B), Color(0xFF1A0A2E)],
+      particleType: 'sparkle',
     ),
     WorldData(
       id: 'slime_swamp',
@@ -43,6 +49,8 @@ class WorldService {
       themeColor: Color(0xFF69F0AE),
       imagePath: 'assets/images/planet_slime.png',
       monsterIndices: [1, 2],
+      gradientColors: [Color(0xFF69F0AE), Color(0xFF00897B), Color(0xFF0D1B2A)],
+      particleType: 'bubble',
     ),
     WorldData(
       id: 'sugar_volcano',
@@ -52,6 +60,8 @@ class WorldService {
       themeColor: Color(0xFFFF6E40),
       imagePath: 'assets/images/planet_volcano.png',
       monsterIndices: [2, 3],
+      gradientColors: [Color(0xFFFF6E40), Color(0xFFD32F2F), Color(0xFF1A0A0A)],
+      particleType: 'ember',
     ),
     WorldData(
       id: 'shadow_nebula',
@@ -61,6 +71,8 @@ class WorldService {
       themeColor: Color(0xFFB388FF),
       imagePath: 'assets/images/planet_shadow.png',
       monsterIndices: [0, 3],
+      gradientColors: [Color(0xFFB388FF), Color(0xFF4A148C), Color(0xFF050510)],
+      particleType: 'twinkle',
     ),
     WorldData(
       id: 'cavity_fortress',
@@ -70,6 +82,8 @@ class WorldService {
       themeColor: Color(0xFFFF5252),
       imagePath: 'assets/images/planet_fortress.png',
       monsterIndices: [0, 1, 2, 3],
+      gradientColors: [Color(0xFFFF5252), Color(0xFFB71C1C), Color(0xFF050000)],
+      particleType: 'crack',
     ),
   ];
 
