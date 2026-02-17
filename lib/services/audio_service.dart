@@ -31,8 +31,8 @@ class AudioService {
     'whoosh.mp3',
     'zap.mp3',
     'voice_stars_unlock.mp3',
-    'voice_star_collected.mp3',
-    'battle_music.mp3',
+    'star_chime.mp3',
+    'battle_music_v2.mp3',
   ];
 
   Future<void> preloadAll() async {

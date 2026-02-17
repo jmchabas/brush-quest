@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
+import '../services/camera_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
@@ -36,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _loadStats();
+    _requestCameraPermission();
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
@@ -81,6 +83,12 @@ class _HomeScreenState extends State<HomeScreen>
         _todayBrushCount = todayCount;
       });
     }
+  }
+
+  /// Request camera permission early so the OS dialog appears while system UI is visible.
+  /// The brushing screen will later use the already-initialized camera.
+  Future<void> _requestCameraPermission() async {
+    await CameraService().initialize();
   }
 
   void _startBrushing() {

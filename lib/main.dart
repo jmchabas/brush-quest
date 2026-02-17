@@ -7,7 +7,8 @@ import 'widgets/asset_preloader.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Note: immersive mode is set AFTER camera permission is requested (in HomeScreen)
+  // to avoid blocking the system permission dialog
   runApp(const BrushQuestApp());
 }
 

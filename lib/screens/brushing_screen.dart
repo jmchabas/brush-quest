@@ -163,6 +163,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _showZoneBanner = false; // "NEW MONSTER!" banner between phases
   bool _heroLunging = false; // hero attack lunge animation
   int _monstersDefeated = 0; // monsters killed by damage during this session
+  Timer? _stallTimer; // mercy timer when camera works but no motion detected
 
   // Companion speech bubbles
   String? _companionMessage;
@@ -223,6 +224,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   void initState() {
     super.initState();
     WakelockPlus.enable();
+    // Enter immersive mode for brushing (camera permission already requested on home screen)
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     // Init single monster
     _monster = _createMonster();
@@ -384,10 +387,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       if (intensity < 0.04) return;
 
       final now = DateTime.now().millisecondsSinceEpoch;
-      // Motion-driven attack: 600ms cooldown (fast, responsive to brushing)
-      const motionCooldown = 600;
+      // Variable cooldown based on brushing intensity:
+      // Gentle motion → 800ms, normal brushing → 500ms, vigorous → 300ms
+      final cooldownMs = _intensityToCooldown(intensity);
 
-      if (now - _lastAttackTime >= motionCooldown) {
+      if (now - _lastAttackTime >= cooldownMs) {
         _lastAttackTime = now;
         // Show motion glow feedback — hero lights up when brushing detected
         setState(() => _motionGlow = true);
@@ -395,6 +399,28 @@ class _BrushingScreenState extends State<BrushingScreen>
           if (mounted) setState(() => _motionGlow = false);
         });
         _triggerAttack();
+        _resetStallTimer(); // Reset mercy timer on successful attack
+      }
+    });
+  }
+
+  /// Map motion intensity to attack cooldown in milliseconds.
+  /// Higher brushing intensity = shorter cooldown = faster attacks.
+  int _intensityToCooldown(double intensity) {
+    if (intensity >= 0.4) return 300;  // vigorous brushing
+    if (intensity >= 0.15) return 500; // normal brushing
+    return 800;                         // gentle motion
+  }
+
+  /// Mercy timer: if camera is active but no motion detected for 10 seconds,
+  /// fire a single attack to prevent total stall (e.g. phone placed badly).
+  void _resetStallTimer() {
+    _stallTimer?.cancel();
+    if (!_cameraReady) return;
+    _stallTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted && !_isPaused && _phase != BrushPhase.done && _phase != BrushPhase.countdown) {
+        _triggerAttack();
+        _resetStallTimer(); // Keep mercy timer running
       }
     });
   }
@@ -423,8 +449,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   @override
   void dispose() {
     WakelockPlus.disable();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _timer?.cancel();
     _baseAttackTimer?.cancel();
+    _stallTimer?.cancel();
     _companionTimer?.cancel();
     _damageCleanupTimer?.cancel();
     _starCleanupTimer?.cancel();
@@ -473,7 +501,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _attacksSinceLastStar = 0;
 
     // Start battle music
-    _audio.playMusic('battle_music.mp3');
+    _audio.playMusic('battle_music_v2.mp3');
 
     // Companion speech bubbles every 8 seconds
     _companionTimer?.cancel();
@@ -534,24 +562,24 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
     });
 
-    // Hybrid attack system: base timer always fires + camera makes it faster
-    _startBaseAttackTimer();
+    // Attack system: motion-only when camera works, timer fallback without camera
     if (_cameraReady) {
       _startMotionDetection();
+      _resetStallTimer();
+    } else {
+      _startBaseAttackTimer();
     }
   }
 
-  /// Base attack timer: slow mercy fallback so the game never stalls.
-  /// When camera works, motion-based attacks (600ms) dominate.
-  /// Without camera, this fires every 4s as a safety net.
+  /// Fallback attack timer: ONLY used when camera is unavailable.
+  /// When camera works, attacks come exclusively from motion detection.
   void _startBaseAttackTimer() {
     _baseAttackTimer?.cancel();
     _baseAttackTimer = Timer.periodic(
-      Duration(milliseconds: _cameraReady ? 5000 : 2500),
+      const Duration(milliseconds: 2500),
       (_) {
         if (mounted && !_isPaused && _phase != BrushPhase.done && _phase != BrushPhase.countdown) {
           _triggerAttack();
-          _lastAttackTime = DateTime.now().millisecondsSinceEpoch;
         }
       },
     );
@@ -592,11 +620,12 @@ class _BrushingScreenState extends State<BrushingScreen>
         ));
       }
     });
-    _audio.playSfx('voice_star_collected.mp3');
+    _audio.playSfx('star_chime.mp3');
   }
 
   void _triggerFinisher(VoidCallback onComplete) {
     _baseAttackTimer?.cancel();
+    _stallTimer?.cancel();
     setState(() => _isFinisher = true);
     _attackStyleIndex = 4;
     _attackSequenceController.forward(from: 0);
@@ -661,7 +690,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     _monsterEntranceController.forward(from: 0).then((_) {
       if (mounted) {
         setState(() => _monsterEntering = false);
-        _startBaseAttackTimer();
+        if (_cameraReady) {
+          _resetStallTimer();
+        } else {
+          _startBaseAttackTimer();
+        }
       }
     });
   }
@@ -728,6 +761,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   /// This ensures the full 2-minute brushing session is always completed.
   void _monsterKilledByDamage() {
     _baseAttackTimer?.cancel();
+    _stallTimer?.cancel();
     _monstersDefeated++;
     final wasBoss = _isBossPhase;
     _collectStars(wasBoss ? 5 : 2); // Boss K.O. = 5 stars!
@@ -825,11 +859,16 @@ class _BrushingScreenState extends State<BrushingScreen>
       _monsterBreathController.stop();
       _heroIdleController.stop();
       _baseAttackTimer?.cancel();
+      _stallTimer?.cancel();
       _companionTimer?.cancel();
     } else {
       _monsterBreathController.repeat(reverse: true);
       _heroIdleController.repeat(reverse: true);
-      _startBaseAttackTimer();
+      if (_cameraReady) {
+        _resetStallTimer();
+      } else {
+        _startBaseAttackTimer();
+      }
       _companionTimer = Timer.periodic(
         const Duration(seconds: 8),
         (_) => _showNextCompanionMessage(),
@@ -846,6 +885,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _finishBrushing() {
     _baseAttackTimer?.cancel();
+    _stallTimer?.cancel();
     _companionTimer?.cancel();
     _stopMotionDetection();
     _audio.stopMusic();
@@ -1544,6 +1584,7 @@ class _BrushingScreenState extends State<BrushingScreen>
             scale: lungeScale,
           child: Stack(
             alignment: Alignment.center,
+            clipBehavior: Clip.none,
             children: [
               // Glow
               Container(
@@ -1559,6 +1600,29 @@ class _BrushingScreenState extends State<BrushingScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: _hero.primaryColor.withValues(alpha: 0.8 + glowBoost * 0.2), width: 3),
+                ),
+              ),
+              // Weapon badge — shows equipped weapon icon on the hero
+              Positioned(
+                right: -6,
+                bottom: -6,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _weapon.primaryColor.withValues(alpha: _heroLunging ? 1.0 : 0.85),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _weapon.primaryColor.withValues(alpha: _heroLunging ? 0.8 : 0.5),
+                        blurRadius: _heroLunging ? 16 : 8,
+                        spreadRadius: _heroLunging ? 4 : 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(_weapon.icon, color: Colors.white, size: 22),
                 ),
               ),
             ],
