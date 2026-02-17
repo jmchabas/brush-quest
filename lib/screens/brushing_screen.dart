@@ -8,6 +8,7 @@ import '../services/hero_service.dart';
 import '../services/world_service.dart';
 import '../services/camera_service.dart';
 import '../services/weapon_service.dart';
+import '../services/streak_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import '../widgets/glass_card.dart';
@@ -163,6 +164,15 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _heroLunging = false; // hero attack lunge animation
   int _monstersDefeated = 0; // monsters killed by damage during this session
 
+  // Companion speech bubbles
+  String? _companionMessage;
+  bool _showCompanionBubble = false;
+  Timer? _companionTimer;
+
+  // Boss battle system
+  bool _isBossSession = false;
+  bool _isBossPhase = false;
+
   static const _phaseLabels = {
     BrushPhase.topLeft: 'BRUSH TOP LEFT!',
     BrushPhase.topRight: 'BRUSH TOP RIGHT!',
@@ -198,6 +208,13 @@ class _BrushingScreenState extends State<BrushingScreen>
   ];
 
   static const _damageTexts = ['POW!', 'ZAP!', 'BOOM!', 'WHAM!', 'BAM!', 'SLASH!', 'SMASH!', 'HIT!'];
+
+  static const _companionMessages = [
+    'Nice combo!', 'Keep it up!', 'You\'re amazing!',
+    'So strong!', 'Great moves!', 'Power up!',
+    'Wow!', 'Super!', 'Go go go!', 'Unstoppable!',
+    'Hero mode!', 'Epic!',
+  ];
 
   bool _playedEncouragement = false;
   bool _playedAlmostThere = false;
@@ -392,11 +409,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     final hero = await _heroService.getSelectedHero();
     final world = await _worldService.getCurrentWorld();
     final weapon = await _weaponService.getSelectedWeapon();
+    final totalBrushes = await StreakService().getTotalBrushes();
     if (mounted) {
       setState(() {
         _hero = hero;
         _world = world;
         _weapon = weapon;
+        _isBossSession = totalBrushes > 0 && (totalBrushes + 1) % 5 == 0;
         _monster = _createWorldMonster();
         _initParticles();
       });
@@ -408,6 +427,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     WakelockPlus.disable();
     _timer?.cancel();
     _baseAttackTimer?.cancel();
+    _companionTimer?.cancel();
     _damageCleanupTimer?.cancel();
     _starCleanupTimer?.cancel();
     _stopMotionDetection();
@@ -457,6 +477,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     // Start battle music
     _audio.playMusic('battle_music.mp3');
 
+    // Companion speech bubbles every 8 seconds
+    _companionTimer?.cancel();
+    _companionTimer = Timer.periodic(
+      const Duration(seconds: 8),
+      (_) => _showNextCompanionMessage(),
+    );
+
     _switchToPhase(BrushPhase.topLeft);
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -482,8 +509,15 @@ class _BrushingScreenState extends State<BrushingScreen>
             _startMonsterDeath(_monster);
             _collectStars(1); // Phase transition bonus
             _playDefeatAnimation(() {
-              _monster = _createWorldMonster();
-              _switchToPhase(brushPhaseOrder[currentIndex + 1]);
+              final nextIndex = currentIndex + 1;
+              final isLastPhase = nextIndex == brushPhaseOrder.length - 1;
+              if (_isBossSession && isLastPhase) {
+                _isBossPhase = true;
+                _monster = _createBossMonster();
+              } else {
+                _monster = _createWorldMonster();
+              }
+              _switchToPhase(brushPhaseOrder[nextIndex]);
               _playEntranceAnimation();
               setState(() => _showZoneBanner = true);
               Future.delayed(const Duration(milliseconds: 1200), () {
@@ -495,7 +529,7 @@ class _BrushingScreenState extends State<BrushingScreen>
           _triggerFinisher(() {
             _monstersDefeated++;
             _startMonsterDeath(_monster);
-            _collectStars(1);
+            _collectStars(_isBossPhase ? 5 : 1);
             _playDefeatAnimation(() { timer.cancel(); _finishBrushing(); });
           });
         }
@@ -656,8 +690,8 @@ class _BrushingScreenState extends State<BrushingScreen>
       _attacksSinceLastStar++;
       if (_monster.alive) {
         _monster.hitRecoil = 1.0;
-        // Each attack does damage to the monster
-        _monster.health -= 0.08;
+        // Each attack does damage (boss takes half damage)
+        _monster.health -= _isBossPhase ? 0.04 : 0.08;
         if (_monster.health <= 0) {
           _monster.health = 0;
         }
@@ -696,13 +730,15 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _monsterKilledByDamage() {
     _baseAttackTimer?.cancel();
     _monstersDefeated++;
-    _collectStars(2); // Bonus stars for early kill!
+    final wasBoss = _isBossPhase;
+    _collectStars(wasBoss ? 5 : 2); // Boss K.O. = 5 stars!
 
     setState(() {
       _damagePopups.add(_DamagePopup(
-        text: 'K.O.!', x: 0.5, y: 0.12,
-        color: Colors.yellowAccent, opacity: 1.0, offsetY: 0,
-        rotation: 0, scale: 2.2,
+        text: wasBoss ? 'BOSS K.O.!' : 'K.O.!', x: 0.5, y: 0.12,
+        color: wasBoss ? const Color(0xFFFFD54F) : Colors.yellowAccent,
+        opacity: 1.0, offsetY: 0,
+        rotation: 0, scale: wasBoss ? 2.6 : 2.2,
       ));
     });
 
@@ -715,12 +751,33 @@ class _BrushingScreenState extends State<BrushingScreen>
     // Spawn a new monster in the same phase after death animation
     Future.delayed(const Duration(milliseconds: 900), () {
       if (!mounted || _phase == BrushPhase.done || _phase == BrushPhase.countdown) return;
-      // New monster in the same phase — keep fighting!
       setState(() {
+        _isBossPhase = false; // Boss was one-time, back to normal
         _monster = _createWorldMonster();
       });
       _playEntranceAnimation();
     });
+  }
+
+  void _showNextCompanionMessage() {
+    if (!mounted || _isPaused || _phase == BrushPhase.done) return;
+    final msg = _companionMessages[_random.nextInt(_companionMessages.length)];
+    setState(() {
+      _companionMessage = msg;
+      _showCompanionBubble = true;
+    });
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) setState(() => _showCompanionBubble = false);
+    });
+  }
+
+  _MonsterSlot _createBossMonster() {
+    return _MonsterSlot(
+      imageIndex: _random.nextInt(_monsterImages.length),
+      health: 1.0,
+      alive: true,
+      wobblePhase: _random.nextDouble() * 2 * pi,
+    );
   }
 
   void _spawnDamagePopup() {
@@ -769,10 +826,15 @@ class _BrushingScreenState extends State<BrushingScreen>
       _monsterBreathController.stop();
       _heroIdleController.stop();
       _baseAttackTimer?.cancel();
+      _companionTimer?.cancel();
     } else {
       _monsterBreathController.repeat(reverse: true);
       _heroIdleController.repeat(reverse: true);
       _startBaseAttackTimer();
+      _companionTimer = Timer.periodic(
+        const Duration(seconds: 8),
+        (_) => _showNextCompanionMessage(),
+      );
     }
   }
 
@@ -785,13 +847,14 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _finishBrushing() {
     _baseAttackTimer?.cancel();
+    _companionTimer?.cancel();
     _stopMotionDetection();
     _audio.stopMusic();
     setState(() => _phase = BrushPhase.done);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            VictoryScreen(starsCollected: _starsCollected, totalHits: _totalHits, monstersDefeated: _monstersDefeated),
+            VictoryScreen(starsCollected: _starsCollected, totalHits: _totalHits, monstersDefeated: _monstersDefeated, isBossSession: _isBossSession),
         transitionsBuilder: (context, anim, secondaryAnimation, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 800),
@@ -869,7 +932,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   Widget _buildBrushing() {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final monsterSize = 180.0;
+    final monsterSize = _isBossPhase ? 220.0 : 180.0;
     final heroSize = 140.0;
 
     return Scaffold(
@@ -1051,6 +1114,40 @@ class _BrushingScreenState extends State<BrushingScreen>
                             ),
                           )),
 
+                          // Companion speech bubble
+                          if (_showCompanionBubble && _companionMessage != null)
+                            Positioned(
+                              bottom: 210,
+                              child: TweenAnimationBuilder<double>(
+                                key: ValueKey(_companionMessage),
+                                tween: Tween(begin: 0.0, end: 1.0),
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.elasticOut,
+                                builder: (context, value, child) => Opacity(
+                                  opacity: value.clamp(0.0, 1.0),
+                                  child: Transform.scale(scale: 0.5 + value * 0.5, child: child),
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [BoxShadow(
+                                      color: _hero.primaryColor.withValues(alpha: 0.4),
+                                      blurRadius: 12,
+                                    )],
+                                  ),
+                                  child: Text(_companionMessage!,
+                                    style: TextStyle(
+                                      color: const Color(0xFF0D0B2E),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
                           // Zone transition banner
                           if (_showZoneBanner)
                             Center(
@@ -1065,17 +1162,17 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(colors: [
-                                      _world.themeColor.withValues(alpha: 0.9),
-                                      _world.themeColor.withValues(alpha: 0.6),
-                                    ]),
+                                    gradient: LinearGradient(colors: _isBossPhase
+                                      ? [const Color(0xFFFFD54F).withValues(alpha: 0.95), const Color(0xFFFF6D00).withValues(alpha: 0.7)]
+                                      : [_world.themeColor.withValues(alpha: 0.9), _world.themeColor.withValues(alpha: 0.6)],
+                                    ),
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: [BoxShadow(
-                                      color: _world.themeColor.withValues(alpha: 0.5),
+                                      color: (_isBossPhase ? const Color(0xFFFFD54F) : _world.themeColor).withValues(alpha: 0.5),
                                       blurRadius: 30, spreadRadius: 5,
                                     )],
                                   ),
-                                  child: Text('NEW MONSTER!',
+                                  child: Text(_isBossPhase ? 'BOSS BATTLE!' : 'NEW MONSTER!',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 28,
@@ -1305,6 +1402,47 @@ class _BrushingScreenState extends State<BrushingScreen>
                           color: Colors.white.withValues(alpha: (_monster.hitRecoil - 0.6) * 2),
                         ),
                       )),
+                    // Boss crown glow + label
+                    if (_isBossPhase) ...[
+                      Positioned(
+                        top: -5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)]),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [BoxShadow(
+                              color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
+                              blurRadius: 12, spreadRadius: 2,
+                            )],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.workspace_premium, color: Colors.white, size: 16),
+                              SizedBox(width: 4),
+                              Text('BOSS', style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                letterSpacing: 2,
+                              )),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Boss golden aura
+                      Positioned(bottom: 10, child: Container(
+                        width: size + 30, height: size + 30,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(
+                            color: const Color(0xFFFFD54F).withValues(alpha: 0.15 + breathT * 0.15),
+                            blurRadius: 30, spreadRadius: 12,
+                          )],
+                        ),
+                      )),
+                    ],
                   ],
                 ),
               ),
