@@ -28,6 +28,11 @@ class AudioService {
     'voice_almost_there.mp3',
     'whoosh.mp3',
     'zap.mp3',
+    'gear_up_power.mp3',
+    'gear_up_equip.mp3',
+    'gear_up_shield.mp3',
+    'gear_up_ready.mp3',
+    'voice_gear_up.mp3',
   ];
 
   Future<void> preloadAll() async {

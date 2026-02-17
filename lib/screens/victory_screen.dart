@@ -237,86 +237,42 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const SizedBox(height: 40),
 
-                    // Stats in glass card with bigger values
+                    // Stars count
                     GlassCard(
-                      margin: const EdgeInsets.symmetric(horizontal: 32),
+                      margin: const EdgeInsets.symmetric(horizontal: 48),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 24),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          horizontal: 32, vertical: 20),
+                      child: Column(
                         children: [
-                          Column(
-                            children: [
-                              const Icon(Icons.local_fire_department,
-                                  color: Colors.orangeAccent, size: 40),
-                              const SizedBox(height: 6),
-                              TweenAnimationBuilder<int>(
-                                tween: IntTween(begin: 0, end: _newStreak),
-                                duration: const Duration(milliseconds: 1500),
-                                builder: (context, val, _) => Text(
-                                  '$val day${val == 1 ? '' : 's'}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 28,
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'STREAK',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Colors.white54,
-                                      letterSpacing: 2,
-                                      fontSize: 14,
-                                    ),
-                              ),
-                            ],
+                          const Icon(Icons.star,
+                              color: Colors.yellowAccent, size: 48),
+                          const SizedBox(height: 8),
+                          TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: 0, end: _newStars),
+                            duration: const Duration(milliseconds: 1500),
+                            builder: (context, val, _) => Text(
+                              '$val',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 48,
+                                  ),
+                            ),
                           ),
-                          Container(
-                            width: 1,
-                            height: 60,
-                            color: Colors.white24,
-                          ),
-                          Column(
-                            children: [
-                              const Icon(Icons.star,
-                                  color: Colors.yellowAccent, size: 40),
-                              const SizedBox(height: 6),
-                              TweenAnimationBuilder<int>(
-                                tween: IntTween(begin: 0, end: _newStars),
-                                duration: const Duration(milliseconds: 1500),
-                                builder: (context, val, _) => Text(
-                                  '$val total',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 28,
-                                      ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'STARS',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: Colors.white54,
+                                  letterSpacing: 3,
+                                  fontSize: 16,
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'STARS',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Colors.white54,
-                                      letterSpacing: 2,
-                                      fontSize: 14,
-                                    ),
-                              ),
-                            ],
                           ),
                         ],
                       ),

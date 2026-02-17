@@ -9,7 +9,6 @@ import '../services/world_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/tooth_diagram.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -19,7 +18,7 @@ class BrushingScreen extends StatefulWidget {
   State<BrushingScreen> createState() => _BrushingScreenState();
 }
 
-enum BrushPhase { countdown, topLeft, topRight, bottomLeft, bottomRight, done }
+enum BrushPhase { gearUp, countdown, topLeft, topRight, bottomLeft, bottomRight, done }
 
 const brushPhaseOrder = [
   BrushPhase.topLeft,
@@ -27,6 +26,9 @@ const brushPhaseOrder = [
   BrushPhase.bottomLeft,
   BrushPhase.bottomRight,
 ];
+
+// Attack style variations
+enum AttackStyle { chargeSlash, uppercut, spinAttack, energyBeam, powerSlam }
 
 class _DamagePopup {
   String text;
@@ -47,7 +49,6 @@ class _Particle {
   });
 }
 
-// Hit spark — burst from impact point
 class _HitSpark {
   double x, y, vx, vy, life, size;
   Color color;
@@ -66,32 +67,26 @@ class _BrushingScreenState extends State<BrushingScreen>
   HeroCharacter _hero = HeroService.allHeroes[0];
   WorldData _world = WorldService.allWorlds[0];
 
-  BrushPhase _phase = BrushPhase.countdown;
+  BrushPhase _phase = BrushPhase.gearUp;
   int _countdownValue = 3;
   int _phaseSecondsLeft = 30;
   Timer? _timer;
-  Timer? _attackTimer; // Sub-second attack timer
+  Timer? _attackTimer;
   bool _isPaused = false;
   bool _showGoText = false;
 
   // Animation controllers
-  late AnimationController _monsterController;
-  late Animation<double> _monsterShake;
-  late AnimationController _zapController;
-  late Animation<double> _zapOpacity;
+  late AnimationController _gearUpController;
+  late AnimationController _attackSequenceController;
   late AnimationController _phaseTransitionController;
   late AnimationController _monsterDefeatController;
   late AnimationController _monsterEntranceController;
   late AnimationController _flashController;
-  late AnimationController _heroAttackController;
   late AnimationController _screenShakeController;
   late AnimationController _monsterBreathController;
   late AnimationController _particleController;
   late AnimationController _timerPulseController;
   late AnimationController _heroIdleController;
-  late AnimationController _monsterHitController;
-  late AnimationController _comboFlashController;
-  late AnimationController _superAttackController;
 
   bool _monsterDefeating = false;
   bool _monsterEntering = false;
@@ -100,11 +95,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   late List<int> _monsterOrder;
 
   // Combat system
-  int _comboCount = 0;
-  double _powerMeter = 0; // 0..1
-  bool _superAttackActive = false;
-  int _attackType = 0; // 0=slash, 1=beam, 2=explosion, cycles
+  int _attackStyleIndex = 0;
   int _totalHits = 0;
+  bool _isFinisher = false;
+  AttackStyle get _currentAttackStyle => AttackStyle.values[_attackStyleIndex % AttackStyle.values.length];
 
   // Damage popups + sparks
   final List<_DamagePopup> _damagePopups = [];
@@ -126,6 +120,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     BrushPhase.topRight: 'voice_top_right.mp3',
     BrushPhase.bottomLeft: 'voice_bottom_left.mp3',
     BrushPhase.bottomRight: 'voice_bottom_right.mp3',
+  };
+
+  // Directional arrows for each phase
+  static const _phaseArrowRotations = {
+    BrushPhase.topLeft: -0.785,    // up-left (−45°)
+    BrushPhase.topRight: 0.785,    // up-right (45°)
+    BrushPhase.bottomLeft: -2.356, // down-left (−135°)
+    BrushPhase.bottomRight: 2.356, // down-right (135°)
   };
 
   static const _monsterImages = [
@@ -153,17 +155,15 @@ class _BrushingScreenState extends State<BrushingScreen>
     WakelockPlus.enable();
     _monsterOrder = [0, 1, 2, 3]..shuffle(_random);
 
-    _monsterController = AnimationController(
-      duration: const Duration(milliseconds: 300), vsync: this,
-    )..repeat(reverse: true);
-    _monsterShake = Tween<double>(begin: -10, end: 10).animate(
-      CurvedAnimation(parent: _monsterController, curve: Curves.easeInOut),
+    // Gear-up sequence: 2500ms
+    _gearUpController = AnimationController(
+      duration: const Duration(milliseconds: 2500), vsync: this,
     );
 
-    _zapController = AnimationController(
-      duration: const Duration(milliseconds: 400), vsync: this,
+    // Attack sequence: 1200ms
+    _attackSequenceController = AnimationController(
+      duration: const Duration(milliseconds: 1200), vsync: this,
     );
-    _zapOpacity = Tween<double>(begin: 0, end: 1).animate(_zapController);
 
     _phaseTransitionController = AnimationController(
       duration: const Duration(milliseconds: 500), vsync: this,
@@ -176,9 +176,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     );
     _flashController = AnimationController(
       duration: const Duration(milliseconds: 120), vsync: this,
-    );
-    _heroAttackController = AnimationController(
-      duration: const Duration(milliseconds: 350), vsync: this,
     );
     _screenShakeController = AnimationController(
       duration: const Duration(milliseconds: 250), vsync: this,
@@ -193,30 +190,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     _timerPulseController = AnimationController(
       duration: const Duration(milliseconds: 500), vsync: this,
     )..repeat(reverse: true);
-
-    // Hero idle bob
     _heroIdleController = AnimationController(
       duration: const Duration(milliseconds: 1200), vsync: this,
     )..repeat(reverse: true);
 
-    // Monster flinch on hit
-    _monsterHitController = AnimationController(
-      duration: const Duration(milliseconds: 200), vsync: this,
-    );
-
-    // Combo flash
-    _comboFlashController = AnimationController(
-      duration: const Duration(milliseconds: 300), vsync: this,
-    );
-
-    // Super attack
-    _superAttackController = AnimationController(
-      duration: const Duration(milliseconds: 1200), vsync: this,
-    );
-
     _initParticles();
     _loadHeroAndWorld();
-    _startCountdown();
+    _startGearUp();
 
     _damageCleanupTimer = Timer.periodic(
       const Duration(milliseconds: 40),
@@ -248,7 +228,6 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _updateParticlesAndSparks() {
     if (!mounted || _isPaused) return;
-    // Update world particles
     for (int i = 0; i < _particles.length; i++) {
       final p = _particles[i];
       p.x += p.vx;
@@ -260,11 +239,10 @@ class _BrushingScreenState extends State<BrushingScreen>
         _particles[i].y = 0.85 + _random.nextDouble() * 0.15;
       }
     }
-    // Update hit sparks
     for (final s in _hitSparks) {
       s.x += s.vx;
       s.y += s.vy;
-      s.vy += 0.3; // gravity
+      s.vy += 0.3;
       s.life -= 0.05;
     }
     _hitSparks.removeWhere((s) => s.life <= 0);
@@ -292,26 +270,48 @@ class _BrushingScreenState extends State<BrushingScreen>
     _timer?.cancel();
     _attackTimer?.cancel();
     _damageCleanupTimer?.cancel();
-    _monsterController.dispose();
-    _zapController.dispose();
+    _gearUpController.dispose();
+    _attackSequenceController.dispose();
     _phaseTransitionController.dispose();
     _monsterDefeatController.dispose();
     _monsterEntranceController.dispose();
     _flashController.dispose();
-    _heroAttackController.dispose();
     _screenShakeController.dispose();
     _monsterBreathController.dispose();
     _particleController.removeListener(_updateParticlesAndSparks);
     _particleController.dispose();
     _timerPulseController.dispose();
     _heroIdleController.dispose();
-    _monsterHitController.dispose();
-    _comboFlashController.dispose();
-    _superAttackController.dispose();
     super.dispose();
   }
 
+  // ==================== GEAR-UP SEQUENCE ====================
+
+  void _startGearUp() {
+    _audio.playVoice('voice_gear_up.mp3');
+    // Trigger SFX at each beat
+    Timer(const Duration(milliseconds: 0), () {
+      if (mounted) _audio.playSfx('gear_up_power.mp3');
+    });
+    Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _audio.playSfx('gear_up_equip.mp3');
+    });
+    Timer(const Duration(milliseconds: 900), () {
+      if (mounted) _audio.playSfx('gear_up_shield.mp3');
+    });
+    Timer(const Duration(milliseconds: 1900), () {
+      if (mounted) _audio.playSfx('gear_up_ready.mp3');
+    });
+
+    _gearUpController.forward(from: 0).then((_) {
+      if (mounted) _startCountdown();
+    });
+  }
+
+  // ==================== COUNTDOWN ====================
+
   void _startCountdown() {
+    setState(() => _phase = BrushPhase.countdown);
     _audio.playVoice('voice_countdown.mp3');
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
@@ -329,14 +329,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
+  // ==================== BRUSHING ====================
+
   void _startBrushing() {
     _currentMonsterIndex = 0;
-    _comboCount = 0;
-    _powerMeter = 0;
     _totalHits = 0;
+    _attackStyleIndex = 0;
     _switchToPhase(BrushPhase.topLeft);
 
-    // Main timer: 1s tick for countdown
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isPaused) return;
       setState(() => _phaseSecondsLeft--);
@@ -355,28 +355,70 @@ class _BrushingScreenState extends State<BrushingScreen>
         _playedAlmostThere = false;
         final currentIndex = brushPhaseOrder.indexOf(_phase);
         if (currentIndex < brushPhaseOrder.length - 1) {
-          _playDefeatAnimation(() {
-            _currentMonsterIndex = currentIndex + 1;
-            _switchToPhase(brushPhaseOrder[currentIndex + 1]);
-            _playEntranceAnimation();
+          _triggerFinisher(() {
+            _playDefeatAnimation(() {
+              _currentMonsterIndex = currentIndex + 1;
+              _switchToPhase(brushPhaseOrder[currentIndex + 1]);
+              _playEntranceAnimation();
+            });
           });
         } else {
-          _playDefeatAnimation(() { timer.cancel(); _finishBrushing(); });
+          _triggerFinisher(() {
+            _playDefeatAnimation(() { timer.cancel(); _finishBrushing(); });
+          });
         }
       }
     });
 
-    // Attack timer: hits every 1.5-2.5s for constant action
     _scheduleNextAttack();
   }
 
   void _scheduleNextAttack() {
-    if (_isPaused || _phase == BrushPhase.countdown || _phase == BrushPhase.done) return;
-    final delay = 1500 + _random.nextInt(1000); // 1.5-2.5 seconds
+    if (_isPaused || _phase == BrushPhase.countdown || _phase == BrushPhase.gearUp || _phase == BrushPhase.done) return;
+    final delay = 2000 + _random.nextInt(1000); // 2-3s (1.2s anim + 0.8-1.8s pause)
     _attackTimer = Timer(Duration(milliseconds: delay), () {
       if (mounted && !_isPaused && _phase != BrushPhase.done) {
-        _triggerZap();
+        _triggerAttack();
         _scheduleNextAttack();
+      }
+    });
+  }
+
+  void _triggerFinisher(VoidCallback onComplete) {
+    _attackTimer?.cancel();
+    setState(() => _isFinisher = true);
+    _attackStyleIndex = 4; // powerSlam for finisher
+    _attackSequenceController.forward(from: 0);
+    _screenShakeController.forward(from: 0);
+    _flashController.forward(from: 0).then((_) => _flashController.reverse());
+    HapticFeedback.heavyImpact();
+    _audio.playSfx('zap.mp3');
+
+    // Big spark burst for finisher
+    for (int i = 0; i < 30; i++) {
+      final angle = _random.nextDouble() * 2 * pi;
+      final speed = 4.0 + _random.nextDouble() * 8;
+      _hitSparks.add(_HitSpark(
+        x: 0, y: 0,
+        vx: cos(angle) * speed, vy: sin(angle) * speed,
+        color: _hero.attackColor, life: 1.0,
+        size: 2 + _random.nextDouble() * 5,
+      ));
+    }
+
+    // Big damage text
+    setState(() {
+      _damagePopups.add(_DamagePopup(
+        text: 'FINISH!', x: 0.5, y: 0.15,
+        color: Colors.yellowAccent, opacity: 1.0, offsetY: 0,
+        rotation: 0, scale: 2.0,
+      ));
+    });
+
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        setState(() => _isFinisher = false);
+        onComplete();
       }
     });
   }
@@ -387,11 +429,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     _audio.playSfx('monster_defeat.mp3');
     HapticFeedback.heavyImpact();
     _flashController.forward(from: 0).then((_) => _flashController.reverse());
-    // Spawn a burst of sparks for defeat
     _spawnDefeatSparks();
     _monsterDefeatController.forward(from: 0).then((_) {
       if (mounted) {
-        setState(() { _monsterDefeating = false; _comboCount = 0; _powerMeter = 0; });
+        setState(() => _monsterDefeating = false);
         onComplete();
       }
     });
@@ -403,10 +444,8 @@ class _BrushingScreenState extends State<BrushingScreen>
       final speed = 3.0 + _random.nextDouble() * 6;
       _hitSparks.add(_HitSpark(
         x: 0, y: 0,
-        vx: cos(angle) * speed,
-        vy: sin(angle) * speed,
-        color: _world.themeColor,
-        life: 1.0,
+        vx: cos(angle) * speed, vy: sin(angle) * speed,
+        color: _world.themeColor, life: 1.0,
         size: 2.0 + _random.nextDouble() * 4,
       ));
     }
@@ -434,81 +473,34 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
-  void _triggerZap() {
+  void _triggerAttack() {
     _audio.playSfx('zap.mp3');
     HapticFeedback.lightImpact();
 
     setState(() {
-      _comboCount++;
       _totalHits++;
-      _attackType = _totalHits % 3;
-      _powerMeter = (_powerMeter + 0.12).clamp(0, 1);
+      _attackStyleIndex = _totalHits % AttackStyle.values.length;
     });
 
-    // Combo flash at milestones
-    if (_comboCount % 5 == 0 && _comboCount > 0) {
-      _comboFlashController.forward(from: 0);
-      HapticFeedback.mediumImpact();
-    }
-
-    // Super attack at full power
-    if (_powerMeter >= 1.0 && !_superAttackActive) {
-      _triggerSuperAttack();
-      return;
-    }
-
-    _zapController.forward(from: 0).then((_) => _zapController.reverse());
-    _flashController.forward(from: 0).then((_) => _flashController.reverse());
-    _heroAttackController.forward(from: 0);
+    _attackSequenceController.forward(from: 0);
     _screenShakeController.forward(from: 0);
-    _monsterHitController.forward(from: 0);
+    _flashController.forward(from: 0).then((_) => _flashController.reverse());
 
     _spawnDamagePopup();
     _spawnHitSparks();
   }
 
-  void _triggerSuperAttack() {
-    setState(() { _superAttackActive = true; _powerMeter = 0; });
-    _superAttackController.forward(from: 0).then((_) {
-      if (mounted) setState(() => _superAttackActive = false);
-    });
-    _screenShakeController.forward(from: 0);
-    HapticFeedback.heavyImpact();
-    _audio.playSfx('monster_defeat.mp3');
-
-    // Big damage popup
-    setState(() {
-      _damagePopups.add(_DamagePopup(
-        text: 'SUPER!', x: 0.5, y: 0.15,
-        color: Colors.yellowAccent, opacity: 1.0, offsetY: 0,
-        rotation: 0, scale: 2.0,
-      ));
-    });
-    // Massive spark burst
-    for (int i = 0; i < 30; i++) {
-      final angle = _random.nextDouble() * 2 * pi;
-      final speed = 4.0 + _random.nextDouble() * 8;
-      _hitSparks.add(_HitSpark(
-        x: 0, y: 0,
-        vx: cos(angle) * speed, vy: sin(angle) * speed,
-        color: _hero.attackColor, life: 1.0,
-        size: 2 + _random.nextDouble() * 5,
-      ));
-    }
-  }
-
   void _spawnDamagePopup() {
     final text = _damageTexts[_random.nextInt(_damageTexts.length)];
-    final isComboMilestone = _comboCount % 5 == 0 && _comboCount > 0;
     setState(() {
       _damagePopups.add(_DamagePopup(
-        text: isComboMilestone ? '${_comboCount}x COMBO!' : text,
+        text: text,
         x: 0.25 + _random.nextDouble() * 0.5,
         y: 0.1 + _random.nextDouble() * 0.3,
-        color: isComboMilestone ? Colors.yellowAccent : _hero.attackColor,
+        color: _hero.attackColor,
         opacity: 1.0, offsetY: 0,
         rotation: (_random.nextDouble() - 0.5) * 0.4,
-        scale: isComboMilestone ? 1.5 : 1.0,
+        scale: 1.0,
       ));
     });
   }
@@ -541,12 +533,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _togglePause() {
     setState(() => _isPaused = !_isPaused);
     if (_isPaused) {
-      _monsterController.stop();
       _monsterBreathController.stop();
       _heroIdleController.stop();
       _attackTimer?.cancel();
     } else {
-      _monsterController.repeat(reverse: true);
       _monsterBreathController.repeat(reverse: true);
       _heroIdleController.repeat(reverse: true);
       _scheduleNextAttack();
@@ -560,8 +550,8 @@ class _BrushingScreenState extends State<BrushingScreen>
     setState(() => _phase = BrushPhase.done);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const VictoryScreen(),
-        transitionsBuilder: (_, anim, __, child) => FadeTransition(opacity: anim, child: child),
+        pageBuilder: (context, animation, secondaryAnimation) => const VictoryScreen(),
+        transitionsBuilder: (context, anim, secondaryAnimation, child) => FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 800),
       ),
     );
@@ -574,31 +564,146 @@ class _BrushingScreenState extends State<BrushingScreen>
     return 'FINISH IT OFF!';
   }
 
-  ToothQuadrant _phaseToQuadrant(BrushPhase phase) {
-    switch (phase) {
-      case BrushPhase.topLeft: return ToothQuadrant.topLeft;
-      case BrushPhase.topRight: return ToothQuadrant.topRight;
-      case BrushPhase.bottomLeft: return ToothQuadrant.bottomLeft;
-      case BrushPhase.bottomRight: return ToothQuadrant.bottomRight;
-      default: return ToothQuadrant.topLeft;
-    }
-  }
-
-  Set<ToothQuadrant> _getCompletedQuadrants() {
-    final completed = <ToothQuadrant>{};
-    final currentIndex = brushPhaseOrder.indexOf(_phase);
-    for (int i = 0; i < currentIndex; i++) completed.add(_phaseToQuadrant(brushPhaseOrder[i]));
-    return completed;
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) { if (!didPop) _togglePause(); },
-      child: _phase == BrushPhase.countdown ? _buildCountdown() : _buildBrushing(),
+      child: _phase == BrushPhase.gearUp
+          ? _buildGearUp()
+          : _phase == BrushPhase.countdown
+              ? _buildCountdown()
+              : _buildBrushing(),
     );
   }
+
+  // ==================== GEAR-UP UI ====================
+
+  Widget _buildGearUp() {
+    return Scaffold(
+      body: SpaceBackground(
+        child: Center(
+          child: AnimatedBuilder(
+            animation: _gearUpController,
+            builder: (context, _) {
+              final t = _gearUpController.value;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Background energy burst (1400-2500ms)
+                  if (t > 0.56)
+                    _buildShieldAura(((t - 0.56) / 0.44).clamp(0, 1)),
+
+                  // White flash at end (1900-2500ms)
+                  if (t > 0.76)
+                    Container(
+                      color: Colors.white.withValues(alpha: ((t - 0.76) / 0.24).clamp(0, 0.6)),
+                    ),
+
+                  // Hero flies in from bottom (0-400ms)
+                  if (t < 0.36)
+                    Transform.translate(
+                      offset: Offset(0, 300 * (1.0 - Curves.elasticOut.transform((t / 0.16).clamp(0, 1)))),
+                      child: Transform.scale(
+                        scale: Curves.elasticOut.transform((t / 0.16).clamp(0, 1)),
+                        child: _buildGearUpHero(),
+                      ),
+                    )
+                  else
+                    _buildGearUpHero(),
+
+                  // Toothbrush flies in from right (400-900ms)
+                  if (t > 0.16 && t < 0.56)
+                    Transform.translate(
+                      offset: Offset(
+                        200 * (1.0 - Curves.easeOut.transform(((t - 0.16) / 0.2).clamp(0, 1))),
+                        -80,
+                      ),
+                      child: Opacity(
+                        opacity: ((t - 0.16) / 0.1).clamp(0, 1),
+                        child: _buildEquipIcon(Icons.brush, const Color(0xFF42A5F5)),
+                      ),
+                    )
+                  else if (t >= 0.56)
+                    Transform.translate(
+                      offset: const Offset(0, -80),
+                      child: _buildEquipIcon(Icons.brush, const Color(0xFF42A5F5)),
+                    ),
+
+                  // Toothpaste flies in from left (900-1400ms)
+                  if (t > 0.36 && t < 0.76)
+                    Transform.translate(
+                      offset: Offset(
+                        -200 * (1.0 - Curves.easeOut.transform(((t - 0.36) / 0.2).clamp(0, 1))),
+                        80,
+                      ),
+                      child: Opacity(
+                        opacity: ((t - 0.36) / 0.1).clamp(0, 1),
+                        child: _buildEquipIcon(Icons.water_drop, const Color(0xFF69F0AE)),
+                      ),
+                    )
+                  else if (t >= 0.76)
+                    Transform.translate(
+                      offset: const Offset(0, 80),
+                      child: _buildEquipIcon(Icons.water_drop, const Color(0xFF69F0AE)),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGearUpHero() {
+    return Container(
+      width: 180,
+      height: 180,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: _hero.primaryColor, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: _hero.primaryColor.withValues(alpha: 0.6),
+            blurRadius: 30, spreadRadius: 8,
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: Image.asset(_hero.imagePath, fit: BoxFit.cover),
+      ),
+    );
+  }
+
+  Widget _buildEquipIcon(IconData icon, Color color) {
+    return Container(
+      width: 60, height: 60,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.2),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 16)],
+      ),
+      child: Icon(icon, color: color, size: 32),
+    );
+  }
+
+  Widget _buildShieldAura(double progress) {
+    final size = 100 + progress * 300;
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [
+          _hero.primaryColor.withValues(alpha: (1 - progress) * 0.4),
+          _hero.attackColor.withValues(alpha: (1 - progress) * 0.2),
+          Colors.transparent,
+        ]),
+      ),
+    );
+  }
+
+  // ==================== COUNTDOWN UI ====================
 
   Widget _buildCountdown() {
     final displayText = _showGoText ? 'GO!' : (_countdownValue > 0 ? '$_countdownValue' : '');
@@ -645,6 +750,8 @@ class _BrushingScreenState extends State<BrushingScreen>
     );
   }
 
+  // ==================== BRUSHING UI ====================
+
   Widget _buildBrushing() {
     final damageProgress = 1.0 - (_phaseSecondsLeft / 30.0);
     final screenHeight = MediaQuery.of(context).size.height;
@@ -687,54 +794,32 @@ class _BrushingScreenState extends State<BrushingScreen>
                             .animate(CurvedAnimation(parent: _phaseTransitionController, curve: Curves.elasticOut)),
                         child: GlassCard(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          child: Center(child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(_phaseLabels[_phase] ?? '', maxLines: 1,
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: _world.themeColor, fontWeight: FontWeight.bold, fontSize: 28, letterSpacing: 3,
-                              )),
+                          child: Center(child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Directional arrow
+                              Transform.rotate(
+                                angle: _phaseArrowRotations[_phase] ?? 0,
+                                child: Icon(
+                                  Icons.arrow_upward,
+                                  color: _world.themeColor,
+                                  size: 32,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(_phaseLabels[_phase] ?? '', maxLines: 1,
+                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      color: _world.themeColor, fontWeight: FontWeight.bold, fontSize: 28, letterSpacing: 3,
+                                    )),
+                                ),
+                              ),
+                            ],
                           )),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Tooth diagram + combo counter row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ToothDiagram(
-                          activeQuadrant: _phaseToQuadrant(_phase),
-                          completedQuadrants: _getCompletedQuadrants(),
-                          size: 130, activeColor: _world.themeColor,
-                        ),
-                        const SizedBox(width: 12),
-                        // Combo counter
-                        if (_comboCount > 0)
-                          AnimatedBuilder(
-                            animation: _comboFlashController,
-                            builder: (context, child) {
-                              final flash = _comboFlashController.value;
-                              return Transform.scale(
-                                scale: 1.0 + flash * 0.3,
-                                child: child,
-                              );
-                            },
-                            child: Column(
-                              children: [
-                                Text('$_comboCount', style: TextStyle(
-                                  color: _comboCount >= 10 ? Colors.yellowAccent : _hero.attackColor,
-                                  fontSize: _comboCount >= 10 ? 36 : 28,
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [Shadow(color: _hero.attackColor.withValues(alpha: 0.6), blurRadius: 12)],
-                                )),
-                                Text('COMBO', style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6), fontSize: 10, letterSpacing: 2,
-                                )),
-                              ],
-                            ),
-                          ),
-                      ],
                     ),
 
                     const Spacer(),
@@ -745,7 +830,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Monster aura glow (always on, pulses)
+                          // Monster aura glow
                           AnimatedBuilder(
                             animation: _monsterBreathController,
                             builder: (context, _) {
@@ -763,25 +848,31 @@ class _BrushingScreenState extends State<BrushingScreen>
                             },
                           ),
 
-                          // Zap flash
-                          AnimatedBuilder(
-                            animation: _zapOpacity,
-                            builder: (context, _) => Opacity(
-                              opacity: _zapOpacity.value,
-                              child: Container(
-                                width: monsterSize + 60, height: monsterSize + 60,
-                                decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
-                                  BoxShadow(color: _hero.attackColor.withValues(alpha: 0.9), blurRadius: 80, spreadRadius: 30),
-                                ]),
-                              ),
-                            ),
-                          ),
-
                           // Monster
                           Positioned(
                             top: 0,
                             child: _buildMonster(damageProgress, monsterSize),
                           ),
+
+                          // Battle effect overlay (attack animations)
+                          if (_attackSequenceController.isAnimating)
+                            Positioned.fill(
+                              child: AnimatedBuilder(
+                                animation: _attackSequenceController,
+                                builder: (context, _) {
+                                  return CustomPaint(
+                                    painter: _BattleEffectPainter(
+                                      progress: _attackSequenceController.value,
+                                      color: _hero.attackColor,
+                                      attackStyle: _currentAttackStyle,
+                                      heroYRatio: 0.85,
+                                      monsterYRatio: 0.25,
+                                      isFinisher: _isFinisher,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
 
                           // Hit sparks
                           AnimatedBuilder(
@@ -797,46 +888,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                             bottom: 0,
                             child: _buildHero(heroSize),
                           ),
-
-                          // Attack effect overlay
-                          if (_heroAttackController.isAnimating)
-                            Positioned(
-                              top: monsterSize * 0.2,
-                              child: AnimatedBuilder(
-                                animation: _heroAttackController,
-                                builder: (context, _) {
-                                  final t = _heroAttackController.value;
-                                  if (t < 0.05 || t > 0.9) return const SizedBox.shrink();
-                                  return CustomPaint(
-                                    size: Size(monsterSize * 0.8, monsterSize * 0.8),
-                                    painter: _AttackEffectPainter(
-                                      progress: t, color: _hero.attackColor,
-                                      attackType: _attackType,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-
-                          // Super attack full-screen blast
-                          if (_superAttackActive)
-                            AnimatedBuilder(
-                              animation: _superAttackController,
-                              builder: (context, _) {
-                                final t = _superAttackController.value;
-                                return Container(
-                                  width: monsterSize * 3 * t, height: monsterSize * 3 * t,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: RadialGradient(colors: [
-                                      _hero.attackColor.withValues(alpha: (1 - t) * 0.6),
-                                      Colors.white.withValues(alpha: (1 - t) * 0.3),
-                                      Colors.transparent,
-                                    ]),
-                                  ),
-                                );
-                              },
-                            ),
 
                           // Damage popups
                           ..._damagePopups.map((popup) => Positioned(
@@ -861,61 +912,38 @@ class _BrushingScreenState extends State<BrushingScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
 
-                    // Health bar + Power meter row
+                    // Single monster health bar with seconds overlay
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
+                      child: Stack(
                         children: [
-                          // Monster health
-                          Row(
-                            children: [
-                              const Icon(Icons.favorite, color: Colors.redAccent, size: 16),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: SizedBox(
-                                    height: 20,
-                                    child: LinearProgressIndicator(
-                                      value: 1.0 - damageProgress,
-                                      backgroundColor: Colors.white.withValues(alpha: 0.1),
-                                      valueColor: AlwaysStoppedAnimation(
-                                        Color.lerp(const Color(0xFFFF5252), _world.themeColor, 1.0 - damageProgress)!,
-                                      ),
-                                    ),
-                                  ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: SizedBox(
+                              height: 28,
+                              child: LinearProgressIndicator(
+                                value: 1.0 - damageProgress,
+                                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                valueColor: AlwaysStoppedAnimation(
+                                  Color.lerp(const Color(0xFFFF5252), _world.themeColor, 1.0 - damageProgress)!,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          // Power meter
-                          Row(
-                            children: [
-                              Icon(Icons.bolt, color: _powerMeter >= 1.0 ? Colors.yellowAccent : _hero.attackColor, size: 16),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: SizedBox(
-                                    height: 14,
-                                    child: LinearProgressIndicator(
-                                      value: _powerMeter,
-                                      backgroundColor: Colors.white.withValues(alpha: 0.08),
-                                      valueColor: AlwaysStoppedAnimation(
-                                        _powerMeter >= 0.8 ? Colors.yellowAccent : _hero.attackColor,
-                                      ),
-                                    ),
-                                  ),
+                          Positioned.fill(
+                            child: Center(
+                              child: Text(
+                                '${_phaseSecondsLeft}s',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [Shadow(color: Colors.black54, blurRadius: 4)],
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                              Text('POWER', style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.4), fontSize: 8, letterSpacing: 1,
-                              )),
-                            ],
+                            ),
                           ),
                         ],
                       ),
@@ -956,17 +984,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ? Container(color: _hero.attackColor.withValues(alpha: _flashController.value * 0.15))
                     : const SizedBox.shrink(),
               ),
-
-              // Super attack flash
-              if (_superAttackActive)
-                AnimatedBuilder(
-                  animation: _superAttackController,
-                  builder: (context, _) {
-                    final t = _superAttackController.value;
-                    final flash = t < 0.3 ? t / 0.3 : 1.0 - ((t - 0.3) / 0.7);
-                    return Container(color: Colors.white.withValues(alpha: flash * 0.3));
-                  },
-                ),
 
               if (_isPaused) _buildPauseOverlay(),
             ],
@@ -1015,16 +1032,79 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Widget _buildHero(double heroSize) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_heroAttackController, _heroIdleController]),
+      animation: Listenable.merge([_attackSequenceController, _heroIdleController]),
       builder: (context, child) {
-        final attackT = _heroAttackController.value;
+        final attackT = _attackSequenceController.value;
         final idleT = _heroIdleController.value;
-        final jumpY = -sin(attackT * pi) * 30;
-        final attackScale = 1.0 + sin(attackT * pi) * 0.25;
         final idleBob = sin(idleT * pi) * 4;
+
+        // 5-phase attack movement
+        double jumpY = 0;
+        double scaleVal = 1.0;
+        double rotation = 0;
+
+        if (_attackSequenceController.isAnimating && attackT > 0) {
+          if (attackT < 0.167) {
+            // Wind-up: crouch down
+            final p = attackT / 0.167;
+            jumpY = 10 * p;
+            scaleVal = 1.0 - 0.05 * p;
+          } else if (attackT < 0.417) {
+            // Charge: rush upward
+            final p = (attackT - 0.167) / 0.25;
+            jumpY = 10 - 80 * Curves.easeIn.transform(p);
+            scaleVal = 0.95 + 0.3 * p;
+            if (_currentAttackStyle == AttackStyle.spinAttack) {
+              rotation = p * 2 * pi;
+            } else if (_currentAttackStyle == AttackStyle.uppercut) {
+              rotation = p * 0.3;
+            }
+          } else if (attackT < 0.583) {
+            // Impact
+            jumpY = -70;
+            scaleVal = 1.25;
+            rotation = 0;
+          } else if (attackT < 0.833) {
+            // Recoil: bounce back
+            final p = (attackT - 0.583) / 0.25;
+            jumpY = -70 + 70 * Curves.elasticOut.transform(p);
+            scaleVal = 1.25 - 0.25 * p;
+          } else {
+            // Settle
+            jumpY = 0;
+            scaleVal = 1.0;
+            rotation = 0;
+          }
+
+          // Energy beam: hero stays put, different movement
+          if (_currentAttackStyle == AttackStyle.energyBeam) {
+            jumpY = 0;
+            scaleVal = 1.0 + sin(attackT * pi) * 0.1;
+            rotation = 0;
+          }
+
+          // Power slam: jump up then slam down
+          if (_currentAttackStyle == AttackStyle.powerSlam) {
+            if (attackT < 0.3) {
+              jumpY = -100 * Curves.easeOut.transform(attackT / 0.3);
+              scaleVal = 1.0 + 0.2 * (attackT / 0.3);
+            } else if (attackT < 0.5) {
+              final p = (attackT - 0.3) / 0.2;
+              jumpY = -100 + 100 * Curves.easeIn.transform(p);
+              scaleVal = 1.2;
+            } else {
+              jumpY = 0;
+              scaleVal = 1.0 + (1.0 - ((attackT - 0.5) / 0.5).clamp(0, 1)) * 0.15;
+            }
+          }
+        }
+
         return Transform.translate(
           offset: Offset(0, jumpY + idleBob),
-          child: Transform.scale(scale: attackScale, child: child),
+          child: Transform.scale(
+            scale: scaleVal,
+            child: Transform.rotate(angle: rotation, child: child),
+          ),
         );
       },
       child: SizedBox(
@@ -1065,19 +1145,45 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Widget _buildMonster(double damageProgress, double monsterSize) {
-    final shakeMult = 1.0 + damageProgress * 2.0;
-
     Widget monster = AnimatedBuilder(
-      animation: Listenable.merge([_monsterShake, _monsterBreathController, _monsterHitController]),
+      animation: Listenable.merge([_monsterBreathController, _attackSequenceController]),
       builder: (context, child) {
         final breathScale = 1.0 + sin(_monsterBreathController.value * pi) * 0.04;
-        // Flinch: brief recoil on hit
-        final hitT = _monsterHitController.value;
-        final flinchScale = 1.0 - sin(hitT * pi) * 0.1;
-        final flinchY = sin(hitT * pi) * 8;
+
+        // Monster reaction to attack
+        double monsterScaleX = 1.0;
+        double monsterScaleY = 1.0;
+        double pushBack = 0;
+        double wobble = 0;
+
+        if (_attackSequenceController.isAnimating) {
+          final t = _attackSequenceController.value;
+          if (t > 0.417 && t < 0.583) {
+            // Impact: squash horizontally, stretch vertically
+            final p = (t - 0.417) / 0.166;
+            monsterScaleX = 1.0 + 0.3 * sin(p * pi);
+            monsterScaleY = 1.0 - 0.3 * sin(p * pi);
+            pushBack = 15 * sin(p * pi);
+          } else if (t > 0.583 && t < 0.833) {
+            // Recoil: spring back with wobble
+            final p = (t - 0.583) / 0.25;
+            monsterScaleX = 1.0 + 0.1 * sin(p * pi * 3) * (1 - p);
+            monsterScaleY = 1.0 - 0.1 * sin(p * pi * 3) * (1 - p);
+            wobble = sin(p * pi * 4) * 8 * (1 - p);
+          }
+        }
+
         return Transform.translate(
-          offset: Offset(_monsterShake.value * shakeMult, flinchY),
-          child: Transform.scale(scale: breathScale * flinchScale, child: child),
+          offset: Offset(wobble, -pushBack),
+          child: Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.diagonal3Values(
+              breathScale * monsterScaleX,
+              breathScale * monsterScaleY,
+              1.0,
+            ),
+            child: child,
+          ),
         );
       },
       child: SizedBox(
@@ -1105,29 +1211,20 @@ class _BrushingScreenState extends State<BrushingScreen>
                 size: Size(monsterSize, monsterSize),
                 painter: _DamageCrackPainter(progress: damageProgress, color: Colors.white),
               ),
-            // Angry eyes overlay when damaged
+            // Red tint for progressive damage
             if (damageProgress > 0.5)
-              Positioned(
-                top: monsterSize * 0.25,
-                child: AnimatedBuilder(
-                  animation: _monsterBreathController,
-                  builder: (context, _) {
-                    final glow = 0.4 + sin(_monsterBreathController.value * pi * 2) * 0.3;
-                    return Row(mainAxisSize: MainAxisSize.min, children: [
-                      Container(width: 10, height: 6, decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(3),
-                        color: Colors.redAccent.withValues(alpha: glow),
-                        boxShadow: [BoxShadow(color: Colors.redAccent.withValues(alpha: glow), blurRadius: 8)],
-                      )),
-                      SizedBox(width: monsterSize * 0.18),
-                      Container(width: 10, height: 6, decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(3),
-                        color: Colors.redAccent.withValues(alpha: glow),
-                        boxShadow: [BoxShadow(color: Colors.redAccent.withValues(alpha: glow), blurRadius: 8)],
-                      )),
-                    ]);
-                  },
+              Container(
+                width: monsterSize, height: monsterSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red.withValues(alpha: (damageProgress - 0.5) * 0.3),
                 ),
+              ),
+            // Lean when heavily damaged
+            if (damageProgress > 0.7)
+              Transform.rotate(
+                angle: (damageProgress - 0.7) * 0.3,
+                child: const SizedBox.shrink(),
               ),
           ],
         ),
@@ -1227,6 +1324,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 }
 
+// ==================== PAINTERS ====================
+
 class _WorldBackground extends StatelessWidget {
   final WorldData world;
   final Widget child;
@@ -1304,66 +1403,129 @@ class _HitSparkPainter extends CustomPainter {
   bool shouldRepaint(_HitSparkPainter oldDelegate) => true;
 }
 
-/// Varied attack effects: slash, beam, explosion
-class _AttackEffectPainter extends CustomPainter {
+/// Draws battle effects connecting hero to monster based on attack style
+class _BattleEffectPainter extends CustomPainter {
   final double progress;
   final Color color;
-  final int attackType;
-  _AttackEffectPainter({required this.progress, required this.color, required this.attackType});
+  final AttackStyle attackStyle;
+  final double heroYRatio;
+  final double monsterYRatio;
+  final bool isFinisher;
+
+  _BattleEffectPainter({
+    required this.progress,
+    required this.color,
+    required this.attackStyle,
+    required this.heroYRatio,
+    required this.monsterYRatio,
+    this.isFinisher = false,
+  });
+
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final cy = size.height / 2;
-    switch (attackType) {
-      case 0: // Slash — diagonal line sweeps across
-        final paint = Paint()
-          ..color = color.withValues(alpha: (1 - progress) * 0.9)
-          ..strokeWidth = 4 + (1 - progress) * 6
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
-        final startX = cx - size.width * 0.4 + progress * size.width * 0.2;
-        final startY = cy - size.height * 0.4;
-        final endX = cx + size.width * 0.4 - progress * size.width * 0.2;
-        final endY = cy + size.height * 0.4;
-        canvas.drawLine(Offset(startX, startY), Offset(endX * progress + startX * (1 - progress), endY * progress + startY * (1 - progress)), paint);
-        // Glow
-        paint.color = color.withValues(alpha: (1 - progress) * 0.3);
-        paint.strokeWidth = 12;
-        paint.maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-        canvas.drawLine(Offset(startX, startY), Offset(endX * progress + startX * (1 - progress), endY * progress + startY * (1 - progress)), paint);
+    final monsterY = size.height * monsterYRatio;
+    final heroY = size.height * heroYRatio;
+
+    // Only draw during impact phase (0.417-0.583)
+    final impactStart = 0.35;
+    final impactEnd = 0.7;
+    if (progress < impactStart || progress > impactEnd) return;
+
+    final impactProgress = ((progress - impactStart) / (impactEnd - impactStart)).clamp(0.0, 1.0);
+    final fadeAlpha = (1.0 - impactProgress) * 0.9;
+    final lineWidth = isFinisher ? 6.0 : 4.0;
+
+    final paint = Paint()
+      ..color = color.withValues(alpha: fadeAlpha)
+      ..strokeWidth = lineWidth
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final glowPaint = Paint()
+      ..color = color.withValues(alpha: fadeAlpha * 0.3)
+      ..strokeWidth = lineWidth * 3
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    switch (attackStyle) {
+      case AttackStyle.chargeSlash:
+        // Diagonal slash across monster
+        final slashLen = size.width * 0.4 * impactProgress;
+        canvas.drawLine(
+          Offset(cx - slashLen, monsterY - slashLen * 0.5),
+          Offset(cx + slashLen, monsterY + slashLen * 0.5),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(cx - slashLen, monsterY - slashLen * 0.5),
+          Offset(cx + slashLen, monsterY + slashLen * 0.5),
+          glowPaint,
+        );
         break;
-      case 1: // Beam — expanding ring
-        final paint = Paint()
-          ..color = color.withValues(alpha: (1 - progress) * 0.7)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3 + (1 - progress) * 5;
-        final radius = progress * size.width * 0.5;
-        canvas.drawCircle(Offset(cx, cy), radius, paint);
-        // Inner glow
-        paint.color = color.withValues(alpha: (1 - progress) * 0.2);
-        paint.maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-        paint.strokeWidth = 8;
-        canvas.drawCircle(Offset(cx, cy), radius * 0.8, paint);
+
+      case AttackStyle.uppercut:
+        // Vertical slash upward
+        final reach = size.height * 0.3 * impactProgress;
+        canvas.drawLine(
+          Offset(cx, monsterY + reach * 0.3),
+          Offset(cx, monsterY - reach),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(cx, monsterY + reach * 0.3),
+          Offset(cx, monsterY - reach),
+          glowPaint,
+        );
         break;
-      case 2: // Explosion — X-shaped burst
-        final paint = Paint()
-          ..color = color.withValues(alpha: (1 - progress) * 0.8)
-          ..strokeWidth = 3 + (1 - progress) * 4
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-        final reach = progress * size.width * 0.45;
-        canvas.drawLine(Offset(cx - reach, cy - reach), Offset(cx + reach, cy + reach), paint);
-        canvas.drawLine(Offset(cx + reach, cy - reach), Offset(cx - reach, cy + reach), paint);
-        canvas.drawLine(Offset(cx, cy - reach * 1.2), Offset(cx, cy + reach * 1.2), paint);
-        canvas.drawLine(Offset(cx - reach * 1.2, cy), Offset(cx + reach * 1.2, cy), paint);
+
+      case AttackStyle.spinAttack:
+        // Expanding ring burst
+        final radius = size.width * 0.3 * impactProgress;
+        paint.style = PaintingStyle.stroke;
+        paint.strokeWidth = lineWidth + (1 - impactProgress) * 4;
+        canvas.drawCircle(Offset(cx, monsterY), radius, paint);
+        canvas.drawCircle(Offset(cx, monsterY), radius, glowPaint);
+        break;
+
+      case AttackStyle.energyBeam:
+        // Beam from hero to monster
+        final beamProgress = impactProgress;
+        final beamEndY = heroY + (monsterY - heroY) * beamProgress;
+        paint.strokeWidth = lineWidth * 2;
+        canvas.drawLine(Offset(cx, heroY), Offset(cx, beamEndY), paint);
+        glowPaint.strokeWidth = lineWidth * 5;
+        canvas.drawLine(Offset(cx, heroY), Offset(cx, beamEndY), glowPaint);
+        break;
+
+      case AttackStyle.powerSlam:
+        // Impact waves radiating outward
+        for (int i = 0; i < 3; i++) {
+          final waveProgress = (impactProgress - i * 0.15).clamp(0.0, 1.0);
+          if (waveProgress <= 0) continue;
+          final radius = size.width * 0.15 * waveProgress + i * 15;
+          final wavePaint = Paint()
+            ..color = color.withValues(alpha: (1 - waveProgress) * fadeAlpha)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = lineWidth * (1 - waveProgress * 0.5);
+          canvas.drawCircle(Offset(cx, monsterY), radius, wavePaint);
+        }
+        // X-shaped burst
+        if (isFinisher) {
+          final reach = size.width * 0.35 * impactProgress;
+          canvas.drawLine(Offset(cx - reach, monsterY - reach), Offset(cx + reach, monsterY + reach), paint);
+          canvas.drawLine(Offset(cx + reach, monsterY - reach), Offset(cx - reach, monsterY + reach), paint);
+          canvas.drawLine(Offset(cx, monsterY - reach * 1.3), Offset(cx, monsterY + reach * 1.3), paint);
+          canvas.drawLine(Offset(cx - reach * 1.3, monsterY), Offset(cx + reach * 1.3, monsterY), paint);
+        }
         break;
     }
   }
+
   @override
-  bool shouldRepaint(_AttackEffectPainter oldDelegate) => progress != oldDelegate.progress;
+  bool shouldRepaint(_BattleEffectPainter oldDelegate) => progress != oldDelegate.progress;
 }
 
-/// Damage cracks drawn on monster as it takes damage
 class _DamageCrackPainter extends CustomPainter {
   final double progress;
   final Color color;
@@ -1378,7 +1540,7 @@ class _DamageCrackPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final cracks = (progress * 8).floor();
-    final rng = Random(42); // Deterministic
+    final rng = Random(42);
     for (int i = 0; i < cracks; i++) {
       final startAngle = rng.nextDouble() * 2 * pi;
       final len = 15 + rng.nextDouble() * 25;
@@ -1387,7 +1549,6 @@ class _DamageCrackPainter extends CustomPainter {
       var x2 = x1 + cos(startAngle) * len;
       var y2 = y1 + sin(startAngle) * len;
       canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
-      // Branch
       if (rng.nextBool()) {
         final branchAngle = startAngle + (rng.nextDouble() - 0.5) * 1.2;
         final bLen = len * 0.5;
