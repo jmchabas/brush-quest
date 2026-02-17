@@ -8,7 +8,6 @@ import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
-import 'weapon_shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +21,8 @@ class _HomeScreenState extends State<HomeScreen>
   final _streakService = StreakService();
   final _heroService = HeroService();
   int _totalStars = 0;
+  int _streak = 0;
+  int _todayBrushCount = 0;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
 
   late AnimationController _pulseController;
@@ -69,11 +70,15 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadStats() async {
     final stars = await _streakService.getTotalStars();
     final hero = await _heroService.getSelectedHero();
+    final streak = await _streakService.getStreak();
+    final todayCount = await _streakService.getTodayBrushCount();
 
     if (mounted) {
       setState(() {
         _totalStars = stars;
         _selectedHero = hero;
+        _streak = streak;
+        _todayBrushCount = todayCount;
       });
     }
   }
@@ -104,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen>
         .then((_) => _loadStats());
   }
 
-  void _openHeroShop() {
+  void _openShop() {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const HeroShopScreen()))
         .then((_) => _loadStats());
@@ -113,12 +118,6 @@ class _HomeScreenState extends State<HomeScreen>
   void _openWorldMap() {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const WorldMapScreen()))
-        .then((_) => _loadStats());
-  }
-
-  void _openWeaponShop() {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const WeaponShopScreen()))
         .then((_) => _loadStats());
   }
 
@@ -160,45 +159,9 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
 
-              // Top-left: MAP button
-              Positioned(
-                top: 12,
-                left: 12,
-                child: _MiniNavButton(
-                  icon: Icons.map,
-                  label: 'MAP',
-                  color: const Color(0xFF00E5FF),
-                  onTap: _openWorldMap,
-                ),
-              ),
-
-              // WEAPONS button
-              Positioned(
-                top: 12,
-                right: 52,
-                child: _MiniNavButton(
-                  icon: Icons.bolt,
-                  label: 'WEAPONS',
-                  color: const Color(0xFFFF4081),
-                  onTap: _openWeaponShop,
-                ),
-              ),
-
-              // HEROES button
-              Positioned(
-                top: 12,
-                right: 100,
-                child: _MiniNavButton(
-                  icon: Icons.shield,
-                  label: 'HEROES',
-                  color: const Color(0xFF7C4DFF),
-                  onTap: _openHeroShop,
-                ),
-              ),
-
               Column(
                 children: [
-                  const SizedBox(height: 56),
+                  const SizedBox(height: 40),
 
                   // Title
                   Stack(
@@ -264,24 +227,53 @@ class _HomeScreenState extends State<HomeScreen>
 
                   const SizedBox(height: 16),
 
-                  // Stars display
+                  // Stats row: streak + stars + today count
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.star, color: Colors.yellowAccent, size: 36),
-                      const SizedBox(width: 8),
+                      // Streak
+                      if (_streak > 0) ...[
+                        const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 22),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$_streak',
+                          style: const TextStyle(
+                            color: Colors.orangeAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                      ],
+                      // Stars
+                      const Icon(Icons.star, color: Colors.yellowAccent, size: 30),
+                      const SizedBox(width: 6),
                       Text(
                         '$_totalStars',
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 36,
+                          fontSize: 30,
                           shadows: [
                             Shadow(
                               color: Colors.yellowAccent.withValues(alpha: 0.5),
                               blurRadius: 12,
                             ),
                           ],
+                        ),
+                      ),
+                      // Today count
+                      const SizedBox(width: 16),
+                      Icon(Icons.brush, color: const Color(0xFF69F0AE).withValues(alpha: 0.8), size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_todayBrushCount/2',
+                        style: TextStyle(
+                          color: _todayBrushCount >= 2
+                              ? const Color(0xFF69F0AE)
+                              : Colors.white.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
                         ),
                       ),
                     ],
@@ -406,6 +398,32 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
 
                   const Spacer(),
+
+                  // Big bottom buttons: MAP + SHOP
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _BigNavButton(
+                            icon: Icons.map,
+                            label: 'MAP',
+                            color: const Color(0xFF00E5FF),
+                            onTap: _openWorldMap,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _BigNavButton(
+                            icon: Icons.shopping_bag,
+                            label: 'SHOP',
+                            color: const Color(0xFF7C4DFF),
+                            onTap: _openShop,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -417,13 +435,13 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-class _MiniNavButton extends StatelessWidget {
+class _BigNavButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
-  const _MiniNavButton({
+  const _BigNavButton({
     required this.icon,
     required this.label,
     required this.color,
@@ -434,30 +452,36 @@ class _MiniNavButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.4)),
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.4), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.2),
+              blurRadius: 12,
+              spreadRadius: 1,
             ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: color.withValues(alpha: 0.7),
-              fontSize: 8,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 3,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

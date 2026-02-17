@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/home_screen.dart';
-import 'screens/weapon_shop_screen.dart';
 import 'widgets/asset_preloader.dart';
 
 void main() {
@@ -30,9 +29,6 @@ class BrushQuestApp extends StatelessWidget {
           ThemeData.dark().textTheme,
         ),
       ),
-      routes: {
-        '/weapons': (context) => const WeaponShopScreen(),
-      },
       home: const AssetPreloader(child: HomeScreen()),
     );
   }

@@ -9,10 +9,13 @@ import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
 import 'home_screen.dart';
+import 'brushing_screen.dart';
 
 class VictoryScreen extends StatefulWidget {
   final int starsCollected;
-  const VictoryScreen({super.key, this.starsCollected = 1});
+  final int totalHits;
+  final int monstersDefeated;
+  const VictoryScreen({super.key, this.starsCollected = 1, this.totalHits = 0, this.monstersDefeated = 4});
 
   @override
   State<VictoryScreen> createState() => _VictoryScreenState();
@@ -143,6 +146,20 @@ class _VictoryScreenState extends State<VictoryScreen>
     super.dispose();
   }
 
+  void _brushAgain() {
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const BrushingScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+      (route) => false,
+    );
+  }
+
   void _goHome() {
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
@@ -258,41 +275,49 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const SizedBox(height: 28),
 
-                    // Stars collected this session
-                    if (widget.starsCollected > 1)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.star,
-                                color: Colors.yellowAccent, size: 28),
-                            const SizedBox(width: 6),
-                            TweenAnimationBuilder<int>(
-                              tween: IntTween(begin: 0, end: widget.starsCollected),
-                              duration: const Duration(milliseconds: 1200),
-                              builder: (context, val, _) => Text(
-                                '+$val',
-                                style: const TextStyle(
-                                  color: Colors.yellowAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 28,
-                                ),
-                              ),
+                    // Battle stats row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Stars collected
+                          if (widget.starsCollected > 0)
+                            _StatBadge(
+                              icon: Icons.star,
+                              iconColor: Colors.yellowAccent,
+                              value: '+${widget.starsCollected}',
+                              label: 'STARS',
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'COLLECTED!',
-                              style: TextStyle(
-                                color: Colors.yellowAccent.withValues(alpha: 0.7),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                letterSpacing: 2,
-                              ),
+                          // Hits dealt
+                          if (widget.totalHits > 0)
+                            _StatBadge(
+                              icon: Icons.flash_on,
+                              iconColor: const Color(0xFF00E5FF),
+                              value: '${widget.totalHits}',
+                              label: 'HITS',
                             ),
-                          ],
-                        ),
+                          // Monsters defeated
+                          if (widget.monstersDefeated > 0)
+                            _StatBadge(
+                              icon: Icons.whatshot,
+                              iconColor: const Color(0xFFFF4081),
+                              value: '${widget.monstersDefeated}',
+                              label: 'K.O.',
+                            ),
+                          // Day streak
+                          if (_newStreak > 0)
+                            _StatBadge(
+                              icon: Icons.local_fire_department,
+                              iconColor: Colors.orangeAccent,
+                              value: '$_newStreak',
+                              label: _newStreak == 1 ? 'DAY' : 'DAYS',
+                            ),
+                        ],
                       ),
+                    ),
+
+                    const SizedBox(height: 16),
 
                     // Total stars count
                     GlassCard(
@@ -362,10 +387,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       )
                     else if (_nextHero == null)
-                      Text(
+                      const Text(
                         'ALL HEROES UNLOCKED!',
                         style: TextStyle(
-                          color: const Color(0xFF69F0AE),
+                          color: Color(0xFF69F0AE),
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                           letterSpacing: 2,
@@ -373,6 +398,42 @@ class _VictoryScreenState extends State<VictoryScreen>
                       ),
 
                     const Spacer(flex: 2),
+
+                    // BRUSH AGAIN button
+                    GestureDetector(
+                      onTap: _brushAgain,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 48, vertical: 18),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00E5FF), Color(0xFF00B8D4)],
+                          ),
+                          borderRadius: BorderRadius.circular(40),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF00E5FF)
+                                  .withValues(alpha: 0.4),
+                              blurRadius: 16,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          'BRUSH AGAIN',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                letterSpacing: 3,
+                              ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
 
                     // DONE button
                     AnimatedBuilder(
@@ -389,7 +450,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         onTap: _goHome,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 60, vertical: 20),
+                              horizontal: 60, vertical: 16),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
@@ -411,7 +472,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 ?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 24,
+                                  fontSize: 20,
                                   letterSpacing: 4,
                                 ),
                           ),
@@ -419,7 +480,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                       ),
                     ),
 
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -491,4 +552,55 @@ class _ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConfettiPainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+class _StatBadge extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String label;
+
+  const _StatBadge({
+    required this.icon,
+    required this.iconColor,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: iconColor, size: 28),
+        const SizedBox(height: 4),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.elasticOut,
+          builder: (context, scale, child) => Transform.scale(
+            scale: scale,
+            child: child,
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              color: iconColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+            ),
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
+            letterSpacing: 2,
+          ),
+        ),
+      ],
+    );
+  }
 }
