@@ -134,4 +134,14 @@ class HeroService {
   static HeroCharacter getHeroById(String id) {
     return allHeroes.firstWhere((h) => h.id == id, orElse: () => allHeroes[0]);
   }
+
+  Future<HeroCharacter?> getNextLockedHero() async {
+    final unlocked = await getUnlockedHeroIds();
+    for (final hero in allHeroes) {
+      if (!unlocked.contains(hero.id)) {
+        return hero;
+      }
+    }
+    return null; // All heroes unlocked
+  }
 }

@@ -11,7 +11,8 @@ import '../widgets/achievement_popup.dart';
 import 'home_screen.dart';
 
 class VictoryScreen extends StatefulWidget {
-  const VictoryScreen({super.key});
+  final int starsCollected;
+  const VictoryScreen({super.key, this.starsCollected = 1});
 
   @override
   State<VictoryScreen> createState() => _VictoryScreenState();
@@ -34,6 +35,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _newStreak = 0;
   int _newStars = 0;
   List<Achievement> _newAchievements = [];
+  HeroCharacter? _nextHero;
+  int _starsToNextHero = 0;
 
   @override
   void initState() {
@@ -74,6 +77,10 @@ class _VictoryScreenState extends State<VictoryScreen>
     final hero = await _heroService.getSelectedHero();
     final world = await _worldService.getCurrentWorld();
     await _streakService.recordBrush(heroId: hero.id, worldId: world.id);
+    // Add mid-brush stars (minus the 1 already added by recordBrush)
+    if (widget.starsCollected > 1) {
+      await _streakService.addBonusStars(widget.starsCollected - 1);
+    }
     await _worldService.recordMission();
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
@@ -82,6 +89,13 @@ class _VictoryScreenState extends State<VictoryScreen>
       streak: _newStreak,
       totalStars: _newStars,
     );
+
+    // Get next locked hero info
+    _nextHero = await _heroService.getNextLockedHero();
+    if (_nextHero != null) {
+      _starsToNextHero = _nextHero!.cost - _newStars;
+      if (_starsToNextHero < 0) _starsToNextHero = 0;
+    }
 
     if (mounted) setState(() {});
 
@@ -95,7 +109,13 @@ class _VictoryScreenState extends State<VictoryScreen>
       _confettiController.repeat();
 
       Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) _doneButtonController.repeat(reverse: true);
+        if (mounted) {
+          _doneButtonController.repeat(reverse: true);
+          // Play stars unlock voice after great job
+          if (_nextHero != null && _starsToNextHero > 0) {
+            _audio.playVoice('voice_stars_unlock.mp3');
+          }
+        }
       });
 
       for (int i = 0; i < _newAchievements.length; i++) {
@@ -177,8 +197,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                             angle:
                                 _starRotationController.value * 2 * pi * 0.1,
                             child: Container(
-                              width: 180,
-                              height: 180,
+                              width: 160,
+                              height: 160,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: const RadialGradient(
@@ -199,7 +219,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                               ),
                               child: const Icon(
                                 Icons.star,
-                                size: 100,
+                                size: 90,
                                 color: Colors.white,
                               ),
                             ),
@@ -208,13 +228,13 @@ class _VictoryScreenState extends State<VictoryScreen>
                       },
                     ),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
 
                     Text(
                       'GREAT JOB!',
                       style:
                           Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                fontSize: 48,
+                                fontSize: 44,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                                 shadows: [
@@ -226,27 +246,64 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 ],
                               ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       'SPACE RANGER',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             color: const Color(0xFF00E5FF),
                             letterSpacing: 6,
+                            fontSize: 18,
                           ),
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 28),
 
-                    // Stars count
+                    // Stars collected this session
+                    if (widget.starsCollected > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.star,
+                                color: Colors.yellowAccent, size: 28),
+                            const SizedBox(width: 6),
+                            TweenAnimationBuilder<int>(
+                              tween: IntTween(begin: 0, end: widget.starsCollected),
+                              duration: const Duration(milliseconds: 1200),
+                              builder: (context, val, _) => Text(
+                                '+$val',
+                                style: const TextStyle(
+                                  color: Colors.yellowAccent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 28,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'COLLECTED!',
+                              style: TextStyle(
+                                color: Colors.yellowAccent.withValues(alpha: 0.7),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Total stars count
                     GlassCard(
                       margin: const EdgeInsets.symmetric(horizontal: 48),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 20),
+                          horizontal: 32, vertical: 16),
                       child: Column(
                         children: [
                           const Icon(Icons.star,
-                              color: Colors.yellowAccent, size: 48),
-                          const SizedBox(height: 8),
+                              color: Colors.yellowAccent, size: 40),
+                          const SizedBox(height: 4),
                           TweenAnimationBuilder<int>(
                             tween: IntTween(begin: 0, end: _newStars),
                             duration: const Duration(milliseconds: 1500),
@@ -258,29 +315,66 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 48,
+                                    fontSize: 40,
                                   ),
                             ),
                           ),
-                          const SizedBox(height: 2),
                           Text(
-                            'STARS',
+                            'TOTAL STARS',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodySmall
                                 ?.copyWith(
                                   color: Colors.white54,
                                   letterSpacing: 3,
-                                  fontSize: 16,
+                                  fontSize: 13,
                                 ),
                           ),
                         ],
                       ),
                     ),
 
+                    const SizedBox(height: 12),
+
+                    // Stars until next hero
+                    if (_nextHero != null && _starsToNextHero > 0)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 48),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock_open,
+                                color: _nextHero!.primaryColor, size: 18),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                '$_starsToNextHero more to unlock ${_nextHero!.name}!',
+                                style: TextStyle(
+                                  color: _nextHero!.primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  letterSpacing: 1,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (_nextHero == null)
+                      Text(
+                        'ALL HEROES UNLOCKED!',
+                        style: TextStyle(
+                          color: const Color(0xFF69F0AE),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          letterSpacing: 2,
+                        ),
+                      ),
+
                     const Spacer(flex: 2),
 
-                    // DONE button — bigger
+                    // DONE button
                     AnimatedBuilder(
                       animation: _doneButtonController,
                       builder: (context, child) {

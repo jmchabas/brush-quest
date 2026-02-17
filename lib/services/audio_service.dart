@@ -8,8 +8,10 @@ class AudioService {
 
   final AudioPlayer _sfxPlayer = AudioPlayer();
   final AudioPlayer _voicePlayer = AudioPlayer();
+  final AudioPlayer _musicPlayer = AudioPlayer();
   bool _muted = false;
   bool _voicePlaying = false;
+  bool _musicPlaying = false;
 
   bool get isMuted => _muted;
 
@@ -33,6 +35,9 @@ class AudioService {
     'gear_up_shield.mp3',
     'gear_up_ready.mp3',
     'voice_gear_up.mp3',
+    'voice_stars_unlock.mp3',
+    'voice_star_collected.mp3',
+    'battle_music.mp3',
   ];
 
   Future<void> preloadAll() async {
@@ -58,6 +63,8 @@ class AudioService {
     if (_muted) {
       await _sfxPlayer.stop();
       await _voicePlayer.stop();
+      await _musicPlayer.stop();
+      _musicPlaying = false;
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('muted', _muted);
@@ -84,8 +91,28 @@ class AudioService {
     });
   }
 
+  Future<void> playMusic(String fileName) async {
+    if (_muted) return;
+    if (_musicPlaying) return;
+    _musicPlaying = true;
+    await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+    await _musicPlayer.setVolume(0.4);
+    try {
+      await _musicPlayer.play(AssetSource('audio/$fileName'));
+    } catch (_) {
+      // Music file may not exist
+      _musicPlaying = false;
+    }
+  }
+
+  Future<void> stopMusic() async {
+    _musicPlaying = false;
+    await _musicPlayer.stop();
+  }
+
   void dispose() {
     _sfxPlayer.dispose();
     _voicePlayer.dispose();
+    _musicPlayer.dispose();
   }
 }

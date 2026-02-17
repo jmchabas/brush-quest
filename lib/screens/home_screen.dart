@@ -8,6 +8,7 @@ import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
+import 'weapon_shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -115,6 +116,12 @@ class _HomeScreenState extends State<HomeScreen>
         .then((_) => _loadStats());
   }
 
+  void _openWeaponShop() {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const WeaponShopScreen()))
+        .then((_) => _loadStats());
+  }
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'GOOD MORNING';
@@ -165,10 +172,22 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
 
-              // Top-right: HEROES button (next to mute)
+              // WEAPONS button
               Positioned(
                 top: 12,
                 right: 52,
+                child: _MiniNavButton(
+                  icon: Icons.bolt,
+                  label: 'WEAPONS',
+                  color: const Color(0xFFFF4081),
+                  onTap: _openWeaponShop,
+                ),
+              ),
+
+              // HEROES button
+              Positioned(
+                top: 12,
+                right: 100,
                 child: _MiniNavButton(
                   icon: Icons.shield,
                   label: 'HEROES',
