@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Callback with motion intensity 0.0 (still) to 1.0 (fast movement)
 typedef MotionCallback = void Function(double intensity);
@@ -12,6 +13,7 @@ class CameraService {
   CameraController? _controller;
   bool _initialized = false;
   bool _initFailed = false;
+  bool _permissionDenied = false;
   bool _streamingMotion = false;
 
   // Motion detection state
@@ -20,38 +22,58 @@ class CameraService {
   double _motionIntensity = 0.0;
   MotionCallback? _motionCallback;
 
-  bool get isAvailable => _initialized && !_initFailed && _controller != null;
+  bool get isAvailable => _initialized && !_initFailed && !_permissionDenied && _controller != null;
+  bool get permissionDenied => _permissionDenied;
   CameraController? get controller => _controller;
   double get motionIntensity => _motionIntensity;
 
-  Future<void> initialize() async {
-    if (_initialized) return;
+  /// Request camera permission explicitly, then initialize the front camera.
+  /// Returns true if camera is ready, false if permission denied or no camera.
+  Future<bool> initialize() async {
+    if (_initialized && !_initFailed) return isAvailable;
+
+    // Reset state for retry
     _initialized = true;
+    _initFailed = false;
+    _permissionDenied = false;
 
     try {
+      // Step 1: Request camera permission explicitly
+      final status = await Permission.camera.request();
+      if (!status.isGranted) {
+        _permissionDenied = true;
+        _initFailed = true;
+        return false;
+      }
+
+      // Step 2: Find available cameras
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
         _initFailed = true;
-        return;
+        return false;
       }
 
-      // Find front camera
+      // Step 3: Find front camera (prefer front, fallback to any)
       final frontCamera = cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => cameras.first,
       );
 
+      // Step 4: Initialize camera controller
       _controller = CameraController(
         frontCamera,
-        ResolutionPreset.low, // Low res is enough — we downsample to 32x32 anyway
+        ResolutionPreset.low, // Low res is enough — we downsample to 32x32
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.yuv420,
       );
 
       await _controller!.initialize();
-    } catch (_) {
+      return true;
+    } catch (e) {
       _initFailed = true;
+      _controller?.dispose();
       _controller = null;
+      return false;
     }
   }
 
@@ -128,12 +150,12 @@ class CameraService {
     _previousFrame = sampled;
 
     // Normalize: max possible diff = 255 * 1024 pixels = 261120
-    // Typical motion range: 0-40000 for noticeable movement
+    // Typical brushing motion range: 0-40000 for noticeable movement
     // Map to 0.0-1.0 with a practical ceiling
-    final normalized = (totalDiff / 30000.0).clamp(0.0, 1.0);
+    final normalized = (totalDiff / 25000.0).clamp(0.0, 1.0);
 
     // Smooth with exponential moving average
-    return _motionIntensity * 0.4 + normalized * 0.6;
+    return _motionIntensity * 0.3 + normalized * 0.7;
   }
 
   void dispose() {
@@ -142,5 +164,6 @@ class CameraService {
     _controller = null;
     _initialized = false;
     _initFailed = false;
+    _permissionDenied = false;
   }
 }

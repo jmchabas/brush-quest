@@ -369,11 +369,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Future<void> _initCamera() async {
-    await _cameraService.initialize();
+    final ready = await _cameraService.initialize();
     if (mounted) {
-      setState(() {
-        _cameraReady = _cameraService.isAvailable;
-      });
+      setState(() => _cameraReady = ready);
     }
   }
 
@@ -382,18 +380,18 @@ class _BrushingScreenState extends State<BrushingScreen>
     _cameraService.startMotionDetection((intensity) {
       if (!mounted || _isPaused || _phase == BrushPhase.done) return;
 
-      // Lower threshold for better sensitivity
-      if (intensity < 0.05) return;
+      // Threshold: ignore tiny noise, respond to real brushing motion
+      if (intensity < 0.04) return;
 
       final now = DateTime.now().millisecondsSinceEpoch;
-      // Simplified: any motion above threshold → 1000ms cooldown
-      const dynamicCooldown = 1000;
+      // Motion-driven attack: 600ms cooldown (fast, responsive to brushing)
+      const motionCooldown = 600;
 
-      if (now - _lastAttackTime >= dynamicCooldown) {
+      if (now - _lastAttackTime >= motionCooldown) {
         _lastAttackTime = now;
-        // Show motion glow feedback
+        // Show motion glow feedback — hero lights up when brushing detected
         setState(() => _motionGlow = true);
-        Future.delayed(const Duration(milliseconds: 300), () {
+        Future.delayed(const Duration(milliseconds: 400), () {
           if (mounted) setState(() => _motionGlow = false);
         });
         _triggerAttack();
@@ -543,12 +541,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     }
   }
 
-  /// Base attack timer: fires every 2.5s regardless of camera.
-  /// Keeps the game moving even without motion.
+  /// Base attack timer: slow mercy fallback so the game never stalls.
+  /// When camera works, motion-based attacks (600ms) dominate.
+  /// Without camera, this fires every 4s as a safety net.
   void _startBaseAttackTimer() {
     _baseAttackTimer?.cancel();
     _baseAttackTimer = Timer.periodic(
-      const Duration(milliseconds: 2500),
+      Duration(milliseconds: _cameraReady ? 5000 : 2500),
       (_) {
         if (mounted && !_isPaused && _phase != BrushPhase.done && _phase != BrushPhase.countdown) {
           _triggerAttack();
@@ -863,7 +862,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   String _getEncouragementText() {
-    if (_phaseSecondsLeft > 20) return 'FIGHT THAT MONSTER!';
+    if (_phaseSecondsLeft > 20) return _cameraReady ? 'BRUSH TO ATTACK!' : 'FIGHT THAT MONSTER!';
     if (_phaseSecondsLeft > 10) return 'KEEP BRUSHING!';
     if (_phaseSecondsLeft > 5) return 'ALMOST THERE!';
     return 'FINISH IT OFF!';
@@ -1193,13 +1192,30 @@ class _BrushingScreenState extends State<BrushingScreen>
                 ),
               ),
 
-              // Controls
+              // Controls + camera indicator
               SafeArea(
                 child: Align(
                   alignment: Alignment.topRight,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 8, right: 8),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      // Camera status indicator
+                      if (_cameraReady)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _motionGlow
+                                ? const Color(0xFF69F0AE).withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.videocam,
+                            color: _motionGlow ? const Color(0xFF69F0AE) : Colors.white38,
+                            size: 18,
+                          ),
+                        ),
                       const MuteButton(),
                       IconButton(onPressed: _togglePause, icon: const Icon(Icons.pause, color: Colors.white70, size: 24)),
                     ]),
