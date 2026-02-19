@@ -12,6 +12,7 @@ import '../services/streak_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/mouth_guide.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -82,19 +83,81 @@ class _MonsterDebris {
   }) : life = 1.0;
 }
 
-// Single monster for the current phase
+class _MonsterPersonality {
+  final double bobSpeed;
+  final double bobAmount;
+  final double wobbleAmount;
+  final double sizeMultiplier;
+  final Color tintColor;
+  final double tintStrength;
+  final String name;
+  final int entranceStyle; // 0=scale, 1=slide left, 2=slide right, 3=drop
+
+  _MonsterPersonality({
+    required this.bobSpeed,
+    required this.bobAmount,
+    required this.wobbleAmount,
+    required this.sizeMultiplier,
+    required this.tintColor,
+    required this.tintStrength,
+    required this.name,
+    required this.entranceStyle,
+  });
+
+  static const _firstNames = [
+    'Captain', 'Lord', 'Evil', 'Dr.', 'King', 'Mega', 'Super',
+    'Tiny', 'Big', 'Dark', 'Slimy', 'Smelly', 'Grumpy', 'Fuzzy',
+  ];
+  static const _lastNames = [
+    'Plaque', 'Cavity', 'Gumrot', 'Slime', 'Tartar', 'Decay',
+    'Mold', 'Stinky', 'Goop', 'Fuzz', 'Rot', 'Crud', 'Blob',
+  ];
+  static const _tintColors = [
+    Color(0xFFFF4081), Color(0xFF7C4DFF), Color(0xFF00BCD4),
+    Color(0xFFFF6E40), Color(0xFF69F0AE), Color(0xFFFFD54F),
+    Color(0xFFE040FB), Color(0xFF40C4FF), Color(0xFFFF6D00),
+  ];
+
+  factory _MonsterPersonality.random(Random rng) {
+    return _MonsterPersonality(
+      bobSpeed: 0.6 + rng.nextDouble() * 0.9,
+      bobAmount: 2.0 + rng.nextDouble() * 8.0,
+      wobbleAmount: 0.02 + rng.nextDouble() * 0.05,
+      sizeMultiplier: 0.9 + rng.nextDouble() * 0.2,
+      tintColor: _tintColors[rng.nextInt(_tintColors.length)],
+      tintStrength: 0.05 + rng.nextDouble() * 0.2,
+      name: '${_firstNames[rng.nextInt(_firstNames.length)]} ${_lastNames[rng.nextInt(_lastNames.length)]}',
+      entranceStyle: rng.nextInt(4),
+    );
+  }
+
+  factory _MonsterPersonality.boss(Random rng) {
+    return _MonsterPersonality(
+      bobSpeed: 0.4 + rng.nextDouble() * 0.3,
+      bobAmount: 4.0 + rng.nextDouble() * 6.0,
+      wobbleAmount: 0.01 + rng.nextDouble() * 0.02,
+      sizeMultiplier: 1.1 + rng.nextDouble() * 0.1,
+      tintColor: const Color(0xFFFFD54F),
+      tintStrength: 0.15,
+      name: 'THE CAVITY KING',
+      entranceStyle: 3,
+    );
+  }
+}
+
 class _MonsterSlot {
   final int imageIndex;
-  double health; // 1.0 = full, 0.0 = dead
+  final _MonsterPersonality personality;
+  double health;
   bool alive;
-  double hitRecoil;        // 0→1→0: set to 1.0 on attack, decays per tick
-  double wobblePhase;      // random offset for wobble
+  double hitRecoil;
+  double wobblePhase;
   bool isDefeating;
-  double defeatProgress;   // 0→1 during death explosion
+  double defeatProgress;
   final List<_MonsterDebris> debris;
   _MonsterSlot({
     required this.imageIndex, required this.health, required this.alive,
-    required this.wobblePhase,
+    required this.wobblePhase, required this.personality,
   }) : hitRecoil = 0.0, isDefeating = false, defeatProgress = 0.0, debris = [];
 }
 
@@ -165,6 +228,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   int _monstersDefeated = 0; // monsters killed by damage during this session
   Timer? _stallTimer; // mercy timer when camera works but no motion detected
 
+  // Mouth guide overlay
+  bool _showMouthGuideOverlay = false;
+  late AnimationController _mouthGuideGlowController;
+
   // Companion speech bubbles
   String? _companionMessage;
   bool _showCompanionBubble = false;
@@ -174,11 +241,18 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _isBossSession = false;
   bool _isBossPhase = false;
 
-  static const _phaseLabels = {
-    BrushPhase.topLeft: 'BRUSH TOP LEFT!',
-    BrushPhase.topRight: 'BRUSH TOP RIGHT!',
-    BrushPhase.bottomLeft: 'BRUSH BOTTOM LEFT!',
-    BrushPhase.bottomRight: 'BRUSH BOTTOM RIGHT!',
+  static const _phaseNames = {
+    BrushPhase.topLeft: 'TOP LEFT',
+    BrushPhase.topRight: 'TOP RIGHT',
+    BrushPhase.bottomLeft: 'BOTTOM LEFT',
+    BrushPhase.bottomRight: 'BOTTOM RIGHT',
+  };
+
+  static const _phaseToMouthQuadrant = {
+    BrushPhase.topLeft: MouthQuadrant.topLeft,
+    BrushPhase.topRight: MouthQuadrant.topRight,
+    BrushPhase.bottomLeft: MouthQuadrant.bottomLeft,
+    BrushPhase.bottomRight: MouthQuadrant.bottomRight,
   };
 
   static const _phaseVoiceFiles = {
@@ -186,13 +260,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     BrushPhase.topRight: 'voice_top_right.mp3',
     BrushPhase.bottomLeft: 'voice_bottom_left.mp3',
     BrushPhase.bottomRight: 'voice_bottom_right.mp3',
-  };
-
-  static const _phaseArrowRotations = {
-    BrushPhase.topLeft: -0.785,
-    BrushPhase.topRight: 0.785,
-    BrushPhase.bottomLeft: -2.356,
-    BrushPhase.bottomRight: 2.356,
   };
 
   static const _monsterImages = [
@@ -258,6 +325,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     _heroIdleController = AnimationController(
       duration: const Duration(milliseconds: 1200), vsync: this,
     )..repeat(reverse: true);
+    _mouthGuideGlowController = AnimationController(
+      duration: const Duration(milliseconds: 700), vsync: this,
+    )..repeat(reverse: true);
 
     _initParticles();
     _loadHeroAndWorld();
@@ -279,6 +349,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       imageIndex: _random.nextInt(_monsterImages.length),
       health: 1.0, alive: true,
       wobblePhase: _random.nextDouble() * 2 * pi,
+      personality: _MonsterPersonality.random(_random),
     );
   }
 
@@ -287,6 +358,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       imageIndex: _world.monsterIndices[_random.nextInt(_world.monsterIndices.length)],
       health: 1.0, alive: true,
       wobblePhase: _random.nextDouble() * 2 * pi,
+      personality: _MonsterPersonality.random(_random),
     );
   }
 
@@ -467,6 +539,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _particleController.dispose();
     _timerPulseController.dispose();
     _heroIdleController.dispose();
+    _mouthGuideGlowController.dispose();
     _audio.stopMusic();
     super.dispose();
   }
@@ -700,7 +773,11 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _switchToPhase(BrushPhase newPhase) {
-    setState(() { _phase = newPhase; _phaseSecondsLeft = 30; });
+    setState(() {
+      _phase = newPhase;
+      _phaseSecondsLeft = 30;
+      _showMouthGuideOverlay = true;
+    });
     _phaseTransitionController.forward(from: 0);
     _audio.playSfx('whoosh.mp3');
     HapticFeedback.mediumImpact();
@@ -708,6 +785,9 @@ class _BrushingScreenState extends State<BrushingScreen>
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
         _audio.playVoice(_phaseVoiceFiles[newPhase]!);
       }
+    });
+    Future.delayed(const Duration(milliseconds: 3000), () {
+      if (mounted) setState(() => _showMouthGuideOverlay = false);
     });
   }
 
@@ -810,6 +890,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       health: 1.0,
       alive: true,
       wobblePhase: _random.nextDouble() * 2 * pi,
+      personality: _MonsterPersonality.boss(_random),
     );
   }
 
@@ -1001,29 +1082,45 @@ class _BrushingScreenState extends State<BrushingScreen>
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    // Phase label + star counter
+                    // Phase indicator: mouth guide + zone name + stars
                     Padding(
-                      padding: const EdgeInsets.only(left: 16, right: 76),
+                      padding: const EdgeInsets.only(left: 12, right: 76),
                       child: SlideTransition(
                         position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
                             .animate(CurvedAnimation(parent: _phaseTransitionController, curve: Curves.elasticOut)),
                         child: GlassCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           child: Row(
                             children: [
-                              Transform.rotate(
-                                angle: _phaseArrowRotations[_phase] ?? 0,
-                                child: Icon(Icons.arrow_upward, color: _world.themeColor, size: 28),
+                              // Compact mouth guide
+                              AnimatedBuilder(
+                                animation: _mouthGuideGlowController,
+                                builder: (context, _) => MouthGuide(
+                                  activeQuadrant: _phaseToMouthQuadrant[_phase] ?? MouthQuadrant.topLeft,
+                                  glowAnim: _mouthGuideGlowController.value,
+                                  highlightColor: _world.themeColor,
+                                  size: 50,
+                                ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 8),
                               Expanded(
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(_phaseLabels[_phase] ?? '', maxLines: 1,
-                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                      color: _world.themeColor, fontWeight: FontWeight.bold, fontSize: 24, letterSpacing: 2,
-                                    )),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(_phaseNames[_phase] ?? '', maxLines: 1,
+                                      style: TextStyle(
+                                        color: _world.themeColor, fontWeight: FontWeight.bold,
+                                        fontSize: 16, letterSpacing: 2,
+                                      )),
+                                    Text(_monster.personality.name.toUpperCase(),
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.5),
+                                        fontSize: 10, letterSpacing: 1,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               // Star counter
@@ -1211,16 +1308,43 @@ class _BrushingScreenState extends State<BrushingScreen>
                                       blurRadius: 30, spreadRadius: 5,
                                     )],
                                   ),
-                                  child: Text(_isBossPhase ? 'BOSS BATTLE!' : 'NEW MONSTER!',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 4,
-                                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
-                                    ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(_isBossPhase ? 'BOSS BATTLE!' : 'NEW MONSTER!',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 4,
+                                          shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(_monster.personality.name.toUpperCase(),
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.7),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                              ),
+                            ),
+
+                          // Mouth guide overlay at phase transitions
+                          if (_showMouthGuideOverlay && _phaseToMouthQuadrant.containsKey(_phase))
+                            Center(
+                              child: MouthGuideOverlay(
+                                quadrant: _phaseToMouthQuadrant[_phase]!,
+                                themeColor: _world.themeColor,
+                                label: _phaseNames[_phase] ?? '',
+                                onDismiss: () {
+                                  if (mounted) setState(() => _showMouthGuideOverlay = false);
+                                },
                               ),
                             ),
                         ],
@@ -1305,10 +1429,18 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     if (!_monster.alive) return SizedBox(width: size, height: size);
 
-    Widget monsterImage = ClipOval(
-      child: Image.asset(
-        _monsterImages[_monster.imageIndex],
-        width: size, height: size, fit: BoxFit.cover,
+    final effectiveSize = size * _monster.personality.sizeMultiplier;
+
+    Widget monsterImage = ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        _monster.personality.tintColor.withValues(alpha: _monster.personality.tintStrength),
+        BlendMode.overlay,
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          _monsterImages[_monster.imageIndex],
+          width: effectiveSize, height: effectiveSize, fit: BoxFit.cover,
+        ),
       ),
     );
 
@@ -1316,22 +1448,30 @@ class _BrushingScreenState extends State<BrushingScreen>
       animation: _monsterBreathController,
       builder: (context, child) {
         final breathT = _monsterBreathController.value;
+        final p = _monster.personality;
 
         double scaleX = 1.0, scaleY = 1.0, rotation = 0.0;
         double translateX = 0.0, translateY = 0.0;
 
-        // Wobble + rotation oscillation
-        final wobble = sin((breathT + _monster.wobblePhase) * pi);
-        scaleX = 1.0 + wobble * 0.04;
-        scaleY = 1.0 + wobble * 0.04;
-        rotation = sin((breathT + _monster.wobblePhase) * pi * 2) * 0.03;
+        // Personality-driven wobble + rotation
+        final wobble = sin((breathT * p.bobSpeed + _monster.wobblePhase) * pi);
+        scaleX = 1.0 + wobble * p.wobbleAmount;
+        scaleY = 1.0 + wobble * p.wobbleAmount;
+        rotation = sin((breathT * p.bobSpeed + _monster.wobblePhase) * pi * 2) * p.wobbleAmount;
+        translateY += sin(breathT * p.bobSpeed * pi * 2) * p.bobAmount;
 
         // Damage shake: more damaged = more erratic
         if (damageProgress > 0.3) {
-          final intensity = (damageProgress - 0.3) * 10;
+          final intensity = (damageProgress - 0.3) * 12;
           translateX += sin(breathT * pi * 12 + _monster.wobblePhase) * intensity;
           translateY += cos(breathT * pi * 10 + _monster.wobblePhase) * intensity * 0.5;
-          rotation += sin(breathT * pi * 8) * (damageProgress - 0.3) * 0.08;
+          rotation += sin(breathT * pi * 8) * (damageProgress - 0.3) * 0.1;
+        }
+        // Angry jitter at low health
+        if (damageProgress > 0.6) {
+          final jitter = (damageProgress - 0.6) * 5;
+          translateX += (sin(breathT * pi * 20) * jitter);
+          scaleX *= 1.0 + sin(breathT * pi * 6) * 0.02;
         }
 
         // Hit recoil: squash/stretch + knockback
@@ -1509,13 +1649,34 @@ class _BrushingScreenState extends State<BrushingScreen>
       child: monsterImage,
     );
 
-    // Entrance animation
+    // Entrance animation with personality-driven style
     if (_monsterEntering) {
       monsterWidget = AnimatedBuilder(
         animation: _monsterEntranceController,
         builder: (context, child) {
           final t = CurvedAnimation(parent: _monsterEntranceController, curve: Curves.bounceOut).value;
-          return Transform.scale(scale: 0.3 + t * 0.7, child: Opacity(opacity: t, child: child));
+          switch (_monster.personality.entranceStyle) {
+            case 1: // Slide from left
+              return Transform.translate(
+                offset: Offset(-200 * (1 - t), 0),
+                child: Opacity(opacity: t, child: child),
+              );
+            case 2: // Slide from right
+              return Transform.translate(
+                offset: Offset(200 * (1 - t), 0),
+                child: Opacity(opacity: t, child: child),
+              );
+            case 3: // Drop from above
+              return Transform.translate(
+                offset: Offset(0, -200 * (1 - t)),
+                child: Opacity(opacity: t, child: child),
+              );
+            default: // Scale up (original)
+              return Transform.scale(
+                scale: 0.3 + t * 0.7,
+                child: Opacity(opacity: t, child: child),
+              );
+          }
         },
         child: monsterWidget,
       );

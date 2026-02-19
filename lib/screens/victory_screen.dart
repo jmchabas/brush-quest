@@ -196,7 +196,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  void _openChest() {
+  Future<void> _openChest() async {
     if (_chestOpened) return;
     _audio.playSfx('whoosh.mp3');
     HapticFeedback.heavyImpact();
@@ -235,7 +235,7 @@ class _VictoryScreenState extends State<VictoryScreen>
       );
     }
 
-    _streakService.addBonusStars(reward.stars);
+    await _streakService.addBonusStars(reward.stars);
     setState(() {
       _chestOpened = true;
       _chestReward = reward;
