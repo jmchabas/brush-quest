@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
+import '../services/weapon_service.dart';
 import '../services/camera_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -21,10 +22,12 @@ class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
+  final _weaponService = WeaponService();
   int _totalStars = 0;
   int _streak = 0;
   int _todayBrushCount = 0;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
+  WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -72,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _loadStats() async {
     final stars = await _streakService.getTotalStars();
     final hero = await _heroService.getSelectedHero();
+    final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
     final todayCount = await _streakService.getTodayBrushCount();
 
@@ -79,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() {
         _totalStars = stars;
         _selectedHero = hero;
+        _selectedWeapon = weapon;
         _streak = streak;
         _todayBrushCount = todayCount;
       });
@@ -340,30 +345,68 @@ class _HomeScreenState extends State<HomeScreen>
                                       ],
                                     ),
                                   ),
-                                  // Hero circle
-                                  Container(
-                                    width: 260,
-                                    height: 260,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: _selectedHero.primaryColor,
-                                        width: 4,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _selectedHero.primaryColor
-                                              .withValues(alpha: 0.6),
-                                          blurRadius: 30,
-                                          spreadRadius: 5,
+                                  // Hero circle + weapon badge
+                                  SizedBox(
+                                    width: 270,
+                                    height: 270,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Container(
+                                          width: 260,
+                                          height: 260,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: _selectedHero.primaryColor,
+                                              width: 4,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: _selectedHero.primaryColor
+                                                    .withValues(alpha: 0.6),
+                                                blurRadius: 30,
+                                                spreadRadius: 5,
+                                              ),
+                                            ],
+                                          ),
+                                          child: ClipOval(
+                                            child: Image.asset(
+                                              _selectedHero.imagePath,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        // Weapon badge
+                                        Positioned(
+                                          right: 6,
+                                          bottom: 6,
+                                          child: Container(
+                                            width: 52,
+                                            height: 52,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: const Color(0xFF0D0B2E),
+                                              border: Border.all(
+                                                color: _selectedWeapon.primaryColor,
+                                                width: 3,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: _selectedWeapon.primaryColor
+                                                      .withValues(alpha: 0.5),
+                                                  blurRadius: 10,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              _selectedWeapon.icon,
+                                              color: _selectedWeapon.primaryColor,
+                                              size: 26,
+                                            ),
+                                          ),
                                         ),
                                       ],
-                                    ),
-                                    child: ClipOval(
-                                      child: Image.asset(
-                                        _selectedHero.imagePath,
-                                        fit: BoxFit.cover,
-                                      ),
                                     ),
                                   ),
                                 ],
@@ -414,7 +457,7 @@ class _HomeScreenState extends State<HomeScreen>
                       children: [
                         Expanded(
                           child: _BigNavButton(
-                            icon: Icons.map,
+                            icon: Icons.rocket_launch,
                             label: 'MAP',
                             color: const Color(0xFF00E5FF),
                             onTap: _openWorldMap,
@@ -423,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(width: 16),
                         Expanded(
                           child: _BigNavButton(
-                            icon: Icons.shopping_bag,
+                            icon: Icons.storefront,
                             label: 'SHOP',
                             color: const Color(0xFF7C4DFF),
                             onTap: _openShop,

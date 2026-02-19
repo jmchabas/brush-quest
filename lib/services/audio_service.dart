@@ -16,7 +16,7 @@ class AudioService {
   int _sfxIndex = 0;
 
   final AudioPlayer _voicePlayer = AudioPlayer();
-  final AudioPlayer _musicPlayer = AudioPlayer();
+  AudioPlayer _musicPlayer = AudioPlayer();
   bool _muted = false;
   bool _voicePlaying = false;
   bool _musicPlaying = false;
@@ -25,6 +25,20 @@ class AudioService {
   bool get isVoicePlaying => _voicePlaying;
 
   static const _hitSounds = ['zap.mp3', 'whoosh.mp3'];
+
+  static const _encouragementVoices = [
+    'voice_keep_going.mp3',
+    'voice_youre_doing_great.mp3',
+    'voice_almost_there.mp3',
+    'voice_nice_combo.mp3',
+    'voice_keep_it_up.mp3',
+    'voice_so_strong.mp3',
+    'voice_super.mp3',
+    'voice_go_go_go.mp3',
+    'voice_awesome.mp3',
+    'voice_wow_amazing.mp3',
+    'voice_unstoppable.mp3',
+  ];
 
   static const _allAudioFiles = [
     'countdown_beep.mp3',
@@ -39,12 +53,22 @@ class AudioService {
     'voice_keep_going.mp3',
     'voice_youre_doing_great.mp3',
     'voice_almost_there.mp3',
+    'voice_nice_combo.mp3',
+    'voice_keep_it_up.mp3',
+    'voice_so_strong.mp3',
+    'voice_super.mp3',
+    'voice_go_go_go.mp3',
+    'voice_awesome.mp3',
+    'voice_wow_amazing.mp3',
+    'voice_unstoppable.mp3',
+    'voice_stars_unlock.mp3',
     'whoosh.mp3',
     'zap.mp3',
-    'voice_stars_unlock.mp3',
     'star_chime.mp3',
-    'battle_music_v2.mp3',
+    'battle_music_loop.mp3',
   ];
+
+  List<String> get encouragementVoices => List.unmodifiable(_encouragementVoices);
 
   Future<void> preloadAll() async {
     final prefs = await SharedPreferences.getInstance();
@@ -74,8 +98,6 @@ class AudioService {
     await prefs.setBool('muted', _muted);
   }
 
-  /// Play a sound effect. Skipped during voice playback to prevent
-  /// Android audio channel contention from cutting the voice short.
   Future<void> playSfx(String fileName) async {
     if (_muted || _voicePlaying) return;
     final player = _sfxPool[_sfxIndex % _sfxPoolSize];
@@ -86,7 +108,6 @@ class AudioService {
     } catch (_) {}
   }
 
-  /// Returns a varied hit sound file name, cycling through available sounds.
   String nextHitSound() {
     return _hitSounds[_sfxIndex % _hitSounds.length];
   }
@@ -117,16 +138,21 @@ class AudioService {
     }
   }
 
-  /// Start looping background music. Stops and restarts if already playing
-  /// to recover from stuck state.
+  /// Start looping background music using a fresh player and the 2-minute
+  /// pre-concatenated loop file so Android doesn't need to handle short-file looping.
   Future<void> playMusic(String fileName) async {
     if (_muted) return;
     try {
       await _musicPlayer.stop();
+      _musicPlayer.dispose();
+    } catch (_) {}
+    try {
+      _musicPlayer = AudioPlayer();
       _musicPlaying = true;
+      await _musicPlayer.setSource(AssetSource('audio/$fileName'));
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(0.5);
-      await _musicPlayer.play(AssetSource('audio/$fileName'));
+      await _musicPlayer.resume();
     } catch (_) {
       _musicPlaying = false;
     }

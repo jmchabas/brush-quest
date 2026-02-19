@@ -213,9 +213,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   // Single monster per phase
   late _MonsterSlot _monster;
 
-  // Star collection system
-  int _starsCollected = 0;
-  int _attacksSinceLastStar = 0;
+  // Floating star effects (visual only)
   final List<_FloatingStar> _floatingStars = [];
   Timer? _starCleanupTimer;
 
@@ -232,10 +230,11 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _showMouthGuideOverlay = false;
   late AnimationController _mouthGuideGlowController;
 
-  // Companion speech bubbles
-  String? _companionMessage;
+  // Companion speech bubbles (icon-only for non-readers)
+  IconData? _companionIcon;
   bool _showCompanionBubble = false;
   Timer? _companionTimer;
+  int _encouragementIndex = 0;
 
   // Boss battle system
   bool _isBossSession = false;
@@ -269,19 +268,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     'assets/images/monster_red.png',
   ];
 
-  static const _encouragementVoices = [
-    'voice_keep_going.mp3',
-    'voice_youre_doing_great.mp3',
-    'voice_almost_there.mp3',
-  ];
-
   static const _damageTexts = ['POW!', 'ZAP!', 'BOOM!', 'WHAM!', 'BAM!', 'SLASH!', 'SMASH!', 'HIT!'];
 
-  static const _companionMessages = [
-    'Nice combo!', 'Keep it up!', 'You\'re amazing!',
-    'So strong!', 'Great moves!', 'Power up!',
-    'Wow!', 'Super!', 'Go go go!', 'Unstoppable!',
-    'Hero mode!', 'Epic!',
+  static const _companionIcons = [
+    Icons.star, Icons.bolt, Icons.whatshot, Icons.rocket_launch,
+    Icons.auto_awesome, Icons.emoji_events, Icons.flash_on, Icons.favorite,
   ];
 
   bool _playedEncouragement = false;
@@ -570,11 +561,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _startBrushing() {
     _totalHits = 0;
     _attackStyleIndex = 0;
-    _starsCollected = 0;
-    _attacksSinceLastStar = 0;
 
-    // Start battle music
-    _audio.playMusic('battle_music_v2.mp3');
+    // Start battle music (2-min pre-looped file for reliable Android playback)
+    _audio.playMusic('battle_music_loop.mp3');
 
     // Companion speech bubbles every 8 seconds
     _companionTimer?.cancel();
@@ -591,7 +580,9 @@ class _BrushingScreenState extends State<BrushingScreen>
 
       if (_phaseSecondsLeft == 20 && !_playedEncouragement) {
         _playedEncouragement = true;
-        _audio.playVoice(_encouragementVoices[_random.nextInt(_encouragementVoices.length)]);
+        final voices = _audio.encouragementVoices;
+        _audio.playVoice(voices[_encouragementIndex % voices.length]);
+        _encouragementIndex++;
       }
       if (_phaseSecondsLeft == 10 && !_playedAlmostThere) {
         _playedAlmostThere = true;
@@ -606,7 +597,6 @@ class _BrushingScreenState extends State<BrushingScreen>
           _triggerFinisher(() {
             _monstersDefeated++;
             _startMonsterDeath(_monster);
-            _collectStars(1); // Phase transition bonus
             _playDefeatAnimation(() {
               final nextIndex = currentIndex + 1;
               final isLastPhase = nextIndex == brushPhaseOrder.length - 1;
@@ -628,7 +618,6 @@ class _BrushingScreenState extends State<BrushingScreen>
           _triggerFinisher(() {
             _monstersDefeated++;
             _startMonsterDeath(_monster);
-            _collectStars(_isBossPhase ? 5 : 1);
             _playDefeatAnimation(() { timer.cancel(); _finishBrushing(); });
           });
         }
@@ -679,22 +668,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     }
   }
 
-  void _collectStars(int count) {
-    setState(() {
-      _starsCollected += count;
-      for (int i = 0; i < count; i++) {
-        _floatingStars.add(_FloatingStar(
-          x: 100 + _random.nextDouble() * 200,
-          y: 200 + _random.nextDouble() * 100,
-          targetX: MediaQuery.of(context).size.width - 50,
-          targetY: 40,
-          progress: 0,
-          size: 20,
-        ));
-      }
-    });
-    _audio.playSfx('star_chime.mp3');
-  }
 
   void _triggerFinisher(VoidCallback onComplete) {
     _baseAttackTimer?.cancel();
@@ -799,7 +772,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     setState(() {
       _totalHits++;
       _attackStyleIndex = _totalHits % AttackStyle.values.length;
-      _attacksSinceLastStar++;
       if (_monster.alive) {
         _monster.hitRecoil = 1.0;
         // Each attack does damage (boss takes half damage)
@@ -809,12 +781,6 @@ class _BrushingScreenState extends State<BrushingScreen>
         }
       }
     });
-
-    // Every 3rd attack spawns a star
-    if (_attacksSinceLastStar >= 3) {
-      _attacksSinceLastStar = 0;
-      _collectStars(1);
-    }
 
     _attackSequenceController.forward(from: 0);
     _screenShakeController.forward(from: 0);
@@ -844,8 +810,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     _stallTimer?.cancel();
     _monstersDefeated++;
     final wasBoss = _isBossPhase;
-    _collectStars(wasBoss ? 5 : 2); // Boss K.O. = 5 stars!
-
     setState(() {
       _damagePopups.add(_DamagePopup(
         text: wasBoss ? 'BOSS K.O.!' : 'K.O.!', x: 0.5, y: 0.12,
@@ -874,11 +838,16 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _showNextCompanionMessage() {
     if (!mounted || _isPaused || _phase == BrushPhase.done) return;
-    final msg = _companionMessages[_random.nextInt(_companionMessages.length)];
+    final icon = _companionIcons[_random.nextInt(_companionIcons.length)];
     setState(() {
-      _companionMessage = msg;
+      _companionIcon = icon;
       _showCompanionBubble = true;
     });
+
+    final voices = _audio.encouragementVoices;
+    _audio.playVoice(voices[_encouragementIndex % voices.length]);
+    _encouragementIndex++;
+
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) setState(() => _showCompanionBubble = false);
     });
@@ -974,7 +943,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            VictoryScreen(starsCollected: _starsCollected, totalHits: _totalHits, monstersDefeated: _monstersDefeated, isBossSession: _isBossSession),
+            VictoryScreen(starsCollected: 1, totalHits: _totalHits, monstersDefeated: _monstersDefeated, isBossSession: _isBossSession),
         transitionsBuilder: (context, anim, secondaryAnimation, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 800),
@@ -1123,7 +1092,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                                   ],
                                 ),
                               ),
-                              // Star counter
+                              // Monsters defeated counter
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
@@ -1133,11 +1102,11 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.star, color: Colors.yellowAccent, size: 18),
+                                    const Icon(Icons.whatshot, color: Colors.orangeAccent, size: 18),
                                     const SizedBox(width: 3),
-                                    Text('$_starsCollected',
+                                    Text('$_monstersDefeated',
                                       style: const TextStyle(
-                                        color: Colors.yellowAccent,
+                                        color: Colors.orangeAccent,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),
@@ -1250,36 +1219,31 @@ class _BrushingScreenState extends State<BrushingScreen>
                             ),
                           )),
 
-                          // Companion speech bubble
-                          if (_showCompanionBubble && _companionMessage != null)
+                          // Companion encouragement (icon burst, no text)
+                          if (_showCompanionBubble && _companionIcon != null)
                             Positioned(
                               bottom: 210,
                               child: TweenAnimationBuilder<double>(
-                                key: ValueKey(_companionMessage),
+                                key: ValueKey(_companionIcon.hashCode + DateTime.now().millisecondsSinceEpoch),
                                 tween: Tween(begin: 0.0, end: 1.0),
-                                duration: const Duration(milliseconds: 300),
+                                duration: const Duration(milliseconds: 400),
                                 curve: Curves.elasticOut,
                                 builder: (context, value, child) => Opacity(
                                   opacity: value.clamp(0.0, 1.0),
-                                  child: Transform.scale(scale: 0.5 + value * 0.5, child: child),
+                                  child: Transform.scale(scale: 0.3 + value * 0.7, child: child),
                                 ),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  width: 56, height: 56,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
+                                    shape: BoxShape.circle,
+                                    color: _hero.primaryColor.withValues(alpha: 0.25),
+                                    border: Border.all(color: _hero.primaryColor.withValues(alpha: 0.6), width: 2),
                                     boxShadow: [BoxShadow(
-                                      color: _hero.primaryColor.withValues(alpha: 0.4),
-                                      blurRadius: 12,
+                                      color: _hero.primaryColor.withValues(alpha: 0.5),
+                                      blurRadius: 16,
                                     )],
                                   ),
-                                  child: Text(_companionMessage!,
-                                    style: TextStyle(
-                                      color: const Color(0xFF0D0B2E),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
+                                  child: Icon(_companionIcon!, color: Colors.white, size: 30),
                                 ),
                               ),
                             ),
@@ -1765,25 +1729,25 @@ class _BrushingScreenState extends State<BrushingScreen>
               ),
               // Weapon badge — shows equipped weapon icon on the hero
               Positioned(
-                right: -6,
-                bottom: -6,
+                right: -8,
+                bottom: -8,
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 42,
-                  height: 42,
+                  duration: const Duration(milliseconds: 150),
+                  width: _heroLunging ? 54 : 46,
+                  height: _heroLunging ? 54 : 46,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _weapon.primaryColor.withValues(alpha: _heroLunging ? 1.0 : 0.85),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2.5),
+                    border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: _weapon.primaryColor.withValues(alpha: _heroLunging ? 0.8 : 0.5),
-                        blurRadius: _heroLunging ? 16 : 8,
-                        spreadRadius: _heroLunging ? 4 : 1,
+                        color: _weapon.primaryColor.withValues(alpha: _heroLunging ? 0.9 : 0.5),
+                        blurRadius: _heroLunging ? 24 : 10,
+                        spreadRadius: _heroLunging ? 6 : 2,
                       ),
                     ],
                   ),
-                  child: Icon(_weapon.icon, color: Colors.white, size: 22),
+                  child: Icon(_weapon.icon, color: Colors.white, size: _heroLunging ? 28 : 24),
                 ),
               ),
             ],

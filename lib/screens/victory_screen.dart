@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/hero_service.dart';
@@ -12,16 +11,6 @@ import '../widgets/achievement_popup.dart';
 import 'home_screen.dart';
 import 'brushing_screen.dart';
 
-enum _RewardType { bonusStars, powerChest, legendaryChest }
-
-class _ChestReward {
-  final _RewardType type;
-  final int stars;
-  final String label;
-  final IconData icon;
-  final Color color;
-  const _ChestReward({required this.type, required this.stars, required this.label, required this.icon, required this.color});
-}
 
 class VictoryScreen extends StatefulWidget {
   final int starsCollected;
@@ -48,12 +37,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   late AnimationController _starGlowController;
   late AnimationController _confettiController;
   late AnimationController _doneButtonController;
-  late AnimationController _chestShakeController;
   int _newStreak = 0;
   int _newStars = 0;
-  bool _chestOpened = false;
-  _ChestReward? _chestReward;
-  final _random = Random();
   List<Achievement> _newAchievements = [];
   HeroCharacter? _nextHero;
   int _starsToNextHero = 0;
@@ -90,11 +75,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       vsync: this,
     );
 
-    _chestShakeController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    )..repeat(reverse: true);
-
     _recordAndAnimate();
   }
 
@@ -102,10 +82,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     final hero = await _heroService.getSelectedHero();
     final world = await _worldService.getCurrentWorld();
     await _streakService.recordBrush(heroId: hero.id, worldId: world.id);
-    // Add mid-brush stars (minus the 1 already added by recordBrush)
-    if (widget.starsCollected > 1) {
-      await _streakService.addBonusStars(widget.starsCollected - 1);
-    }
     await _worldService.recordMission();
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
@@ -165,7 +141,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     _starGlowController.dispose();
     _confettiController.dispose();
     _doneButtonController.dispose();
-    _chestShakeController.dispose();
     super.dispose();
   }
 
@@ -196,142 +171,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  Future<void> _openChest() async {
-    if (_chestOpened) return;
-    _audio.playSfx('whoosh.mp3');
-    HapticFeedback.heavyImpact();
-    _chestShakeController.stop();
-
-    final roll = _random.nextDouble();
-    _ChestReward reward;
-
-    if (roll < (widget.isBossSession ? 0.25 : 0.10)) {
-      // Legendary: 5 bonus stars
-      reward = const _ChestReward(
-        type: _RewardType.legendaryChest,
-        stars: 5,
-        label: 'LEGENDARY!',
-        icon: Icons.workspace_premium,
-        color: Color(0xFFFFD54F),
-      );
-    } else if (roll < (widget.isBossSession ? 0.50 : 0.30)) {
-      // Power: 3 bonus stars
-      reward = const _ChestReward(
-        type: _RewardType.powerChest,
-        stars: 3,
-        label: 'POWER CHEST!',
-        icon: Icons.bolt,
-        color: Color(0xFF00E5FF),
-      );
-    } else {
-      // Common: 1-2 bonus stars
-      final stars = 1 + _random.nextInt(2);
-      reward = _ChestReward(
-        type: _RewardType.bonusStars,
-        stars: stars,
-        label: '+$stars STARS!',
-        icon: Icons.star,
-        color: Colors.yellowAccent,
-      );
-    }
-
-    await _streakService.addBonusStars(reward.stars);
-    setState(() {
-      _chestOpened = true;
-      _chestReward = reward;
-      _newStars += reward.stars;
-    });
-  }
-
-  Widget _buildRewardChest() {
-    if (_chestOpened && _chestReward != null) {
-      // Opened chest: show reward
-      return TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.0, end: 1.0),
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.elasticOut,
-        builder: (context, value, child) => Transform.scale(
-          scale: value,
-          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
-        ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [
-              _chestReward!.color.withValues(alpha: 0.2),
-              _chestReward!.color.withValues(alpha: 0.05),
-            ]),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _chestReward!.color.withValues(alpha: 0.5), width: 2),
-            boxShadow: [BoxShadow(
-              color: _chestReward!.color.withValues(alpha: 0.3),
-              blurRadius: 20, spreadRadius: 2,
-            )],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_chestReward!.icon, color: _chestReward!.color, size: 32),
-              const SizedBox(width: 10),
-              Text(_chestReward!.label, style: TextStyle(
-                color: _chestReward!.color,
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                letterSpacing: 2,
-                shadows: [Shadow(color: _chestReward!.color.withValues(alpha: 0.5), blurRadius: 8)],
-              )),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Closed chest: tap to open
-    return GestureDetector(
-      onTap: _openChest,
-      child: AnimatedBuilder(
-        animation: _chestShakeController,
-        builder: (context, child) {
-          final shake = sin(_chestShakeController.value * pi * 2) * 3;
-          return Transform.translate(
-            offset: Offset(shake, 0),
-            child: Transform.rotate(
-              angle: sin(_chestShakeController.value * pi * 2) * 0.03,
-              child: child,
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFFD54F), Color(0xFFFFA000), Color(0xFFFF6F00)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(
-              color: const Color(0xFFFFD54F).withValues(alpha: 0.4),
-              blurRadius: 16, spreadRadius: 2,
-            )],
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.card_giftcard, color: Colors.white, size: 28),
-              const SizedBox(width: 10),
-              Text('TAP TO OPEN!', style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                letterSpacing: 2,
-                shadows: [Shadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 4)],
-              )),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -611,11 +450,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                       )
                     else if (_nextHero == null)
                       const Icon(Icons.emoji_events, color: Color(0xFF69F0AE), size: 32),
-
-                    const SizedBox(height: 16),
-
-                    // REWARD CHEST
-                    _buildRewardChest(),
 
                     const Spacer(flex: 2),
 
