@@ -435,43 +435,75 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const SizedBox(height: 28),
 
-                    // Battle stats row
+                    // Visual-only battle stats: stars earned + monsters defeated
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          // Stars collected
+                          // Stars earned — big star icon + number
                           if (widget.starsCollected > 0)
-                            _StatBadge(
-                              icon: Icons.star,
-                              iconColor: Colors.yellowAccent,
-                              value: '+${widget.starsCollected}',
-                              label: 'STARS',
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: const Duration(milliseconds: 800),
+                              curve: Curves.elasticOut,
+                              builder: (context, scale, child) =>
+                                  Transform.scale(scale: scale, child: child),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Icon(Icons.star,
+                                          color: Colors.yellowAccent.withValues(alpha: 0.3),
+                                          size: 70),
+                                      const Icon(Icons.star,
+                                          color: Colors.yellowAccent, size: 56),
+                                    ],
+                                  ),
+                                  Text(
+                                    '+${widget.starsCollected}',
+                                    style: const TextStyle(
+                                      color: Colors.yellowAccent,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 30,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          // Hits dealt
-                          if (widget.totalHits > 0)
-                            _StatBadge(
-                              icon: Icons.flash_on,
-                              iconColor: const Color(0xFF00E5FF),
-                              value: '${widget.totalHits}',
-                              label: 'HITS',
-                            ),
-                          // Monsters defeated
+                          // Monsters defeated — explosion icon + number
                           if (widget.monstersDefeated > 0)
-                            _StatBadge(
-                              icon: Icons.whatshot,
-                              iconColor: const Color(0xFFFF4081),
-                              value: '${widget.monstersDefeated}',
-                              label: 'K.O.',
-                            ),
-                          // Day streak
-                          if (_newStreak > 0)
-                            _StatBadge(
-                              icon: Icons.local_fire_department,
-                              iconColor: Colors.orangeAccent,
-                              value: '$_newStreak',
-                              label: _newStreak == 1 ? 'DAY' : 'DAYS',
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: const Duration(milliseconds: 900),
+                              curve: Curves.elasticOut,
+                              builder: (context, scale, child) =>
+                                  Transform.scale(scale: scale, child: child),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Icon(Icons.whatshot,
+                                          color: const Color(0xFFFF4081).withValues(alpha: 0.3),
+                                          size: 70),
+                                      const Icon(Icons.whatshot,
+                                          color: Color(0xFFFF4081), size: 56),
+                                    ],
+                                  ),
+                                  Text(
+                                    'x${widget.monstersDefeated}',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFF4081),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 30,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                         ],
                       ),
@@ -479,16 +511,18 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const SizedBox(height: 16),
 
-                    // Total stars count
+                    // Total star bank — icon-driven, no text labels
                     GlassCard(
                       margin: const EdgeInsets.symmetric(horizontal: 48),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 16),
-                      child: Column(
+                          horizontal: 32, vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.star,
-                              color: Colors.yellowAccent, size: 40),
-                          const SizedBox(height: 4),
+                              color: Colors.yellowAccent, size: 36),
+                          const SizedBox(width: 8),
                           TweenAnimationBuilder<int>(
                             tween: IntTween(begin: 0, end: _newStars),
                             duration: const Duration(milliseconds: 1500),
@@ -500,20 +534,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 40,
+                                    fontSize: 36,
                                   ),
                             ),
-                          ),
-                          Text(
-                            'TOTAL STARS',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: Colors.white54,
-                                  letterSpacing: 3,
-                                  fontSize: 13,
-                                ),
                           ),
                         ],
                       ),
@@ -521,41 +544,73 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     const SizedBox(height: 12),
 
-                    // Stars until next hero
+                    // Next hero: visual progress (avatar + bar), no text
                     if (_nextHero != null && _starsToNextHero > 0)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 48),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.lock_open,
-                                color: _nextHero!.primaryColor, size: 18),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                '$_starsToNextHero more to unlock ${_nextHero!.name}!',
-                                style: TextStyle(
-                                  color: _nextHero!.primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  letterSpacing: 1,
-                                ),
-                                textAlign: TextAlign.center,
+                            // Locked hero avatar
+                            Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: _nextHero!.primaryColor, width: 2),
+                              ),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  ClipOval(
+                                    child: ColorFiltered(
+                                      colorFilter: const ColorFilter.mode(
+                                        Colors.black54, BlendMode.saturation,
+                                      ),
+                                      child: Image.asset(
+                                        _nextHero!.imagePath,
+                                        width: 36, height: 36, fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(Icons.lock, color: Colors.white.withValues(alpha: 0.8), size: 16),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Progress bar toward next hero
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: SizedBox(
+                                      height: 10,
+                                      child: LinearProgressIndicator(
+                                        value: (_newStars / _nextHero!.cost).clamp(0.0, 1.0),
+                                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                        valueColor: AlwaysStoppedAnimation(_nextHero!.primaryColor),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Stars needed icon
+                            const Icon(Icons.star, color: Colors.yellowAccent, size: 16),
+                            Text(
+                              '$_starsToNextHero',
+                              style: TextStyle(
+                                color: _nextHero!.primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
                               ),
                             ),
                           ],
                         ),
                       )
                     else if (_nextHero == null)
-                      const Text(
-                        'ALL HEROES UNLOCKED!',
-                        style: TextStyle(
-                          color: Color(0xFF69F0AE),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          letterSpacing: 2,
-                        ),
-                      ),
+                      const Icon(Icons.emoji_events, color: Color(0xFF69F0AE), size: 32),
 
                     const SizedBox(height: 16),
 
@@ -719,53 +774,3 @@ class _ConfettiPainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
-class _StatBadge extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String value;
-  final String label;
-
-  const _StatBadge({
-    required this.icon,
-    required this.iconColor,
-    required this.value,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: iconColor, size: 28),
-        const SizedBox(height: 4),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.elasticOut,
-          builder: (context, scale, child) => Transform.scale(
-            scale: scale,
-            child: child,
-          ),
-          child: Text(
-            value,
-            style: TextStyle(
-              color: iconColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-            ),
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.5),
-            fontWeight: FontWeight.bold,
-            fontSize: 10,
-            letterSpacing: 2,
-          ),
-        ),
-      ],
-    );
-  }
-}

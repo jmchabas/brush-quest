@@ -793,7 +793,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _triggerAttack() {
     if (_phase == BrushPhase.done || _phase == BrushPhase.countdown) return;
-    _audio.playSfx('zap.mp3');
+    _audio.playSfx(_audio.nextHitSound());
     HapticFeedback.lightImpact();
 
     setState(() {

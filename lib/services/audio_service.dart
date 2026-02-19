@@ -11,7 +11,7 @@ class AudioService {
     }
   }
 
-  static const _sfxPoolSize = 5;
+  static const _sfxPoolSize = 3;
   final List<AudioPlayer> _sfxPool = [];
   int _sfxIndex = 0;
 
@@ -22,6 +22,9 @@ class AudioService {
   bool _musicPlaying = false;
 
   bool get isMuted => _muted;
+  bool get isVoicePlaying => _voicePlaying;
+
+  static const _hitSounds = ['zap.mp3', 'whoosh.mp3'];
 
   static const _allAudioFiles = [
     'countdown_beep.mp3',
@@ -60,10 +63,10 @@ class AudioService {
     _muted = !_muted;
     if (_muted) {
       for (final p in _sfxPool) {
-        await p.stop();
+        try { await p.stop(); } catch (_) {}
       }
-      await _voicePlayer.stop();
-      await _musicPlayer.stop();
+      try { await _voicePlayer.stop(); } catch (_) {}
+      try { await _musicPlayer.stop(); } catch (_) {}
       _musicPlaying = false;
       _voicePlaying = false;
     }
@@ -71,15 +74,21 @@ class AudioService {
     await prefs.setBool('muted', _muted);
   }
 
+  /// Play a sound effect. Skipped during voice playback to prevent
+  /// Android audio channel contention from cutting the voice short.
   Future<void> playSfx(String fileName) async {
-    if (_muted) return;
+    if (_muted || _voicePlaying) return;
     final player = _sfxPool[_sfxIndex % _sfxPoolSize];
     _sfxIndex++;
     try {
-      await player.stop();
-      await player.setVolume(0.8);
+      await player.setVolume(0.7);
       await player.play(AssetSource('audio/$fileName'));
     } catch (_) {}
+  }
+
+  /// Returns a varied hit sound file name, cycling through available sounds.
+  String nextHitSound() {
+    return _hitSounds[_sfxIndex % _hitSounds.length];
   }
 
   Future<void> playVoice(String fileName) async {
@@ -88,7 +97,7 @@ class AudioService {
     _voicePlaying = true;
 
     if (_musicPlaying) {
-      try { await _musicPlayer.setVolume(0.15); } catch (_) {}
+      try { await _musicPlayer.setVolume(0.12); } catch (_) {}
     }
 
     try {
@@ -108,11 +117,13 @@ class AudioService {
     }
   }
 
+  /// Start looping background music. Stops and restarts if already playing
+  /// to recover from stuck state.
   Future<void> playMusic(String fileName) async {
     if (_muted) return;
-    if (_musicPlaying) return;
-    _musicPlaying = true;
     try {
+      await _musicPlayer.stop();
+      _musicPlaying = true;
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(0.5);
       await _musicPlayer.play(AssetSource('audio/$fileName'));
