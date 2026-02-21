@@ -1417,42 +1417,52 @@ class _BrushingScreenState extends State<BrushingScreen>
         double scaleX = 1.0, scaleY = 1.0, rotation = 0.0;
         double translateX = 0.0, translateY = 0.0;
 
-        // Personality-driven wobble + rotation
-        final wobble = sin((breathT * p.bobSpeed + _monster.wobblePhase) * pi);
-        scaleX = 1.0 + wobble * p.wobbleAmount;
-        scaleY = 1.0 + wobble * p.wobbleAmount;
-        rotation = sin((breathT * p.bobSpeed + _monster.wobblePhase) * pi * 2) * p.wobbleAmount;
-        translateY += sin(breathT * p.bobSpeed * pi * 2) * p.bobAmount;
+        // Cartoon-style breathing: exaggerated squash/stretch cycle
+        final breathCycle = sin(breathT * p.bobSpeed * pi * 2 + _monster.wobblePhase);
+        final breathStretch = breathCycle * 0.06;
+        scaleX = 1.0 - breathStretch;
+        scaleY = 1.0 + breathStretch;
+
+        // Multi-frequency organic wobble (not a single clean sine)
+        final wobble1 = sin((breathT * p.bobSpeed + _monster.wobblePhase) * pi * 2);
+        final wobble2 = sin((breathT * p.bobSpeed * 1.7 + _monster.wobblePhase * 2.3) * pi * 2);
+        rotation = (wobble1 * 0.7 + wobble2 * 0.3) * p.wobbleAmount;
+        translateY += (wobble1 * 0.6 + wobble2 * 0.4) * p.bobAmount;
+        translateX += wobble2 * p.bobAmount * 0.3;
 
         // Damage shake: more damaged = more erratic
         if (damageProgress > 0.3) {
           final intensity = (damageProgress - 0.3) * 12;
           translateX += sin(breathT * pi * 12 + _monster.wobblePhase) * intensity;
           translateY += cos(breathT * pi * 10 + _monster.wobblePhase) * intensity * 0.5;
-          rotation += sin(breathT * pi * 8) * (damageProgress - 0.3) * 0.1;
+          rotation += sin(breathT * pi * 8) * (damageProgress - 0.3) * 0.12;
         }
-        // Angry jitter at low health
+        // Angry jitter + pulsing at low health
         if (damageProgress > 0.6) {
-          final jitter = (damageProgress - 0.6) * 5;
-          translateX += (sin(breathT * pi * 20) * jitter);
-          scaleX *= 1.0 + sin(breathT * pi * 6) * 0.02;
+          final jitter = (damageProgress - 0.6) * 6;
+          translateX += sin(breathT * pi * 20) * jitter;
+          final ragePulse = sin(breathT * pi * 4) * 0.04;
+          scaleX *= 1.0 + ragePulse;
+          scaleY *= 1.0 + ragePulse;
         }
 
-        // Hit recoil: squash/stretch + knockback
+        // Hit recoil: exaggerated cartoon squash/stretch + knockback
         if (_monster.hitRecoil > 0.01) {
           if (_monster.hitRecoil > 0.5) {
             final t = (_monster.hitRecoil - 0.5) * 2;
-            scaleX *= 1.0 + t * 0.25;
-            scaleY *= 1.0 - t * 0.15;
+            scaleX *= 1.0 + t * 0.30;
+            scaleY *= 1.0 - t * 0.20;
           } else {
             final t = _monster.hitRecoil * 2;
-            scaleX *= 1.0 - t * 0.08;
-            scaleY *= 1.0 + t * 0.06;
+            scaleX *= 1.0 - t * 0.12;
+            scaleY *= 1.0 + t * 0.10;
           }
-          translateY -= _monster.hitRecoil * 25; // knockback upward
+          translateY -= _monster.hitRecoil * 30;
         }
 
         final glowAlpha = (0.15 + breathT * 0.15) * (0.5 + damageProgress * 0.5);
+        // Breathing shadow size
+        final shadowScale = 0.65 + breathCycle * 0.08;
 
         return Transform.translate(
           offset: Offset(translateX, translateY),
@@ -1468,22 +1478,35 @@ class _BrushingScreenState extends State<BrushingScreen>
                   alignment: Alignment.center,
                   clipBehavior: Clip.none,
                   children: [
-                    // Shadow ellipse underneath
+                    // Breathing shadow
                     Positioned(
                       bottom: 0,
                       child: Container(
-                        width: size * 0.7,
-                        height: size * 0.12,
+                        width: size * shadowScale,
+                        height: size * 0.10,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(size),
                           boxShadow: [BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 12, spreadRadius: 4,
+                            color: Colors.black.withValues(alpha: 0.6),
+                            blurRadius: 14, spreadRadius: 5,
                           )],
                         ),
                       ),
                     ),
-                    // Red glow aura
+                    // Inner glow (pulses from center — feels alive)
+                    Container(
+                      width: size * 0.7, height: size * 0.7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(
+                          color: _monster.personality.tintColor.withValues(
+                            alpha: 0.12 + breathCycle.abs() * 0.15,
+                          ),
+                          blurRadius: 40, spreadRadius: 15,
+                        )],
+                      ),
+                    ),
+                    // Outer aura glow (damage-reactive)
                     if (glowAlpha > 0.01)
                       Container(
                         width: size + 20, height: size + 20,
@@ -1512,9 +1535,33 @@ class _BrushingScreenState extends State<BrushingScreen>
                       child: Container(
                         width: size, height: size,
                         decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(
-                          colors: [Colors.transparent, Colors.transparent, Colors.black.withValues(alpha: 0.4), Colors.black.withValues(alpha: 0.8)],
+                          colors: [Colors.transparent, Colors.transparent, Colors.black.withValues(alpha: 0.35), Colors.black.withValues(alpha: 0.75)],
                           stops: const [0.0, 0.5, 0.8, 1.0],
                         )),
+                      ),
+                    ),
+                    // Menacing eye glow (always visible, pulse with breath)
+                    Positioned(
+                      bottom: 10,
+                      child: CustomPaint(
+                        size: Size(size, size),
+                        painter: _MonsterEyeGlowPainter(
+                          animValue: breathT,
+                          tintColor: _monster.personality.tintColor,
+                          damage: damageProgress,
+                        ),
+                      ),
+                    ),
+                    // Drool/slime particles dripping down
+                    Positioned(
+                      bottom: 0,
+                      child: CustomPaint(
+                        size: Size(size, size * 0.4),
+                        painter: _MonsterDripPainter(
+                          animValue: breathT,
+                          color: _monster.personality.tintColor,
+                          phase: _monster.wobblePhase,
+                        ),
                       ),
                     ),
                     // Health-dependent color tinting
@@ -1525,7 +1572,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                           width: size, height: size,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.red.withValues(alpha: (damageProgress - 0.5) * 0.3),
+                            color: Colors.red.withValues(alpha: (damageProgress - 0.5) * 0.25),
                           ),
                         ),
                       ),
@@ -1696,17 +1743,30 @@ class _BrushingScreenState extends State<BrushingScreen>
     return AnimatedBuilder(
       animation: _heroIdleController,
       builder: (context, child) {
-        final pulse = 0.3 + _heroIdleController.value * 0.3;
-        final bob = sin(_heroIdleController.value * pi) * 3;
-        // Motion glow: hero glows brighter when camera detects motion
+        final t = _heroIdleController.value;
         final glowBoost = _motionGlow ? 0.4 : 0.0;
-        // Attack lunge: hero jumps upward toward monster
-        final lungeOffset = _heroLunging ? -30.0 : 0.0;
-        final lungeScale = _heroLunging ? 1.12 : 1.0;
+
+        // Cartoon squash/stretch idle breathing
+        final breathCycle = sin(t * pi);
+        double heroScaleX = 1.0 - breathCycle * 0.04;
+        double heroScaleY = 1.0 + breathCycle * 0.04;
+        final bob = breathCycle * 4;
+
+        // Attack lunge: jump upward with extra stretch
+        double lungeOffset = 0.0;
+        if (_heroLunging) {
+          lungeOffset = -35.0;
+          heroScaleX *= 0.88;
+          heroScaleY *= 1.15;
+        }
+
+        final pulse = 0.3 + t * 0.3 + glowBoost;
+
         return Transform.translate(
           offset: Offset(0, bob + lungeOffset),
-          child: Transform.scale(
-            scale: lungeScale,
+          child: Transform(
+            alignment: Alignment.bottomCenter,
+            transform: Matrix4.diagonal3Values(heroScaleX, heroScaleY, 1.0),
           child: Stack(
             alignment: Alignment.center,
             clipBehavior: Clip.none,
@@ -1715,19 +1775,32 @@ class _BrushingScreenState extends State<BrushingScreen>
               Container(
                 width: size + 16, height: size + 16,
                 decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
-                  BoxShadow(color: _hero.primaryColor.withValues(alpha: pulse + glowBoost), blurRadius: 20 + (glowBoost * 20), spreadRadius: 4 + (glowBoost * 8)),
+                  BoxShadow(color: _hero.primaryColor.withValues(alpha: pulse), blurRadius: 20 + (glowBoost * 20), spreadRadius: 4 + (glowBoost * 8)),
                 ]),
               ),
+              // Orbiting power particles
+              CustomPaint(
+                size: Size(size + 24, size + 24),
+                painter: _HeroPowerParticlePainter(
+                  animValue: t,
+                  color: _hero.primaryColor,
+                  secondaryColor: _hero.attackColor,
+                  isAttacking: _heroLunging,
+                ),
+              ),
               child!,
-              // Ring border
+              // Ring border with breathing glow
               Container(
                 width: size, height: size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: _hero.primaryColor.withValues(alpha: 0.8 + glowBoost * 0.2), width: 3),
+                  border: Border.all(
+                    color: _hero.primaryColor.withValues(alpha: 0.7 + breathCycle.abs() * 0.3),
+                    width: 3 + (_heroLunging ? 1.5 : 0),
+                  ),
                 ),
               ),
-              // Weapon badge — shows equipped weapon icon on the hero
+              // Weapon badge
               Positioned(
                 right: -8,
                 bottom: -8,
@@ -2125,6 +2198,152 @@ class _WeaponBattleEffectPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WeaponBattleEffectPainter oldDelegate) => progress != oldDelegate.progress;
+}
+
+/// Glowing eyes that pulse menacingly on the monster face
+class _MonsterEyeGlowPainter extends CustomPainter {
+  final double animValue;
+  final Color tintColor;
+  final double damage;
+
+  _MonsterEyeGlowPainter({required this.animValue, required this.tintColor, required this.damage});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (damage > 0.5) return; // Dizzy eyes take over at high damage
+    final cx = size.width / 2;
+    final cy = size.height * 0.36;
+    final eyeSpacing = size.width * 0.12;
+    final eyeSize = size.width * 0.045;
+
+    final pulse = sin(animValue * pi * 2);
+    final glowAlpha = (0.5 + pulse * 0.3).clamp(0.0, 1.0);
+    final eyeRadius = eyeSize + pulse * eyeSize * 0.3;
+
+    for (final side in [-1.0, 1.0]) {
+      final ex = cx + side * eyeSpacing;
+
+      // Outer glow
+      final glowPaint = Paint()
+        ..color = tintColor.withValues(alpha: glowAlpha * 0.5)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+      canvas.drawCircle(Offset(ex, cy), eyeRadius * 2.5, glowPaint);
+
+      // Core eye
+      final corePaint = Paint()
+        ..color = tintColor.withValues(alpha: glowAlpha * 0.85)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+      canvas.drawCircle(Offset(ex, cy), eyeRadius, corePaint);
+
+      // Bright center
+      final centerPaint = Paint()
+        ..color = Colors.white.withValues(alpha: glowAlpha * 0.7);
+      canvas.drawCircle(Offset(ex, cy), eyeRadius * 0.4, centerPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MonsterEyeGlowPainter oldDelegate) =>
+      animValue != oldDelegate.animValue || damage != oldDelegate.damage;
+}
+
+/// Drool/slime particles dripping from the monster's bottom edge
+class _MonsterDripPainter extends CustomPainter {
+  final double animValue;
+  final Color color;
+  final double phase;
+
+  _MonsterDripPainter({required this.animValue, required this.color, required this.phase});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rng = Random((phase * 1000).toInt());
+    final dripCount = 3;
+
+    for (int i = 0; i < dripCount; i++) {
+      final baseX = size.width * 0.25 + rng.nextDouble() * size.width * 0.5;
+      final speed = 0.3 + rng.nextDouble() * 0.7;
+      final dripPhase = (animValue * speed + i * 0.33 + phase) % 1.0;
+
+      final y = dripPhase * size.height;
+      final alpha = (1.0 - dripPhase) * 0.5;
+      final radius = 2.0 + (1.0 - dripPhase) * 2.5;
+
+      // Wobble the drip sideways
+      final wobble = sin(dripPhase * pi * 3 + i) * 3;
+
+      final paint = Paint()
+        ..color = color.withValues(alpha: alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      canvas.drawCircle(Offset(baseX + wobble, y), radius, paint);
+
+      // Elongated drip shape (tail)
+      if (dripPhase < 0.7) {
+        final tailPaint = Paint()
+          ..color = color.withValues(alpha: alpha * 0.6)
+          ..strokeWidth = radius * 0.8
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(
+          Offset(baseX + wobble, y),
+          Offset(baseX + wobble * 0.5, y - radius * 3),
+          tailPaint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MonsterDripPainter oldDelegate) => animValue != oldDelegate.animValue;
+}
+
+/// Orbiting power sparkles around the hero
+class _HeroPowerParticlePainter extends CustomPainter {
+  final double animValue;
+  final Color color;
+  final Color secondaryColor;
+  final bool isAttacking;
+
+  _HeroPowerParticlePainter({
+    required this.animValue,
+    required this.color,
+    required this.secondaryColor,
+    required this.isAttacking,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final radius = size.width * 0.48;
+    final particleCount = isAttacking ? 10 : 5;
+    final speed = isAttacking ? 3.0 : 1.0;
+
+    for (int i = 0; i < particleCount; i++) {
+      final angle = (i / particleCount) * 2 * pi + animValue * pi * 2 * speed;
+      final orbitRadius = radius + sin(angle * 2 + animValue * pi * 4) * 6;
+      final x = cx + cos(angle) * orbitRadius;
+      final y = cy + sin(angle) * orbitRadius * 0.7; // Slightly elliptical
+
+      final useSecondary = i % 2 == 0;
+      final c = useSecondary ? secondaryColor : color;
+      final alpha = isAttacking ? 0.8 : (0.35 + sin(angle + animValue * pi * 4) * 0.25);
+      final pSize = isAttacking ? 3.5 : 2.0 + sin(angle * 3) * 1.0;
+
+      // Glow
+      final glowPaint = Paint()
+        ..color = c.withValues(alpha: alpha * 0.5)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+      canvas.drawCircle(Offset(x, y), pSize * 2, glowPaint);
+
+      // Core
+      final paint = Paint()..color = c.withValues(alpha: alpha);
+      canvas.drawCircle(Offset(x, y), pSize, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HeroPowerParticlePainter oldDelegate) =>
+      animValue != oldDelegate.animValue || isAttacking != oldDelegate.isAttacking;
 }
 
 class _DamageCrackPainter extends CustomPainter {
