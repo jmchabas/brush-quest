@@ -103,7 +103,13 @@ class _VictoryScreenState extends State<VictoryScreen>
     _audio.playSfx('victory.mp3');
     await Future.delayed(const Duration(milliseconds: 300));
     if (mounted) {
-      _audio.playVoice('voice_great_job.mp3');
+      final hour = DateTime.now().hour;
+      final victoryVoice = (hour >= 5 && hour < 12)
+          ? 'voice_great_job_morning.mp3'
+          : (hour >= 18 || hour < 5)
+              ? 'voice_great_job_tonight.mp3'
+              : 'voice_you_did_it.mp3';
+      _audio.playVoice(victoryVoice);
       _starController.forward();
       _starRotationController.repeat();
       _starGlowController.repeat(reverse: true);

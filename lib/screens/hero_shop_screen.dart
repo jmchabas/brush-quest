@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/streak_service.dart';
@@ -60,6 +61,7 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
     if (_unlockedHeroes.contains(hero.id)) {
       await _heroService.selectHero(hero.id);
       HapticFeedback.mediumImpact();
+      AudioService().playVoice('voice_great_choice.mp3');
       await _loadData();
     } else if (_stars >= hero.cost) {
       final success = await _heroService.unlockHero(hero.id);

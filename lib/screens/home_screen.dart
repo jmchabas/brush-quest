@@ -36,12 +36,14 @@ class _HomeScreenState extends State<HomeScreen>
   late Animation<double> _floatAnimation;
   late AnimationController _auraController;
   bool _buttonPressed = false;
+  bool _welcomePlayed = false;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
     _requestCameraPermission();
+    _playWelcomeVoice();
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
@@ -91,8 +93,21 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _playWelcomeVoice() async {
+    if (_welcomePlayed) return;
+    _welcomePlayed = true;
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+    final brushCount = await _streakService.getTodayBrushCount();
+    final total = await _streakService.getTotalBrushes();
+    if (total == 0) {
+      AudioService().playVoice('voice_welcome.mp3');
+    } else if (brushCount == 0) {
+      AudioService().playVoice('voice_welcome_back.mp3');
+    }
+  }
+
   /// Request camera permission early so the OS dialog appears while system UI is visible.
-  /// The brushing screen will later use the already-initialized camera.
   Future<void> _requestCameraPermission() async {
     await CameraService().initialize();
   }
@@ -100,6 +115,10 @@ class _HomeScreenState extends State<HomeScreen>
   void _startBrushing() {
     HapticFeedback.heavyImpact();
     AudioService().playSfx('whoosh.mp3');
+    _showPreBrushPicker();
+  }
+
+  void _launchBrushingScreen() {
     Navigator.of(context)
         .push(
           PageRouteBuilder(
@@ -121,6 +140,46 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         )
         .then((_) => _loadStats());
+  }
+
+  void _showPreBrushPicker() async {
+    final unlocked = await _heroService.getUnlockedHeroIds();
+    final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
+    if (!mounted) return;
+
+    final heroVoiceFile = 'voice_hero_${_selectedHero.id}.mp3';
+    AudioService().playVoice(heroVoiceFile);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _PreBrushPicker(
+        heroes: HeroService.allHeroes,
+        weapons: WeaponService.allWeapons,
+        unlockedHeroIds: unlocked,
+        unlockedWeaponIds: unlockedWeapons,
+        selectedHero: _selectedHero,
+        selectedWeapon: _selectedWeapon,
+        onHeroSelected: (hero) async {
+          await _heroService.selectHero(hero.id);
+          setState(() => _selectedHero = hero);
+          AudioService().playVoice('voice_hero_${hero.id}.mp3');
+        },
+        onWeaponSelected: (weapon) async {
+          await _weaponService.selectWeapon(weapon.id);
+          setState(() => _selectedWeapon = weapon);
+          AudioService().playSfx('whoosh.mp3');
+        },
+        onGo: () {
+          Navigator.pop(ctx);
+          AudioService().playVoice('voice_lets_fight.mp3');
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (mounted) _launchBrushingScreen();
+          });
+        },
+      ),
+    );
   }
 
   void _openShop() {
@@ -475,8 +534,8 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(width: 16),
                         Expanded(
                           child: _BigNavButton(
-                            icon: Icons.storefront,
-                            label: 'SHOP',
+                            icon: Icons.shield,
+                            label: 'HEROES',
                             color: const Color(0xFF7C4DFF),
                             onTap: _openShop,
                           ),
@@ -490,6 +549,202 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PreBrushPicker extends StatefulWidget {
+  final List<HeroCharacter> heroes;
+  final List<WeaponItem> weapons;
+  final List<String> unlockedHeroIds;
+  final List<String> unlockedWeaponIds;
+  final HeroCharacter selectedHero;
+  final WeaponItem selectedWeapon;
+  final ValueChanged<HeroCharacter> onHeroSelected;
+  final ValueChanged<WeaponItem> onWeaponSelected;
+  final VoidCallback onGo;
+
+  const _PreBrushPicker({
+    required this.heroes,
+    required this.weapons,
+    required this.unlockedHeroIds,
+    required this.unlockedWeaponIds,
+    required this.selectedHero,
+    required this.selectedWeapon,
+    required this.onHeroSelected,
+    required this.onWeaponSelected,
+    required this.onGo,
+  });
+
+  @override
+  State<_PreBrushPicker> createState() => _PreBrushPickerState();
+}
+
+class _PreBrushPickerState extends State<_PreBrushPicker> {
+  late HeroCharacter _hero;
+  late WeaponItem _weapon;
+
+  @override
+  void initState() {
+    super.initState();
+    _hero = widget.selectedHero;
+    _weapon = widget.selectedWeapon;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D0B2E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border(top: BorderSide(color: Color(0xFF7C4DFF), width: 2)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 40, height: 4,
+            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(height: 16),
+
+          // Hero + weapon display
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _hero.primaryColor, width: 3),
+                  boxShadow: [BoxShadow(color: _hero.primaryColor.withValues(alpha: 0.4), blurRadius: 20)],
+                ),
+                child: ClipOval(child: Image.asset(_hero.imagePath, fit: BoxFit.cover)),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF1A0A3E),
+                  border: Border.all(color: _weapon.primaryColor, width: 2),
+                  boxShadow: [BoxShadow(color: _weapon.primaryColor.withValues(alpha: 0.3), blurRadius: 10)],
+                ),
+                child: Icon(_weapon.icon, color: _weapon.primaryColor, size: 28),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(_hero.name, style: TextStyle(color: _hero.primaryColor, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 3)),
+          const SizedBox(height: 16),
+
+          // Hero row
+          SizedBox(
+            height: 72,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.heroes.length,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              itemBuilder: (ctx, i) {
+                final h = widget.heroes[i];
+                final unlocked = widget.unlockedHeroIds.contains(h.id);
+                final selected = h.id == _hero.id;
+                return GestureDetector(
+                  onTap: unlocked ? () {
+                    setState(() => _hero = h);
+                    widget.onHeroSelected(h);
+                  } : null,
+                  child: Container(
+                    width: 64, height: 64,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected ? h.primaryColor : (unlocked ? Colors.white24 : Colors.white10),
+                        width: selected ? 3 : 1,
+                      ),
+                      boxShadow: selected ? [BoxShadow(color: h.primaryColor.withValues(alpha: 0.4), blurRadius: 10)] : null,
+                    ),
+                    child: ClipOval(
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ColorFiltered(
+                            colorFilter: unlocked
+                                ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                                : const ColorFilter.mode(Colors.black54, BlendMode.saturation),
+                            child: Image.asset(h.imagePath, fit: BoxFit.cover),
+                          ),
+                          if (!unlocked)
+                            Center(child: Icon(Icons.lock, color: Colors.white.withValues(alpha: 0.6), size: 20)),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Weapon row
+          SizedBox(
+            height: 56,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.weapons.length,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              itemBuilder: (ctx, i) {
+                final w = widget.weapons[i];
+                final unlocked = widget.unlockedWeaponIds.contains(w.id);
+                final selected = w.id == _weapon.id;
+                return GestureDetector(
+                  onTap: unlocked ? () {
+                    setState(() => _weapon = w);
+                    widget.onWeaponSelected(w);
+                  } : null,
+                  child: Container(
+                    width: 48, height: 48,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected ? w.primaryColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                      border: Border.all(
+                        color: selected ? w.primaryColor : (unlocked ? Colors.white24 : Colors.white10),
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: Icon(
+                      unlocked ? w.icon : Icons.lock,
+                      color: unlocked ? (selected ? w.primaryColor : Colors.white54) : Colors.white24,
+                      size: 22,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // GO button
+          GestureDetector(
+            onTap: widget.onGo,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [_hero.primaryColor, _hero.primaryColor.withValues(alpha: 0.7)]),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: _hero.primaryColor.withValues(alpha: 0.4), blurRadius: 16)],
+              ),
+              child: const Text('GO!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 6)),
+            ),
+          ),
+        ],
       ),
     );
   }

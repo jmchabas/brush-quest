@@ -999,36 +999,80 @@ class _BrushingScreenState extends State<BrushingScreen>
     return Scaffold(
       body: SpaceBackground(
         child: Center(
-          child: Stack(
-            alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (_showGoText)
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 200),
-                  duration: const Duration(milliseconds: 400),
-                  builder: (context, radius, _) => Container(
-                    width: radius * 2, height: radius * 2,
+              // Hero + weapon display during countdown
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 140, height: 140,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: RadialGradient(colors: [
-                        const Color(0xFF69F0AE).withValues(alpha: 0.4),
-                        const Color(0xFF69F0AE).withValues(alpha: 0.0),
-                      ]),
+                      boxShadow: [BoxShadow(color: _hero.primaryColor.withValues(alpha: 0.4), blurRadius: 30, spreadRadius: 5)],
                     ),
                   ),
-                ),
-              TweenAnimationBuilder<double>(
-                key: ValueKey('$_countdownValue-$_showGoText'),
-                tween: Tween(begin: 0.5, end: 1.5),
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.elasticOut,
-                builder: (context, scale, _) => Transform.scale(
-                  scale: scale,
-                  child: Text(displayText, style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontSize: fontSize, fontWeight: FontWeight.bold, color: textColor,
-                    shadows: [Shadow(color: (_showGoText ? const Color(0xFF69F0AE) : const Color(0xFF00E5FF)).withValues(alpha: 0.8), blurRadius: 40)],
-                  )),
-                ),
+                  Container(
+                    width: 130, height: 130,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _hero.primaryColor, width: 3),
+                    ),
+                    child: ClipOval(child: Image.asset(_hero.imagePath, fit: BoxFit.cover)),
+                  ),
+                  Positioned(
+                    right: 0, bottom: 0,
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF0D0B2E),
+                        border: Border.all(color: _weapon.primaryColor, width: 2),
+                        boxShadow: [BoxShadow(color: _weapon.primaryColor.withValues(alpha: 0.4), blurRadius: 8)],
+                      ),
+                      child: Icon(_weapon.icon, color: _weapon.primaryColor, size: 22),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(_hero.name, style: TextStyle(
+                color: _hero.primaryColor, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 3)),
+              const SizedBox(height: 24),
+              // Countdown number / GO!
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (_showGoText)
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 200),
+                      duration: const Duration(milliseconds: 400),
+                      builder: (context, radius, _) => Container(
+                        width: radius * 2, height: radius * 2,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(colors: [
+                            const Color(0xFF69F0AE).withValues(alpha: 0.4),
+                            const Color(0xFF69F0AE).withValues(alpha: 0.0),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  TweenAnimationBuilder<double>(
+                    key: ValueKey('$_countdownValue-$_showGoText'),
+                    tween: Tween(begin: 0.5, end: 1.5),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.elasticOut,
+                    builder: (context, scale, _) => Transform.scale(
+                      scale: scale,
+                      child: Text(displayText, style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontSize: fontSize, fontWeight: FontWeight.bold, color: textColor,
+                        shadows: [Shadow(color: (_showGoText ? const Color(0xFF69F0AE) : const Color(0xFF00E5FF)).withValues(alpha: 0.8), blurRadius: 40)],
+                      )),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
