@@ -10,6 +10,7 @@ import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -167,6 +168,14 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    IconButton(
+                      icon: Icon(Icons.settings, color: Colors.white.withValues(alpha: 0.6), size: 26),
+                      onPressed: () {
+                        Navigator.of(context)
+                            .push(MaterialPageRoute(builder: (_) => const SettingsScreen()))
+                            .then((_) => _loadStats());
+                      },
+                    ),
                     const MuteButton(),
                   ],
                 ),

@@ -20,6 +20,7 @@ class AudioService {
   bool _muted = false;
   bool _voicePlaying = false;
   bool _musicPlaying = false;
+  String? _currentMusicFile;
 
   bool get isMuted => _muted;
   bool get isVoicePlaying => _voicePlaying;
@@ -117,9 +118,7 @@ class AudioService {
     if (_voicePlaying) return;
     _voicePlaying = true;
 
-    if (_musicPlaying) {
-      try { await _musicPlayer.setVolume(0.12); } catch (_) {}
-    }
+    try { await _musicPlayer.setVolume(0.12); } catch (_) {}
 
     try {
       await _voicePlayer.stop();
@@ -132,16 +131,18 @@ class AudioService {
     } catch (_) {
     } finally {
       _voicePlaying = false;
-      if (_musicPlaying) {
-        try { await _musicPlayer.setVolume(0.5); } catch (_) {}
-      }
+      _restoreMusicVolume();
     }
   }
 
-  /// Start looping background music using a fresh player and the 2-minute
-  /// pre-concatenated loop file so Android doesn't need to handle short-file looping.
+  void _restoreMusicVolume() {
+    if (!_musicPlaying) return;
+    try { _musicPlayer.setVolume(0.5); } catch (_) {}
+  }
+
   Future<void> playMusic(String fileName) async {
     if (_muted) return;
+    _currentMusicFile = fileName;
     try {
       await _musicPlayer.stop();
       _musicPlayer.dispose();
@@ -158,8 +159,23 @@ class AudioService {
     }
   }
 
+  /// Call periodically during brushing to recover music if it stopped.
+  /// Checks the player state and restarts if needed.
+  Future<void> ensureMusicPlaying() async {
+    if (_muted || !_musicPlaying || _currentMusicFile == null) return;
+    try {
+      final state = _musicPlayer.state;
+      if (state != PlayerState.playing && state != PlayerState.paused) {
+        await playMusic(_currentMusicFile!);
+      }
+    } catch (_) {
+      await playMusic(_currentMusicFile!);
+    }
+  }
+
   Future<void> stopMusic() async {
     _musicPlaying = false;
+    _currentMusicFile = null;
     try { await _musicPlayer.stop(); } catch (_) {}
   }
 

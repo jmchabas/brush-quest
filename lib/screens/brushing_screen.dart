@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
@@ -176,6 +177,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   BrushPhase _phase = BrushPhase.countdown;
   int _countdownValue = 3;
   int _phaseSecondsLeft = 30;
+  int _phaseDuration = 30;
   Timer? _timer;
   Timer? _baseAttackTimer;
   bool _isPaused = false;
@@ -234,6 +236,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   IconData? _companionIcon;
   bool _showCompanionBubble = false;
   Timer? _companionTimer;
+  Timer? _musicHealthTimer;
   int _encouragementIndex = 0;
 
   // Boss battle system
@@ -435,6 +438,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Future<void> _initCamera() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cameraEnabled = prefs.getBool('camera_enabled') ?? true;
+    if (!cameraEnabled) return;
     final ready = await _cameraService.initialize();
     if (mounted) {
       setState(() => _cameraReady = ready);
@@ -497,11 +503,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     final world = await _worldService.getCurrentWorld();
     final weapon = await _weaponService.getSelectedWeapon();
     final totalBrushes = await StreakService().getTotalBrushes();
+    final prefs = await SharedPreferences.getInstance();
+    final duration = prefs.getInt('phase_duration') ?? 30;
     if (mounted) {
       setState(() {
         _hero = hero;
         _world = world;
         _weapon = weapon;
+        _phaseDuration = duration;
         _isBossSession = totalBrushes > 0 && (totalBrushes + 1) % 5 == 0;
         _monster = _createWorldMonster();
         _initParticles();
@@ -517,6 +526,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _companionTimer?.cancel();
+    _musicHealthTimer?.cancel();
     _damageCleanupTimer?.cancel();
     _starCleanupTimer?.cancel();
     _stopMotionDetection();
@@ -565,6 +575,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     // Start battle music (2-min pre-looped file for reliable Android playback)
     _audio.playMusic('battle_music_loop.mp3');
 
+    // Periodic music health check — recovers if player gets stuck
+    _musicHealthTimer?.cancel();
+    _musicHealthTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _audio.ensureMusicPlaying(),
+    );
+
     // Companion speech bubbles every 8 seconds
     _companionTimer?.cancel();
     _companionTimer = Timer.periodic(
@@ -578,13 +595,15 @@ class _BrushingScreenState extends State<BrushingScreen>
       if (_isPaused) return;
       setState(() => _phaseSecondsLeft--);
 
-      if (_phaseSecondsLeft == 20 && !_playedEncouragement) {
+      final encourageAt = (_phaseDuration * 0.65).round();
+      final almostAt = (_phaseDuration * 0.33).round();
+      if (_phaseSecondsLeft == encourageAt && !_playedEncouragement) {
         _playedEncouragement = true;
         final voices = _audio.encouragementVoices;
         _audio.playVoice(voices[_encouragementIndex % voices.length]);
         _encouragementIndex++;
       }
-      if (_phaseSecondsLeft == 10 && !_playedAlmostThere) {
+      if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
         _audio.playVoice('voice_almost_there.mp3');
       }
@@ -748,7 +767,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _switchToPhase(BrushPhase newPhase) {
     setState(() {
       _phase = newPhase;
-      _phaseSecondsLeft = 30;
+      _phaseSecondsLeft = _phaseDuration;
       _showMouthGuideOverlay = true;
     });
     _phaseTransitionController.forward(from: 0);
@@ -929,6 +948,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _quitBrushing() {
     _timer?.cancel();
     _baseAttackTimer?.cancel();
+    _musicHealthTimer?.cancel();
     _audio.stopMusic();
     Navigator.of(context).pop();
   }
@@ -937,6 +957,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _companionTimer?.cancel();
+    _musicHealthTimer?.cancel();
     _stopMotionDetection();
     _audio.stopMusic();
     setState(() => _phase = BrushPhase.done);

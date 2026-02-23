@@ -15,6 +15,10 @@ dependencies:
   wakelock_plus: ^1.4.0
   camera: ^0.11.0+2
   permission_handler: ^12.0.1
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  google_sign_in: ^7.2.0
 
 dev_dependencies:
   flutter_test:

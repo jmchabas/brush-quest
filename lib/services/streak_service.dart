@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_service.dart';
+import 'sync_service.dart';
 
 class BrushRecord {
   final String date;
@@ -98,6 +100,10 @@ class StreakService {
       historyJson.removeRange(0, historyJson.length - 100);
     }
     await prefs.setStringList(_keyHistory, historyJson);
+
+    if (AuthService().isSignedIn) {
+      SyncService().uploadProgress().catchError((_) {});
+    }
   }
 
   Future<int> getStreak() async {

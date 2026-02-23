@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "722700244830",
+    "project_id": "brush-quest",
+    "storage_bucket": "brush-quest.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:722700244830:android:4c853fb0ff20d0bf07a1cf",
+        "android_client_info": {
+          "package_name": "com.brushquest.brush_quest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCPW2YvhSRZt_WV2dpJo9ol5TtHPspTXlY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
