@@ -15,7 +15,7 @@ Theme: Space Rangers vs Cavity Monsters.
 - **Audio**: ElevenLabs TTS for voice prompts and encouragements. 3-player SFX pool. Music uses pre-looped 2-min file with periodic health check. SFX suppressed during voice playback.
 - **Art**: DALL-E generated monster illustrations (4 base images, tinted/varied procedurally)
 - **Persistence**: Local via shared_preferences + cloud sync via Firestore (when signed in)
-- **Economy**: 1 star per completed brush. No mid-brush star collection. Hero costs: 0/5/10/15/25/40. Weapon costs: 0/3/7/12/20/30.
+- **Economy**: 1 star per completed brush. No mid-brush star collection. Hero costs: 0/4/7/10/14/20. Weapon costs: 0/2/5/8/12/16. Full unlock ~49 days at 2x/day.
 - **Auth**: Firebase Auth with Google Sign-In. Auto-uploads progress after each brush. Manual save/restore in settings.
 
 ## Architecture
