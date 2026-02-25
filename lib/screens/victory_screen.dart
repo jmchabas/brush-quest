@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/hero_service.dart';
+import '../services/weapon_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
 import '../widgets/space_background.dart';
@@ -74,6 +75,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _audio = AudioService();
   final _streakService = StreakService();
   final _heroService = HeroService();
+  final _weaponService = WeaponService();
   final _achievementService = AchievementService();
   final _worldService = WorldService();
   final _random = Random();
@@ -92,6 +94,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   List<Achievement> _newAchievements = [];
   HeroCharacter? _nextHero;
   int _starsToNextHero = 0;
+  String? _nextMilestoneLabel;
+  int _starsToNextMilestone = 0;
 
   bool _showChest = false;
   bool _chestOpened = false;
@@ -132,6 +136,7 @@ class _VictoryScreenState extends State<VictoryScreen>
       _starsToNextHero = _nextHero!.cost - _newStars;
       if (_starsToNextHero < 0) _starsToNextHero = 0;
     }
+    await _refreshMilestoneHint();
 
     if (mounted) setState(() {});
 
@@ -185,9 +190,10 @@ class _VictoryScreenState extends State<VictoryScreen>
       if (_reward!.bonusStars > 0) {
         await _streakService.addBonusStars(_reward!.bonusStars);
         final updated = await _streakService.getTotalStars();
+        _newStars = updated;
+        await _refreshMilestoneHint();
         if (mounted) {
           setState(() {
-            _newStars = updated;
             if (_nextHero != null) {
               _starsToNextHero = _nextHero!.cost - _newStars;
               if (_starsToNextHero < 0) _starsToNextHero = 0;
@@ -200,6 +206,32 @@ class _VictoryScreenState extends State<VictoryScreen>
         if (mounted) _doneButtonController.repeat(reverse: true);
       });
     });
+  }
+
+  Future<void> _refreshMilestoneHint() async {
+    final unlockedHeroes = await _heroService.getUnlockedHeroIds();
+    final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
+    final candidates = <MapEntry<String, int>>[];
+
+    for (final hero in HeroService.allHeroes) {
+      if (!unlockedHeroes.contains(hero.id)) {
+        candidates.add(MapEntry(hero.name, (hero.cost - _newStars).clamp(0, 9999)));
+      }
+    }
+    for (final weapon in WeaponService.allWeapons) {
+      if (!unlockedWeapons.contains(weapon.id)) {
+        candidates.add(MapEntry(weapon.name, (weapon.cost - _newStars).clamp(0, 9999)));
+      }
+    }
+
+    if (candidates.isEmpty) {
+      _nextMilestoneLabel = null;
+      _starsToNextMilestone = 0;
+      return;
+    }
+    candidates.sort((a, b) => a.value.compareTo(b.value));
+    _nextMilestoneLabel = candidates.first.key;
+    _starsToNextMilestone = candidates.first.value;
   }
 
   void _showAchievement(Achievement achievement) {
@@ -371,6 +403,41 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ],
                         ),
                       ),
+                    if (_chestOpened)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(26, 14, 26, 0),
+                        child: GlassCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          child: Column(
+                            children: [
+                              Text(
+                                'YOU ARE STACKING STARS LIKE A SUPER RANGER!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  letterSpacing: 1.3,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              if (_nextMilestoneLabel != null)
+                                Text(
+                                  _starsToNextMilestone <= 0
+                                      ? 'NEXT MILESTONE READY NOW: $_nextMilestoneLabel'
+                                      : 'ONLY $_starsToNextMilestone STARS TO UNLOCK $_nextMilestoneLabel',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: const Color(0xFFFFD54F).withValues(alpha: 0.95),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    letterSpacing: 1.1,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
 
                     const Spacer(flex: 1),
 
@@ -441,7 +508,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           child: GestureDetector(
             onTap: _openChest,
             child: Container(
-              width: 160, height: 160,
+              width: 190, height: 190,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
                 gradient: const LinearGradient(
@@ -461,7 +528,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 100, height: 20,
+                      width: 122, height: 24,
                         decoration: BoxDecoration(
                           color: const Color(0xFF8D6E63),
                           borderRadius: BorderRadius.circular(4),
@@ -469,7 +536,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
                       Container(
-                        width: 110, height: 60,
+                        width: 132, height: 78,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -483,22 +550,31 @@ class _VictoryScreenState extends State<VictoryScreen>
                   ),
                   // Lock/clasp
                   Positioned(
-                    top: 60,
+                    top: 70,
                     child: Container(
-                      width: 28, height: 28,
+                      width: 34, height: 34,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: const Color(0xFFFFD54F),
                         border: Border.all(color: const Color(0xFFFFA000), width: 2),
                         boxShadow: [BoxShadow(color: const Color(0xFFFFD54F).withValues(alpha: 0.6), blurRadius: 10)],
                       ),
-                      child: const Icon(Icons.lock, color: Color(0xFF5D4037), size: 16),
+                      child: const Icon(Icons.lock, color: Color(0xFF5D4037), size: 18),
                     ),
                   ),
-                  // Question mark sparkle
-                  const Positioned(
-                    top: 16, right: 24,
+                  Positioned(
+                    top: 18, right: 26,
                     child: Text('?', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                  ),
+                  Positioned(
+                    left: 22,
+                    top: 24 + sin(_chestBounceController.value * pi * 2) * 4,
+                    child: const Icon(Icons.auto_awesome, color: Color(0xFFFFF59D), size: 18),
+                  ),
+                  Positioned(
+                    right: 30,
+                    bottom: 28 + cos(_chestBounceController.value * pi * 2) * 4,
+                    child: const Icon(Icons.auto_awesome, color: Color(0xFFFFF59D), size: 16),
                   ),
                 ],
               ),

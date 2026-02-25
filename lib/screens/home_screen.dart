@@ -37,6 +37,25 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _auraController;
   bool _buttonPressed = false;
   bool _welcomePlayed = false;
+  String? _lastPickerVoice;
+
+  static const Map<String, String> _heroPickerVoice = {
+    'blaze': 'voice_hero_blaze.mp3',
+    'frost': 'voice_hero_frost.mp3',
+    'bolt': 'voice_hero_bolt.mp3',
+    'shadow': 'voice_hero_shadow.mp3',
+    'leaf': 'voice_hero_leaf.mp3',
+    'nova': 'voice_hero_nova.mp3',
+  };
+
+  static const Map<String, String> _weaponPickerVoice = {
+    'star_blaster': 'voice_super.mp3',
+    'flame_sword': 'voice_wow_amazing.mp3',
+    'ice_hammer': 'voice_awesome.mp3',
+    'lightning_wand': 'voice_unstoppable.mp3',
+    'vine_whip': 'voice_keep_it_up.mp3',
+    'cosmic_burst': 'voice_great_choice.mp3',
+  };
 
   @override
   void initState() {
@@ -147,8 +166,7 @@ class _HomeScreenState extends State<HomeScreen>
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     if (!mounted) return;
 
-    final heroVoiceFile = 'voice_hero_${_selectedHero.id}.mp3';
-    AudioService().playVoice(heroVoiceFile);
+    _playPickerVoice(_heroPickerVoice[_selectedHero.id] ?? 'voice_great_choice.mp3');
 
     showModalBottomSheet(
       context: context,
@@ -164,12 +182,12 @@ class _HomeScreenState extends State<HomeScreen>
         onHeroSelected: (hero) async {
           await _heroService.selectHero(hero.id);
           setState(() => _selectedHero = hero);
-          AudioService().playVoice('voice_hero_${hero.id}.mp3');
+          _playPickerVoice(_heroPickerVoice[hero.id] ?? 'voice_great_choice.mp3');
         },
         onWeaponSelected: (weapon) async {
           await _weaponService.selectWeapon(weapon.id);
           setState(() => _selectedWeapon = weapon);
-          AudioService().playSfx('whoosh.mp3');
+          _playPickerVoice(_weaponPickerVoice[weapon.id] ?? 'voice_awesome.mp3');
         },
         onGo: () {
           Navigator.pop(ctx);
@@ -180,6 +198,12 @@ class _HomeScreenState extends State<HomeScreen>
         },
       ),
     );
+  }
+
+  void _playPickerVoice(String fileName) {
+    if (_lastPickerVoice == fileName) return;
+    _lastPickerVoice = fileName;
+    AudioService().playVoice(fileName);
   }
 
   void _openShop() {
@@ -636,6 +660,40 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
           ),
           const SizedBox(height: 8),
           Text(_hero.name, style: TextStyle(color: _hero.primaryColor, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 3)),
+          const SizedBox(height: 4),
+          Text(
+            _hero.description,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 12,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _weapon.name,
+            style: TextStyle(
+              color: _weapon.primaryColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              letterSpacing: 2,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            _weapon.description,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.65),
+              fontSize: 11,
+              height: 1.2,
+            ),
+          ),
           const SizedBox(height: 16),
 
           // Hero row

@@ -238,6 +238,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   Timer? _companionTimer;
   Timer? _musicHealthTimer;
   int _encouragementIndex = 0;
+  String? _lastEncouragementVoice;
+  bool _showWorldIntro = true;
+  int _worldIntroSecondsLeft = 3;
+  Timer? _worldIntroTimer;
 
   // Boss battle system
   bool _isBossSession = false;
@@ -324,9 +328,8 @@ class _BrushingScreenState extends State<BrushingScreen>
     )..repeat(reverse: true);
 
     _initParticles();
-    _loadHeroAndWorld();
+    _prepareSession();
     _initCamera();
-    _startCountdown();
 
     _damageCleanupTimer = Timer.periodic(
       const Duration(milliseconds: 40),
@@ -518,6 +521,30 @@ class _BrushingScreenState extends State<BrushingScreen>
     }
   }
 
+  Future<void> _prepareSession() async {
+    await _loadHeroAndWorld();
+    _startWorldIntro();
+  }
+
+  void _startWorldIntro() {
+    _worldIntroTimer?.cancel();
+    setState(() {
+      _showWorldIntro = true;
+      _worldIntroSecondsLeft = 3;
+    });
+
+    _worldIntroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_worldIntroSecondsLeft > 1) {
+        setState(() => _worldIntroSecondsLeft--);
+      } else {
+        timer.cancel();
+        setState(() => _showWorldIntro = false);
+        _startCountdown();
+      }
+    });
+  }
+
   @override
   void dispose() {
     WakelockPlus.disable();
@@ -527,6 +554,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _stallTimer?.cancel();
     _companionTimer?.cancel();
     _musicHealthTimer?.cancel();
+    _worldIntroTimer?.cancel();
     _damageCleanupTimer?.cancel();
     _starCleanupTimer?.cancel();
     _stopMotionDetection();
@@ -599,9 +627,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       final almostAt = (_phaseDuration * 0.33).round();
       if (_phaseSecondsLeft == encourageAt && !_playedEncouragement) {
         _playedEncouragement = true;
-        final voices = _audio.encouragementVoices;
-        _audio.playVoice(voices[_encouragementIndex % voices.length]);
-        _encouragementIndex++;
+        _playNextEncouragementVoice();
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
@@ -863,9 +889,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showCompanionBubble = true;
     });
 
-    final voices = _audio.encouragementVoices;
-    _audio.playVoice(voices[_encouragementIndex % voices.length]);
-    _encouragementIndex++;
+    _playNextEncouragementVoice();
 
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) setState(() => _showCompanionBubble = false);
@@ -880,6 +904,27 @@ class _BrushingScreenState extends State<BrushingScreen>
       wobblePhase: _random.nextDouble() * 2 * pi,
       personality: _MonsterPersonality.boss(_random),
     );
+  }
+
+  void _playNextEncouragementVoice() {
+    final voices = _audio.encouragementVoices;
+    if (voices.isEmpty) return;
+    if (voices.length == 1) {
+      _audio.playVoice(voices.first);
+      _lastEncouragementVoice = voices.first;
+      return;
+    }
+
+    String selected = voices[_encouragementIndex % voices.length];
+    var safety = 0;
+    while (selected == _lastEncouragementVoice && safety < voices.length + 2) {
+      _encouragementIndex++;
+      selected = voices[_encouragementIndex % voices.length];
+      safety++;
+    }
+    _audio.playVoice(selected);
+    _lastEncouragementVoice = selected;
+    _encouragementIndex++;
   }
 
   void _spawnDamagePopup() {
@@ -984,9 +1029,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) { if (!didPop) _togglePause(); },
-      child: _phase == BrushPhase.countdown
-          ? _buildCountdown()
-          : _buildBrushing(),
+      child: _showWorldIntro
+          ? _buildWorldIntro()
+          : _phase == BrushPhase.countdown
+              ? _buildCountdown()
+              : _buildBrushing(),
     );
   }
 
@@ -1081,6 +1128,90 @@ class _BrushingScreenState extends State<BrushingScreen>
     );
   }
 
+  Widget _buildWorldIntro() {
+    return Scaffold(
+      body: _WorldBackground(
+        world: _world,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.22,
+                child: Image.asset(
+                  _world.imagePath,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _world.themeColor, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _world.themeColor.withValues(alpha: 0.55),
+                            blurRadius: 28,
+                            spreadRadius: 3,
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _world.name.toUpperCase(),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 3,
+                            shadows: [
+                              Shadow(
+                                color: _world.themeColor.withValues(alpha: 0.8),
+                                blurRadius: 18,
+                              ),
+                            ],
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _world.description,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'MISSION STARTS IN $_worldIntroSecondsLeft',
+                      style: TextStyle(
+                        color: _world.themeColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ==================== BRUSHING UI ====================
 
   Widget _buildBrushing() {
@@ -1108,6 +1239,21 @@ class _BrushingScreenState extends State<BrushingScreen>
                   animation: _particleController,
                   builder: (context, _) => CustomPaint(
                     painter: _WorldParticlePainter(particles: _particles, particleType: _world.particleType),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: -20,
+                left: -40,
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: 0.15,
+                    child: Image.asset(
+                      _world.imagePath,
+                      width: 180,
+                      height: 180,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),

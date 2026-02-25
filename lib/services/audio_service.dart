@@ -21,6 +21,8 @@ class AudioService {
   bool _voicePlaying = false;
   bool _musicPlaying = false;
   String? _currentMusicFile;
+  static const double _musicVolume = 0.18;
+  static const double _musicDuckedVolume = 0.08;
 
   bool get isMuted => _muted;
   bool get isVoicePlaying => _voicePlaying;
@@ -30,7 +32,6 @@ class AudioService {
   static const _encouragementVoices = [
     'voice_keep_going.mp3',
     'voice_youre_doing_great.mp3',
-    'voice_almost_there.mp3',
     'voice_nice_combo.mp3',
     'voice_keep_it_up.mp3',
     'voice_so_strong.mp3',
@@ -137,7 +138,7 @@ class AudioService {
     if (_voicePlaying) return;
     _voicePlaying = true;
 
-    try { await _musicPlayer.setVolume(0.12); } catch (_) {}
+    try { await _musicPlayer.setVolume(_musicDuckedVolume); } catch (_) {}
 
     try {
       await _voicePlayer.stop();
@@ -156,7 +157,7 @@ class AudioService {
 
   void _restoreMusicVolume() {
     if (!_musicPlaying) return;
-    try { _musicPlayer.setVolume(0.5); } catch (_) {}
+    try { _musicPlayer.setVolume(_musicVolume); } catch (_) {}
   }
 
   Future<void> playMusic(String fileName) async {
@@ -171,7 +172,7 @@ class AudioService {
       _musicPlaying = true;
       await _musicPlayer.setSource(AssetSource('audio/$fileName'));
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-      await _musicPlayer.setVolume(0.5);
+      await _musicPlayer.setVolume(_musicVolume);
       await _musicPlayer.resume();
     } catch (_) {
       _musicPlaying = false;
@@ -184,7 +185,11 @@ class AudioService {
     if (_muted || !_musicPlaying || _currentMusicFile == null) return;
     try {
       final state = _musicPlayer.state;
-      if (state != PlayerState.playing && state != PlayerState.paused) {
+      if (state == PlayerState.paused) {
+        await _musicPlayer.resume();
+        return;
+      }
+      if (state != PlayerState.playing) {
         await playMusic(_currentMusicFile!);
       }
     } catch (_) {
