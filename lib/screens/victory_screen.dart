@@ -96,6 +96,9 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _starsToNextHero = 0;
   String? _nextMilestoneLabel;
   int _starsToNextMilestone = 0;
+  WorldData _world = WorldService.allWorlds[0];
+  int _worldProgress = 0;
+  int _worldRemaining = 0;
 
   bool _showChest = false;
   bool _chestOpened = false;
@@ -121,11 +124,13 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   Future<void> _recordAndAnimate() async {
     final hero = await _heroService.getSelectedHero();
-    final world = await _worldService.getCurrentWorld();
-    await _streakService.recordBrush(heroId: hero.id, worldId: world.id);
+    _world = await _worldService.getCurrentWorld();
+    await _streakService.recordBrush(heroId: hero.id, worldId: _world.id);
     await _worldService.recordMission();
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
+    _worldProgress = await _worldService.getWorldProgress(_world.id);
+    _worldRemaining = (_world.missionsRequired - _worldProgress).clamp(0, 9999);
 
     _newAchievements = await _achievementService.checkAndUnlock(
       streak: _newStreak, totalStars: _newStars,
@@ -151,6 +156,9 @@ class _VictoryScreenState extends State<VictoryScreen>
             ? 'voice_great_job_tonight.mp3'
             : 'voice_you_did_it.mp3';
     _audio.playVoice(victoryVoice);
+    Future.delayed(const Duration(milliseconds: 1100), () {
+      if (mounted) _audio.playVoice('voice_victory_star_and_chest.wav');
+    });
     _starController.forward();
     _starRotationController.repeat();
     _starGlowController.repeat(reverse: true);
@@ -163,7 +171,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
 
     // Show chest after initial celebration
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    Future.delayed(const Duration(milliseconds: 3400), () {
       if (!mounted) return;
       setState(() => _showChest = true);
       _chestBounceController.repeat(reverse: true);
@@ -205,6 +213,9 @@ class _VictoryScreenState extends State<VictoryScreen>
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) _doneButtonController.repeat(reverse: true);
       });
+      Future.delayed(const Duration(milliseconds: 2800), () {
+        if (mounted) _audio.playVoice('voice_see_you_soon.wav');
+      });
     });
   }
 
@@ -232,6 +243,35 @@ class _VictoryScreenState extends State<VictoryScreen>
     candidates.sort((a, b) => a.value.compareTo(b.value));
     _nextMilestoneLabel = candidates.first.key;
     _starsToNextMilestone = candidates.first.value;
+  }
+
+  List<String> _buildComebackLines() {
+    final lines = <String>[];
+
+    if (_newStreak > 1) {
+      lines.add('YOU ARE ON A $_newStreak DAY STREAK.');
+    } else {
+      lines.add('COME BACK TOMORROW TO START YOUR STREAK.');
+    }
+
+    if (_worldRemaining <= 0) {
+      lines.add('WORLD COMPLETE! NEXT WORLD IS WAITING.');
+    } else if (_worldRemaining == 1) {
+      lines.add('ONE MORE MISSION TO FINISH ${_world.name.toUpperCase()}!');
+    } else {
+      lines.add('$_worldRemaining MISSIONS LEFT IN ${_world.name.toUpperCase()}.');
+    }
+
+    if (_nextMilestoneLabel != null) {
+      if (_starsToNextMilestone <= 1) {
+        lines.add('ONE MORE STAR TO UNLOCK $_nextMilestoneLabel.');
+      } else {
+        lines.add('$_starsToNextMilestone STARS TO UNLOCK $_nextMilestoneLabel.');
+      }
+    }
+
+    lines.add('SEE YOU SOON, SPACE RANGER.');
+    return lines;
   }
 
   void _showAchievement(Achievement achievement) {
@@ -420,20 +460,22 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   letterSpacing: 1.3,
                                 ),
                               ),
-                              const SizedBox(height: 5),
-                              if (_nextMilestoneLabel != null)
-                                Text(
-                                  _starsToNextMilestone <= 0
-                                      ? 'NEXT MILESTONE READY NOW: $_nextMilestoneLabel'
-                                      : 'ONLY $_starsToNextMilestone STARS TO UNLOCK $_nextMilestoneLabel',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: const Color(0xFFFFD54F).withValues(alpha: 0.95),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    letterSpacing: 1.1,
-                                  ),
-                                ),
+                              const SizedBox(height: 8),
+                              ..._buildComebackLines().map((line) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 3),
+                                    child: Text(
+                                      line,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: line.contains('SEE YOU SOON')
+                                            ? const Color(0xFF69F0AE).withValues(alpha: 0.95)
+                                            : const Color(0xFFFFD54F).withValues(alpha: 0.95),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11.5,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  )),
                             ],
                           ),
                         ),
@@ -510,13 +552,12 @@ class _VictoryScreenState extends State<VictoryScreen>
             child: Container(
               width: 190, height: 190,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  colors: [Color(0xFFFFD54F), Color(0xFFFFA000), Color(0xFFE65100)],
+                borderRadius: BorderRadius.circular(28),
+                gradient: const RadialGradient(
+                  colors: [Color(0x33FFF59D), Color(0x00FFF59D)],
                 ),
                 boxShadow: [
-                  BoxShadow(color: const Color(0xFFFFD54F).withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 5),
+                  BoxShadow(color: const Color(0xFFFFD54F).withValues(alpha: 0.65), blurRadius: 38, spreadRadius: 7),
                   BoxShadow(color: const Color(0xFFFF6F00).withValues(alpha: 0.3), blurRadius: 60, spreadRadius: 10),
                 ],
               ),
@@ -530,7 +571,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                       Container(
                       width: 122, height: 24,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF8D6E63),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFFA1887F), Color(0xFF6D4C41)],
+                          ),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: const Color(0xFFFFD54F), width: 2),
                         ),
@@ -540,7 +585,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                            colors: [Color(0xFF8D6E63), Color(0xFF5D4037)],
+                            colors: [Color(0xFFA1887F), Color(0xFF4E342E)],
                           ),
                           borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
                           border: Border.all(color: const Color(0xFFFFD54F), width: 2),
@@ -575,6 +620,39 @@ class _VictoryScreenState extends State<VictoryScreen>
                     right: 30,
                     bottom: 28 + cos(_chestBounceController.value * pi * 2) * 4,
                     child: const Icon(Icons.auto_awesome, color: Color(0xFFFFF59D), size: 16),
+                  ),
+                  Positioned(
+                    top: 90,
+                    left: 34,
+                    right: 34,
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD54F).withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 112,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const RadialGradient(
+                          colors: [Color(0xFF80D8FF), Color(0xFF00B8D4)],
+                        ),
+                        border: Border.all(color: Colors.white, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF80D8FF).withValues(alpha: 0.8),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

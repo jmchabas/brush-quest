@@ -40,21 +40,21 @@ class _HomeScreenState extends State<HomeScreen>
   String? _lastPickerVoice;
 
   static const Map<String, String> _heroPickerVoice = {
-    'blaze': 'voice_hero_blaze.mp3',
-    'frost': 'voice_hero_frost.mp3',
-    'bolt': 'voice_hero_bolt.mp3',
-    'shadow': 'voice_hero_shadow.mp3',
-    'leaf': 'voice_hero_leaf.mp3',
-    'nova': 'voice_hero_nova.mp3',
+    'blaze': 'voice_picker_hero_blaze.wav',
+    'frost': 'voice_picker_hero_frost.wav',
+    'bolt': 'voice_picker_hero_bolt.wav',
+    'shadow': 'voice_picker_hero_shadow.wav',
+    'leaf': 'voice_picker_hero_leaf.wav',
+    'nova': 'voice_picker_hero_nova.wav',
   };
 
   static const Map<String, String> _weaponPickerVoice = {
-    'star_blaster': 'voice_super.mp3',
-    'flame_sword': 'voice_wow_amazing.mp3',
-    'ice_hammer': 'voice_awesome.mp3',
-    'lightning_wand': 'voice_unstoppable.mp3',
-    'vine_whip': 'voice_keep_it_up.mp3',
-    'cosmic_burst': 'voice_great_choice.mp3',
+    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
+    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
+    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
+    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
+    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
+    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
   };
 
   @override
