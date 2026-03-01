@@ -10,6 +10,7 @@ import '../services/world_service.dart';
 import '../services/camera_service.dart';
 import '../services/weapon_service.dart';
 import '../services/streak_service.dart';
+import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import '../widgets/glass_card.dart';
@@ -24,6 +25,7 @@ class BrushingScreen extends StatefulWidget {
 }
 
 enum BrushPhase { countdown, topLeft, topRight, bottomLeft, bottomRight, done }
+enum SessionStage { worldIntro, countdown, brushing, done }
 
 const brushPhaseOrder = [
   BrushPhase.topLeft,
@@ -169,9 +171,17 @@ class _BrushingScreenState extends State<BrushingScreen>
   final _worldService = WorldService();
   final _cameraService = CameraService();
   final _weaponService = WeaponService();
+  final _telemetry = TelemetryService();
 
   HeroCharacter _hero = HeroService.allHeroes[0];
   WorldData _world = WorldService.allWorlds[0];
+  DailyModifier _dailyModifier = const DailyModifier(
+    type: DailyModifierType.none,
+    title: 'NORMAL MISSION',
+    description: 'Steady progress day.',
+    icon: Icons.public,
+    color: Color(0xFFB388FF),
+  );
   WeaponItem _weapon = WeaponService.allWeapons[0];
 
   BrushPhase _phase = BrushPhase.countdown;
@@ -242,6 +252,11 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _showWorldIntro = true;
   int _worldIntroSecondsLeft = 3;
   Timer? _worldIntroTimer;
+  SessionStage _sessionStage = SessionStage.worldIntro;
+  static const _checkpointTsKey = 'session_checkpoint_ts';
+  static const _checkpointPhaseKey = 'session_checkpoint_phase';
+  static const _checkpointSecondsKey = 'session_checkpoint_seconds';
+  static const _checkpointWorldKey = 'session_checkpoint_world';
 
   // Boss battle system
   bool _isBossSession = false;
@@ -512,6 +527,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       setState(() {
         _hero = hero;
         _world = world;
+        _dailyModifier = _worldService.getDailyModifier();
         _weapon = weapon;
         _phaseDuration = duration;
         _isBossSession = totalBrushes > 0 && (totalBrushes + 1) % 5 == 0;
@@ -523,7 +539,64 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Future<void> _prepareSession() async {
     await _loadHeroAndWorld();
-    _startWorldIntro();
+    final restored = await _tryRestoreCheckpoint();
+    if (!restored) {
+      _startWorldIntro();
+    }
+  }
+
+  Future<bool> _tryRestoreCheckpoint() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ts = prefs.getInt(_checkpointTsKey);
+    final phaseName = prefs.getString(_checkpointPhaseKey);
+    final secondsLeft = prefs.getInt(_checkpointSecondsKey);
+    final worldId = prefs.getString(_checkpointWorldKey);
+    if (ts == null || phaseName == null || secondsLeft == null || worldId == null) {
+      return false;
+    }
+    final age = DateTime.now().millisecondsSinceEpoch - ts;
+    if (age > const Duration(minutes: 3).inMilliseconds) {
+      await _clearCheckpoint();
+      return false;
+    }
+    if (worldId != _world.id) {
+      await _clearCheckpoint();
+      return false;
+    }
+
+    final restoredPhase = BrushPhase.values.where((p) => p.name == phaseName).toList();
+    if (restoredPhase.isEmpty || restoredPhase.first == BrushPhase.done || restoredPhase.first == BrushPhase.countdown) {
+      await _clearCheckpoint();
+      return false;
+    }
+
+    setState(() {
+      _showWorldIntro = false;
+      _sessionStage = SessionStage.brushing;
+      _phase = restoredPhase.first;
+      _phaseSecondsLeft = secondsLeft.clamp(1, _phaseDuration);
+    });
+    _telemetry.logEvent('session_restored', params: {'phase': _phase.name, 'seconds_left': _phaseSecondsLeft});
+    _startBrushing(resumeFromCheckpoint: true);
+    return true;
+  }
+
+  Future<void> _saveCheckpoint() async {
+    if (_sessionStage != SessionStage.brushing) return;
+    if (_phase == BrushPhase.countdown || _phase == BrushPhase.done) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_checkpointTsKey, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setString(_checkpointPhaseKey, _phase.name);
+    await prefs.setInt(_checkpointSecondsKey, _phaseSecondsLeft);
+    await prefs.setString(_checkpointWorldKey, _world.id);
+  }
+
+  Future<void> _clearCheckpoint() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_checkpointTsKey);
+    await prefs.remove(_checkpointPhaseKey);
+    await prefs.remove(_checkpointSecondsKey);
+    await prefs.remove(_checkpointWorldKey);
   }
 
   void _startWorldIntro() {
@@ -531,6 +604,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     setState(() {
       _showWorldIntro = true;
       _worldIntroSecondsLeft = 3;
+      _sessionStage = SessionStage.worldIntro;
     });
 
     _worldIntroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -539,7 +613,10 @@ class _BrushingScreenState extends State<BrushingScreen>
         setState(() => _worldIntroSecondsLeft--);
       } else {
         timer.cancel();
-        setState(() => _showWorldIntro = false);
+        setState(() {
+          _showWorldIntro = false;
+          _sessionStage = SessionStage.countdown;
+        });
         _startCountdown();
       }
     });
@@ -576,7 +653,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== COUNTDOWN ====================
 
   void _startCountdown() {
-    setState(() => _phase = BrushPhase.countdown);
+    setState(() {
+      _phase = BrushPhase.countdown;
+      _sessionStage = SessionStage.countdown;
+    });
     _audio.playVoice('voice_countdown.mp3');
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
@@ -596,9 +676,19 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   // ==================== BRUSHING ====================
 
-  void _startBrushing() {
-    _totalHits = 0;
-    _attackStyleIndex = 0;
+  void _startBrushing({bool resumeFromCheckpoint = false}) {
+    _telemetry.logEvent('brushing_started', params: {
+      'world_id': _world.id,
+      'hero_id': _hero.id,
+      'weapon_id': _weapon.id,
+      'camera_ready': _cameraReady,
+      'daily_modifier': _dailyModifier.type.name,
+    });
+    if (!resumeFromCheckpoint) {
+      _totalHits = 0;
+      _attackStyleIndex = 0;
+    }
+    _sessionStage = SessionStage.brushing;
 
     // Start battle music (2-min pre-looped file for reliable Android playback)
     _audio.playMusic('battle_music_loop.mp3');
@@ -617,11 +707,14 @@ class _BrushingScreenState extends State<BrushingScreen>
       (_) => _showNextCompanionMessage(),
     );
 
-    _switchToPhase(BrushPhase.topLeft);
+    if (!resumeFromCheckpoint) {
+      _switchToPhase(BrushPhase.topLeft);
+    }
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isPaused) return;
       setState(() => _phaseSecondsLeft--);
+      _saveCheckpoint();
 
       final encourageAt = (_phaseDuration * 0.65).round();
       final almostAt = (_phaseDuration * 0.33).round();
@@ -674,6 +767,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       _startMotionDetection();
       _resetStallTimer();
     } else {
+      _telemetry.logEvent('camera_unavailable_fallback');
       _startBaseAttackTimer();
     }
   }
@@ -820,7 +914,8 @@ class _BrushingScreenState extends State<BrushingScreen>
       if (_monster.alive) {
         _monster.hitRecoil = 1.0;
         // Each attack does damage (boss takes half damage)
-        _monster.health -= _isBossPhase ? 0.04 : 0.08;
+        final baseDamage = _isBossPhase ? 0.04 : 0.08;
+        _monster.health -= baseDamage * _dailyModifier.damageMultiplier;
         if (_monster.health <= 0) {
           _monster.health = 0;
         }
@@ -995,17 +1090,27 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _musicHealthTimer?.cancel();
     _audio.stopMusic();
+    _clearCheckpoint();
     Navigator.of(context).pop();
   }
 
   void _finishBrushing() {
+    _telemetry.logEvent('brushing_completed', params: {
+      'total_hits': _totalHits,
+      'monsters_defeated': _monstersDefeated,
+      'boss_session': _isBossSession,
+    });
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _companionTimer?.cancel();
     _musicHealthTimer?.cancel();
     _stopMotionDetection();
     _audio.stopMusic();
-    setState(() => _phase = BrushPhase.done);
+    _clearCheckpoint();
+    setState(() {
+      _phase = BrushPhase.done;
+      _sessionStage = SessionStage.done;
+    });
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
@@ -1031,7 +1136,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       onPopInvokedWithResult: (didPop, result) { if (!didPop) _togglePause(); },
       child: _showWorldIntro
           ? _buildWorldIntro()
-          : _phase == BrushPhase.countdown
+          : _sessionStage == SessionStage.countdown
               ? _buildCountdown()
               : _buildBrushing(),
     );
@@ -1503,6 +1608,23 @@ class _BrushingScreenState extends State<BrushingScreen>
                                           fontWeight: FontWeight.bold,
                                           letterSpacing: 2,
                                         ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(_dailyModifier.icon, size: 14, color: Colors.white.withValues(alpha: 0.85)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _dailyModifier.title,
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.85),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 1.4,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),

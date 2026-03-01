@@ -1,6 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum DailyModifierType { none, frenzy, precision, treasureBoost, bossRush }
+
+class DailyModifier {
+  final DailyModifierType type;
+  final String title;
+  final String description;
+  final IconData icon;
+  final Color color;
+  final double damageMultiplier;
+  final int chestBonusStars;
+  final double bossChanceMultiplier;
+
+  const DailyModifier({
+    required this.type,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.color,
+    this.damageMultiplier = 1.0,
+    this.chestBonusStars = 0,
+    this.bossChanceMultiplier = 1.0,
+  });
+}
+
 class WorldData {
   final String id;
   final String name;
@@ -141,5 +165,57 @@ class WorldService {
 
   static WorldData getWorldById(String id) {
     return allWorlds.firstWhere((w) => w.id == id, orElse: () => allWorlds[0]);
+  }
+
+  DailyModifier getDailyModifier([DateTime? date]) {
+    final now = date ?? DateTime.now();
+    final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
+    final idx = dayOfYear % 5;
+    switch (idx) {
+      case 0:
+        return const DailyModifier(
+          type: DailyModifierType.frenzy,
+          title: 'FRENZY DAY',
+          description: 'Your attacks hit harder today!',
+          icon: Icons.flash_on,
+          color: Color(0xFFFFD54F),
+          damageMultiplier: 1.2,
+        );
+      case 1:
+        return const DailyModifier(
+          type: DailyModifierType.precision,
+          title: 'PRECISION DAY',
+          description: 'Smoother hits and cleaner takedowns.',
+          icon: Icons.gps_fixed,
+          color: Color(0xFF00E5FF),
+          damageMultiplier: 1.1,
+        );
+      case 2:
+        return const DailyModifier(
+          type: DailyModifierType.treasureBoost,
+          title: 'TREASURE BOOST',
+          description: 'Chest rewards may grant extra stars.',
+          icon: Icons.card_giftcard,
+          color: Color(0xFF69F0AE),
+          chestBonusStars: 1,
+        );
+      case 3:
+        return const DailyModifier(
+          type: DailyModifierType.bossRush,
+          title: 'BOSS RUSH',
+          description: 'Boss chance is higher today.',
+          icon: Icons.workspace_premium,
+          color: Color(0xFFFF6E40),
+          bossChanceMultiplier: 1.5,
+        );
+      default:
+        return const DailyModifier(
+          type: DailyModifierType.none,
+          title: 'NORMAL MISSION',
+          description: 'Steady progress day.',
+          icon: Icons.public,
+          color: Color(0xFFB388FF),
+        );
+    }
   }
 }

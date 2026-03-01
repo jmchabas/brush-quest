@@ -7,6 +7,7 @@ import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
+import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
@@ -79,6 +80,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _achievementService = AchievementService();
   final _worldService = WorldService();
   final _random = Random();
+  final _telemetry = TelemetryService();
 
   late AnimationController _starController;
   late Animation<double> _starScale;
@@ -91,6 +93,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   late AnimationController _rewardRevealController;
   int _newStreak = 0;
   int _newStars = 0;
+  int _starsEarnedThisSession = 0;
   List<Achievement> _newAchievements = [];
   HeroCharacter? _nextHero;
   int _starsToNextHero = 0;
@@ -99,6 +102,13 @@ class _VictoryScreenState extends State<VictoryScreen>
   WorldData _world = WorldService.allWorlds[0];
   int _worldProgress = 0;
   int _worldRemaining = 0;
+  DailyModifier _dailyModifier = const DailyModifier(
+    type: DailyModifierType.none,
+    title: 'NORMAL MISSION',
+    description: 'Steady progress day.',
+    icon: Icons.public,
+    color: Color(0xFFB388FF),
+  );
 
   bool _showChest = false;
   bool _chestOpened = false;
@@ -125,8 +135,12 @@ class _VictoryScreenState extends State<VictoryScreen>
   Future<void> _recordAndAnimate() async {
     final hero = await _heroService.getSelectedHero();
     _world = await _worldService.getCurrentWorld();
-    await _streakService.recordBrush(heroId: hero.id, worldId: _world.id);
-    await _worldService.recordMission();
+    _dailyModifier = _worldService.getDailyModifier();
+    final outcome = await _streakService.recordBrush(heroId: hero.id, worldId: _world.id);
+    _starsEarnedThisSession = outcome.starsEarned;
+    if (outcome.starsEarned > 0) {
+      await _worldService.recordMission();
+    }
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
     _worldProgress = await _worldService.getWorldProgress(_world.id);
@@ -157,7 +171,9 @@ class _VictoryScreenState extends State<VictoryScreen>
             : 'voice_you_did_it.mp3';
     _audio.playVoice(victoryVoice);
     Future.delayed(const Duration(milliseconds: 1100), () {
-      if (mounted) _audio.playVoice('voice_victory_star_and_chest.wav');
+      if (mounted && _starsEarnedThisSession > 0) {
+        _audio.playVoice('voice_star_collected.mp3');
+      }
     });
     _starController.forward();
     _starRotationController.repeat();
@@ -185,6 +201,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     HapticFeedback.heavyImpact();
 
     _reward = _rewardTable[_random.nextInt(_rewardTable.length)];
+    _telemetry.logEvent('chest_opened', params: {
+      'reward_type': _reward!.type.name,
+      'bonus_stars': _reward!.bonusStars + _dailyModifier.chestBonusStars,
+      'streak': _newStreak,
+    });
     _chestBounceController.stop();
     _chestOpenController.forward();
 
@@ -195,8 +216,9 @@ class _VictoryScreenState extends State<VictoryScreen>
       _rewardRevealController.forward();
       _audio.playVoice(_reward!.voiceFile);
 
-      if (_reward!.bonusStars > 0) {
-        await _streakService.addBonusStars(_reward!.bonusStars);
+      final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
+      if (totalBonus > 0) {
+        await _streakService.addBonusStars(totalBonus);
         final updated = await _streakService.getTotalStars();
         _newStars = updated;
         await _refreshMilestoneHint();
@@ -213,9 +235,7 @@ class _VictoryScreenState extends State<VictoryScreen>
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) _doneButtonController.repeat(reverse: true);
       });
-      Future.delayed(const Duration(milliseconds: 2800), () {
-        if (mounted) _audio.playVoice('voice_see_you_soon.wav');
-      });
+      _playComebackVoiceSequence();
     });
   }
 
@@ -245,33 +265,23 @@ class _VictoryScreenState extends State<VictoryScreen>
     _starsToNextMilestone = candidates.first.value;
   }
 
-  List<String> _buildComebackLines() {
-    final lines = <String>[];
+  Future<void> _playComebackVoiceSequence() async {
+    // Voice-only comeback motivation using the existing app narrator style.
+    final milestoneVoice = (_nextMilestoneLabel != null && _starsToNextMilestone <= 1)
+        ? 'voice_stars_unlock.mp3'
+        : 'voice_keep_going.mp3';
 
-    if (_newStreak > 1) {
-      lines.add('YOU ARE ON A $_newStreak DAY STREAK.');
-    } else {
-      lines.add('COME BACK TOMORROW TO START YOUR STREAK.');
+    final lines = <String>[
+      _newStreak > 1 ? 'voice_unstoppable.mp3' : 'voice_keep_going.mp3',
+      _worldRemaining <= 1 ? 'voice_wow_amazing.mp3' : 'voice_keep_it_up.mp3',
+      milestoneVoice,
+      'voice_welcome_back.mp3',
+    ];
+    for (final file in lines) {
+      if (!mounted) return;
+      await _audio.playVoice(file);
+      await Future.delayed(const Duration(milliseconds: 250));
     }
-
-    if (_worldRemaining <= 0) {
-      lines.add('WORLD COMPLETE! NEXT WORLD IS WAITING.');
-    } else if (_worldRemaining == 1) {
-      lines.add('ONE MORE MISSION TO FINISH ${_world.name.toUpperCase()}!');
-    } else {
-      lines.add('$_worldRemaining MISSIONS LEFT IN ${_world.name.toUpperCase()}.');
-    }
-
-    if (_nextMilestoneLabel != null) {
-      if (_starsToNextMilestone <= 1) {
-        lines.add('ONE MORE STAR TO UNLOCK $_nextMilestoneLabel.');
-      } else {
-        lines.add('$_starsToNextMilestone STARS TO UNLOCK $_nextMilestoneLabel.');
-      }
-    }
-
-    lines.add('SEE YOU SOON, SPACE RANGER.');
-    return lines;
   }
 
   void _showAchievement(Achievement achievement) {
@@ -374,7 +384,36 @@ class _VictoryScreenState extends State<VictoryScreen>
                       shadows: [Shadow(color: const Color(0xFFFFD54F).withValues(alpha: 0.8), blurRadius: 20)],
                     )),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(_dailyModifier.icon, color: _dailyModifier.color, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          _dailyModifier.title,
+                          style: TextStyle(
+                            color: _dailyModifier.color,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _starsEarnedThisSession > 0
+                          ? '+$_starsEarnedThisSession STAR THIS SESSION'
+                          : 'PRACTICE SESSION COMPLETE',
+                      style: TextStyle(
+                        color: _starsEarnedThisSession > 0 ? const Color(0xFFFFD54F) : Colors.white70,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
 
                     // Star bank
                     GlassCard(
@@ -447,35 +486,21 @@ class _VictoryScreenState extends State<VictoryScreen>
                       Padding(
                         padding: const EdgeInsets.fromLTRB(26, 14, 26, 0),
                         child: GlassCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          child: Column(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              Icon(Icons.record_voice_over, color: const Color(0xFF69F0AE).withValues(alpha: 0.95), size: 18),
+                              const SizedBox(width: 8),
                               Text(
-                                'YOU ARE STACKING STARS LIKE A SUPER RANGER!',
-                                textAlign: TextAlign.center,
+                                'MISSION UPDATE PLAYING...',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.92),
+                                  color: const Color(0xFF69F0AE).withValues(alpha: 0.95),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
-                                  letterSpacing: 1.3,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              ..._buildComebackLines().map((line) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 3),
-                                    child: Text(
-                                      line,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: line.contains('SEE YOU SOON')
-                                            ? const Color(0xFF69F0AE).withValues(alpha: 0.95)
-                                            : const Color(0xFFFFD54F).withValues(alpha: 0.95),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11.5,
-                                        letterSpacing: 1.0,
-                                      ),
-                                    ),
-                                  )),
                             ],
                           ),
                         ),
@@ -531,7 +556,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   Widget _buildChest() {
     if (!_chestOpened) {
-      // Unopened chest — big, bouncing, tappable
+      // Unopened chest — polished icon-first visual
       return TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
         duration: const Duration(milliseconds: 600),
@@ -550,66 +575,57 @@ class _VictoryScreenState extends State<VictoryScreen>
           child: GestureDetector(
             onTap: _openChest,
             child: Container(
-              width: 190, height: 190,
+              width: 200, height: 200,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
+                shape: BoxShape.circle,
                 gradient: const RadialGradient(
-                  colors: [Color(0x33FFF59D), Color(0x00FFF59D)],
+                  colors: [Color(0x44FFF59D), Color(0x00FFF59D)],
                 ),
                 boxShadow: [
-                  BoxShadow(color: const Color(0xFFFFD54F).withValues(alpha: 0.65), blurRadius: 38, spreadRadius: 7),
+                  BoxShadow(color: const Color(0xFFFFD54F).withValues(alpha: 0.72), blurRadius: 42, spreadRadius: 10),
                   BoxShadow(color: const Color(0xFFFF6F00).withValues(alpha: 0.3), blurRadius: 60, spreadRadius: 10),
                 ],
               ),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Chest body
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                      width: 122, height: 24,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFFA1887F), Color(0xFF6D4C41)],
-                          ),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: const Color(0xFFFFD54F), width: 2),
-                        ),
+                  Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFFFE082), Color(0xFFFFB300), Color(0xFFEF6C00)],
                       ),
-                      Container(
-                        width: 132, height: 78,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                            colors: [Color(0xFFA1887F), Color(0xFF4E342E)],
-                          ),
-                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-                          border: Border.all(color: const Color(0xFFFFD54F), width: 2),
+                      border: Border.all(color: const Color(0xFFFFF59D), width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.65),
+                          blurRadius: 26,
+                          spreadRadius: 3,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  // Lock/clasp
+                  const Icon(
+                    Icons.inventory_2_rounded,
+                    size: 86,
+                    color: Color(0xFF4E342E),
+                  ),
                   Positioned(
-                    top: 70,
+                    top: 66,
                     child: Container(
-                      width: 34, height: 34,
+                      width: 42, height: 26,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(10),
                         color: const Color(0xFFFFD54F),
                         border: Border.all(color: const Color(0xFFFFA000), width: 2),
                         boxShadow: [BoxShadow(color: const Color(0xFFFFD54F).withValues(alpha: 0.6), blurRadius: 10)],
                       ),
-                      child: const Icon(Icons.lock, color: Color(0xFF5D4037), size: 18),
+                      child: const Icon(Icons.lock, color: Color(0xFF5D4037), size: 16),
                     ),
-                  ),
-                  Positioned(
-                    top: 18, right: 26,
-                    child: Text('?', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                   ),
                   Positioned(
                     left: 22,
@@ -622,35 +638,21 @@ class _VictoryScreenState extends State<VictoryScreen>
                     child: const Icon(Icons.auto_awesome, color: Color(0xFFFFF59D), size: 16),
                   ),
                   Positioned(
-                    top: 90,
-                    left: 34,
-                    right: 34,
+                    bottom: 24,
                     child: Container(
-                      height: 8,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFD54F).withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.black.withValues(alpha: 0.25),
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 112,
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const RadialGradient(
-                          colors: [Color(0xFF80D8FF), Color(0xFF00B8D4)],
+                      child: const Text(
+                        'TAP',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.4,
+                          fontSize: 11,
                         ),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF80D8FF).withValues(alpha: 0.8),
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          ),
-                        ],
                       ),
                     ),
                   ),

@@ -3,6 +3,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'sync_service.dart';
 
+enum BrushSlot { morning, evening }
+
+class BrushOutcome {
+  final int starsEarned;
+  final BrushSlot slot;
+  final bool newSlotCompleted;
+
+  const BrushOutcome({
+    required this.starsEarned,
+    required this.slot,
+    required this.newSlotCompleted,
+  });
+}
+
+class TodaySlotsStatus {
+  final bool morningDone;
+  final bool eveningDone;
+  const TodaySlotsStatus({required this.morningDone, required this.eveningDone});
+
+  int get completedCount => (morningDone ? 1 : 0) + (eveningDone ? 1 : 0);
+}
+
 class BrushRecord {
   final String date;
   final String time;
@@ -40,36 +62,43 @@ class StreakService {
   static const _keyTotalBrushes = 'total_brushes';
   static const _keyBestStreak = 'best_streak';
   static const _keyHistory = 'brush_history';
+  static const _keyMorningDoneDate = 'morning_done_date';
+  static const _keyEveningDoneDate = 'evening_done_date';
 
-  Future<void> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
+  Future<BrushOutcome> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
     final prefs = await SharedPreferences.getInstance();
     final today = _todayString();
     final now = DateTime.now();
     final lastDate = prefs.getString(_keyLastBrushDate) ?? '';
-    final savedDate = prefs.getString(_keyTodayDate) ?? '';
+    final slot = _slotForHour(now.hour);
+    final slotKey = slot == BrushSlot.morning ? _keyMorningDoneDate : _keyEveningDoneDate;
+    final slotAlreadyDone = prefs.getString(slotKey) == today;
+    final newSlotCompleted = !slotAlreadyDone;
 
-    // Update today's brush count
-    int todayCount = 0;
-    if (savedDate == today) {
-      todayCount = prefs.getInt(_keyTodayBrushCount) ?? 0;
+    // Update today's slots and stars (cap core progression to AM/PM completions).
+    final starsEarned = newSlotCompleted ? 1 : 0;
+    if (newSlotCompleted) {
+      await prefs.setString(slotKey, today);
+      final todaySlots = await getTodaySlots();
+      await prefs.setInt(_keyTodayBrushCount, todaySlots.completedCount);
+      await prefs.setString(_keyTodayDate, today);
     }
-    todayCount++;
-    await prefs.setInt(_keyTodayBrushCount, todayCount);
-    await prefs.setString(_keyTodayDate, today);
 
     // Update streak
     int streak = prefs.getInt(_keyCurrentStreak) ?? 0;
-    if (lastDate == today) {
-      // Already brushed today, don't increment streak
-    } else if (lastDate == _yesterdayString()) {
-      streak++;
-    } else if (lastDate.isEmpty) {
-      streak = 1;
-    } else {
-      streak = 1; // Streak broken
+    if (newSlotCompleted) {
+      if (lastDate == today) {
+        // Another slot in same day; keep streak unchanged.
+      } else if (lastDate == _yesterdayString()) {
+        streak++;
+      } else if (lastDate.isEmpty) {
+        streak = 1;
+      } else {
+        streak = 1; // Streak broken
+      }
+      await prefs.setInt(_keyCurrentStreak, streak);
+      await prefs.setString(_keyLastBrushDate, today);
     }
-    await prefs.setInt(_keyCurrentStreak, streak);
-    await prefs.setString(_keyLastBrushDate, today);
 
     // Update best streak
     final bestStreak = prefs.getInt(_keyBestStreak) ?? 0;
@@ -78,9 +107,11 @@ class StreakService {
     }
 
     // Update total stars
-    int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
-    totalStars++;
-    await prefs.setInt(_keyTotalStars, totalStars);
+    if (starsEarned > 0) {
+      int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
+      totalStars += starsEarned;
+      await prefs.setInt(_keyTotalStars, totalStars);
+    }
 
     // Update lifetime brush count
     int totalBrushes = prefs.getInt(_keyTotalBrushes) ?? 0;
@@ -101,9 +132,19 @@ class StreakService {
     }
     await prefs.setStringList(_keyHistory, historyJson);
 
-    if (AuthService().isSignedIn) {
-      SyncService().uploadProgress().catchError((_) {});
+    try {
+      if (AuthService().isSignedIn) {
+        SyncService().uploadProgress().catchError((_) {});
+      }
+    } catch (_) {
+      // Firebase may be unavailable in unit tests; local progress still persists.
     }
+
+    return BrushOutcome(
+      starsEarned: starsEarned,
+      slot: slot,
+      newSlotCompleted: newSlotCompleted,
+    );
   }
 
   Future<int> getStreak() async {
@@ -138,12 +179,16 @@ class StreakService {
   }
 
   Future<int> getTodayBrushCount() async {
+    final slots = await getTodaySlots();
+    return slots.completedCount;
+  }
+
+  Future<TodaySlotsStatus> getTodaySlots() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedDate = prefs.getString(_keyTodayDate) ?? '';
-    if (savedDate == _todayString()) {
-      return prefs.getInt(_keyTodayBrushCount) ?? 0;
-    }
-    return 0;
+    final today = _todayString();
+    final morningDone = prefs.getString(_keyMorningDoneDate) == today;
+    final eveningDone = prefs.getString(_keyEveningDoneDate) == today;
+    return TodaySlotsStatus(morningDone: morningDone, eveningDone: eveningDone);
   }
 
   Future<int> getTotalBrushes() async {
@@ -174,5 +219,9 @@ class StreakService {
   String _yesterdayString() {
     final yesterday = DateTime.now().subtract(const Duration(days: 1));
     return '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+  }
+
+  BrushSlot _slotForHour(int hour) {
+    return hour < 15 ? BrushSlot.morning : BrushSlot.evening;
   }
 }

@@ -24,6 +24,25 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
   List<String> _unlockedWeapons = ['star_blaster'];
   String _selectedWeaponId = 'star_blaster';
   int _stars = 0;
+  String? _lastSelectionVoice;
+
+  static const Map<String, String> _heroSelectionVoice = {
+    'blaze': 'voice_hero_blaze.mp3',
+    'frost': 'voice_hero_frost.mp3',
+    'bolt': 'voice_hero_bolt.mp3',
+    'shadow': 'voice_hero_shadow.mp3',
+    'leaf': 'voice_hero_leaf.mp3',
+    'nova': 'voice_hero_nova.mp3',
+  };
+
+  static const Map<String, String> _weaponSelectionVoice = {
+    'star_blaster': 'voice_super.mp3',
+    'flame_sword': 'voice_wow_amazing.mp3',
+    'ice_hammer': 'voice_awesome.mp3',
+    'lightning_wand': 'voice_unstoppable.mp3',
+    'vine_whip': 'voice_keep_it_up.mp3',
+    'cosmic_burst': 'voice_great_choice.mp3',
+  };
 
   late TabController _tabController;
 
@@ -61,13 +80,14 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
     if (_unlockedHeroes.contains(hero.id)) {
       await _heroService.selectHero(hero.id);
       HapticFeedback.mediumImpact();
-      AudioService().playVoice('voice_great_choice.mp3');
+      _playSelectionVoice(_heroSelectionVoice[hero.id] ?? 'voice_great_choice.mp3');
       await _loadData();
     } else if (_stars >= hero.cost) {
       final success = await _heroService.unlockHero(hero.id);
       if (success) {
         await _heroService.selectHero(hero.id);
         HapticFeedback.heavyImpact();
+        _playSelectionVoice(_heroSelectionVoice[hero.id] ?? 'voice_great_choice.mp3');
         if (mounted) _showHeroUnlockAnimation(hero);
         await _loadData();
       }
@@ -93,12 +113,14 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
     if (_unlockedWeapons.contains(weapon.id)) {
       await _weaponService.selectWeapon(weapon.id);
       HapticFeedback.mediumImpact();
+      _playSelectionVoice(_weaponSelectionVoice[weapon.id] ?? 'voice_awesome.mp3');
       await _loadData();
     } else if (_stars >= weapon.cost) {
       final success = await _weaponService.unlockWeapon(weapon.id);
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         HapticFeedback.heavyImpact();
+        _playSelectionVoice(_weaponSelectionVoice[weapon.id] ?? 'voice_awesome.mp3');
         if (mounted) _showWeaponUnlockAnimation(weapon);
         await _loadData();
       }
@@ -118,6 +140,12 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
         );
       }
     }
+  }
+
+  void _playSelectionVoice(String fileName) {
+    if (_lastSelectionVoice == fileName) return;
+    _lastSelectionVoice = fileName;
+    AudioService().playVoice(fileName);
   }
 
   void _showHeroUnlockAnimation(HeroCharacter hero) {
@@ -156,7 +184,7 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                        'SHOP',
+                        'HEROES & WEAPONS',
                         style:
                             Theme.of(context).textTheme.headlineMedium?.copyWith(
                                   color: Colors.white,

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/camera_service.dart';
+import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
@@ -24,9 +26,12 @@ class _HomeScreenState extends State<HomeScreen>
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
+  final _telemetry = TelemetryService();
   int _totalStars = 0;
   int _streak = 0;
   int _todayBrushCount = 0;
+  bool _morningDone = false;
+  bool _eveningDone = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
 
@@ -40,28 +45,27 @@ class _HomeScreenState extends State<HomeScreen>
   String? _lastPickerVoice;
 
   static const Map<String, String> _heroPickerVoice = {
-    'blaze': 'voice_picker_hero_blaze.wav',
-    'frost': 'voice_picker_hero_frost.wav',
-    'bolt': 'voice_picker_hero_bolt.wav',
-    'shadow': 'voice_picker_hero_shadow.wav',
-    'leaf': 'voice_picker_hero_leaf.wav',
-    'nova': 'voice_picker_hero_nova.wav',
+    'blaze': 'voice_hero_blaze.mp3',
+    'frost': 'voice_hero_frost.mp3',
+    'bolt': 'voice_hero_bolt.mp3',
+    'shadow': 'voice_hero_shadow.mp3',
+    'leaf': 'voice_hero_leaf.mp3',
+    'nova': 'voice_hero_nova.mp3',
   };
 
   static const Map<String, String> _weaponPickerVoice = {
-    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
-    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
-    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
-    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
-    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
-    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
+    'star_blaster': 'voice_super.mp3',
+    'flame_sword': 'voice_wow_amazing.mp3',
+    'ice_hammer': 'voice_awesome.mp3',
+    'lightning_wand': 'voice_unstoppable.mp3',
+    'vine_whip': 'voice_keep_it_up.mp3',
+    'cosmic_burst': 'voice_great_choice.mp3',
   };
 
   @override
   void initState() {
     super.initState();
     _loadStats();
-    _requestCameraPermission();
     _playWelcomeVoice();
 
     _pulseController = AnimationController(
@@ -100,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen>
     final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
     final todayCount = await _streakService.getTodayBrushCount();
+    final todaySlots = await _streakService.getTodaySlots();
 
     if (mounted) {
       setState(() {
@@ -108,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen>
         _selectedWeapon = weapon;
         _streak = streak;
         _todayBrushCount = todayCount;
+        _morningDone = todaySlots.morningDone;
+        _eveningDone = todaySlots.eveningDone;
       });
     }
   }
@@ -126,14 +133,58 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Request camera permission early so the OS dialog appears while system UI is visible.
-  Future<void> _requestCameraPermission() async {
-    await CameraService().initialize();
-  }
-
   void _startBrushing() {
     HapticFeedback.heavyImpact();
     AudioService().playSfx('whoosh.mp3');
+    _telemetry.logEvent('session_start_tap');
+    _startBrushingFlow();
+  }
+
+  Future<void> _startBrushingFlow() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final wantsCamera = prefs.getBool('camera_enabled') ?? true;
+    if (!wantsCamera) {
+      _showPreBrushPicker();
+      return;
+    }
+
+    final proceed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Camera Motion Mode',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Allow camera to detect brushing motion for attacks? You can still play without it.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('NO CAMERA', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('ALLOW', style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    if (proceed == true) {
+      await CameraService().initialize();
+      _telemetry.logEvent('camera_prompt_accept');
+      if (!mounted) return;
+    } else {
+      await prefs.setBool('camera_enabled', false);
+      _telemetry.logEvent('camera_prompt_decline');
+      if (!mounted) return;
+    }
     _showPreBrushPicker();
   }
 
@@ -182,15 +233,21 @@ class _HomeScreenState extends State<HomeScreen>
         onHeroSelected: (hero) async {
           await _heroService.selectHero(hero.id);
           setState(() => _selectedHero = hero);
+          _telemetry.logEvent('picker_hero_selected', params: {'hero_id': hero.id});
           _playPickerVoice(_heroPickerVoice[hero.id] ?? 'voice_great_choice.mp3');
         },
         onWeaponSelected: (weapon) async {
           await _weaponService.selectWeapon(weapon.id);
           setState(() => _selectedWeapon = weapon);
+          _telemetry.logEvent('picker_weapon_selected', params: {'weapon_id': weapon.id});
           _playPickerVoice(_weaponPickerVoice[weapon.id] ?? 'voice_awesome.mp3');
         },
         onGo: () {
           Navigator.pop(ctx);
+          _telemetry.logEvent('session_confirmed', params: {
+            'hero_id': _selectedHero.id,
+            'weapon_id': _selectedWeapon.id,
+          });
           AudioService().playVoice('voice_lets_fight.mp3');
           Future.delayed(const Duration(milliseconds: 600), () {
             if (mounted) _launchBrushingScreen();
@@ -369,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       // Today count
                       const SizedBox(width: 16),
-                      Icon(Icons.brush, color: const Color(0xFF69F0AE).withValues(alpha: 0.8), size: 20),
+                      Icon(Icons.brush, color: const Color(0xFF69F0AE).withValues(alpha: 0.8), size: 18),
                       const SizedBox(width: 4),
                       Text(
                         '$_todayBrushCount/2',
@@ -380,6 +437,18 @@ class _HomeScreenState extends State<HomeScreen>
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
+                      ),
+                      const SizedBox(width: 10),
+                      Icon(
+                        _morningDone ? Icons.wb_sunny : Icons.wb_sunny_outlined,
+                        color: _morningDone ? Colors.amber : Colors.white38,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        _eveningDone ? Icons.nightlight_round : Icons.nightlight_outlined,
+                        color: _eveningDone ? const Color(0xFF90CAF9) : Colors.white38,
+                        size: 18,
                       ),
                     ],
                   ),

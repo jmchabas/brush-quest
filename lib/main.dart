@@ -1,18 +1,31 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'services/telemetry_service.dart';
 import 'widgets/asset_preloader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const BrushQuestApp());
+  await runZonedGuarded<Future<void>>(() async {
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+    runApp(const BrushQuestApp());
+  }, (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  });
 }
 
 class BrushQuestApp extends StatelessWidget {
@@ -33,6 +46,7 @@ class BrushQuestApp extends StatelessWidget {
           ThemeData.dark().textTheme,
         ),
       ),
+      navigatorObservers: [TelemetryService().observer],
       home: const AssetPreloader(child: _AppEntry()),
     );
   }

@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/audio_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -17,11 +20,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _cameraEnabled = true;
   int _totalBrushes = 0;
   int _bestStreak = 0;
+  List<int> _weeklyBrushCounts = List<int>.filled(7, 0);
+  int _weeklyMorningBrushes = 0;
+  int _weeklyEveningBrushes = 0;
   bool _signingIn = false;
   bool _syncing = false;
 
   final _auth = AuthService();
   final _sync = SyncService();
+  final _telemetry = TelemetryService();
+  bool _parentUnlocked = false;
 
   @override
   void initState() {
@@ -39,15 +47,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _bestStreak = prefs.getInt('best_streak') ?? 0;
       });
     }
+    await _loadWeeklyStats();
+  }
+
+  Future<void> _loadWeeklyStats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final history = prefs.getStringList('brush_history') ?? const [];
+    final now = DateTime.now();
+    final byDay = List<int>.filled(7, 0);
+    int morning = 0;
+    int evening = 0;
+
+    for (final raw in history) {
+      try {
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        final date = DateTime.tryParse(map['date'] as String? ?? '');
+        if (date == null) continue;
+        final dayDiff = now.difference(DateTime(date.year, date.month, date.day)).inDays;
+        if (dayDiff < 0 || dayDiff > 6) continue;
+        byDay[6 - dayDiff] += 1;
+        final time = map['time'] as String? ?? '';
+        final hour = int.tryParse(time.split(':').first) ?? 12;
+        if (hour < 15) {
+          morning++;
+        } else {
+          evening++;
+        }
+      } catch (_) {
+        // Ignore malformed historical entry.
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _weeklyBrushCounts = byDay;
+        _weeklyMorningBrushes = morning;
+        _weeklyEveningBrushes = evening;
+      });
+    }
   }
 
   Future<void> _setPhaseDuration(int seconds) async {
+    final allowed = await _ensureParentAccess();
+    if (!allowed) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('phase_duration', seconds);
     setState(() => _phaseDuration = seconds);
   }
 
   Future<void> _toggleCamera(bool value) async {
+    final allowed = await _ensureParentAccess();
+    if (!allowed) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_enabled', value);
     setState(() => _cameraEnabled = value);
@@ -59,6 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final user = await _auth.signInWithGoogle();
       if (user != null && mounted) {
         await _sync.smartSync();
+        _telemetry.logEvent('auth_signin_success');
         await _loadSettings();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -73,6 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
+      _telemetry.logEvent('auth_signin_failed');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -90,14 +142,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _handleSignOut() async {
+    final allowed = await _ensureParentAccess();
+    if (!allowed) return;
     await _auth.signOut();
+    _telemetry.logEvent('auth_signout');
     if (mounted) setState(() {});
   }
 
   Future<void> _handleSyncNow() async {
+    final allowed = await _ensureParentAccess();
+    if (!allowed) return;
     setState(() => _syncing = true);
     try {
       await _sync.uploadProgress();
+      _telemetry.logEvent('sync_upload_success');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -110,6 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
+      _telemetry.logEvent('sync_upload_failed');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -127,6 +186,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _handleRestoreFromCloud() async {
+    final allowed = await _ensureParentAccess();
+    if (!allowed) return;
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -152,6 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _syncing = true);
     try {
       final restored = await _sync.downloadProgress();
+      _telemetry.logEvent(restored ? 'sync_restore_success' : 'sync_restore_empty');
       await _loadSettings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -170,6 +233,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _resetProgress() async {
+    final allowed = await _ensureParentAccess();
+    if (!allowed) return;
+    if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -197,14 +263,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'total_stars', 'current_streak', 'best_streak',
       'last_brush_date', 'today_brush_count', 'today_date',
       'total_brushes', 'brush_history',
+      'morning_done_date', 'evening_done_date',
       'unlocked_heroes', 'selected_hero',
       'unlocked_weapons', 'selected_weapon',
-      'current_world', 'world_missions',
-      'unlocked_achievements',
+      'current_world',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);
     }
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith('world_progress_') || key.startsWith('achievement_')) {
+        await prefs.remove(key);
+      }
+    }
+    _telemetry.logEvent('progress_reset');
 
     if (mounted) {
       _loadSettings();
@@ -217,6 +289,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
+  }
+
+  Future<bool> _ensureParentAccess() async {
+    if (_parentUnlocked) return true;
+    final a = 2 + DateTime.now().second % 7;
+    final b = 3 + DateTime.now().minute % 6;
+    final controller = TextEditingController();
+    final focusNode = FocusNode();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Parent Check',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'For parent settings, solve this:',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '$a + $b = ?',
+              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              focusNode: focusNode,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: false),
+              textInputAction: TextInputAction.done,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Answer',
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: Color(0xFF00E5FF)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              final answer = int.tryParse(controller.text.trim());
+              Navigator.pop(ctx, answer == (a + b));
+            },
+            child: const Text('OK', style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    focusNode.dispose();
+    if (ok == true) {
+      _parentUnlocked = true;
+      return true;
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Parent check failed'),
+          backgroundColor: Colors.orangeAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+    return false;
   }
 
   Future<void> _resetOnboarding() async {
@@ -438,6 +595,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Best streak',
                       child: Text('$_bestStreak days',
                         style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 20)),
+                    ),
+                    const SizedBox(height: 8),
+                    _SettingCard(
+                      icon: Icons.calendar_today,
+                      title: 'Last 7 days',
+                      child: const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: List.generate(7, (i) {
+                              final count = _weeklyBrushCounts[i];
+                              final active = count > 0;
+                              return Column(
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: active
+                                          ? const Color(0xFF00E676).withValues(alpha: 0.8)
+                                          : Colors.white.withValues(alpha: 0.12),
+                                      border: Border.all(
+                                        color: active ? const Color(0xFF69F0AE) : Colors.white24,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$count',
+                                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'AM brushes: $_weeklyMorningBrushes   •   PM brushes: $_weeklyEveningBrushes',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12),
+                          ),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 24),
