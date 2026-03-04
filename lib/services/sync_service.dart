@@ -27,16 +27,10 @@ class SyncService {
     'evening_done_date',
     'phase_duration',
     'camera_enabled',
-    'streak_shield_enabled',
-    'streak_shield_last_used_week',
     'muted',
     'onboarding_completed',
   ];
-  static const _prefixSyncKeys = [
-    'world_progress_',
-    'achievement_',
-    'mission_',
-  ];
+  static const _prefixSyncKeys = ['world_progress_', 'achievement_'];
 
   DocumentReference? get _userDoc {
     final user = AuthService().currentUser;
@@ -118,11 +112,7 @@ class SyncService {
     return _prefixSyncKeys.any((prefix) => key.startsWith(prefix));
   }
 
-  Future<void> _writeValue(
-    SharedPreferences prefs,
-    String key,
-    dynamic val,
-  ) async {
+  Future<void> _writeValue(SharedPreferences prefs, String key, dynamic val) async {
     if (val is int) {
       await prefs.setInt(key, val);
     } else if (val is String) {
@@ -140,23 +130,13 @@ class SyncService {
     final brushes = prefs.getInt('total_brushes') ?? 0;
     final stars = prefs.getInt('total_stars') ?? 0;
     final heroes = (prefs.getStringList('unlocked_heroes') ?? const []).length;
-    final weapons =
-        (prefs.getStringList('unlocked_weapons') ?? const []).length;
+    final weapons = (prefs.getStringList('unlocked_weapons') ?? const []).length;
     final keys = prefs.getKeys();
-    final achievements = keys
-        .where(
-          (k) => k.startsWith('achievement_') && (prefs.getBool(k) ?? false),
-        )
-        .length;
+    final achievements = keys.where((k) => k.startsWith('achievement_') && (prefs.getBool(k) ?? false)).length;
     final worldProgress = keys
         .where((k) => k.startsWith('world_progress_'))
         .fold<int>(0, (acc, key) => acc + (prefs.getInt(key) ?? 0));
-    return brushes * 8 +
-        stars * 5 +
-        heroes * 30 +
-        weapons * 20 +
-        achievements * 15 +
-        worldProgress * 3;
+    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + worldProgress * 3;
   }
 
   int _progressScoreFromCloud(Map<String, dynamic> cloudData) {
@@ -172,17 +152,8 @@ class SyncService {
     });
     final brushes = (cloudData['total_brushes'] as int?) ?? 0;
     final stars = (cloudData['total_stars'] as int?) ?? 0;
-    final heroes = (cloudData['unlocked_heroes'] is List)
-        ? (cloudData['unlocked_heroes'] as List).length
-        : 0;
-    final weapons = (cloudData['unlocked_weapons'] is List)
-        ? (cloudData['unlocked_weapons'] as List).length
-        : 0;
-    return brushes * 8 +
-        stars * 5 +
-        heroes * 30 +
-        weapons * 20 +
-        achievements * 15 +
-        sumWorldProgress * 3;
+    final heroes = (cloudData['unlocked_heroes'] is List) ? (cloudData['unlocked_heroes'] as List).length : 0;
+    final weapons = (cloudData['unlocked_weapons'] is List) ? (cloudData['unlocked_weapons'] as List).length : 0;
+    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + sumWorldProgress * 3;
   }
 }
