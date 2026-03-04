@@ -20,7 +20,10 @@ class BrushOutcome {
 class TodaySlotsStatus {
   final bool morningDone;
   final bool eveningDone;
-  const TodaySlotsStatus({required this.morningDone, required this.eveningDone});
+  const TodaySlotsStatus({
+    required this.morningDone,
+    required this.eveningDone,
+  });
 
   int get completedCount => (morningDone ? 1 : 0) + (eveningDone ? 1 : 0);
 }
@@ -64,14 +67,21 @@ class StreakService {
   static const _keyHistory = 'brush_history';
   static const _keyMorningDoneDate = 'morning_done_date';
   static const _keyEveningDoneDate = 'evening_done_date';
+  static const _keyStreakShieldEnabled = 'streak_shield_enabled';
+  static const _keyStreakShieldLastUsedWeek = 'streak_shield_last_used_week';
 
-  Future<BrushOutcome> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
+  Future<BrushOutcome> recordBrush({
+    String heroId = 'blaze',
+    String worldId = 'candy_crater',
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final today = _todayString();
     final now = DateTime.now();
     final lastDate = prefs.getString(_keyLastBrushDate) ?? '';
     final slot = _slotForHour(now.hour);
-    final slotKey = slot == BrushSlot.morning ? _keyMorningDoneDate : _keyEveningDoneDate;
+    final slotKey = slot == BrushSlot.morning
+        ? _keyMorningDoneDate
+        : _keyEveningDoneDate;
     final slotAlreadyDone = prefs.getString(slotKey) == today;
     final newSlotCompleted = !slotAlreadyDone;
 
@@ -94,7 +104,12 @@ class StreakService {
       } else if (lastDate.isEmpty) {
         streak = 1;
       } else {
-        streak = 1; // Streak broken
+        if (_canUseShieldNow(prefs, now)) {
+          if (streak <= 0) streak = 1;
+          await prefs.setString(_keyStreakShieldLastUsedWeek, _weekKey(now));
+        } else {
+          streak = 1; // Streak broken
+        }
       }
       await prefs.setInt(_keyCurrentStreak, streak);
       await prefs.setString(_keyLastBrushDate, today);
@@ -121,7 +136,8 @@ class StreakService {
     // Append to history log (keep last 100 entries)
     final record = BrushRecord(
       date: today,
-      time: '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+      time:
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       heroId: heroId,
       worldId: worldId,
     );
@@ -156,7 +172,20 @@ class StreakService {
     if (lastDate == today || lastDate == yesterday) {
       return prefs.getInt(_keyCurrentStreak) ?? 0;
     }
+    if (_canUseShieldNow(prefs, DateTime.now())) {
+      return prefs.getInt(_keyCurrentStreak) ?? 0;
+    }
     return 0;
+  }
+
+  Future<bool> isStreakShieldEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyStreakShieldEnabled) ?? false;
+  }
+
+  Future<void> setStreakShieldEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyStreakShieldEnabled, enabled);
   }
 
   Future<int> getTotalStars() async {
@@ -205,7 +234,10 @@ class StreakService {
     final prefs = await SharedPreferences.getInstance();
     final historyJson = prefs.getStringList(_keyHistory) ?? [];
     return historyJson
-        .map((json) => BrushRecord.fromJson(jsonDecode(json) as Map<String, dynamic>))
+        .map(
+          (json) =>
+              BrushRecord.fromJson(jsonDecode(json) as Map<String, dynamic>),
+        )
         .toList()
         .reversed
         .toList(); // Most recent first
@@ -223,5 +255,21 @@ class StreakService {
 
   BrushSlot _slotForHour(int hour) {
     return hour < 15 ? BrushSlot.morning : BrushSlot.evening;
+  }
+
+  bool _canUseShieldNow(SharedPreferences prefs, DateTime now) {
+    final enabled = prefs.getBool(_keyStreakShieldEnabled) ?? false;
+    if (!enabled) return false;
+    final usedWeek = prefs.getString(_keyStreakShieldLastUsedWeek) ?? '';
+    return usedWeek != _weekKey(now);
+  }
+
+  String _weekKey(DateTime date) {
+    final monday = DateTime(
+      date.year,
+      date.month,
+      date.day,
+    ).subtract(Duration(days: date.weekday - 1));
+    return '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
   }
 }

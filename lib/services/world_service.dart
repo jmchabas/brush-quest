@@ -25,6 +25,26 @@ class DailyModifier {
   });
 }
 
+class WeekendEvent {
+  final bool isActive;
+  final String title;
+  final String description;
+  final Color color;
+  final IconData icon;
+  final double bossChanceMultiplier;
+  final int chestBonusStars;
+
+  const WeekendEvent({
+    required this.isActive,
+    required this.title,
+    required this.description,
+    required this.color,
+    required this.icon,
+    this.bossChanceMultiplier = 1.0,
+    this.chestBonusStars = 0,
+  });
+}
+
 class WorldData {
   final String id;
   final String name;
@@ -217,5 +237,29 @@ class WorldService {
           color: Color(0xFFB388FF),
         );
     }
+  }
+
+  WeekendEvent getWeekendEvent([DateTime? date]) {
+    final now = date ?? DateTime.now();
+    final active = now.weekday >= DateTime.friday;
+    if (!active) {
+      return const WeekendEvent(
+        isActive: false,
+        title: 'WEEKEND EVENT OFFLINE',
+        description: 'Weekend event starts Friday.',
+        color: Color(0xFF90A4AE),
+        icon: Icons.event_busy,
+      );
+    }
+
+    return const WeekendEvent(
+      isActive: true,
+      title: 'WEEKEND BOSS EVENT',
+      description: 'More boss battles and boosted chest stars.',
+      color: Color(0xFFFF6E40),
+      icon: Icons.workspace_premium,
+      bossChanceMultiplier: 2.0,
+      chestBonusStars: 1,
+    );
   }
 }
