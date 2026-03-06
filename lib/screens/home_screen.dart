@@ -21,8 +21,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
@@ -45,21 +44,21 @@ class _HomeScreenState extends State<HomeScreen>
   String? _lastPickerVoice;
 
   static const Map<String, String> _heroPickerVoice = {
-    'blaze': 'voice_hero_blaze.mp3',
-    'frost': 'voice_hero_frost.mp3',
-    'bolt': 'voice_hero_bolt.mp3',
-    'shadow': 'voice_hero_shadow.mp3',
-    'leaf': 'voice_hero_leaf.mp3',
-    'nova': 'voice_hero_nova.mp3',
+    'blaze': 'voice_picker_hero_blaze.wav',
+    'frost': 'voice_picker_hero_frost.wav',
+    'bolt': 'voice_picker_hero_bolt.wav',
+    'shadow': 'voice_picker_hero_shadow.wav',
+    'leaf': 'voice_picker_hero_leaf.wav',
+    'nova': 'voice_picker_hero_nova.wav',
   };
 
   static const Map<String, String> _weaponPickerVoice = {
-    'star_blaster': 'voice_super.mp3',
-    'flame_sword': 'voice_wow_amazing.mp3',
-    'ice_hammer': 'voice_awesome.mp3',
-    'lightning_wand': 'voice_unstoppable.mp3',
-    'vine_whip': 'voice_keep_it_up.mp3',
-    'cosmic_burst': 'voice_great_choice.mp3',
+    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
+    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
+    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
+    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
+    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
+    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
   };
 
   @override
@@ -165,11 +164,20 @@ class _HomeScreenState extends State<HomeScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('NO CAMERA', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'NO CAMERA',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('ALLOW', style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold)),
+            child: const Text(
+              'ALLOW',
+              style: TextStyle(
+                color: Color(0xFF00E5FF),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -196,16 +204,19 @@ class _HomeScreenState extends State<HomeScreen>
                 const BrushingScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                  ),
-                  child: child,
-                ),
-              );
-            },
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOut,
+                        ),
+                      ),
+                      child: child,
+                    ),
+                  );
+                },
             transitionDuration: const Duration(milliseconds: 500),
           ),
         )
@@ -217,7 +228,10 @@ class _HomeScreenState extends State<HomeScreen>
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     if (!mounted) return;
 
-    _playPickerVoice(_heroPickerVoice[_selectedHero.id] ?? 'voice_great_choice.mp3');
+    _lastPickerVoice = null;
+    _playPickerVoice(
+      _heroPickerVoice[_selectedHero.id] ?? 'voice_great_choice.mp3',
+    );
 
     showModalBottomSheet(
       context: context,
@@ -233,21 +247,34 @@ class _HomeScreenState extends State<HomeScreen>
         onHeroSelected: (hero) async {
           await _heroService.selectHero(hero.id);
           setState(() => _selectedHero = hero);
-          _telemetry.logEvent('picker_hero_selected', params: {'hero_id': hero.id});
-          _playPickerVoice(_heroPickerVoice[hero.id] ?? 'voice_great_choice.mp3');
+          _telemetry.logEvent(
+            'picker_hero_selected',
+            params: {'hero_id': hero.id},
+          );
+          _playPickerVoice(
+            _heroPickerVoice[hero.id] ?? 'voice_great_choice.mp3',
+          );
         },
         onWeaponSelected: (weapon) async {
           await _weaponService.selectWeapon(weapon.id);
           setState(() => _selectedWeapon = weapon);
-          _telemetry.logEvent('picker_weapon_selected', params: {'weapon_id': weapon.id});
-          _playPickerVoice(_weaponPickerVoice[weapon.id] ?? 'voice_awesome.mp3');
+          _telemetry.logEvent(
+            'picker_weapon_selected',
+            params: {'weapon_id': weapon.id},
+          );
+          _playPickerVoice(
+            _weaponPickerVoice[weapon.id] ?? 'voice_awesome.mp3',
+          );
         },
         onGo: () {
           Navigator.pop(ctx);
-          _telemetry.logEvent('session_confirmed', params: {
-            'hero_id': _selectedHero.id,
-            'weapon_id': _selectedWeapon.id,
-          });
+          _telemetry.logEvent(
+            'session_confirmed',
+            params: {
+              'hero_id': _selectedHero.id,
+              'weapon_id': _selectedWeapon.id,
+            },
+          );
           AudioService().playVoice('voice_lets_fight.mp3');
           Future.delayed(const Duration(milliseconds: 600), () {
             if (mounted) _launchBrushingScreen();
@@ -309,10 +336,18 @@ class _HomeScreenState extends State<HomeScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: Icon(Icons.settings, color: Colors.white.withValues(alpha: 0.6), size: 26),
+                      icon: Icon(
+                        Icons.settings,
+                        color: Colors.white.withValues(alpha: 0.6),
+                        size: 26,
+                      ),
                       onPressed: () {
                         Navigator.of(context)
-                            .push(MaterialPageRoute(builder: (_) => const SettingsScreen()))
+                            .push(
+                              MaterialPageRoute(
+                                builder: (_) => const SettingsScreen(),
+                              ),
+                            )
                             .then((_) => _loadStats());
                       },
                     ),
@@ -330,9 +365,7 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       Text(
                         'BRUSH QUEST',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineLarge
+                        style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
@@ -345,9 +378,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       Text(
                         'BRUSH QUEST',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineLarge
+                        style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
                               fontSize: 48,
                               fontWeight: FontWeight.bold,
@@ -355,8 +386,9 @@ class _HomeScreenState extends State<HomeScreen>
                               letterSpacing: 3,
                               shadows: [
                                 Shadow(
-                                  color: const Color(0xFF7C4DFF)
-                                      .withValues(alpha: 0.8),
+                                  color: const Color(
+                                    0xFF7C4DFF,
+                                  ).withValues(alpha: 0.8),
                                   blurRadius: 20,
                                 ),
                               ],
@@ -371,18 +403,19 @@ class _HomeScreenState extends State<HomeScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_getTimeIcon(),
-                          color: _getTimeIconColor(), size: 14),
+                      Icon(
+                        _getTimeIcon(),
+                        color: _getTimeIconColor(),
+                        size: 14,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         _getGreeting(),
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFF00E5FF)
-                                      .withValues(alpha: 0.7),
-                                  letterSpacing: 4,
-                                  fontSize: 12,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF00E5FF).withValues(alpha: 0.7),
+                          letterSpacing: 4,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -395,7 +428,11 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [
                       // Streak
                       if (_streak > 0) ...[
-                        const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 22),
+                        const Icon(
+                          Icons.local_fire_department,
+                          color: Colors.orangeAccent,
+                          size: 22,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '$_streak',
@@ -408,25 +445,36 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(width: 16),
                       ],
                       // Stars
-                      const Icon(Icons.star, color: Colors.yellowAccent, size: 30),
+                      const Icon(
+                        Icons.star,
+                        color: Colors.yellowAccent,
+                        size: 30,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         '$_totalStars',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 30,
-                          shadows: [
-                            Shadow(
-                              color: Colors.yellowAccent.withValues(alpha: 0.5),
-                              blurRadius: 12,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 30,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.yellowAccent.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  blurRadius: 12,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
                       ),
                       // Today count
                       const SizedBox(width: 16),
-                      Icon(Icons.brush, color: const Color(0xFF69F0AE).withValues(alpha: 0.8), size: 18),
+                      Icon(
+                        Icons.brush,
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.8),
+                        size: 18,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '$_todayBrushCount/2',
@@ -446,8 +494,12 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       const SizedBox(width: 6),
                       Icon(
-                        _eveningDone ? Icons.nightlight_round : Icons.nightlight_outlined,
-                        color: _eveningDone ? const Color(0xFF90CAF9) : Colors.white38,
+                        _eveningDone
+                            ? Icons.nightlight_round
+                            : Icons.nightlight_outlined,
+                        color: _eveningDone
+                            ? const Color(0xFF90CAF9)
+                            : Colors.white38,
                         size: 18,
                       ),
                     ],
@@ -457,28 +509,27 @@ class _HomeScreenState extends State<HomeScreen>
 
                   // Hero as BRUSH button
                   AnimatedBuilder(
-                    animation:
-                        Listenable.merge([_pulseAnimation, _floatAnimation, _auraController]),
+                    animation: Listenable.merge([
+                      _pulseAnimation,
+                      _floatAnimation,
+                      _auraController,
+                    ]),
                     builder: (context, child) {
                       return Transform.translate(
                         offset: Offset(0, _floatAnimation.value),
                         child: Transform.scale(
-                          scale: _buttonPressed
-                              ? 0.92
-                              : _pulseAnimation.value,
+                          scale: _buttonPressed ? 0.92 : _pulseAnimation.value,
                           child: child,
                         ),
                       );
                     },
                     child: GestureDetector(
-                      onTapDown: (_) =>
-                          setState(() => _buttonPressed = true),
+                      onTapDown: (_) => setState(() => _buttonPressed = true),
                       onTapUp: (_) {
                         setState(() => _buttonPressed = false);
                         _startBrushing();
                       },
-                      onTapCancel: () =>
-                          setState(() => _buttonPressed = false),
+                      onTapCancel: () => setState(() => _buttonPressed = false),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -499,7 +550,11 @@ class _HomeScreenState extends State<HomeScreen>
                                       boxShadow: [
                                         BoxShadow(
                                           color: _selectedHero.primaryColor
-                                              .withValues(alpha: 0.3 + _auraController.value * 0.2),
+                                              .withValues(
+                                                alpha:
+                                                    0.3 +
+                                                    _auraController.value * 0.2,
+                                              ),
                                           blurRadius: 40,
                                           spreadRadius: 10,
                                         ),
@@ -524,7 +579,8 @@ class _HomeScreenState extends State<HomeScreen>
                                             ),
                                             boxShadow: [
                                               BoxShadow(
-                                                color: _selectedHero.primaryColor
+                                                color: _selectedHero
+                                                    .primaryColor
                                                     .withValues(alpha: 0.6),
                                                 blurRadius: 30,
                                                 spreadRadius: 5,
@@ -549,12 +605,14 @@ class _HomeScreenState extends State<HomeScreen>
                                               shape: BoxShape.circle,
                                               color: const Color(0xFF0D0B2E),
                                               border: Border.all(
-                                                color: _selectedWeapon.primaryColor,
+                                                color: _selectedWeapon
+                                                    .primaryColor,
                                                 width: 3,
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: _selectedWeapon.primaryColor
+                                                  color: _selectedWeapon
+                                                      .primaryColor
                                                       .withValues(alpha: 0.5),
                                                   blurRadius: 10,
                                                 ),
@@ -562,7 +620,8 @@ class _HomeScreenState extends State<HomeScreen>
                                             ),
                                             child: Icon(
                                               _selectedWeapon.icon,
-                                              color: _selectedWeapon.primaryColor,
+                                              color:
+                                                  _selectedWeapon.primaryColor,
                                               size: 26,
                                             ),
                                           ),
@@ -577,9 +636,7 @@ class _HomeScreenState extends State<HomeScreen>
                           const SizedBox(height: 12),
                           Text(
                             'BRUSH!',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
+                            style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -697,8 +754,14 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           const SizedBox(height: 16),
 
           // Hero + weapon display
@@ -706,29 +769,55 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 100, height: 100,
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: _hero.primaryColor, width: 3),
-                  boxShadow: [BoxShadow(color: _hero.primaryColor.withValues(alpha: 0.4), blurRadius: 20)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: _hero.primaryColor.withValues(alpha: 0.4),
+                      blurRadius: 20,
+                    ),
+                  ],
                 ),
-                child: ClipOval(child: Image.asset(_hero.imagePath, fit: BoxFit.cover)),
+                child: ClipOval(
+                  child: Image.asset(_hero.imagePath, fit: BoxFit.cover),
+                ),
               ),
               const SizedBox(width: 12),
               Container(
-                width: 56, height: 56,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFF1A0A3E),
                   border: Border.all(color: _weapon.primaryColor, width: 2),
-                  boxShadow: [BoxShadow(color: _weapon.primaryColor.withValues(alpha: 0.3), blurRadius: 10)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: _weapon.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                    ),
+                  ],
                 ),
-                child: Icon(_weapon.icon, color: _weapon.primaryColor, size: 28),
+                child: Icon(
+                  _weapon.icon,
+                  color: _weapon.primaryColor,
+                  size: 28,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(_hero.name, style: TextStyle(color: _hero.primaryColor, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 3)),
+          Text(
+            _hero.name,
+            style: TextStyle(
+              color: _hero.primaryColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              letterSpacing: 3,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             _hero.description,
@@ -777,20 +866,32 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
                 final unlocked = widget.unlockedHeroIds.contains(h.id);
                 final selected = h.id == _hero.id;
                 return GestureDetector(
-                  onTap: unlocked ? () {
-                    setState(() => _hero = h);
-                    widget.onHeroSelected(h);
-                  } : null,
+                  onTap: unlocked
+                      ? () {
+                          setState(() => _hero = h);
+                          widget.onHeroSelected(h);
+                        }
+                      : null,
                   child: Container(
-                    width: 64, height: 64,
+                    width: 64,
+                    height: 64,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: selected ? h.primaryColor : (unlocked ? Colors.white24 : Colors.white10),
+                        color: selected
+                            ? h.primaryColor
+                            : (unlocked ? Colors.white24 : Colors.white10),
                         width: selected ? 3 : 1,
                       ),
-                      boxShadow: selected ? [BoxShadow(color: h.primaryColor.withValues(alpha: 0.4), blurRadius: 10)] : null,
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: h.primaryColor.withValues(alpha: 0.4),
+                                blurRadius: 10,
+                              ),
+                            ]
+                          : null,
                     ),
                     child: ClipOval(
                       child: Stack(
@@ -798,12 +899,24 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
                         children: [
                           ColorFiltered(
                             colorFilter: unlocked
-                                ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
-                                : const ColorFilter.mode(Colors.black54, BlendMode.saturation),
+                                ? const ColorFilter.mode(
+                                    Colors.transparent,
+                                    BlendMode.dst,
+                                  )
+                                : const ColorFilter.mode(
+                                    Colors.black54,
+                                    BlendMode.saturation,
+                                  ),
                             child: Image.asset(h.imagePath, fit: BoxFit.cover),
                           ),
                           if (!unlocked)
-                            Center(child: Icon(Icons.lock, color: Colors.white.withValues(alpha: 0.6), size: 20)),
+                            Center(
+                              child: Icon(
+                                Icons.lock,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                size: 20,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -827,24 +940,33 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
                 final unlocked = widget.unlockedWeaponIds.contains(w.id);
                 final selected = w.id == _weapon.id;
                 return GestureDetector(
-                  onTap: unlocked ? () {
-                    setState(() => _weapon = w);
-                    widget.onWeaponSelected(w);
-                  } : null,
+                  onTap: unlocked
+                      ? () {
+                          setState(() => _weapon = w);
+                          widget.onWeaponSelected(w);
+                        }
+                      : null,
                   child: Container(
-                    width: 48, height: 48,
+                    width: 48,
+                    height: 48,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: selected ? w.primaryColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                      color: selected
+                          ? w.primaryColor.withValues(alpha: 0.2)
+                          : Colors.white.withValues(alpha: 0.05),
                       border: Border.all(
-                        color: selected ? w.primaryColor : (unlocked ? Colors.white24 : Colors.white10),
+                        color: selected
+                            ? w.primaryColor
+                            : (unlocked ? Colors.white24 : Colors.white10),
                         width: selected ? 2 : 1,
                       ),
                     ),
                     child: Icon(
                       unlocked ? w.icon : Icons.lock,
-                      color: unlocked ? (selected ? w.primaryColor : Colors.white54) : Colors.white24,
+                      color: unlocked
+                          ? (selected ? w.primaryColor : Colors.white54)
+                          : Colors.white24,
                       size: 22,
                     ),
                   ),
@@ -862,13 +984,30 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [_hero.primaryColor, _hero.primaryColor.withValues(alpha: 0.7)]),
+                gradient: LinearGradient(
+                  colors: [
+                    _hero.primaryColor,
+                    _hero.primaryColor.withValues(alpha: 0.7),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: _hero.primaryColor.withValues(alpha: 0.4), blurRadius: 16)],
+                boxShadow: [
+                  BoxShadow(
+                    color: _hero.primaryColor.withValues(alpha: 0.4),
+                    blurRadius: 16,
+                  ),
+                ],
               ),
-              child: const Text('GO!',
+              child: const Text(
+                'GO!',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 6)),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 6,
+                ),
+              ),
             ),
           ),
         ],

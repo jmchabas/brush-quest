@@ -52,21 +52,40 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(Icons.arrow_back,
-                          color: Colors.white, size: 28),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Text(
                       'WORLD MAP',
-                      style:
-                          Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 28,
-                                letterSpacing: 3,
-                              ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 28,
+                            letterSpacing: 3,
+                          ),
                     ),
                   ],
                 ),
@@ -170,8 +189,8 @@ class _WorldCard extends StatelessWidget {
           color: isCurrent
               ? world.themeColor
               : isCompleted
-                  ? const Color(0xFF69F0AE).withValues(alpha: 0.5)
-                  : Colors.white.withValues(alpha: 0.1),
+              ? const Color(0xFF69F0AE).withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.1),
           width: isCurrent ? 2 : 1,
         ),
         boxShadow: isCurrent
@@ -195,12 +214,11 @@ class _WorldCard extends StatelessWidget {
                 colorFilter: isUnlocked
                     ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
                     : ColorFilter.mode(
-                        Colors.black.withValues(alpha: 0.7), BlendMode.srcATop),
+                        Colors.black.withValues(alpha: 0.7),
+                        BlendMode.srcATop,
+                      ),
                 child: ClipOval(
-                  child: Image.asset(
-                    world.imagePath,
-                    fit: BoxFit.cover,
-                  ),
+                  child: Image.asset(world.imagePath, fit: BoxFit.cover),
                 ),
               ),
             ),
@@ -268,9 +286,11 @@ class _WorldCard extends StatelessWidget {
                   ] else
                     Row(
                       children: [
-                        Icon(Icons.lock,
-                            color: Colors.white.withValues(alpha: 0.3),
-                            size: 14),
+                        Icon(
+                          Icons.lock,
+                          color: Colors.white.withValues(alpha: 0.3),
+                          size: 14,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'LOCKED',
