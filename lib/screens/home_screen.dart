@@ -277,6 +277,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    const statIconSize = 24.0;
+    const statValueSize = 24.0;
+    const statPairSpacing = 5.0;
+    const statGroupSpacing = 24.0;
+
     return Scaffold(
       body: SpaceBackground(
         child: SafeArea(
@@ -290,6 +295,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
+                      padding: const EdgeInsets.all(12),
+                      constraints: const BoxConstraints(
+                        minWidth: 56,
+                        minHeight: 56,
+                      ),
+                      splashRadius: 28,
                       icon: Icon(
                         Icons.settings,
                         color: Colors.white.withValues(alpha: 0.6),
@@ -305,6 +316,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             .then((_) => _loadStats());
                       },
                     ),
+                    const SizedBox(width: 16),
                     const MuteButton(),
                   ],
                 ),
@@ -385,51 +397,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         const Icon(
                           Icons.local_fire_department,
                           color: Colors.orangeAccent,
-                          size: 22,
+                          size: statIconSize,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: statPairSpacing),
                         Text(
                           '$_streak',
                           style: const TextStyle(
                             color: Colors.orangeAccent,
                             fontWeight: FontWeight.bold,
-                            fontSize: 20,
+                            fontSize: statValueSize,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: statGroupSpacing),
                       ],
                       // Stars
                       const Icon(
                         Icons.star,
                         color: Colors.yellowAccent,
-                        size: 30,
+                        size: statIconSize,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: statPairSpacing),
                       Text(
                         '$_totalStars',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 30,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.yellowAccent.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                  blurRadius: 12,
-                                ),
-                              ],
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: statValueSize,
+                          shadows: [
+                            Shadow(
+                              color: Colors.yellowAccent.withValues(alpha: 0.5),
+                              blurRadius: 8,
                             ),
+                          ],
+                        ),
                       ),
                       // Today count
-                      const SizedBox(width: 16),
+                      const SizedBox(width: statGroupSpacing),
                       Icon(
-                        Icons.brush,
-                        color: const Color(0xFF69F0AE).withValues(alpha: 0.8),
-                        size: 18,
+                        Icons.sanitizer_rounded,
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.85),
+                        size: statIconSize,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: statPairSpacing),
                       Text(
                         '$_todayBrushCount/2',
                         style: TextStyle(
@@ -437,14 +446,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ? const Color(0xFF69F0AE)
                               : Colors.white.withValues(alpha: 0.6),
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: statValueSize,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Icon(
                         _morningDone ? Icons.wb_sunny : Icons.wb_sunny_outlined,
                         color: _morningDone ? Colors.amber : Colors.white38,
-                        size: 18,
+                        size: 20,
                       ),
                       const SizedBox(width: 6),
                       Icon(
@@ -454,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: _eveningDone
                             ? const Color(0xFF90CAF9)
                             : Colors.white38,
-                        size: 18,
+                        size: 20,
                       ),
                     ],
                   ),
