@@ -13,19 +13,27 @@ import 'services/telemetry_service.dart';
 import 'widgets/asset_preloader.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await runZonedGuarded<Future<void>>(() async {
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    PlatformDispatcher.instance.onError = (error, stack) {
+  await runZonedGuarded<Future<void>>(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      // Keep startup fully offline-safe on constrained devices/emulators.
+      GoogleFonts.config.allowRuntimeFetching = false;
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+      runApp(const BrushQuestApp());
+    },
+    (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
-    runApp(const BrushQuestApp());
-  }, (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-  });
+    },
+  );
 }
 
 class BrushQuestApp extends StatelessWidget {
@@ -42,9 +50,7 @@ class BrushQuestApp extends StatelessWidget {
           secondary: const Color(0xFF00E5FF),
           surface: const Color(0xFF0D0B2E),
         ),
-        textTheme: GoogleFonts.fredokaTextTheme(
-          ThemeData.dark().textTheme,
-        ),
+        textTheme: GoogleFonts.fredokaTextTheme(ThemeData.dark().textTheme),
       ),
       navigatorObservers: [TelemetryService().observer],
       home: const AssetPreloader(child: _AppEntry()),
