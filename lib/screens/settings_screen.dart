@@ -63,7 +63,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final map = jsonDecode(raw) as Map<String, dynamic>;
         final date = DateTime.tryParse(map['date'] as String? ?? '');
         if (date == null) continue;
-        final dayDiff = now.difference(DateTime(date.year, date.month, date.day)).inDays;
+        final dayDiff = now
+            .difference(DateTime(date.year, date.month, date.day))
+            .inDays;
         if (dayDiff < 0 || dayDiff > 6) continue;
         byDay[6 - dayDiff] += 1;
         final time = map['time'] as String? ?? '';
@@ -100,6 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!allowed) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_enabled', value);
+    await prefs.setBool('camera_mode_configured', true);
     setState(() => _cameraEnabled = value);
   }
 
@@ -114,11 +117,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Signed in as ${user.displayName ?? user.email}',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+              content: Text(
+                'Signed in as ${user.displayName ?? user.email}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               backgroundColor: const Color(0xFF00E676),
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
@@ -128,11 +135,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sign-in failed: $e',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+            content: Text(
+              'Sign-in failed: $e',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -159,11 +170,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Progress saved to cloud!',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+            content: const Text(
+              'Progress saved to cloud!',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             backgroundColor: const Color(0xFF00E5FF),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -172,11 +187,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sync failed: $e',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+            content: Text(
+              'Sync failed: $e',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -194,18 +213,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A0A3E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Restore from Cloud?',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Restore from Cloud?',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: const Text(
           'This will replace your local progress with the version saved in the cloud.',
-          style: TextStyle(color: Colors.white70)),
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white54))),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('RESTORE', style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold))),
+            child: const Text(
+              'RESTORE',
+              style: TextStyle(
+                color: Color(0xFF00E5FF),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -214,16 +247,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _syncing = true);
     try {
       final restored = await _sync.downloadProgress();
-      _telemetry.logEvent(restored ? 'sync_restore_success' : 'sync_restore_empty');
+      _telemetry.logEvent(
+        restored ? 'sync_restore_success' : 'sync_restore_empty',
+      );
       await _loadSettings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(restored ? 'Progress restored!' : 'No cloud data found',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-            backgroundColor: restored ? const Color(0xFF00E676) : Colors.orangeAccent,
+            content: Text(
+              restored ? 'Progress restored!' : 'No cloud data found',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: restored
+                ? const Color(0xFF00E676)
+                : Colors.orangeAccent,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -241,18 +282,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A0A3E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Reset Progress?',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Reset Progress?',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         content: const Text(
           'This will reset all stars, heroes, weapons, streaks, and achievements. This cannot be undone.',
-          style: TextStyle(color: Colors.white70)),
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white54))),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('RESET', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))),
+            child: const Text(
+              'RESET',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -260,12 +315,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     final keysToReset = [
-      'total_stars', 'current_streak', 'best_streak',
-      'last_brush_date', 'today_brush_count', 'today_date',
-      'total_brushes', 'brush_history',
-      'morning_done_date', 'evening_done_date',
-      'unlocked_heroes', 'selected_hero',
-      'unlocked_weapons', 'selected_weapon',
+      'total_stars',
+      'current_streak',
+      'best_streak',
+      'last_brush_date',
+      'today_brush_count',
+      'today_date',
+      'total_brushes',
+      'brush_history',
+      'morning_done_date',
+      'evening_done_date',
+      'unlocked_heroes',
+      'selected_hero',
+      'unlocked_weapons',
+      'selected_weapon',
       'current_world',
     ];
     for (final key in keysToReset) {
@@ -282,10 +345,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadSettings();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Progress reset!', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'Progress reset!',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -317,23 +385,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 10),
             Text(
               '$a + $b = ?',
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
               focusNode: focusNode,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(signed: false, decimal: false),
+              keyboardType: const TextInputType.numberWithOptions(
+                signed: false,
+                decimal: false,
+              ),
               textInputAction: TextInputAction.done,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Answer',
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                  borderSide: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
                 ),
                 focusedBorder: const OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -346,14 +425,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () {
               final answer = int.tryParse(controller.text.trim());
               Navigator.pop(ctx, answer == (a + b));
             },
-            child: const Text('OK', style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold)),
+            child: const Text(
+              'OK',
+              style: TextStyle(
+                color: Color(0xFF00E5FF),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -369,7 +457,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           content: const Text('Parent check failed'),
           backgroundColor: Colors.orangeAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -382,10 +472,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Tutorial will show on next launch', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'Tutorial will show on next launch',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           backgroundColor: const Color(0xFF7C4DFF),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -406,13 +501,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Expanded(
-                      child: Text('SETTINGS',
+                      child: Text(
+                        'SETTINGS',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 4,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 48),
@@ -422,51 +527,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   children: [
                     // ACCOUNT section
-                    _SectionHeader(icon: Icons.person, label: 'ACCOUNT', color: const Color(0xFF00E676)),
+                    _SectionHeader(
+                      icon: Icons.person,
+                      label: 'ACCOUNT',
+                      color: const Color(0xFF00E676),
+                    ),
                     const SizedBox(height: 8),
 
                     if (!signedIn) ...[
                       GestureDetector(
                         onTap: _signingIn ? null : _handleSignIn,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFF1A237E), Color(0xFF283593)],
                             ),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                            ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (_signingIn)
-                                const SizedBox(width: 20, height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               else ...[
-                                const Icon(Icons.login, color: Colors.white, size: 22),
+                                const Icon(
+                                  Icons.login,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
                                 const SizedBox(width: 12),
-                                const Text('Sign in with Google',
-                                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                const Text(
+                                  'Sign in with Google',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text('Save your progress to the cloud',
+                      Text(
+                        'Save your progress to the cloud',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 12,
+                        ),
+                      ),
                     ] else ...[
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF00E676).withValues(alpha: 0.3)),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF00E676,
+                            ).withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Column(
                           children: [
@@ -475,27 +617,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 CircleAvatar(
                                   radius: 20,
                                   backgroundImage: user.photoURL != null
-                                      ? NetworkImage(user.photoURL!) : null,
+                                      ? NetworkImage(user.photoURL!)
+                                      : null,
                                   backgroundColor: const Color(0xFF7C4DFF),
                                   child: user.photoURL == null
-                                      ? const Icon(Icons.person, color: Colors.white, size: 20) : null,
+                                      ? const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 20,
+                                        )
+                                      : null,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(user.displayName ?? 'Space Ranger',
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                                      Text(
+                                        user.displayName ?? 'Space Ranger',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
                                       if (user.email != null)
-                                        Text(user.email!,
-                                          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                                        Text(
+                                          user.email!,
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            fontSize: 12,
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),
                                 TextButton(
                                   onPressed: _handleSignOut,
-                                  child: const Text('Sign out', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                  child: const Text(
+                                    'Sign out',
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -531,7 +699,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 24),
 
                     // BRUSHING section
-                    _SectionHeader(icon: Icons.brush, label: 'BRUSHING', color: const Color(0xFF00E5FF)),
+                    _SectionHeader(
+                      icon: Icons.brush,
+                      label: 'BRUSHING',
+                      color: const Color(0xFF00E5FF),
+                    ),
                     const SizedBox(height: 8),
 
                     _SettingCard(
@@ -565,7 +737,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
 
                     _SettingCard(
-                      icon: AudioService().isMuted ? Icons.volume_off : Icons.volume_up,
+                      icon: AudioService().isMuted
+                          ? Icons.volume_off
+                          : Icons.volume_up,
                       title: 'Sound',
                       child: Switch(
                         value: !AudioService().isMuted,
@@ -580,21 +754,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 24),
 
                     // STATS section
-                    _SectionHeader(icon: Icons.bar_chart, label: 'STATS', color: const Color(0xFFFFD54F)),
+                    _SectionHeader(
+                      icon: Icons.bar_chart,
+                      label: 'STATS',
+                      color: const Color(0xFFFFD54F),
+                    ),
                     const SizedBox(height: 8),
 
                     _SettingCard(
                       icon: Icons.brush,
                       title: 'Total brushes',
-                      child: Text('$_totalBrushes',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20)),
+                      child: Text(
+                        '$_totalBrushes',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _SettingCard(
                       icon: Icons.local_fire_department,
                       title: 'Best streak',
-                      child: Text('$_bestStreak days',
-                        style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 20)),
+                      child: Text(
+                        '$_bestStreak days',
+                        style: const TextStyle(
+                          color: Colors.orangeAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     _SettingCard(
@@ -604,11 +794,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.04),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,16 +821,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: active
-                                          ? const Color(0xFF00E676).withValues(alpha: 0.8)
-                                          : Colors.white.withValues(alpha: 0.12),
+                                          ? const Color(
+                                              0xFF00E676,
+                                            ).withValues(alpha: 0.8)
+                                          : Colors.white.withValues(
+                                              alpha: 0.12,
+                                            ),
                                       border: Border.all(
-                                        color: active ? const Color(0xFF69F0AE) : Colors.white24,
+                                        color: active
+                                            ? const Color(0xFF69F0AE)
+                                            : Colors.white24,
                                       ),
                                     ),
                                     child: Center(
                                       child: Text(
                                         '$count',
-                                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -646,7 +851,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(height: 10),
                           Text(
                             'AM brushes: $_weeklyMorningBrushes   •   PM brushes: $_weeklyEveningBrushes',
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -655,14 +863,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 24),
 
                     // OTHER section
-                    _SectionHeader(icon: Icons.settings, label: 'OTHER', color: const Color(0xFF7C4DFF)),
+                    _SectionHeader(
+                      icon: Icons.settings,
+                      label: 'OTHER',
+                      color: const Color(0xFF7C4DFF),
+                    ),
                     const SizedBox(height: 8),
 
                     _SettingCard(
                       icon: Icons.school,
                       title: 'Show tutorial again',
                       child: IconButton(
-                        icon: const Icon(Icons.replay, color: Color(0xFF00E5FF), size: 24),
+                        icon: const Icon(
+                          Icons.replay,
+                          color: Color(0xFF00E5FF),
+                          size: 24,
+                        ),
                         onPressed: _resetOnboarding,
                       ),
                     ),
@@ -671,7 +887,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.delete_forever,
                       title: 'Reset all progress',
                       child: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 24),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
+                          size: 24,
+                        ),
                         onPressed: _resetProgress,
                       ),
                     ),
@@ -679,8 +899,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 32),
 
                     Center(
-                      child: Text('Brush Quest v4',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12, letterSpacing: 2)),
+                      child: Text(
+                        'Brush Quest v4',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          fontSize: 12,
+                          letterSpacing: 2,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -699,7 +925,11 @@ class _SectionHeader extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _SectionHeader({required this.icon, required this.label, required this.color});
+  const _SectionHeader({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -707,10 +937,19 @@ class _SectionHeader extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
-        Text(label, style: TextStyle(
-          color: color, fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 3)),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            letterSpacing: 3,
+          ),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: Container(height: 1, color: color.withValues(alpha: 0.2))),
+        Expanded(
+          child: Container(height: 1, color: color.withValues(alpha: 0.2)),
+        ),
       ],
     );
   }
@@ -721,7 +960,11 @@ class _SettingCard extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _SettingCard({required this.icon, required this.title, required this.child});
+  const _SettingCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -737,8 +980,14 @@ class _SettingCard extends StatelessWidget {
           Icon(icon, color: Colors.white54, size: 22),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(title, style: const TextStyle(
-              color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           child,
         ],
@@ -752,7 +1001,11 @@ class _DurationChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _DurationChip({required this.seconds, required this.selected, required this.onTap});
+  const _DurationChip({
+    required this.seconds,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -761,17 +1014,25 @@ class _DurationChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF00E5FF).withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+          color: selected
+              ? const Color(0xFF00E5FF).withValues(alpha: 0.2)
+              : Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? const Color(0xFF00E5FF) : Colors.white.withValues(alpha: 0.15),
+            color: selected
+                ? const Color(0xFF00E5FF)
+                : Colors.white.withValues(alpha: 0.15),
             width: selected ? 2 : 1,
           ),
         ),
-        child: Text('${seconds}s',
+        child: Text(
+          '${seconds}s',
           style: TextStyle(
             color: selected ? const Color(0xFF00E5FF) : Colors.white54,
-            fontWeight: FontWeight.bold, fontSize: 14)),
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }
@@ -807,12 +1068,23 @@ class _ActionButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (loading)
-              SizedBox(width: 16, height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: color))
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
             else ...[
               Icon(icon, color: color, size: 18),
               const SizedBox(width: 6),
-              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 1,
+                ),
+              ),
             ],
           ],
         ),

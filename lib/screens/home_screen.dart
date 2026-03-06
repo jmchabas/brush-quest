@@ -5,7 +5,6 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
-import '../services/camera_service.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -142,57 +141,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _startBrushingFlow() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    final wantsCamera = prefs.getBool('camera_enabled') ?? true;
-    if (!wantsCamera) {
-      _showPreBrushPicker();
-      return;
+    if (!prefs.containsKey('camera_mode_configured')) {
+      if (!prefs.containsKey('camera_enabled')) {
+        await prefs.setBool('camera_enabled', true);
+      }
+      await prefs.setBool('camera_mode_configured', true);
     }
 
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0A3E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Camera Motion Mode',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Allow camera to detect brushing motion for attacks? You can still play without it.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'NO CAMERA',
-              style: TextStyle(color: Colors.white54),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'ALLOW',
-              style: TextStyle(
-                color: Color(0xFF00E5FF),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted) return;
-    if (proceed == true) {
-      await CameraService().initialize();
-      _telemetry.logEvent('camera_prompt_accept');
-      if (!mounted) return;
-    } else {
-      await prefs.setBool('camera_enabled', false);
-      _telemetry.logEvent('camera_prompt_decline');
-      if (!mounted) return;
-    }
     _showPreBrushPicker();
   }
 
@@ -323,6 +278,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    const statIconSize = 24.0;
+    const statValueSize = 24.0;
+    const statPairSpacing = 5.0;
+    const statGroupSpacing = 24.0;
+
     return Scaffold(
       body: SpaceBackground(
         child: SafeArea(
@@ -336,11 +296,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: Icon(
-                        Icons.settings,
-                        color: Colors.white.withValues(alpha: 0.6),
-                        size: 26,
+                      padding: const EdgeInsets.all(12),
+                      constraints: const BoxConstraints(
+                        minWidth: 56,
+                        minHeight: 56,
                       ),
+                      splashRadius: 28,
                       onPressed: () {
                         Navigator.of(context)
                             .push(
@@ -350,7 +311,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             )
                             .then((_) => _loadStats());
                       },
+                      icon: Icon(
+                        Icons.settings,
+                        color: Colors.white.withValues(alpha: 0.6),
+                        size: 26,
+                      ),
                     ),
+                    const SizedBox(width: 16),
                     const MuteButton(),
                   ],
                 ),
@@ -431,51 +398,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         const Icon(
                           Icons.local_fire_department,
                           color: Colors.orangeAccent,
-                          size: 22,
+                          size: statIconSize,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: statPairSpacing),
                         Text(
                           '$_streak',
                           style: const TextStyle(
                             color: Colors.orangeAccent,
                             fontWeight: FontWeight.bold,
-                            fontSize: 20,
+                            fontSize: statValueSize,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: statGroupSpacing),
                       ],
                       // Stars
                       const Icon(
                         Icons.star,
                         color: Colors.yellowAccent,
-                        size: 30,
+                        size: statIconSize,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: statPairSpacing),
                       Text(
                         '$_totalStars',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 30,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.yellowAccent.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                  blurRadius: 12,
-                                ),
-                              ],
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: statValueSize,
+                          shadows: [
+                            Shadow(
+                              color: Colors.yellowAccent.withValues(alpha: 0.5),
+                              blurRadius: 8,
                             ),
+                          ],
+                        ),
                       ),
                       // Today count
-                      const SizedBox(width: 16),
+                      const SizedBox(width: statGroupSpacing),
                       Icon(
-                        Icons.brush,
-                        color: const Color(0xFF69F0AE).withValues(alpha: 0.8),
-                        size: 18,
+                        Icons.sanitizer_rounded,
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.85),
+                        size: statIconSize,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: statPairSpacing),
                       Text(
                         '$_todayBrushCount/2',
                         style: TextStyle(
@@ -483,14 +447,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ? const Color(0xFF69F0AE)
                               : Colors.white.withValues(alpha: 0.6),
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: statValueSize,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Icon(
                         _morningDone ? Icons.wb_sunny : Icons.wb_sunny_outlined,
                         color: _morningDone ? Colors.amber : Colors.white38,
-                        size: 18,
+                        size: 20,
                       ),
                       const SizedBox(width: 6),
                       Icon(
@@ -500,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: _eveningDone
                             ? const Color(0xFF90CAF9)
                             : Colors.white38,
-                        size: 18,
+                        size: 20,
                       ),
                     ],
                   ),

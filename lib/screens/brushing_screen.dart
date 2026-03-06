@@ -25,6 +25,7 @@ class BrushingScreen extends StatefulWidget {
 }
 
 enum BrushPhase { countdown, topLeft, topRight, bottomLeft, bottomRight, done }
+
 enum SessionStage { worldIntro, countdown, brushing, done }
 
 const brushPhaseOrder = [
@@ -42,8 +43,14 @@ class _DamagePopup {
   double x, y, opacity, offsetY, rotation, scale;
   Color color;
   _DamagePopup({
-    required this.text, required this.x, required this.y, required this.color,
-    required this.opacity, required this.offsetY, this.rotation = 0, this.scale = 1.0,
+    required this.text,
+    required this.x,
+    required this.y,
+    required this.color,
+    required this.opacity,
+    required this.offsetY,
+    this.rotation = 0,
+    this.scale = 1.0,
   });
 }
 
@@ -51,8 +58,14 @@ class _Particle {
   double x, y, vx, vy, size, opacity, life;
   Color color;
   _Particle({
-    required this.x, required this.y, required this.vx, required this.vy,
-    required this.size, required this.color, this.opacity = 1.0, this.life = 1.0,
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.size,
+    required this.color,
+    this.opacity = 1.0,
+    this.life = 1.0,
   });
 }
 
@@ -60,8 +73,13 @@ class _HitSpark {
   double x, y, vx, vy, life, size;
   Color color;
   _HitSpark({
-    required this.x, required this.y, required this.vx, required this.vy,
-    required this.color, this.life = 1.0, this.size = 3.0,
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.color,
+    this.life = 1.0,
+    this.size = 3.0,
   });
 }
 
@@ -69,9 +87,12 @@ class _HitSpark {
 class _FloatingStar {
   double x, y, targetX, targetY, progress, size;
   _FloatingStar({
-    required this.x, required this.y,
-    required this.targetX, required this.targetY,
-    required this.progress, required this.size,
+    required this.x,
+    required this.y,
+    required this.targetX,
+    required this.targetY,
+    required this.progress,
+    required this.size,
   });
 }
 
@@ -80,8 +101,13 @@ class _MonsterDebris {
   double x, y, vx, vy, rotation, rotationSpeed, size, life;
   Color color;
   _MonsterDebris({
-    required this.x, required this.y, required this.vx, required this.vy,
-    required this.rotation, required this.rotationSpeed, required this.size,
+    required this.x,
+    required this.y,
+    required this.vx,
+    required this.vy,
+    required this.rotation,
+    required this.rotationSpeed,
+    required this.size,
     required this.color,
   }) : life = 1.0;
 }
@@ -108,17 +134,46 @@ class _MonsterPersonality {
   });
 
   static const _firstNames = [
-    'Captain', 'Lord', 'Evil', 'Dr.', 'King', 'Mega', 'Super',
-    'Tiny', 'Big', 'Dark', 'Slimy', 'Smelly', 'Grumpy', 'Fuzzy',
+    'Captain',
+    'Lord',
+    'Evil',
+    'Dr.',
+    'King',
+    'Mega',
+    'Super',
+    'Tiny',
+    'Big',
+    'Dark',
+    'Slimy',
+    'Smelly',
+    'Grumpy',
+    'Fuzzy',
   ];
   static const _lastNames = [
-    'Plaque', 'Cavity', 'Gumrot', 'Slime', 'Tartar', 'Decay',
-    'Mold', 'Stinky', 'Goop', 'Fuzz', 'Rot', 'Crud', 'Blob',
+    'Plaque',
+    'Cavity',
+    'Gumrot',
+    'Slime',
+    'Tartar',
+    'Decay',
+    'Mold',
+    'Stinky',
+    'Goop',
+    'Fuzz',
+    'Rot',
+    'Crud',
+    'Blob',
   ];
   static const _tintColors = [
-    Color(0xFFFF4081), Color(0xFF7C4DFF), Color(0xFF00BCD4),
-    Color(0xFFFF6E40), Color(0xFF69F0AE), Color(0xFFFFD54F),
-    Color(0xFFE040FB), Color(0xFF40C4FF), Color(0xFFFF6D00),
+    Color(0xFFFF4081),
+    Color(0xFF7C4DFF),
+    Color(0xFF00BCD4),
+    Color(0xFFFF6E40),
+    Color(0xFF69F0AE),
+    Color(0xFFFFD54F),
+    Color(0xFFE040FB),
+    Color(0xFF40C4FF),
+    Color(0xFFFF6D00),
   ];
 
   factory _MonsterPersonality.random(Random rng) {
@@ -129,7 +184,8 @@ class _MonsterPersonality {
       sizeMultiplier: 0.9 + rng.nextDouble() * 0.2,
       tintColor: _tintColors[rng.nextInt(_tintColors.length)],
       tintStrength: 0.05 + rng.nextDouble() * 0.2,
-      name: '${_firstNames[rng.nextInt(_firstNames.length)]} ${_lastNames[rng.nextInt(_lastNames.length)]}',
+      name:
+          '${_firstNames[rng.nextInt(_firstNames.length)]} ${_lastNames[rng.nextInt(_lastNames.length)]}',
       entranceStyle: rng.nextInt(4),
     );
   }
@@ -159,9 +215,15 @@ class _MonsterSlot {
   double defeatProgress;
   final List<_MonsterDebris> debris;
   _MonsterSlot({
-    required this.imageIndex, required this.health, required this.alive,
-    required this.wobblePhase, required this.personality,
-  }) : hitRecoil = 0.0, isDefeating = false, defeatProgress = 0.0, debris = [];
+    required this.imageIndex,
+    required this.health,
+    required this.alive,
+    required this.wobblePhase,
+    required this.personality,
+  }) : hitRecoil = 0.0,
+       isDefeating = false,
+       defeatProgress = 0.0,
+       debris = [];
 }
 
 class _BrushingScreenState extends State<BrushingScreen>
@@ -212,7 +274,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   int _attackStyleIndex = 0;
   int _totalHits = 0;
   bool _isFinisher = false;
-  AttackStyle get _currentAttackStyle => AttackStyle.values[_attackStyleIndex % AttackStyle.values.length];
+  AttackStyle get _currentAttackStyle =>
+      AttackStyle.values[_attackStyleIndex % AttackStyle.values.length];
 
   // Damage popups + sparks
   final List<_DamagePopup> _damagePopups = [];
@@ -290,11 +353,26 @@ class _BrushingScreenState extends State<BrushingScreen>
     'assets/images/monster_red.png',
   ];
 
-  static const _damageTexts = ['POW!', 'ZAP!', 'BOOM!', 'WHAM!', 'BAM!', 'SLASH!', 'SMASH!', 'HIT!'];
+  static const _damageTexts = [
+    'POW!',
+    'ZAP!',
+    'BOOM!',
+    'WHAM!',
+    'BAM!',
+    'SLASH!',
+    'SMASH!',
+    'HIT!',
+  ];
 
   static const _companionIcons = [
-    Icons.star, Icons.bolt, Icons.whatshot, Icons.rocket_launch,
-    Icons.auto_awesome, Icons.emoji_events, Icons.flash_on, Icons.favorite,
+    Icons.star,
+    Icons.bolt,
+    Icons.whatshot,
+    Icons.rocket_launch,
+    Icons.auto_awesome,
+    Icons.emoji_events,
+    Icons.flash_on,
+    Icons.favorite,
   ];
 
   bool _playedEncouragement = false;
@@ -304,42 +382,52 @@ class _BrushingScreenState extends State<BrushingScreen>
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    // Enter immersive mode for brushing (camera permission already requested on home screen)
+    // Enter immersive mode for brushing (camera mode is configured in setup/settings)
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     // Init single monster
     _monster = _createMonster();
 
     _attackSequenceController = AnimationController(
-      duration: const Duration(milliseconds: 1200), vsync: this,
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
     );
     _phaseTransitionController = AnimationController(
-      duration: const Duration(milliseconds: 500), vsync: this,
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
     );
     _monsterEntranceController = AnimationController(
-      duration: const Duration(milliseconds: 600), vsync: this,
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
     );
     _flashController = AnimationController(
-      duration: const Duration(milliseconds: 120), vsync: this,
+      duration: const Duration(milliseconds: 120),
+      vsync: this,
     );
     _screenShakeController = AnimationController(
-      duration: const Duration(milliseconds: 250), vsync: this,
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
     );
     _monsterBreathController = AnimationController(
-      duration: const Duration(milliseconds: 1500), vsync: this,
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
     )..repeat(reverse: true);
     _particleController = AnimationController(
-      duration: const Duration(milliseconds: 50), vsync: this,
+      duration: const Duration(milliseconds: 50),
+      vsync: this,
     )..repeat();
     _particleController.addListener(_updateParticlesAndSparks);
     _timerPulseController = AnimationController(
-      duration: const Duration(milliseconds: 500), vsync: this,
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
     )..repeat(reverse: true);
     _heroIdleController = AnimationController(
-      duration: const Duration(milliseconds: 1200), vsync: this,
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
     )..repeat(reverse: true);
     _mouthGuideGlowController = AnimationController(
-      duration: const Duration(milliseconds: 700), vsync: this,
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
     )..repeat(reverse: true);
 
     _initParticles();
@@ -359,7 +447,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   _MonsterSlot _createMonster() {
     return _MonsterSlot(
       imageIndex: _random.nextInt(_monsterImages.length),
-      health: 1.0, alive: true,
+      health: 1.0,
+      alive: true,
       wobblePhase: _random.nextDouble() * 2 * pi,
       personality: _MonsterPersonality.random(_random),
     );
@@ -367,8 +456,10 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   _MonsterSlot _createWorldMonster() {
     return _MonsterSlot(
-      imageIndex: _world.monsterIndices[_random.nextInt(_world.monsterIndices.length)],
-      health: 1.0, alive: true,
+      imageIndex:
+          _world.monsterIndices[_random.nextInt(_world.monsterIndices.length)],
+      health: 1.0,
+      alive: true,
       wobblePhase: _random.nextDouble() * 2 * pi,
       personality: _MonsterPersonality.random(_random),
     );
@@ -448,7 +539,10 @@ class _BrushingScreenState extends State<BrushingScreen>
         final t = star.progress.clamp(0.0, 1.0);
         final curve = Curves.easeInOut.transform(t);
         star.x = star.x + (star.targetX - star.x) * 0.05;
-        star.y = star.y + (star.targetY - star.y) * 0.05 + sin(star.progress * 8) * 0.5;
+        star.y =
+            star.y +
+            (star.targetY - star.y) * 0.05 +
+            sin(star.progress * 8) * 0.5;
         star.size = 20 * (1.0 - curve * 0.5);
       }
       _floatingStars.removeWhere((s) => s.progress >= 1.0);
@@ -494,9 +588,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   /// Map motion intensity to attack cooldown in milliseconds.
   /// Higher brushing intensity = shorter cooldown = faster attacks.
   int _intensityToCooldown(double intensity) {
-    if (intensity >= 0.4) return 300;  // vigorous brushing
+    if (intensity >= 0.4) return 300; // vigorous brushing
     if (intensity >= 0.15) return 500; // normal brushing
-    return 800;                         // gentle motion
+    return 800; // gentle motion
   }
 
   /// Mercy timer: if camera is active but no motion detected for 10 seconds,
@@ -505,7 +599,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     _stallTimer?.cancel();
     if (!_cameraReady) return;
     _stallTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted && !_isPaused && _phase != BrushPhase.done && _phase != BrushPhase.countdown) {
+      if (mounted &&
+          !_isPaused &&
+          _phase != BrushPhase.done &&
+          _phase != BrushPhase.countdown) {
         _triggerAttack();
         _resetStallTimer(); // Keep mercy timer running
       }
@@ -551,7 +648,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     final phaseName = prefs.getString(_checkpointPhaseKey);
     final secondsLeft = prefs.getInt(_checkpointSecondsKey);
     final worldId = prefs.getString(_checkpointWorldKey);
-    if (ts == null || phaseName == null || secondsLeft == null || worldId == null) {
+    if (ts == null ||
+        phaseName == null ||
+        secondsLeft == null ||
+        worldId == null) {
       return false;
     }
     final age = DateTime.now().millisecondsSinceEpoch - ts;
@@ -564,8 +664,12 @@ class _BrushingScreenState extends State<BrushingScreen>
       return false;
     }
 
-    final restoredPhase = BrushPhase.values.where((p) => p.name == phaseName).toList();
-    if (restoredPhase.isEmpty || restoredPhase.first == BrushPhase.done || restoredPhase.first == BrushPhase.countdown) {
+    final restoredPhase = BrushPhase.values
+        .where((p) => p.name == phaseName)
+        .toList();
+    if (restoredPhase.isEmpty ||
+        restoredPhase.first == BrushPhase.done ||
+        restoredPhase.first == BrushPhase.countdown) {
       await _clearCheckpoint();
       return false;
     }
@@ -576,7 +680,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = restoredPhase.first;
       _phaseSecondsLeft = secondsLeft.clamp(1, _phaseDuration);
     });
-    _telemetry.logEvent('session_restored', params: {'phase': _phase.name, 'seconds_left': _phaseSecondsLeft});
+    _telemetry.logEvent(
+      'session_restored',
+      params: {'phase': _phase.name, 'seconds_left': _phaseSecondsLeft},
+    );
     _startBrushing(resumeFromCheckpoint: true);
     return true;
   }
@@ -664,7 +771,10 @@ class _BrushingScreenState extends State<BrushingScreen>
         _audio.playSfx('countdown_beep.mp3');
       } else {
         timer.cancel();
-        setState(() { _countdownValue = 0; _showGoText = true; });
+        setState(() {
+          _countdownValue = 0;
+          _showGoText = true;
+        });
         HapticFeedback.heavyImpact();
         _audio.playSfx('countdown_beep.mp3');
         Future.delayed(const Duration(milliseconds: 800), () {
@@ -677,13 +787,16 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== BRUSHING ====================
 
   void _startBrushing({bool resumeFromCheckpoint = false}) {
-    _telemetry.logEvent('brushing_started', params: {
-      'world_id': _world.id,
-      'hero_id': _hero.id,
-      'weapon_id': _weapon.id,
-      'camera_ready': _cameraReady,
-      'daily_modifier': _dailyModifier.type.name,
-    });
+    _telemetry.logEvent(
+      'brushing_started',
+      params: {
+        'world_id': _world.id,
+        'hero_id': _hero.id,
+        'weapon_id': _weapon.id,
+        'camera_ready': _cameraReady,
+        'daily_modifier': _dailyModifier.type.name,
+      },
+    );
     if (!resumeFromCheckpoint) {
       _totalHits = 0;
       _attackStyleIndex = 0;
@@ -756,7 +869,10 @@ class _BrushingScreenState extends State<BrushingScreen>
           _triggerFinisher(() {
             _monstersDefeated++;
             _startMonsterDeath(_monster);
-            _playDefeatAnimation(() { timer.cancel(); _finishBrushing(); });
+            _playDefeatAnimation(() {
+              timer.cancel();
+              _finishBrushing();
+            });
           });
         }
       }
@@ -776,14 +892,14 @@ class _BrushingScreenState extends State<BrushingScreen>
   /// When camera works, attacks come exclusively from motion detection.
   void _startBaseAttackTimer() {
     _baseAttackTimer?.cancel();
-    _baseAttackTimer = Timer.periodic(
-      const Duration(milliseconds: 2500),
-      (_) {
-        if (mounted && !_isPaused && _phase != BrushPhase.done && _phase != BrushPhase.countdown) {
-          _triggerAttack();
-        }
-      },
-    );
+    _baseAttackTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+      if (mounted &&
+          !_isPaused &&
+          _phase != BrushPhase.done &&
+          _phase != BrushPhase.countdown) {
+        _triggerAttack();
+      }
+    });
   }
 
   void _startMonsterDeath(_MonsterSlot monster) {
@@ -795,18 +911,20 @@ class _BrushingScreenState extends State<BrushingScreen>
     for (int i = 0; i < 14; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 4.0 + _random.nextDouble() * 8;
-      monster.debris.add(_MonsterDebris(
-        x: 0, y: 0,
-        vx: cos(angle) * speed,
-        vy: sin(angle) * speed - 3,
-        rotation: _random.nextDouble() * 2 * pi,
-        rotationSpeed: (_random.nextDouble() - 0.5) * 0.3,
-        size: 6 + _random.nextDouble() * 12,
-        color: _world.themeColor,
-      ));
+      monster.debris.add(
+        _MonsterDebris(
+          x: 0,
+          y: 0,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed - 3,
+          rotation: _random.nextDouble() * 2 * pi,
+          rotationSpeed: (_random.nextDouble() - 0.5) * 0.3,
+          size: 6 + _random.nextDouble() * 12,
+          color: _world.themeColor,
+        ),
+      );
     }
   }
-
 
   void _triggerFinisher(VoidCallback onComplete) {
     _baseAttackTimer?.cancel();
@@ -822,20 +940,32 @@ class _BrushingScreenState extends State<BrushingScreen>
     for (int i = 0; i < 30; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 4.0 + _random.nextDouble() * 8;
-      _hitSparks.add(_HitSpark(
-        x: 0, y: 0,
-        vx: cos(angle) * speed, vy: sin(angle) * speed,
-        color: _weapon.primaryColor, life: 1.0,
-        size: 2 + _random.nextDouble() * 5,
-      ));
+      _hitSparks.add(
+        _HitSpark(
+          x: 0,
+          y: 0,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
+          color: _weapon.primaryColor,
+          life: 1.0,
+          size: 2 + _random.nextDouble() * 5,
+        ),
+      );
     }
 
     setState(() {
-      _damagePopups.add(_DamagePopup(
-        text: 'FINISH!', x: 0.5, y: 0.15,
-        color: Colors.yellowAccent, opacity: 1.0, offsetY: 0,
-        rotation: 0, scale: 2.0,
-      ));
+      _damagePopups.add(
+        _DamagePopup(
+          text: 'FINISH!',
+          x: 0.5,
+          y: 0.15,
+          color: Colors.yellowAccent,
+          opacity: 1.0,
+          offsetY: 0,
+          rotation: 0,
+          scale: 2.0,
+        ),
+      );
     });
 
     Future.delayed(const Duration(milliseconds: 600), () {
@@ -861,12 +991,17 @@ class _BrushingScreenState extends State<BrushingScreen>
     for (int i = 0; i < 20; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 3.0 + _random.nextDouble() * 6;
-      _hitSparks.add(_HitSpark(
-        x: 0, y: 0,
-        vx: cos(angle) * speed, vy: sin(angle) * speed,
-        color: _world.themeColor, life: 1.0,
-        size: 2.0 + _random.nextDouble() * 4,
-      ));
+      _hitSparks.add(
+        _HitSpark(
+          x: 0,
+          y: 0,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed,
+          color: _world.themeColor,
+          life: 1.0,
+          size: 2.0 + _random.nextDouble() * 4,
+        ),
+      );
     }
   }
 
@@ -951,12 +1086,18 @@ class _BrushingScreenState extends State<BrushingScreen>
     _monstersDefeated++;
     final wasBoss = _isBossPhase;
     setState(() {
-      _damagePopups.add(_DamagePopup(
-        text: wasBoss ? 'BOSS K.O.!' : 'K.O.!', x: 0.5, y: 0.12,
-        color: wasBoss ? const Color(0xFFFFD54F) : Colors.yellowAccent,
-        opacity: 1.0, offsetY: 0,
-        rotation: 0, scale: wasBoss ? 2.6 : 2.2,
-      ));
+      _damagePopups.add(
+        _DamagePopup(
+          text: wasBoss ? 'BOSS K.O.!' : 'K.O.!',
+          x: 0.5,
+          y: 0.12,
+          color: wasBoss ? const Color(0xFFFFD54F) : Colors.yellowAccent,
+          opacity: 1.0,
+          offsetY: 0,
+          rotation: 0,
+          scale: wasBoss ? 2.6 : 2.2,
+        ),
+      );
     });
 
     _startMonsterDeath(_monster);
@@ -967,7 +1108,10 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     // Spawn a new monster in the same phase after death animation
     Future.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted || _phase == BrushPhase.done || _phase == BrushPhase.countdown) return;
+      if (!mounted ||
+          _phase == BrushPhase.done ||
+          _phase == BrushPhase.countdown)
+        return;
       setState(() {
         _isBossPhase = false; // Boss was one-time, back to normal
         _monster = _createWorldMonster();
@@ -1025,15 +1169,18 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _spawnDamagePopup() {
     final text = _damageTexts[_random.nextInt(_damageTexts.length)];
     setState(() {
-      _damagePopups.add(_DamagePopup(
-        text: text,
-        x: 0.25 + _random.nextDouble() * 0.5,
-        y: 0.1 + _random.nextDouble() * 0.3,
-        color: _weapon.primaryColor,
-        opacity: 1.0, offsetY: 0,
-        rotation: (_random.nextDouble() - 0.5) * 0.4,
-        scale: 1.0,
-      ));
+      _damagePopups.add(
+        _DamagePopup(
+          text: text,
+          x: 0.25 + _random.nextDouble() * 0.5,
+          y: 0.1 + _random.nextDouble() * 0.3,
+          color: _weapon.primaryColor,
+          opacity: 1.0,
+          offsetY: 0,
+          rotation: (_random.nextDouble() - 0.5) * 0.4,
+          scale: 1.0,
+        ),
+      );
     });
   }
 
@@ -1041,12 +1188,17 @@ class _BrushingScreenState extends State<BrushingScreen>
     for (int i = 0; i < 8; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 2.0 + _random.nextDouble() * 5;
-      _hitSparks.add(_HitSpark(
-        x: 0, y: 0,
-        vx: cos(angle) * speed, vy: sin(angle) * speed - 2,
-        color: _weapon.primaryColor, life: 1.0,
-        size: 1.5 + _random.nextDouble() * 3,
-      ));
+      _hitSparks.add(
+        _HitSpark(
+          x: 0,
+          y: 0,
+          vx: cos(angle) * speed,
+          vy: sin(angle) * speed - 2,
+          color: _weapon.primaryColor,
+          life: 1.0,
+          size: 1.5 + _random.nextDouble() * 3,
+        ),
+      );
     }
   }
 
@@ -1095,11 +1247,14 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _finishBrushing() {
-    _telemetry.logEvent('brushing_completed', params: {
-      'total_hits': _totalHits,
-      'monsters_defeated': _monstersDefeated,
-      'boss_session': _isBossSession,
-    });
+    _telemetry.logEvent(
+      'brushing_completed',
+      params: {
+        'total_hits': _totalHits,
+        'monsters_defeated': _monstersDefeated,
+        'boss_session': _isBossSession,
+      },
+    );
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _companionTimer?.cancel();
@@ -1113,8 +1268,12 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            VictoryScreen(starsCollected: 1, totalHits: _totalHits, monstersDefeated: _monstersDefeated, isBossSession: _isBossSession),
+        pageBuilder: (context, animation, secondaryAnimation) => VictoryScreen(
+          starsCollected: 1,
+          totalHits: _totalHits,
+          monstersDefeated: _monstersDefeated,
+          isBossSession: _isBossSession,
+        ),
         transitionsBuilder: (context, anim, secondaryAnimation, child) =>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 800),
@@ -1123,7 +1282,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   String _getEncouragementText() {
-    if (_phaseSecondsLeft > 20) return _cameraReady ? 'BRUSH TO ATTACK!' : 'FIGHT THAT MONSTER!';
+    if (_phaseSecondsLeft > 20)
+      return _cameraReady ? 'BRUSH TO ATTACK!' : 'FIGHT THAT MONSTER!';
     if (_phaseSecondsLeft > 10) return 'KEEP BRUSHING!';
     if (_phaseSecondsLeft > 5) return 'ALMOST THERE!';
     return 'FINISH IT OFF!';
@@ -1133,19 +1293,23 @@ class _BrushingScreenState extends State<BrushingScreen>
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) { if (!didPop) _togglePause(); },
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _togglePause();
+      },
       child: _showWorldIntro
           ? _buildWorldIntro()
           : _sessionStage == SessionStage.countdown
-              ? _buildCountdown()
-              : _buildBrushing(),
+          ? _buildCountdown()
+          : _buildBrushing(),
     );
   }
 
   // ==================== COUNTDOWN UI ====================
 
   Widget _buildCountdown() {
-    final displayText = _showGoText ? 'GO!' : (_countdownValue > 0 ? '$_countdownValue' : '');
+    final displayText = _showGoText
+        ? 'GO!'
+        : (_countdownValue > 0 ? '$_countdownValue' : '');
     final textColor = _showGoText ? const Color(0xFF69F0AE) : Colors.white;
     final fontSize = _showGoText ? 140.0 : 120.0;
     return Scaffold(
@@ -1159,38 +1323,69 @@ class _BrushingScreenState extends State<BrushingScreen>
                 alignment: Alignment.center,
                 children: [
                   Container(
-                    width: 140, height: 140,
+                    width: 140,
+                    height: 140,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: _hero.primaryColor.withValues(alpha: 0.4), blurRadius: 30, spreadRadius: 5)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: _hero.primaryColor.withValues(alpha: 0.4),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                        ),
+                      ],
                     ),
                   ),
                   Container(
-                    width: 130, height: 130,
+                    width: 130,
+                    height: 130,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: _hero.primaryColor, width: 3),
                     ),
-                    child: ClipOval(child: Image.asset(_hero.imagePath, fit: BoxFit.cover)),
+                    child: ClipOval(
+                      child: Image.asset(_hero.imagePath, fit: BoxFit.cover),
+                    ),
                   ),
                   Positioned(
-                    right: 0, bottom: 0,
+                    right: 0,
+                    bottom: 0,
                     child: Container(
-                      width: 44, height: 44,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: const Color(0xFF0D0B2E),
-                        border: Border.all(color: _weapon.primaryColor, width: 2),
-                        boxShadow: [BoxShadow(color: _weapon.primaryColor.withValues(alpha: 0.4), blurRadius: 8)],
+                        border: Border.all(
+                          color: _weapon.primaryColor,
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _weapon.primaryColor.withValues(alpha: 0.4),
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
-                      child: Icon(_weapon.icon, color: _weapon.primaryColor, size: 22),
+                      child: Icon(
+                        _weapon.icon,
+                        color: _weapon.primaryColor,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(_hero.name, style: TextStyle(
-                color: _hero.primaryColor, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 3)),
+              Text(
+                _hero.name,
+                style: TextStyle(
+                  color: _hero.primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 3,
+                ),
+              ),
               const SizedBox(height: 24),
               // Countdown number / GO!
               Stack(
@@ -1201,13 +1396,16 @@ class _BrushingScreenState extends State<BrushingScreen>
                       tween: Tween(begin: 0, end: 200),
                       duration: const Duration(milliseconds: 400),
                       builder: (context, radius, _) => Container(
-                        width: radius * 2, height: radius * 2,
+                        width: radius * 2,
+                        height: radius * 2,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: RadialGradient(colors: [
-                            const Color(0xFF69F0AE).withValues(alpha: 0.4),
-                            const Color(0xFF69F0AE).withValues(alpha: 0.0),
-                          ]),
+                          gradient: RadialGradient(
+                            colors: [
+                              const Color(0xFF69F0AE).withValues(alpha: 0.4),
+                              const Color(0xFF69F0AE).withValues(alpha: 0.0),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1218,10 +1416,25 @@ class _BrushingScreenState extends State<BrushingScreen>
                     curve: Curves.elasticOut,
                     builder: (context, scale, _) => Transform.scale(
                       scale: scale,
-                      child: Text(displayText, style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontSize: fontSize, fontWeight: FontWeight.bold, color: textColor,
-                        shadows: [Shadow(color: (_showGoText ? const Color(0xFF69F0AE) : const Color(0xFF00E5FF)).withValues(alpha: 0.8), blurRadius: 40)],
-                      )),
+                      child: Text(
+                        displayText,
+                        style: Theme.of(context).textTheme.headlineLarge
+                            ?.copyWith(
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                              shadows: [
+                                Shadow(
+                                  color:
+                                      (_showGoText
+                                              ? const Color(0xFF69F0AE)
+                                              : const Color(0xFF00E5FF))
+                                          .withValues(alpha: 0.8),
+                                  blurRadius: 40,
+                                ),
+                              ],
+                            ),
+                      ),
                     ),
                   ),
                 ],
@@ -1242,10 +1455,7 @@ class _BrushingScreenState extends State<BrushingScreen>
             Positioned.fill(
               child: Opacity(
                 opacity: 0.22,
-                child: Image.asset(
-                  _world.imagePath,
-                  fit: BoxFit.cover,
-                ),
+                child: Image.asset(_world.imagePath, fit: BoxFit.cover),
               ),
             ),
             Center(
@@ -1276,7 +1486,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                     Text(
                       _world.name.toUpperCase(),
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 3,
@@ -1343,7 +1554,10 @@ class _BrushingScreenState extends State<BrushingScreen>
                 child: AnimatedBuilder(
                   animation: _particleController,
                   builder: (context, _) => CustomPaint(
-                    painter: _WorldParticlePainter(particles: _particles, particleType: _world.particleType),
+                    painter: _WorldParticlePainter(
+                      particles: _particles,
+                      particleType: _world.particleType,
+                    ),
                   ),
                 ),
               ),
@@ -1371,17 +1585,30 @@ class _BrushingScreenState extends State<BrushingScreen>
                     Padding(
                       padding: const EdgeInsets.only(left: 12, right: 76),
                       child: SlideTransition(
-                        position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
-                            .animate(CurvedAnimation(parent: _phaseTransitionController, curve: Curves.elasticOut)),
+                        position:
+                            Tween<Offset>(
+                              begin: const Offset(0, -1),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: _phaseTransitionController,
+                                curve: Curves.elasticOut,
+                              ),
+                            ),
                         child: GlassCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           child: Row(
                             children: [
                               // Compact mouth guide
                               AnimatedBuilder(
                                 animation: _mouthGuideGlowController,
                                 builder: (context, _) => MouthGuide(
-                                  activeQuadrant: _phaseToMouthQuadrant[_phase] ?? MouthQuadrant.topLeft,
+                                  activeQuadrant:
+                                      _phaseToMouthQuadrant[_phase] ??
+                                      MouthQuadrant.topLeft,
                                   glowAnim: _mouthGuideGlowController.value,
                                   highlightColor: _world.themeColor,
                                   size: 50,
@@ -1393,15 +1620,24 @@ class _BrushingScreenState extends State<BrushingScreen>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(_phaseNames[_phase] ?? '', maxLines: 1,
+                                    Text(
+                                      _phaseNames[_phase] ?? '',
+                                      maxLines: 1,
                                       style: TextStyle(
-                                        color: _world.themeColor, fontWeight: FontWeight.bold,
-                                        fontSize: 16, letterSpacing: 2,
-                                      )),
-                                    Text(_monster.personality.name.toUpperCase(),
+                                        color: _world.themeColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        letterSpacing: 2,
+                                      ),
+                                    ),
+                                    Text(
+                                      _monster.personality.name.toUpperCase(),
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.5),
-                                        fontSize: 10, letterSpacing: 1,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        fontSize: 10,
+                                        letterSpacing: 1,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -1410,7 +1646,10 @@ class _BrushingScreenState extends State<BrushingScreen>
                               ),
                               // Monsters defeated counter
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withValues(alpha: 0.4),
                                   borderRadius: BorderRadius.circular(12),
@@ -1418,9 +1657,14 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.whatshot, color: Colors.orangeAccent, size: 18),
+                                    const Icon(
+                                      Icons.whatshot,
+                                      color: Colors.orangeAccent,
+                                      size: 18,
+                                    ),
                                     const SizedBox(width: 3),
-                                    Text('$_monstersDefeated',
+                                    Text(
+                                      '$_monstersDefeated',
                                       style: const TextStyle(
                                         color: Colors.orangeAccent,
                                         fontWeight: FontWeight.bold,
@@ -1454,7 +1698,9 @@ class _BrushingScreenState extends State<BrushingScreen>
 
                               // Monster health bar
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 48),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 48,
+                                ),
                                 child: _buildMonsterHealthBar(),
                               ),
 
@@ -1471,10 +1717,18 @@ class _BrushingScreenState extends State<BrushingScreen>
                               // Timer
                               _buildTimer(screenHeight),
                               const SizedBox(height: 4),
-                              Text(_getEncouragementText(), style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: _phaseSecondsLeft <= 5 ? Colors.orangeAccent : _world.themeColor,
-                                fontWeight: FontWeight.bold, letterSpacing: 2, fontSize: 15,
-                              )),
+                              Text(
+                                _getEncouragementText(),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: _phaseSecondsLeft <= 5
+                                          ? Colors.orangeAccent
+                                          : _world.themeColor,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
+                                      fontSize: 15,
+                                    ),
+                              ),
                             ],
                           ),
 
@@ -1506,60 +1760,107 @@ class _BrushingScreenState extends State<BrushingScreen>
                           ),
 
                           // Damage popups
-                          ..._damagePopups.map((popup) => Positioned(
-                            left: popup.x * screenWidth - 40,
-                            top: popup.offsetY + 120,
-                            child: Transform.rotate(
-                              angle: popup.rotation,
-                              child: Transform.scale(
-                                scale: popup.scale,
-                                child: Opacity(
-                                  opacity: popup.opacity.clamp(0, 1),
-                                  child: Text(popup.text, style: TextStyle(
-                                    color: popup.color, fontSize: 26, fontWeight: FontWeight.bold,
-                                    shadows: [Shadow(color: popup.color.withValues(alpha: 0.8), blurRadius: 10),
-                                             Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 4)],
-                                  )),
+                          ..._damagePopups.map(
+                            (popup) => Positioned(
+                              left: popup.x * screenWidth - 40,
+                              top: popup.offsetY + 120,
+                              child: Transform.rotate(
+                                angle: popup.rotation,
+                                child: Transform.scale(
+                                  scale: popup.scale,
+                                  child: Opacity(
+                                    opacity: popup.opacity.clamp(0, 1),
+                                    child: Text(
+                                      popup.text,
+                                      style: TextStyle(
+                                        color: popup.color,
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.bold,
+                                        shadows: [
+                                          Shadow(
+                                            color: popup.color.withValues(
+                                              alpha: 0.8,
+                                            ),
+                                            blurRadius: 10,
+                                          ),
+                                          Shadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          )),
+                          ),
 
                           // Floating stars
-                          ..._floatingStars.map((star) => Positioned(
-                            left: star.x - star.size / 2,
-                            top: star.y - star.size / 2,
-                            child: Opacity(
-                              opacity: (1.0 - star.progress).clamp(0, 1),
-                              child: Icon(Icons.star, color: Colors.yellowAccent, size: star.size),
+                          ..._floatingStars.map(
+                            (star) => Positioned(
+                              left: star.x - star.size / 2,
+                              top: star.y - star.size / 2,
+                              child: Opacity(
+                                opacity: (1.0 - star.progress).clamp(0, 1),
+                                child: Icon(
+                                  Icons.star,
+                                  color: Colors.yellowAccent,
+                                  size: star.size,
+                                ),
+                              ),
                             ),
-                          )),
+                          ),
 
                           // Companion encouragement (icon burst, no text)
                           if (_showCompanionBubble && _companionIcon != null)
                             Positioned(
                               bottom: 210,
                               child: TweenAnimationBuilder<double>(
-                                key: ValueKey(_companionIcon.hashCode + DateTime.now().millisecondsSinceEpoch),
+                                key: ValueKey(
+                                  _companionIcon.hashCode +
+                                      DateTime.now().millisecondsSinceEpoch,
+                                ),
                                 tween: Tween(begin: 0.0, end: 1.0),
                                 duration: const Duration(milliseconds: 400),
                                 curve: Curves.elasticOut,
                                 builder: (context, value, child) => Opacity(
                                   opacity: value.clamp(0.0, 1.0),
-                                  child: Transform.scale(scale: 0.3 + value * 0.7, child: child),
+                                  child: Transform.scale(
+                                    scale: 0.3 + value * 0.7,
+                                    child: child,
+                                  ),
                                 ),
                                 child: Container(
-                                  width: 56, height: 56,
+                                  width: 56,
+                                  height: 56,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: _hero.primaryColor.withValues(alpha: 0.25),
-                                    border: Border.all(color: _hero.primaryColor.withValues(alpha: 0.6), width: 2),
-                                    boxShadow: [BoxShadow(
-                                      color: _hero.primaryColor.withValues(alpha: 0.5),
-                                      blurRadius: 16,
-                                    )],
+                                    color: _hero.primaryColor.withValues(
+                                      alpha: 0.25,
+                                    ),
+                                    border: Border.all(
+                                      color: _hero.primaryColor.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _hero.primaryColor.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        blurRadius: 16,
+                                      ),
+                                    ],
                                   ),
-                                  child: Icon(_companionIcon!, color: Colors.white, size: 30),
+                                  child: Icon(
+                                    _companionIcon!,
+                                    color: Colors.white,
+                                    size: 30,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1571,39 +1872,73 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 tween: Tween(begin: 0.0, end: 1.0),
                                 duration: const Duration(milliseconds: 400),
                                 curve: Curves.elasticOut,
-                                builder: (context, value, child) => Transform.scale(
-                                  scale: value,
-                                  child: child,
-                                ),
+                                builder: (context, value, child) =>
+                                    Transform.scale(scale: value, child: child),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(colors: _isBossPhase
-                                      ? [const Color(0xFFFFD54F).withValues(alpha: 0.95), const Color(0xFFFF6D00).withValues(alpha: 0.7)]
-                                      : [_world.themeColor.withValues(alpha: 0.9), _world.themeColor.withValues(alpha: 0.6)],
+                                    gradient: LinearGradient(
+                                      colors: _isBossPhase
+                                          ? [
+                                              const Color(
+                                                0xFFFFD54F,
+                                              ).withValues(alpha: 0.95),
+                                              const Color(
+                                                0xFFFF6D00,
+                                              ).withValues(alpha: 0.7),
+                                            ]
+                                          : [
+                                              _world.themeColor.withValues(
+                                                alpha: 0.9,
+                                              ),
+                                              _world.themeColor.withValues(
+                                                alpha: 0.6,
+                                              ),
+                                            ],
                                     ),
                                     borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [BoxShadow(
-                                      color: (_isBossPhase ? const Color(0xFFFFD54F) : _world.themeColor).withValues(alpha: 0.5),
-                                      blurRadius: 30, spreadRadius: 5,
-                                    )],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            (_isBossPhase
+                                                    ? const Color(0xFFFFD54F)
+                                                    : _world.themeColor)
+                                                .withValues(alpha: 0.5),
+                                        blurRadius: 30,
+                                        spreadRadius: 5,
+                                      ),
+                                    ],
                                   ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(_isBossPhase ? 'BOSS BATTLE!' : 'NEW MONSTER!',
+                                      Text(
+                                        _isBossPhase
+                                            ? 'BOSS BATTLE!'
+                                            : 'NEW MONSTER!',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 28,
                                           fontWeight: FontWeight.bold,
                                           letterSpacing: 4,
-                                          shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                                          shadows: [
+                                            Shadow(
+                                              color: Colors.black54,
+                                              blurRadius: 8,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(_monster.personality.name.toUpperCase(),
+                                      Text(
+                                        _monster.personality.name.toUpperCase(),
                                         style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.7),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.7,
+                                          ),
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                           letterSpacing: 2,
@@ -1613,12 +1948,20 @@ class _BrushingScreenState extends State<BrushingScreen>
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(_dailyModifier.icon, size: 14, color: Colors.white.withValues(alpha: 0.85)),
+                                          Icon(
+                                            _dailyModifier.icon,
+                                            size: 14,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.85,
+                                            ),
+                                          ),
                                           const SizedBox(width: 4),
                                           Text(
                                             _dailyModifier.title,
                                             style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.85),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.85,
+                                              ),
                                               fontSize: 10,
                                               fontWeight: FontWeight.bold,
                                               letterSpacing: 1.4,
@@ -1633,14 +1976,18 @@ class _BrushingScreenState extends State<BrushingScreen>
                             ),
 
                           // Mouth guide overlay at phase transitions
-                          if (_showMouthGuideOverlay && _phaseToMouthQuadrant.containsKey(_phase))
+                          if (_showMouthGuideOverlay &&
+                              _phaseToMouthQuadrant.containsKey(_phase))
                             Center(
                               child: MouthGuideOverlay(
                                 quadrant: _phaseToMouthQuadrant[_phase]!,
                                 themeColor: _world.themeColor,
                                 label: _phaseNames[_phase] ?? '',
                                 onDismiss: () {
-                                  if (mounted) setState(() => _showMouthGuideOverlay = false);
+                                  if (mounted)
+                                    setState(
+                                      () => _showMouthGuideOverlay = false,
+                                    );
                                 },
                               ),
                             ),
@@ -1659,27 +2006,44 @@ class _BrushingScreenState extends State<BrushingScreen>
                   alignment: Alignment.topRight,
                   child: Padding(
                     padding: const EdgeInsets.only(top: 8, right: 8),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      // Camera status indicator
-                      if (_cameraReady)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _motionGlow
-                                ? const Color(0xFF69F0AE).withValues(alpha: 0.3)
-                                : Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Camera status indicator
+                        if (_cameraReady)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _motionGlow
+                                  ? const Color(
+                                      0xFF69F0AE,
+                                    ).withValues(alpha: 0.3)
+                                  : Colors.white.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.videocam,
+                              color: _motionGlow
+                                  ? const Color(0xFF69F0AE)
+                                  : Colors.white38,
+                              size: 18,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.videocam,
-                            color: _motionGlow ? const Color(0xFF69F0AE) : Colors.white38,
-                            size: 18,
+                        const MuteButton(),
+                        IconButton(
+                          onPressed: _togglePause,
+                          icon: const Icon(
+                            Icons.pause,
+                            color: Colors.white70,
+                            size: 24,
                           ),
                         ),
-                      const MuteButton(),
-                      IconButton(onPressed: _togglePause, icon: const Icon(Icons.pause, color: Colors.white70, size: 24)),
-                    ]),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1688,7 +2052,11 @@ class _BrushingScreenState extends State<BrushingScreen>
               AnimatedBuilder(
                 animation: _flashController,
                 builder: (context, _) => _flashController.value > 0
-                    ? Container(color: _weapon.primaryColor.withValues(alpha: _flashController.value * 0.15))
+                    ? Container(
+                        color: _weapon.primaryColor.withValues(
+                          alpha: _flashController.value * 0.15,
+                        ),
+                      )
                     : const SizedBox.shrink(),
               ),
 
@@ -1730,13 +2098,17 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     Widget monsterImage = ColorFiltered(
       colorFilter: ColorFilter.mode(
-        _monster.personality.tintColor.withValues(alpha: _monster.personality.tintStrength),
+        _monster.personality.tintColor.withValues(
+          alpha: _monster.personality.tintStrength,
+        ),
         BlendMode.overlay,
       ),
       child: ClipOval(
         child: Image.asset(
           _monsterImages[_monster.imageIndex],
-          width: effectiveSize, height: effectiveSize, fit: BoxFit.cover,
+          width: effectiveSize,
+          height: effectiveSize,
+          fit: BoxFit.cover,
         ),
       ),
     );
@@ -1751,14 +2123,20 @@ class _BrushingScreenState extends State<BrushingScreen>
         double translateX = 0.0, translateY = 0.0;
 
         // Cartoon-style breathing: exaggerated squash/stretch cycle
-        final breathCycle = sin(breathT * p.bobSpeed * pi * 2 + _monster.wobblePhase);
+        final breathCycle = sin(
+          breathT * p.bobSpeed * pi * 2 + _monster.wobblePhase,
+        );
         final breathStretch = breathCycle * 0.06;
         scaleX = 1.0 - breathStretch;
         scaleY = 1.0 + breathStretch;
 
         // Multi-frequency organic wobble (not a single clean sine)
-        final wobble1 = sin((breathT * p.bobSpeed + _monster.wobblePhase) * pi * 2);
-        final wobble2 = sin((breathT * p.bobSpeed * 1.7 + _monster.wobblePhase * 2.3) * pi * 2);
+        final wobble1 = sin(
+          (breathT * p.bobSpeed + _monster.wobblePhase) * pi * 2,
+        );
+        final wobble2 = sin(
+          (breathT * p.bobSpeed * 1.7 + _monster.wobblePhase * 2.3) * pi * 2,
+        );
         rotation = (wobble1 * 0.7 + wobble2 * 0.3) * p.wobbleAmount;
         translateY += (wobble1 * 0.6 + wobble2 * 0.4) * p.bobAmount;
         translateX += wobble2 * p.bobAmount * 0.3;
@@ -1766,8 +2144,10 @@ class _BrushingScreenState extends State<BrushingScreen>
         // Damage shake: more damaged = more erratic
         if (damageProgress > 0.3) {
           final intensity = (damageProgress - 0.3) * 12;
-          translateX += sin(breathT * pi * 12 + _monster.wobblePhase) * intensity;
-          translateY += cos(breathT * pi * 10 + _monster.wobblePhase) * intensity * 0.5;
+          translateX +=
+              sin(breathT * pi * 12 + _monster.wobblePhase) * intensity;
+          translateY +=
+              cos(breathT * pi * 10 + _monster.wobblePhase) * intensity * 0.5;
           rotation += sin(breathT * pi * 8) * (damageProgress - 0.3) * 0.12;
         }
         // Angry jitter + pulsing at low health
@@ -1793,7 +2173,8 @@ class _BrushingScreenState extends State<BrushingScreen>
           translateY -= _monster.hitRecoil * 30;
         }
 
-        final glowAlpha = (0.15 + breathT * 0.15) * (0.5 + damageProgress * 0.5);
+        final glowAlpha =
+            (0.15 + breathT * 0.15) * (0.5 + damageProgress * 0.5);
         // Breathing shadow size
         final shadowScale = 0.65 + breathCycle * 0.08;
 
@@ -1819,36 +2200,49 @@ class _BrushingScreenState extends State<BrushingScreen>
                         height: size * 0.10,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(size),
-                          boxShadow: [BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            blurRadius: 14, spreadRadius: 5,
-                          )],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              blurRadius: 14,
+                              spreadRadius: 5,
+                            ),
+                          ],
                         ),
                       ),
                     ),
                     // Inner glow (pulses from center — feels alive)
                     Container(
-                      width: size * 0.7, height: size * 0.7,
+                      width: size * 0.7,
+                      height: size * 0.7,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(
-                          color: _monster.personality.tintColor.withValues(
-                            alpha: 0.12 + breathCycle.abs() * 0.15,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _monster.personality.tintColor.withValues(
+                              alpha: 0.12 + breathCycle.abs() * 0.15,
+                            ),
+                            blurRadius: 40,
+                            spreadRadius: 15,
                           ),
-                          blurRadius: 40, spreadRadius: 15,
-                        )],
+                        ],
                       ),
                     ),
                     // Outer aura glow (damage-reactive)
                     if (glowAlpha > 0.01)
                       Container(
-                        width: size + 20, height: size + 20,
+                        width: size + 20,
+                        height: size + 20,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(
-                            color: Colors.redAccent.withValues(alpha: glowAlpha),
-                            blurRadius: 24, spreadRadius: 8,
-                          )],
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.redAccent.withValues(
+                                alpha: glowAlpha,
+                              ),
+                              blurRadius: 24,
+                              spreadRadius: 8,
+                            ),
+                          ],
                         ),
                       ),
                     // Energy ring particles
@@ -1866,11 +2260,20 @@ class _BrushingScreenState extends State<BrushingScreen>
                     Positioned(
                       bottom: 10,
                       child: Container(
-                        width: size, height: size,
-                        decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(
-                          colors: [Colors.transparent, Colors.transparent, Colors.black.withValues(alpha: 0.35), Colors.black.withValues(alpha: 0.75)],
-                          stops: const [0.0, 0.5, 0.8, 1.0],
-                        )),
+                        width: size,
+                        height: size,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.transparent,
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.35),
+                              Colors.black.withValues(alpha: 0.75),
+                            ],
+                            stops: const [0.0, 0.5, 0.8, 1.0],
+                          ),
+                        ),
                       ),
                     ),
                     // Menacing eye glow (always visible, pulse with breath)
@@ -1902,86 +2305,136 @@ class _BrushingScreenState extends State<BrushingScreen>
                       Positioned(
                         bottom: 10,
                         child: Container(
-                          width: size, height: size,
+                          width: size,
+                          height: size,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.red.withValues(alpha: (damageProgress - 0.5) * 0.25),
+                            color: Colors.red.withValues(
+                              alpha: (damageProgress - 0.5) * 0.25,
+                            ),
                           ),
                         ),
                       ),
                     // Damage cracks
                     if (damageProgress > 0.3)
-                      Positioned(bottom: 10, child: CustomPaint(
-                        size: Size(size, size),
-                        painter: _DamageCrackPainter(
-                          progress: damageProgress, color: Colors.white,
-                          glowColor: damageProgress > 0.5 ? _weapon.primaryColor : null,
+                      Positioned(
+                        bottom: 10,
+                        child: CustomPaint(
+                          size: Size(size, size),
+                          painter: _DamageCrackPainter(
+                            progress: damageProgress,
+                            color: Colors.white,
+                            glowColor: damageProgress > 0.5
+                                ? _weapon.primaryColor
+                                : null,
+                          ),
                         ),
-                      )),
+                      ),
                     // Dizzy spiral eyes (50-70% damage)
                     if (damageProgress > 0.5 && damageProgress <= 0.7)
-                      Positioned(bottom: 10, child: CustomPaint(
-                        size: Size(size, size),
-                        painter: _MonsterOverlayPainter(animValue: breathT),
-                      )),
+                      Positioned(
+                        bottom: 10,
+                        child: CustomPaint(
+                          size: Size(size, size),
+                          painter: _MonsterOverlayPainter(animValue: breathT),
+                        ),
+                      ),
                     // Red pulse overlay (> 70% damage)
                     if (damageProgress > 0.7)
-                      Positioned(bottom: 10, child: Container(
-                        width: size, height: size,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.red.withValues(alpha: 0.1 + breathT * 0.2),
+                      Positioned(
+                        bottom: 10,
+                        child: Container(
+                          width: size,
+                          height: size,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.red.withValues(
+                              alpha: 0.1 + breathT * 0.2,
+                            ),
+                          ),
                         ),
-                      )),
+                      ),
                     // White flash on hit
                     if (_monster.hitRecoil > 0.6)
-                      Positioned(bottom: 10, child: Container(
-                        width: size, height: size,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: (_monster.hitRecoil - 0.6) * 2),
+                      Positioned(
+                        bottom: 10,
+                        child: Container(
+                          width: size,
+                          height: size,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(
+                              alpha: (_monster.hitRecoil - 0.6) * 2,
+                            ),
+                          ),
                         ),
-                      )),
+                      ),
                     // Boss crown glow + label
                     if (_isBossPhase) ...[
                       Positioned(
                         top: -5,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)]),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)],
+                            ),
                             borderRadius: BorderRadius.circular(10),
-                            boxShadow: [BoxShadow(
-                              color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
-                              blurRadius: 12, spreadRadius: 2,
-                            )],
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFFFFD54F,
+                                ).withValues(alpha: 0.6),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.workspace_premium, color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Text('BOSS', style: TextStyle(
+                              Icon(
+                                Icons.workspace_premium,
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                letterSpacing: 2,
-                              )),
+                                size: 16,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'BOSS',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  letterSpacing: 2,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
                       // Boss golden aura
-                      Positioned(bottom: 10, child: Container(
-                        width: size + 30, height: size + 30,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [BoxShadow(
-                            color: const Color(0xFFFFD54F).withValues(alpha: 0.15 + breathT * 0.15),
-                            blurRadius: 30, spreadRadius: 12,
-                          )],
+                      Positioned(
+                        bottom: 10,
+                        child: Container(
+                          width: size + 30,
+                          height: size + 30,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFFFFD54F,
+                                ).withValues(alpha: 0.15 + breathT * 0.15),
+                                blurRadius: 30,
+                                spreadRadius: 12,
+                              ),
+                            ],
+                          ),
                         ),
-                      )),
+                      ),
                     ],
                   ],
                 ),
@@ -1998,7 +2451,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       monsterWidget = AnimatedBuilder(
         animation: _monsterEntranceController,
         builder: (context, child) {
-          final t = CurvedAnimation(parent: _monsterEntranceController, curve: Curves.bounceOut).value;
+          final t = CurvedAnimation(
+            parent: _monsterEntranceController,
+            curve: Curves.bounceOut,
+          ).value;
           switch (_monster.personality.entranceStyle) {
             case 1: // Slide from left
               return Transform.translate(
@@ -2033,7 +2489,11 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Widget _buildMonsterHealthBar() {
     final health = _monster.health.clamp(0.0, 1.0);
-    final healthColor = Color.lerp(const Color(0xFFFF5252), const Color(0xFF69F0AE), health)!;
+    final healthColor = Color.lerp(
+      const Color(0xFFFF5252),
+      const Color(0xFF69F0AE),
+      health,
+    )!;
 
     return Stack(
       children: [
@@ -2070,7 +2530,12 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Widget _buildHero(double size) {
     final avatar = ClipOval(
-      child: Image.asset(_hero.imagePath, width: size, height: size, fit: BoxFit.cover),
+      child: Image.asset(
+        _hero.imagePath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      ),
     );
 
     return AnimatedBuilder(
@@ -2100,64 +2565,83 @@ class _BrushingScreenState extends State<BrushingScreen>
           child: Transform(
             alignment: Alignment.bottomCenter,
             transform: Matrix4.diagonal3Values(heroScaleX, heroScaleY, 1.0),
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              // Glow
-              Container(
-                width: size + 16, height: size + 16,
-                decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
-                  BoxShadow(color: _hero.primaryColor.withValues(alpha: pulse), blurRadius: 20 + (glowBoost * 20), spreadRadius: 4 + (glowBoost * 8)),
-                ]),
-              ),
-              // Orbiting power particles
-              CustomPaint(
-                size: Size(size + 24, size + 24),
-                painter: _HeroPowerParticlePainter(
-                  animValue: t,
-                  color: _hero.primaryColor,
-                  secondaryColor: _hero.attackColor,
-                  isAttacking: _heroLunging,
-                ),
-              ),
-              child!,
-              // Ring border with breathing glow
-              Container(
-                width: size, height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _hero.primaryColor.withValues(alpha: 0.7 + breathCycle.abs() * 0.3),
-                    width: 3 + (_heroLunging ? 1.5 : 0),
-                  ),
-                ),
-              ),
-              // Weapon badge
-              Positioned(
-                right: -8,
-                bottom: -8,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: _heroLunging ? 54 : 46,
-                  height: _heroLunging ? 54 : 46,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                // Glow
+                Container(
+                  width: size + 16,
+                  height: size + 16,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _weapon.primaryColor.withValues(alpha: _heroLunging ? 1.0 : 0.85),
-                    border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: _weapon.primaryColor.withValues(alpha: _heroLunging ? 0.9 : 0.5),
-                        blurRadius: _heroLunging ? 24 : 10,
-                        spreadRadius: _heroLunging ? 6 : 2,
+                        color: _hero.primaryColor.withValues(alpha: pulse),
+                        blurRadius: 20 + (glowBoost * 20),
+                        spreadRadius: 4 + (glowBoost * 8),
                       ),
                     ],
                   ),
-                  child: Icon(_weapon.icon, color: Colors.white, size: _heroLunging ? 28 : 24),
                 ),
-              ),
-            ],
-          ),
+                // Orbiting power particles
+                CustomPaint(
+                  size: Size(size + 24, size + 24),
+                  painter: _HeroPowerParticlePainter(
+                    animValue: t,
+                    color: _hero.primaryColor,
+                    secondaryColor: _hero.attackColor,
+                    isAttacking: _heroLunging,
+                  ),
+                ),
+                child!,
+                // Ring border with breathing glow
+                Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _hero.primaryColor.withValues(
+                        alpha: 0.7 + breathCycle.abs() * 0.3,
+                      ),
+                      width: 3 + (_heroLunging ? 1.5 : 0),
+                    ),
+                  ),
+                ),
+                // Weapon badge
+                Positioned(
+                  right: -8,
+                  bottom: -8,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: _heroLunging ? 54 : 46,
+                    height: _heroLunging ? 54 : 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _weapon.primaryColor.withValues(
+                        alpha: _heroLunging ? 1.0 : 0.85,
+                      ),
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _weapon.primaryColor.withValues(
+                            alpha: _heroLunging ? 0.9 : 0.5,
+                          ),
+                          blurRadius: _heroLunging ? 24 : 10,
+                          spreadRadius: _heroLunging ? 6 : 2,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _weapon.icon,
+                      color: Colors.white,
+                      size: _heroLunging ? 28 : 24,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -2180,24 +2664,38 @@ class _BrushingScreenState extends State<BrushingScreen>
       timerText = AnimatedBuilder(
         animation: _timerPulseController,
         builder: (context, child) => Transform.scale(
-          scale: 1.0 + _timerPulseController.value * 0.15, child: child,
+          scale: 1.0 + _timerPulseController.value * 0.15,
+          child: child,
         ),
         child: timerText,
       );
     }
     if (isCritical) {
-      return Stack(alignment: Alignment.center, children: [
-        AnimatedBuilder(
-          animation: _timerPulseController,
-          builder: (context, _) => Container(width: 80, height: 80, decoration: BoxDecoration(
-            shape: BoxShape.circle, boxShadow: [BoxShadow(
-              color: Colors.redAccent.withValues(alpha: 0.3 * _timerPulseController.value),
-              blurRadius: 30, spreadRadius: 10,
-            )],
-          )),
-        ),
-        timerText,
-      ]);
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _timerPulseController,
+            builder: (context, _) => Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(
+                      alpha: 0.3 * _timerPulseController.value,
+                    ),
+                    blurRadius: 30,
+                    spreadRadius: 10,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          timerText,
+        ],
+      );
     }
     return timerText;
   }
@@ -2205,46 +2703,79 @@ class _BrushingScreenState extends State<BrushingScreen>
   Widget _buildPauseOverlay() {
     return Container(
       color: Colors.black.withValues(alpha: 0.8),
-      child: Center(child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.pause_circle_filled, size: 80, color: Colors.white54),
-          const SizedBox(height: 24),
-          Text('PAUSED', style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-            color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 6,
-          )),
-          const SizedBox(height: 48),
-          GestureDetector(
-            onTap: _togglePause,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 18),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)]),
-                borderRadius: BorderRadius.circular(40),
-                boxShadow: [BoxShadow(color: const Color(0xFF7C4DFF).withValues(alpha: 0.5), blurRadius: 20)],
-              ),
-              child: Text('RESUME', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 4,
-              )),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.pause_circle_filled,
+              size: 80,
+              color: Colors.white54,
             ),
-          ),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: _quitBrushing,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white24),
+            const SizedBox(height: 24),
+            Text(
+              'PAUSED',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 6,
               ),
-              child: Text('QUIT', style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.white70, letterSpacing: 3,
-              )),
             ),
-          ),
-        ],
-      )),
+            const SizedBox(height: 48),
+            GestureDetector(
+              onTap: _togglePause,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 48,
+                  vertical: 18,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
+                  ),
+                  borderRadius: BorderRadius.circular(40),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.5),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'RESUME',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _quitBrushing,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Text(
+                  'QUIT',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white70,
+                    letterSpacing: 3,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -2258,16 +2789,27 @@ class _WorldBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(gradient: LinearGradient(
-        begin: Alignment.topCenter, end: Alignment.bottomCenter,
-        colors: [
-          world.gradientColors.length > 2 ? world.gradientColors[2] : const Color(0xFF0D0B2E),
-          world.gradientColors.length > 1 ? world.gradientColors[1].withValues(alpha: 0.6) : const Color(0xFF0D0B2E),
-          world.gradientColors.isNotEmpty ? world.gradientColors[0].withValues(alpha: 0.3) : const Color(0xFF0D0B2E),
-          world.gradientColors.length > 2 ? world.gradientColors[2] : const Color(0xFF0D0B2E),
-        ],
-        stops: const [0.0, 0.3, 0.6, 1.0],
-      )),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            world.gradientColors.length > 2
+                ? world.gradientColors[2]
+                : const Color(0xFF0D0B2E),
+            world.gradientColors.length > 1
+                ? world.gradientColors[1].withValues(alpha: 0.6)
+                : const Color(0xFF0D0B2E),
+            world.gradientColors.isNotEmpty
+                ? world.gradientColors[0].withValues(alpha: 0.3)
+                : const Color(0xFF0D0B2E),
+            world.gradientColors.length > 2
+                ? world.gradientColors[2]
+                : const Color(0xFF0D0B2E),
+          ],
+          stops: const [0.0, 0.3, 0.6, 1.0],
+        ),
+      ),
       child: child,
     );
   }
@@ -2282,29 +2824,41 @@ class _WorldParticlePainter extends CustomPainter {
     for (final p in particles) {
       final x = p.x * size.width;
       final y = p.y * size.height;
-      final paint = Paint()..color = p.color.withValues(alpha: p.opacity.clamp(0, 1));
+      final paint = Paint()
+        ..color = p.color.withValues(alpha: p.opacity.clamp(0, 1));
       switch (particleType) {
         case 'bubble':
-          paint.style = PaintingStyle.stroke; paint.strokeWidth = 1;
+          paint.style = PaintingStyle.stroke;
+          paint.strokeWidth = 1;
           canvas.drawCircle(Offset(x, y), p.size + 1, paint);
         case 'ember':
           paint.maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
           canvas.drawCircle(Offset(x, y), p.size, paint);
         case 'twinkle':
-          paint.strokeWidth = 1.5; paint.strokeCap = StrokeCap.round;
+          paint.strokeWidth = 1.5;
+          paint.strokeCap = StrokeCap.round;
           canvas.drawLine(Offset(x - p.size, y), Offset(x + p.size, y), paint);
           canvas.drawLine(Offset(x, y - p.size), Offset(x, y + p.size), paint);
         case 'crack':
-          paint.strokeWidth = 1; paint.strokeCap = StrokeCap.round;
-          canvas.drawLine(Offset(x, y), Offset(x + p.vx * 600, y + p.vy * 600), paint);
+          paint.strokeWidth = 1;
+          paint.strokeCap = StrokeCap.round;
+          canvas.drawLine(
+            Offset(x, y),
+            Offset(x + p.vx * 600, y + p.vy * 600),
+            paint,
+          );
         default:
           final path = Path();
-          path.moveTo(x, y - p.size); path.lineTo(x + p.size * 0.6, y);
-          path.lineTo(x, y + p.size); path.lineTo(x - p.size * 0.6, y); path.close();
+          path.moveTo(x, y - p.size);
+          path.lineTo(x + p.size * 0.6, y);
+          path.lineTo(x, y + p.size);
+          path.lineTo(x - p.size * 0.6, y);
+          path.close();
           canvas.drawPath(path, paint);
       }
     }
   }
+
   @override
   bool shouldRepaint(_WorldParticlePainter oldDelegate) => true;
 }
@@ -2324,6 +2878,7 @@ class _HitSparkPainter extends CustomPainter {
       canvas.drawCircle(Offset(cx + s.x, cy + s.y), s.size * s.life, paint);
     }
   }
+
   @override
   bool shouldRepaint(_HitSparkPainter oldDelegate) => true;
 }
@@ -2334,7 +2889,11 @@ class _EnergyRingPainter extends CustomPainter {
   final Color color;
   final double health;
 
-  _EnergyRingPainter({required this.animValue, required this.color, required this.health});
+  _EnergyRingPainter({
+    required this.animValue,
+    required this.color,
+    required this.health,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2357,7 +2916,8 @@ class _EnergyRingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_EnergyRingPainter oldDelegate) => animValue != oldDelegate.animValue || health != oldDelegate.health;
+  bool shouldRepaint(_EnergyRingPainter oldDelegate) =>
+      animValue != oldDelegate.animValue || health != oldDelegate.health;
 }
 
 /// Weapon-aware battle effect painter
@@ -2383,7 +2943,8 @@ class _WeaponBattleEffectPainter extends CustomPainter {
     final impactEnd = 0.7;
     if (progress < impactStart || progress > impactEnd) return;
 
-    final impactProgress = ((progress - impactStart) / (impactEnd - impactStart)).clamp(0.0, 1.0);
+    final impactProgress =
+        ((progress - impactStart) / (impactEnd - impactStart)).clamp(0.0, 1.0);
     final fadeAlpha = (1.0 - impactProgress) * 0.9;
     final lineWidth = isFinisher ? 6.0 : 4.0;
 
@@ -2448,7 +3009,8 @@ class _WeaponBattleEffectPainter extends CustomPainter {
         final segments = 6;
         for (int i = 1; i <= segments; i++) {
           final t = i / segments;
-          final y = cy + size.height * 0.3 - size.height * 0.3 * t * impactProgress;
+          final y =
+              cy + size.height * 0.3 - size.height * 0.3 * t * impactProgress;
           final x = cx + (i % 2 == 0 ? 1 : -1) * 20 * impactProgress;
           path.lineTo(x, y);
         }
@@ -2470,8 +3032,10 @@ class _WeaponBattleEffectPainter extends CustomPainter {
         final path = Path();
         path.moveTo(cx - size.width * 0.3, cy + 30);
         path.quadraticBezierTo(
-          cx, cy - 40 * impactProgress,
-          cx + size.width * 0.3 * impactProgress, cy,
+          cx,
+          cy - 40 * impactProgress,
+          cx + size.width * 0.3 * impactProgress,
+          cy,
         );
         paint.strokeWidth = lineWidth * 1.5;
         canvas.drawPath(path, paint);
@@ -2479,8 +3043,10 @@ class _WeaponBattleEffectPainter extends CustomPainter {
         final path2 = Path();
         path2.moveTo(cx + size.width * 0.3, cy + 30);
         path2.quadraticBezierTo(
-          cx, cy - 20 * impactProgress,
-          cx - size.width * 0.25 * impactProgress, cy + 10,
+          cx,
+          cy - 20 * impactProgress,
+          cx - size.width * 0.25 * impactProgress,
+          cy + 10,
         );
         canvas.drawPath(path2, paint);
         break;
@@ -2516,21 +3082,38 @@ class _WeaponBattleEffectPainter extends CustomPainter {
       default:
         final beamEndY = cy + size.height * 0.3 * (1 - impactProgress);
         paint.strokeWidth = lineWidth * 2;
-        canvas.drawLine(Offset(cx, cy + size.height * 0.3), Offset(cx, beamEndY), paint);
+        canvas.drawLine(
+          Offset(cx, cy + size.height * 0.3),
+          Offset(cx, beamEndY),
+          paint,
+        );
         glowPaint.strokeWidth = lineWidth * 5;
-        canvas.drawLine(Offset(cx, cy + size.height * 0.3), Offset(cx, beamEndY), glowPaint);
+        canvas.drawLine(
+          Offset(cx, cy + size.height * 0.3),
+          Offset(cx, beamEndY),
+          glowPaint,
+        );
         break;
     }
 
     if (isFinisher) {
       final reach = size.width * 0.35 * impactProgress;
-      canvas.drawLine(Offset(cx - reach, cy - reach), Offset(cx + reach, cy + reach), paint);
-      canvas.drawLine(Offset(cx + reach, cy - reach), Offset(cx - reach, cy + reach), paint);
+      canvas.drawLine(
+        Offset(cx - reach, cy - reach),
+        Offset(cx + reach, cy + reach),
+        paint,
+      );
+      canvas.drawLine(
+        Offset(cx + reach, cy - reach),
+        Offset(cx - reach, cy + reach),
+        paint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(_WeaponBattleEffectPainter oldDelegate) => progress != oldDelegate.progress;
+  bool shouldRepaint(_WeaponBattleEffectPainter oldDelegate) =>
+      progress != oldDelegate.progress;
 }
 
 /// Glowing eyes that pulse menacingly on the monster face
@@ -2539,7 +3122,11 @@ class _MonsterEyeGlowPainter extends CustomPainter {
   final Color tintColor;
   final double damage;
 
-  _MonsterEyeGlowPainter({required this.animValue, required this.tintColor, required this.damage});
+  _MonsterEyeGlowPainter({
+    required this.animValue,
+    required this.tintColor,
+    required this.damage,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2586,7 +3173,11 @@ class _MonsterDripPainter extends CustomPainter {
   final Color color;
   final double phase;
 
-  _MonsterDripPainter({required this.animValue, required this.color, required this.phase});
+  _MonsterDripPainter({
+    required this.animValue,
+    required this.color,
+    required this.phase,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2626,7 +3217,8 @@ class _MonsterDripPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_MonsterDripPainter oldDelegate) => animValue != oldDelegate.animValue;
+  bool shouldRepaint(_MonsterDripPainter oldDelegate) =>
+      animValue != oldDelegate.animValue;
 }
 
 /// Orbiting power sparkles around the hero
@@ -2659,7 +3251,9 @@ class _HeroPowerParticlePainter extends CustomPainter {
 
       final useSecondary = i % 2 == 0;
       final c = useSecondary ? secondaryColor : color;
-      final alpha = isAttacking ? 0.8 : (0.35 + sin(angle + animValue * pi * 4) * 0.25);
+      final alpha = isAttacking
+          ? 0.8
+          : (0.35 + sin(angle + animValue * pi * 4) * 0.25);
       final pSize = isAttacking ? 3.5 : 2.0 + sin(angle * 3) * 1.0;
 
       // Glow
@@ -2676,14 +3270,19 @@ class _HeroPowerParticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_HeroPowerParticlePainter oldDelegate) =>
-      animValue != oldDelegate.animValue || isAttacking != oldDelegate.isAttacking;
+      animValue != oldDelegate.animValue ||
+      isAttacking != oldDelegate.isAttacking;
 }
 
 class _DamageCrackPainter extends CustomPainter {
   final double progress;
   final Color color;
   final Color? glowColor;
-  _DamageCrackPainter({required this.progress, required this.color, this.glowColor});
+  _DamageCrackPainter({
+    required this.progress,
+    required this.color,
+    this.glowColor,
+  });
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
@@ -2711,18 +3310,21 @@ class _DamageCrackPainter extends CustomPainter {
       final y1 = cy + sin(startAngle) * 14;
       var x2 = x1 + cos(startAngle) * len;
       var y2 = y1 + sin(startAngle) * len;
-      if (glowPaint != null) canvas.drawLine(Offset(x1, y1), Offset(x2, y2), glowPaint);
+      if (glowPaint != null)
+        canvas.drawLine(Offset(x1, y1), Offset(x2, y2), glowPaint);
       canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
       if (rng.nextBool()) {
         final branchAngle = startAngle + (rng.nextDouble() - 0.5) * 1.2;
         final bLen = len * 0.5;
         final bx = x2 + cos(branchAngle) * bLen;
         final by = y2 + sin(branchAngle) * bLen;
-        if (glowPaint != null) canvas.drawLine(Offset(x2, y2), Offset(bx, by), glowPaint);
+        if (glowPaint != null)
+          canvas.drawLine(Offset(x2, y2), Offset(bx, by), glowPaint);
         canvas.drawLine(Offset(x2, y2), Offset(bx, by), paint);
       }
     }
   }
+
   @override
   bool shouldRepaint(_DamageCrackPainter oldDelegate) =>
       progress != oldDelegate.progress || glowColor != oldDelegate.glowColor;
@@ -2763,8 +3365,10 @@ class _MonsterOverlayPainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
   }
+
   @override
-  bool shouldRepaint(_MonsterOverlayPainter oldDelegate) => animValue != oldDelegate.animValue;
+  bool shouldRepaint(_MonsterOverlayPainter oldDelegate) =>
+      animValue != oldDelegate.animValue;
 }
 
 // Per-monster death explosion painter (scaled for bigger monster)
@@ -2775,7 +3379,9 @@ class _MonsterDeathPainter extends CustomPainter {
   final double monsterSize;
 
   _MonsterDeathPainter({
-    required this.progress, required this.debris, required this.themeColor,
+    required this.progress,
+    required this.debris,
+    required this.themeColor,
     this.monsterSize = 180,
   });
 
@@ -2790,7 +3396,8 @@ class _MonsterDeathPainter extends CustomPainter {
       final flashAlpha = progress < 0.15
           ? (progress / 0.15)
           : ((0.3 - progress) / 0.15);
-      final flashPaint = Paint()..color = Colors.white.withValues(alpha: flashAlpha * 0.8);
+      final flashPaint = Paint()
+        ..color = Colors.white.withValues(alpha: flashAlpha * 0.8);
       canvas.drawCircle(Offset(cx, cy), baseRadius, flashPaint);
     }
 
@@ -2801,9 +3408,14 @@ class _MonsterDeathPainter extends CustomPainter {
         canvas.save();
         canvas.translate(cx + d.x, cy + d.y);
         canvas.rotate(d.rotation);
-        final paint = Paint()..color = d.color.withValues(alpha: d.life.clamp(0, 1));
+        final paint = Paint()
+          ..color = d.color.withValues(alpha: d.life.clamp(0, 1));
         canvas.drawRect(
-          Rect.fromCenter(center: Offset.zero, width: d.size, height: d.size * 0.7),
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: d.size,
+            height: d.size * 0.7,
+          ),
           paint,
         );
         canvas.restore();
@@ -2831,10 +3443,15 @@ class _MonsterDeathPainter extends CustomPainter {
       final ghostPaint = Paint()
         ..color = themeColor.withValues(alpha: ghostAlpha)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-      canvas.drawCircle(Offset(cx, ghostY), 25 * (1.0 - ghostT * 0.5), ghostPaint);
+      canvas.drawCircle(
+        Offset(cx, ghostY),
+        25 * (1.0 - ghostT * 0.5),
+        ghostPaint,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(_MonsterDeathPainter oldDelegate) => progress != oldDelegate.progress;
+  bool shouldRepaint(_MonsterDeathPainter oldDelegate) =>
+      progress != oldDelegate.progress;
 }
