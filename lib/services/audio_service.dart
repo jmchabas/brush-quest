@@ -103,18 +103,21 @@ class AudioService {
     'battle_music_loop.mp3',
   ];
 
-  List<String> get encouragementVoices => List.unmodifiable(_encouragementVoices);
+  List<String> get encouragementVoices =>
+      List.unmodifiable(_encouragementVoices);
 
   Future<void> preloadAll() async {
     final prefs = await SharedPreferences.getInstance();
     _muted = prefs.getBool('muted') ?? false;
 
     for (final file in _allAudioFiles) {
+      final player = AudioPlayer();
       try {
-        final player = AudioPlayer();
-        await player.setSource(AssetSource('audio/$file'));
-        player.dispose();
+        await player
+            .setSource(AssetSource('audio/$file'))
+            .timeout(const Duration(milliseconds: 350));
       } catch (_) {}
+      player.dispose();
     }
   }
 
@@ -122,10 +125,16 @@ class AudioService {
     _muted = !_muted;
     if (_muted) {
       for (final p in _sfxPool) {
-        try { await p.stop(); } catch (_) {}
+        try {
+          await p.stop();
+        } catch (_) {}
       }
-      try { await _voicePlayer.stop(); } catch (_) {}
-      try { await _musicPlayer.stop(); } catch (_) {}
+      try {
+        await _voicePlayer.stop();
+      } catch (_) {}
+      try {
+        await _musicPlayer.stop();
+      } catch (_) {}
       _musicPlaying = false;
       _voicePlaying = false;
     }
@@ -152,7 +161,9 @@ class AudioService {
     if (_voicePlaying) return;
     _voicePlaying = true;
 
-    try { await _musicPlayer.setVolume(_musicDuckedVolume); } catch (_) {}
+    try {
+      await _musicPlayer.setVolume(_musicDuckedVolume);
+    } catch (_) {}
 
     try {
       await _voicePlayer.stop();
@@ -171,7 +182,9 @@ class AudioService {
 
   void _restoreMusicVolume() {
     if (!_musicPlaying) return;
-    try { _musicPlayer.setVolume(_musicVolume); } catch (_) {}
+    try {
+      _musicPlayer.setVolume(_musicVolume);
+    } catch (_) {}
   }
 
   Future<void> playMusic(String fileName) async {
@@ -214,7 +227,9 @@ class AudioService {
   Future<void> stopMusic() async {
     _musicPlaying = false;
     _currentMusicFile = null;
-    try { await _musicPlayer.stop(); } catch (_) {}
+    try {
+      await _musicPlayer.stop();
+    } catch (_) {}
   }
 
   void dispose() {

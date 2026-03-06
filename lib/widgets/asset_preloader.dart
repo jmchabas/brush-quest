@@ -63,20 +63,35 @@ class _AssetPreloaderState extends State<AssetPreloader>
     final total = _images.length + 1; // +1 for audio
     int completed = 0;
 
-    // Load images one by one to track progress
-    for (final path in _images) {
-      await precacheImage(AssetImage(path), context);
+    try {
+      // Load images one by one to track progress
+      for (final path in _images) {
+        try {
+          await precacheImage(
+            AssetImage(path),
+            context,
+          ).timeout(const Duration(milliseconds: 600));
+        } catch (_) {
+          // Keep startup resilient on constrained/slow emulators.
+          // If one asset fails to decode, continue boot so the app remains usable.
+        }
+        completed++;
+        if (mounted) setState(() => _progress = completed / total);
+      }
+
+      // Load audio, but never block startup indefinitely.
+      await AudioService().preloadAll().timeout(const Duration(seconds: 8));
       completed++;
       if (mounted) setState(() => _progress = completed / total);
-    }
-
-    // Load audio
-    await AudioService().preloadAll();
-    completed++;
-    if (mounted) setState(() => _progress = completed / total);
-
-    if (mounted) {
-      setState(() => _loaded = true);
+    } catch (_) {
+      // Ignore preloading errors and continue into the app.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _progress = 1.0;
+          _loaded = true;
+        });
+      }
     }
   }
 
@@ -128,9 +143,7 @@ class _AssetPreloaderState extends State<AssetPreloader>
                         scale: scale,
                         child: Text(
                           'BRUSH QUEST',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineLarge
+                          style: Theme.of(context).textTheme.headlineLarge
                               ?.copyWith(
                                 fontSize: 46,
                                 fontWeight: FontWeight.bold,
@@ -138,13 +151,15 @@ class _AssetPreloaderState extends State<AssetPreloader>
                                 letterSpacing: 4,
                                 shadows: [
                                   Shadow(
-                                    color: const Color(0xFF7C4DFF)
-                                        .withValues(alpha: glow),
+                                    color: const Color(
+                                      0xFF7C4DFF,
+                                    ).withValues(alpha: glow),
                                     blurRadius: 30,
                                   ),
                                   Shadow(
-                                    color: const Color(0xFF00E5FF)
-                                        .withValues(alpha: glow * 0.6),
+                                    color: const Color(
+                                      0xFF00E5FF,
+                                    ).withValues(alpha: glow * 0.6),
                                     blurRadius: 50,
                                   ),
                                 ],
@@ -186,10 +201,12 @@ class _AssetPreloaderState extends State<AssetPreloader>
                             height: 10,
                             child: LinearProgressIndicator(
                               value: _progress,
-                              backgroundColor:
-                                  Colors.white.withValues(alpha: 0.1),
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.1,
+                              ),
                               valueColor: const AlwaysStoppedAnimation(
-                                  Color(0xFF7C4DFF)),
+                                Color(0xFF7C4DFF),
+                              ),
                             ),
                           ),
                         ),
@@ -198,8 +215,8 @@ class _AssetPreloaderState extends State<AssetPreloader>
                           _progress < 0.5
                               ? 'LOADING HEROES...'
                               : _progress < 0.9
-                                  ? 'PREPARING MONSTERS...'
-                                  : 'ALMOST READY!',
+                              ? 'PREPARING MONSTERS...'
+                              : 'ALMOST READY!',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.5),
                             fontSize: 12,
@@ -239,12 +256,13 @@ class _LoadingStarsPainter extends CustomPainter {
       final starSize = 1.5 + _rng.nextDouble() * 2.5;
 
       final paint = Paint()
-        ..color = (i % 3 == 0
-                ? const Color(0xFF00E5FF)
-                : i % 3 == 1
+        ..color =
+            (i % 3 == 0
+                    ? const Color(0xFF00E5FF)
+                    : i % 3 == 1
                     ? const Color(0xFF7C4DFF)
                     : Colors.white)
-            .withValues(alpha: alpha)
+                .withValues(alpha: alpha)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
 
       canvas.drawCircle(Offset(baseX, baseY), starSize, paint);
