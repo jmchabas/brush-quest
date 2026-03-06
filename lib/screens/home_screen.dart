@@ -5,7 +5,6 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
-import '../services/camera_service.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -142,57 +141,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _startBrushingFlow() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    final wantsCamera = prefs.getBool('camera_enabled') ?? true;
-    if (!wantsCamera) {
-      _showPreBrushPicker();
-      return;
+    if (!prefs.containsKey('camera_mode_configured')) {
+      if (!prefs.containsKey('camera_enabled')) {
+        await prefs.setBool('camera_enabled', true);
+      }
+      await prefs.setBool('camera_mode_configured', true);
     }
 
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0A3E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Camera Motion Mode',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Allow camera to detect brushing motion for attacks? You can still play without it.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
-              'NO CAMERA',
-              style: TextStyle(color: Colors.white54),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'ALLOW',
-              style: TextStyle(
-                color: Color(0xFF00E5FF),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (!mounted) return;
-    if (proceed == true) {
-      await CameraService().initialize();
-      _telemetry.logEvent('camera_prompt_accept');
-      if (!mounted) return;
-    } else {
-      await prefs.setBool('camera_enabled', false);
-      _telemetry.logEvent('camera_prompt_decline');
-      if (!mounted) return;
-    }
     _showPreBrushPicker();
   }
 

@@ -18,6 +18,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   final _pageController = PageController();
   int _currentPage = 0;
+  bool _cameraMotionEnabled = true;
 
   late AnimationController _pulseController;
   late AnimationController _floatController;
@@ -38,6 +39,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     )..repeat(reverse: true);
+    _loadInitialCameraChoice();
   }
 
   @override
@@ -61,10 +63,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
+  Future<void> _loadInitialCameraChoice() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('camera_enabled') ?? true;
+    if (mounted) {
+      setState(() => _cameraMotionEnabled = enabled);
+    }
+  }
+
   Future<void> _completeOnboarding() async {
     HapticFeedback.heavyImpact();
     AudioService().playSfx('victory.mp3');
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('camera_enabled', _cameraMotionEnabled);
+    await prefs.setBool('camera_mode_configured', true);
     await prefs.setBool('onboarding_completed', true);
     if (mounted) {
       Navigator.of(context).pushReplacement(
@@ -126,10 +138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             animation: _floatController,
             builder: (context, child) {
               final y = sin(_floatController.value * pi) * 8;
-              return Transform.translate(
-                offset: Offset(0, y),
-                child: child,
-              );
+              return Transform.translate(offset: Offset(0, y), child: child);
             },
             child: Container(
               width: 160,
@@ -147,7 +156,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                 ],
               ),
-              child: const Icon(Icons.rocket_launch, size: 80, color: Colors.white),
+              child: const Icon(
+                Icons.rocket_launch,
+                size: 80,
+                color: Colors.white,
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -155,17 +168,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             'WELCOME\nSPACE RANGER!',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: 38,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  height: 1.2,
-                  shadows: [
-                    Shadow(
-                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.8),
-                      blurRadius: 20,
-                    ),
-                  ],
+              fontSize: 38,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.2,
+              shadows: [
+                Shadow(
+                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.8),
+                  blurRadius: 20,
                 ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           Text(
@@ -193,11 +206,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           Text(
             'HOW TO PLAY',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF00E5FF),
-                  letterSpacing: 3,
-                ),
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF00E5FF),
+              letterSpacing: 3,
+            ),
           ),
           const SizedBox(height: 36),
           _OnboardingStep(
@@ -239,11 +252,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           Text(
             'FOLLOW THE GUIDE',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFFFF80AB),
-                  letterSpacing: 3,
-                ),
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFFFF80AB),
+              letterSpacing: 3,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -280,6 +293,51 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 fontSize: 15,
                 height: 1.5,
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF00E5FF).withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.videocam, color: Color(0xFF00E5FF), size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Camera motion mode',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        'Use brushing motion to power attacks.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _cameraMotionEnabled,
+                  onChanged: (value) =>
+                      setState(() => _cameraMotionEnabled = value),
+                  activeThumbColor: const Color(0xFF00E5FF),
+                ),
+              ],
             ),
           ),
           const Spacer(flex: 3),
@@ -337,10 +395,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: (_currentPage == 2
-                              ? const Color(0xFF69F0AE)
-                              : const Color(0xFF7C4DFF))
-                          .withValues(alpha: 0.4),
+                      color:
+                          (_currentPage == 2
+                                  ? const Color(0xFF69F0AE)
+                                  : const Color(0xFF7C4DFF))
+                              .withValues(alpha: 0.4),
                       blurRadius: 16,
                       spreadRadius: 2,
                     ),
@@ -394,7 +453,10 @@ class _OnboardingStep extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: color.withValues(alpha: 0.15),
-                border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+                border: Border.all(
+                  color: color.withValues(alpha: 0.5),
+                  width: 2,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: color.withValues(alpha: glow),
