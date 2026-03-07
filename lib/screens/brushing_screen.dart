@@ -13,7 +13,6 @@ import '../services/streak_service.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/mouth_guide.dart';
 import 'victory_screen.dart';
 
@@ -713,6 +712,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       _worldIntroSecondsLeft = 3;
       _sessionStage = SessionStage.worldIntro;
     });
+    _playWorldMissionBriefing();
 
     _worldIntroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
@@ -727,6 +727,19 @@ class _BrushingScreenState extends State<BrushingScreen>
         _startCountdown();
       }
     });
+  }
+
+  void _playWorldMissionBriefing() {
+    final voiceFile = _isBossSession
+        ? 'voice_unstoppable.mp3'
+        : switch (_dailyModifier.type) {
+            DailyModifierType.frenzy => 'voice_super.mp3',
+            DailyModifierType.precision => 'voice_keep_it_up.mp3',
+            DailyModifierType.treasureBoost => 'voice_open_chest.mp3',
+            DailyModifierType.bossRush => 'voice_unstoppable.mp3',
+            DailyModifierType.none => 'voice_lets_fight.mp3',
+          };
+    _audio.playVoice(voiceFile, clearQueue: true, interrupt: true);
   }
 
   @override
@@ -764,7 +777,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = BrushPhase.countdown;
       _sessionStage = SessionStage.countdown;
     });
-    _audio.playVoice('voice_countdown.mp3');
+    _audio.playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
@@ -1110,8 +1123,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     Future.delayed(const Duration(milliseconds: 900), () {
       if (!mounted ||
           _phase == BrushPhase.done ||
-          _phase == BrushPhase.countdown)
+          _phase == BrushPhase.countdown) {
         return;
+      }
       setState(() {
         _isBossPhase = false; // Boss was one-time, back to normal
         _monster = _createWorldMonster();
@@ -1282,8 +1296,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   String _getEncouragementText() {
-    if (_phaseSecondsLeft > 20)
+    if (_phaseSecondsLeft > 20) {
       return _cameraReady ? 'BRUSH TO ATTACK!' : 'FIGHT THAT MONSTER!';
+    }
     if (_phaseSecondsLeft > 10) return 'KEEP BRUSHING!';
     if (_phaseSecondsLeft > 5) return 'ALMOST THERE!';
     return 'FINISH IT OFF!';
@@ -1562,16 +1577,31 @@ class _BrushingScreenState extends State<BrushingScreen>
                 ),
               ),
               Positioned(
-                top: -20,
-                left: -40,
+                top: -24,
+                left: -24,
                 child: IgnorePointer(
-                  child: Opacity(
-                    opacity: 0.15,
-                    child: Image.asset(
-                      _world.imagePath,
-                      width: 180,
-                      height: 180,
-                      fit: BoxFit.cover,
+                  child: Container(
+                    width: 156,
+                    height: 156,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _world.themeColor.withValues(alpha: 0.18),
+                          blurRadius: 28,
+                          spreadRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Opacity(
+                        opacity: 0.24,
+                        child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                      ),
                     ),
                   ),
                 ),
@@ -1581,104 +1611,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                 child: Column(
                   children: [
                     const SizedBox(height: 8),
-                    // Phase indicator: mouth guide + zone name + stars
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12, right: 76),
-                      child: SlideTransition(
-                        position:
-                            Tween<Offset>(
-                              begin: const Offset(0, -1),
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: _phaseTransitionController,
-                                curve: Curves.elasticOut,
-                              ),
-                            ),
-                        child: GlassCard(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          child: Row(
-                            children: [
-                              // Compact mouth guide
-                              AnimatedBuilder(
-                                animation: _mouthGuideGlowController,
-                                builder: (context, _) => MouthGuide(
-                                  activeQuadrant:
-                                      _phaseToMouthQuadrant[_phase] ??
-                                      MouthQuadrant.topLeft,
-                                  glowAnim: _mouthGuideGlowController.value,
-                                  highlightColor: _world.themeColor,
-                                  size: 50,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _phaseNames[_phase] ?? '',
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        color: _world.themeColor,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                    Text(
-                                      _monster.personality.name.toUpperCase(),
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                        fontSize: 10,
-                                        letterSpacing: 1,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Monsters defeated counter
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.4),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.whatshot,
-                                      color: Colors.orangeAccent,
-                                      size: 18,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      '$_monstersDefeated',
-                                      style: const TextStyle(
-                                        color: Colors.orangeAccent,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                    _buildMissionHud(),
 
                     const SizedBox(height: 12),
 
@@ -1984,10 +1917,11 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 themeColor: _world.themeColor,
                                 label: _phaseNames[_phase] ?? '',
                                 onDismiss: () {
-                                  if (mounted)
+                                  if (mounted) {
                                     setState(
                                       () => _showMouthGuideOverlay = false,
                                     );
+                                  }
                                 },
                               ),
                             ),
@@ -2062,6 +1996,192 @@ class _BrushingScreenState extends State<BrushingScreen>
 
               if (_isPaused) _buildPauseOverlay(),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMissionHud() {
+    final phaseName = _phaseNames[_phase] ?? '';
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, right: 84),
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: _phaseTransitionController,
+                curve: Curves.elasticOut,
+              ),
+            ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: Container(
+            key: ValueKey(
+              'mission-hud-${_phase.name}-${_monster.personality.name}',
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withValues(alpha: 0.64),
+                  Colors.black.withValues(alpha: 0.45),
+                ],
+              ),
+              border: Border.all(
+                color: _world.themeColor.withValues(alpha: 0.5),
+                width: 1.4,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _world.themeColor.withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _world.themeColor.withValues(alpha: 0.75),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _world.name.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          Text(
+                            phaseName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _world.themeColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.34),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.whatshot,
+                            color: Colors.orangeAccent,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '$_monstersDefeated',
+                            style: const TextStyle(
+                              color: Colors.orangeAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _mouthGuideGlowController,
+                      builder: (context, _) => MouthGuide(
+                        activeQuadrant:
+                            _phaseToMouthQuadrant[_phase] ??
+                            MouthQuadrant.topLeft,
+                        glowAnim: _mouthGuideGlowController.value,
+                        highlightColor: _world.themeColor,
+                        size: 62,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _monster.personality.name.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.72),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(
+                                _dailyModifier.icon,
+                                size: 12,
+                                color: _dailyModifier.color,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  _dailyModifier.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: _dailyModifier.color,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -3310,16 +3430,18 @@ class _DamageCrackPainter extends CustomPainter {
       final y1 = cy + sin(startAngle) * 14;
       var x2 = x1 + cos(startAngle) * len;
       var y2 = y1 + sin(startAngle) * len;
-      if (glowPaint != null)
+      if (glowPaint != null) {
         canvas.drawLine(Offset(x1, y1), Offset(x2, y2), glowPaint);
+      }
       canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
       if (rng.nextBool()) {
         final branchAngle = startAngle + (rng.nextDouble() - 0.5) * 1.2;
         final bLen = len * 0.5;
         final bx = x2 + cos(branchAngle) * bLen;
         final by = y2 + sin(branchAngle) * bLen;
-        if (glowPaint != null)
+        if (glowPaint != null) {
           canvas.drawLine(Offset(x2, y2), Offset(bx, by), glowPaint);
+        }
         canvas.drawLine(Offset(x2, y2), Offset(bx, by), paint);
       }
     }

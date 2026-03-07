@@ -17,8 +17,10 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   final _pageController = PageController();
+  final _audio = AudioService();
   int _currentPage = 0;
   bool _cameraMotionEnabled = true;
+  int _lastNarratedPage = -1;
 
   late AnimationController _pulseController;
   late AnimationController _floatController;
@@ -40,6 +42,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       vsync: this,
     )..repeat(reverse: true);
     _loadInitialCameraChoice();
+    Future.delayed(const Duration(milliseconds: 450), () {
+      if (mounted) _playPageNarration(0, force: true);
+    });
   }
 
   @override
@@ -53,7 +58,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _nextPage() {
     HapticFeedback.lightImpact();
-    AudioService().playSfx('whoosh.mp3');
+    _audio.playSfx('whoosh.mp3');
     if (_currentPage < 2) {
       _pageController.animateToPage(
         _currentPage + 1,
@@ -73,7 +78,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Future<void> _completeOnboarding() async {
     HapticFeedback.heavyImpact();
-    AudioService().playSfx('victory.mp3');
+    _audio.playSfx('victory.mp3');
+    _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_enabled', _cameraMotionEnabled);
     await prefs.setBool('camera_mode_configured', true);
@@ -100,6 +106,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
+  void _playPageNarration(int page, {bool force = false}) {
+    if (!force && _lastNarratedPage == page) return;
+    _lastNarratedPage = page;
+    final voiceFile = switch (page) {
+      0 => 'voice_welcome.mp3',
+      1 => 'voice_keep_it_up.mp3',
+      2 => 'voice_great_choice.mp3',
+      _ => 'voice_welcome.mp3',
+    };
+    _audio.playVoice(voiceFile, clearQueue: true, interrupt: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -107,10 +125,29 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         child: SafeArea(
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 6, right: 14),
+                child: Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    onPressed: () =>
+                        _playPageNarration(_currentPage, force: true),
+                    icon: const Icon(
+                      Icons.volume_up_rounded,
+                      color: Color(0xFF00E5FF),
+                      size: 30,
+                    ),
+                    tooltip: 'Repeat voice',
+                  ),
+                ),
+              ),
               Expanded(
                 child: PageView(
                   controller: _pageController,
-                  onPageChanged: (i) => setState(() => _currentPage = i),
+                  onPageChanged: (i) {
+                    setState(() => _currentPage = i);
+                    _playPageNarration(i);
+                  },
                   children: [
                     _buildWelcomePage(),
                     _buildHowToPlayPage(),
