@@ -42,24 +42,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _welcomePlayed = false;
   String? _lastPickerVoice;
 
-  static const Map<String, String> _heroPickerVoice = {
-    'blaze': 'voice_picker_hero_blaze.wav',
-    'frost': 'voice_picker_hero_frost.wav',
-    'bolt': 'voice_picker_hero_bolt.wav',
-    'shadow': 'voice_picker_hero_shadow.wav',
-    'leaf': 'voice_picker_hero_leaf.wav',
-    'nova': 'voice_picker_hero_nova.wav',
-  };
-
-  static const Map<String, String> _weaponPickerVoice = {
-    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
-    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
-    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
-    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
-    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
-    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -183,10 +165,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     if (!mounted) return;
 
+    final nowHour = DateTime.now().hour;
+    final isMorningSlot = nowHour < 15;
+    final activeSlotDone = isMorningSlot ? _morningDone : _eveningDone;
+    final bothSlotsDone = _morningDone && _eveningDone;
+    final starHint = !activeSlotDone
+        ? (isMorningSlot
+              ? 'Morning mission star is ready!'
+              : 'Evening mission star is ready!')
+        : bothSlotsDone
+        ? 'Both stars collected today. This run is practice only.'
+        : (isMorningSlot
+              ? 'Morning star already earned. Next star unlocks this evening.'
+              : 'Evening star already earned. Next star unlocks tomorrow morning.');
+
     _lastPickerVoice = null;
-    _playPickerVoice(
-      _heroPickerVoice[_selectedHero.id] ?? 'voice_great_choice.mp3',
-    );
+    _playPickerVoice(AudioService().heroPickerVoiceFor(_selectedHero.id));
 
     showModalBottomSheet(
       context: context,
@@ -199,6 +193,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         unlockedWeaponIds: unlockedWeapons,
         selectedHero: _selectedHero,
         selectedWeapon: _selectedWeapon,
+        willEarnStarNow: !activeSlotDone,
+        starHint: starHint,
+        morningDone: _morningDone,
+        eveningDone: _eveningDone,
         onHeroSelected: (hero) async {
           await _heroService.selectHero(hero.id);
           setState(() => _selectedHero = hero);
@@ -206,9 +204,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             'picker_hero_selected',
             params: {'hero_id': hero.id},
           );
-          _playPickerVoice(
-            _heroPickerVoice[hero.id] ?? 'voice_great_choice.mp3',
-          );
+          _playPickerVoice(AudioService().heroPickerVoiceFor(hero.id));
         },
         onWeaponSelected: (weapon) async {
           await _weaponService.selectWeapon(weapon.id);
@@ -217,9 +213,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             'picker_weapon_selected',
             params: {'weapon_id': weapon.id},
           );
-          _playPickerVoice(
-            _weaponPickerVoice[weapon.id] ?? 'voice_awesome.mp3',
-          );
+          _playPickerVoice(AudioService().weaponPickerVoiceFor(weapon.id));
         },
         onGo: () {
           Navigator.pop(ctx);
@@ -230,7 +224,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               'weapon_id': _selectedWeapon.id,
             },
           );
-          AudioService().playVoice('voice_lets_fight.mp3');
+          AudioService().playVoice(
+            'voice_lets_fight.mp3',
+            clearQueue: true,
+            interrupt: true,
+          );
           Future.delayed(const Duration(milliseconds: 600), () {
             if (mounted) _launchBrushingScreen();
           });
@@ -242,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _playPickerVoice(String fileName) {
     if (_lastPickerVoice == fileName) return;
     _lastPickerVoice = fileName;
-    AudioService().playVoice(fileName);
+    AudioService().playVoice(fileName, clearQueue: true, interrupt: true);
   }
 
   void _openShop() {
@@ -675,6 +673,10 @@ class _PreBrushPicker extends StatefulWidget {
   final List<String> unlockedWeaponIds;
   final HeroCharacter selectedHero;
   final WeaponItem selectedWeapon;
+  final bool willEarnStarNow;
+  final String starHint;
+  final bool morningDone;
+  final bool eveningDone;
   final ValueChanged<HeroCharacter> onHeroSelected;
   final ValueChanged<WeaponItem> onWeaponSelected;
   final VoidCallback onGo;
@@ -686,6 +688,10 @@ class _PreBrushPicker extends StatefulWidget {
     required this.unlockedWeaponIds,
     required this.selectedHero,
     required this.selectedWeapon,
+    required this.willEarnStarNow,
+    required this.starHint,
+    required this.morningDone,
+    required this.eveningDone,
     required this.onHeroSelected,
     required this.onWeaponSelected,
     required this.onGo,
@@ -724,6 +730,108 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
             decoration: BoxDecoration(
               color: Colors.white24,
               borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: widget.willEarnStarNow
+                  ? const Color(0xFF69F0AE).withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: widget.willEarnStarNow
+                    ? const Color(0xFF69F0AE).withValues(alpha: 0.45)
+                    : Colors.white.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: widget.willEarnStarNow
+                          ? Colors.yellowAccent
+                          : Colors.white54,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.willEarnStarNow
+                          ? 'STAR MISSION READY'
+                          : 'PRACTICE MISSION',
+                      style: TextStyle(
+                        color: widget.willEarnStarNow
+                            ? const Color(0xFF69F0AE)
+                            : Colors.white70,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.starHint,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 11,
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      widget.morningDone
+                          ? Icons.wb_sunny
+                          : Icons.wb_sunny_outlined,
+                      color: widget.morningDone ? Colors.amber : Colors.white38,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'AM',
+                      style: TextStyle(
+                        color: widget.morningDone
+                            ? Colors.amber
+                            : Colors.white38,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Icon(
+                      widget.eveningDone
+                          ? Icons.nightlight_round
+                          : Icons.nightlight_outlined,
+                      color: widget.eveningDone
+                          ? const Color(0xFF90CAF9)
+                          : Colors.white38,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'PM',
+                      style: TextStyle(
+                        color: widget.eveningDone
+                            ? const Color(0xFF90CAF9)
+                            : Colors.white38,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),

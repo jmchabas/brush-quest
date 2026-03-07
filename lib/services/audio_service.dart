@@ -1,6 +1,15 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'telemetry_service.dart';
+
+class _QueuedVoiceRequest {
+  final String fileName;
+  final Completer<void> completer = Completer<void>();
+  _QueuedVoiceRequest(this.fileName);
+}
 
 class AudioService {
   static final AudioService _instance = AudioService._internal();
@@ -19,13 +28,20 @@ class AudioService {
   AudioPlayer _musicPlayer = AudioPlayer();
   bool _muted = false;
   bool _voicePlaying = false;
+  bool _voiceQueueProcessing = false;
   bool _musicPlaying = false;
   String? _currentMusicFile;
+  final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
+  final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
+    false,
+  );
+  final Map<String, DateTime> _audioIssueDebounce = {};
   static const double _musicVolume = 0.18;
   static const double _musicDuckedVolume = 0.08;
 
   bool get isMuted => _muted;
   bool get isVoicePlaying => _voicePlaying;
+  bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
 
   static const _hitSounds = ['zap.mp3', 'whoosh.mp3'];
 
@@ -41,6 +57,24 @@ class AudioService {
     'voice_wow_amazing.mp3',
     'voice_unstoppable.mp3',
   ];
+
+  static const Map<String, String> heroPickerVoices = {
+    'blaze': 'voice_picker_hero_blaze.wav',
+    'frost': 'voice_picker_hero_frost.wav',
+    'bolt': 'voice_picker_hero_bolt.wav',
+    'shadow': 'voice_picker_hero_shadow.wav',
+    'leaf': 'voice_picker_hero_leaf.wav',
+    'nova': 'voice_picker_hero_nova.wav',
+  };
+
+  static const Map<String, String> weaponPickerVoices = {
+    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
+    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
+    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
+    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
+    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
+    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
+  };
 
   static const _allAudioFiles = [
     'countdown_beep.mp3',
@@ -106,9 +140,18 @@ class AudioService {
   List<String> get encouragementVoices =>
       List.unmodifiable(_encouragementVoices);
 
+  String heroPickerVoiceFor(String heroId) {
+    return heroPickerVoices[heroId] ?? 'voice_great_choice.mp3';
+  }
+
+  String weaponPickerVoiceFor(String weaponId) {
+    return weaponPickerVoices[weaponId] ?? 'voice_awesome.mp3';
+  }
+
   Future<void> preloadAll() async {
     final prefs = await SharedPreferences.getInstance();
     _muted = prefs.getBool('muted') ?? false;
+    int failures = 0;
 
     for (final file in _allAudioFiles) {
       final player = AudioPlayer();
@@ -116,14 +159,23 @@ class AudioService {
         await player
             .setSource(AssetSource('audio/$file'))
             .timeout(const Duration(milliseconds: 350));
-      } catch (_) {}
+      } catch (_) {
+        failures++;
+      }
       player.dispose();
+    }
+    if (failures > 0) {
+      _reportAudioIssue(
+        operation: 'preload_partial',
+        error: 'failed_files_$failures',
+      );
     }
   }
 
   Future<void> toggleMute() async {
     _muted = !_muted;
     if (_muted) {
+      _clearVoiceQueue();
       for (final p in _sfxPool) {
         try {
           await p.stop();
@@ -131,52 +183,133 @@ class AudioService {
       }
       try {
         await _voicePlayer.stop();
-      } catch (_) {}
+      } catch (e) {
+        _reportAudioIssue(operation: 'mute_stop_voice_failed', error: e);
+      }
       try {
         await _musicPlayer.stop();
-      } catch (_) {}
+      } catch (e) {
+        _reportAudioIssue(operation: 'mute_stop_music_failed', error: e);
+      }
       _musicPlaying = false;
       _voicePlaying = false;
+      _updateVoicePipelineState();
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('muted', _muted);
   }
 
   Future<void> playSfx(String fileName) async {
-    if (_muted || _voicePlaying) return;
+    if (_muted) return;
     final player = _sfxPool[_sfxIndex % _sfxPoolSize];
     _sfxIndex++;
     try {
-      await player.setVolume(0.7);
+      // Keep SFX audible during narrator lines, but quieter while voice plays.
+      await player.setVolume(_voicePlaying ? 0.24 : 0.7);
       await player.play(AssetSource('audio/$fileName'));
-    } catch (_) {}
+    } catch (e) {
+      _reportAudioIssue(
+        operation: 'sfx_play_failed',
+        fileName: fileName,
+        error: e,
+      );
+    }
   }
 
   String nextHitSound() {
     return _hitSounds[_sfxIndex % _hitSounds.length];
   }
 
-  Future<void> playVoice(String fileName) async {
+  Future<void> playVoice(
+    String fileName, {
+    bool clearQueue = false,
+    bool interrupt = false,
+  }) async {
     if (_muted) return;
-    if (_voicePlaying) return;
-    _voicePlaying = true;
-
-    try {
-      await _musicPlayer.setVolume(_musicDuckedVolume);
-    } catch (_) {}
-
-    try {
-      await _voicePlayer.stop();
-      await _voicePlayer.setVolume(1.0);
-      await _voicePlayer.play(AssetSource('audio/$fileName'));
-      await Future.any([
-        _voicePlayer.onPlayerComplete.first,
-        Future.delayed(const Duration(seconds: 5)),
-      ]);
-    } catch (_) {
-    } finally {
+    if (clearQueue) {
+      _clearVoiceQueue();
+    }
+    if (interrupt) {
+      try {
+        await _voicePlayer.stop();
+      } catch (e) {
+        _reportAudioIssue(
+          operation: 'voice_interrupt_stop_failed',
+          fileName: fileName,
+          error: e,
+        );
+      }
       _voicePlaying = false;
-      _restoreMusicVolume();
+    }
+
+    final request = _QueuedVoiceRequest(fileName);
+    _voiceQueue.add(request);
+    _updateVoicePipelineState();
+    unawaited(_pumpVoiceQueue());
+    await request.completer.future;
+  }
+
+  Future<void> _pumpVoiceQueue() async {
+    if (_voiceQueueProcessing) return;
+    _voiceQueueProcessing = true;
+    try {
+      while (!_muted && _voiceQueue.isNotEmpty) {
+        final request = _voiceQueue.removeFirst();
+        _voicePlaying = true;
+        _updateVoicePipelineState();
+        try {
+          await _musicPlayer.setVolume(_musicDuckedVolume);
+        } catch (_) {}
+
+        try {
+          await _voicePlayer.stop();
+          await _voicePlayer.setVolume(1.0);
+          await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
+          final completed = await Future.any<bool>([
+            _voicePlayer.onPlayerComplete.first.then((_) => true),
+            Future.delayed(const Duration(seconds: 5), () => false),
+          ]);
+          if (!completed) {
+            _reportAudioIssue(
+              operation: 'voice_timeout',
+              fileName: request.fileName,
+            );
+          }
+        } catch (e) {
+          _reportAudioIssue(
+            operation: 'voice_play_failed',
+            fileName: request.fileName,
+            error: e,
+          );
+        } finally {
+          _voicePlaying = false;
+          _restoreMusicVolume();
+          if (!request.completer.isCompleted) {
+            request.completer.complete();
+          }
+          _updateVoicePipelineState();
+        }
+      }
+    } finally {
+      _voiceQueueProcessing = false;
+      _voicePlaying = false;
+      _updateVoicePipelineState();
+    }
+  }
+
+  void _clearVoiceQueue() {
+    while (_voiceQueue.isNotEmpty) {
+      final request = _voiceQueue.removeFirst();
+      if (!request.completer.isCompleted) {
+        request.completer.complete();
+      }
+    }
+  }
+
+  void _updateVoicePipelineState() {
+    final active = _voicePlaying || _voiceQueue.isNotEmpty;
+    if (voicePipelineActiveNotifier.value != active) {
+      voicePipelineActiveNotifier.value = active;
     }
   }
 
@@ -193,7 +326,13 @@ class AudioService {
     try {
       await _musicPlayer.stop();
       _musicPlayer.dispose();
-    } catch (_) {}
+    } catch (e) {
+      _reportAudioIssue(
+        operation: 'music_reset_failed',
+        fileName: fileName,
+        error: e,
+      );
+    }
     try {
       _musicPlayer = AudioPlayer();
       _musicPlaying = true;
@@ -201,8 +340,13 @@ class AudioService {
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(_musicVolume);
       await _musicPlayer.resume();
-    } catch (_) {
+    } catch (e) {
       _musicPlaying = false;
+      _reportAudioIssue(
+        operation: 'music_play_failed',
+        fileName: fileName,
+        error: e,
+      );
     }
   }
 
@@ -219,7 +363,12 @@ class AudioService {
       if (state != PlayerState.playing) {
         await playMusic(_currentMusicFile!);
       }
-    } catch (_) {
+    } catch (e) {
+      _reportAudioIssue(
+        operation: 'music_health_restart',
+        fileName: _currentMusicFile,
+        error: e,
+      );
       await playMusic(_currentMusicFile!);
     }
   }
@@ -229,7 +378,36 @@ class AudioService {
     _currentMusicFile = null;
     try {
       await _musicPlayer.stop();
-    } catch (_) {}
+    } catch (e) {
+      _reportAudioIssue(operation: 'music_stop_failed', error: e);
+    }
+  }
+
+  void _reportAudioIssue({
+    required String operation,
+    String? fileName,
+    Object? error,
+  }) {
+    final key = '$operation|${fileName ?? 'none'}|${error.runtimeType}';
+    final now = DateTime.now();
+    final last = _audioIssueDebounce[key];
+    if (last != null && now.difference(last) < const Duration(seconds: 15)) {
+      return;
+    }
+    _audioIssueDebounce[key] = now;
+    debugPrint(
+      'audio issue: op=$operation file=${fileName ?? 'n/a'} err=${error ?? 'none'}',
+    );
+    unawaited(
+      TelemetryService().logEvent(
+        'audio_issue',
+        params: {
+          'op': operation,
+          'file': fileName ?? 'none',
+          'err': error?.runtimeType.toString() ?? 'unknown',
+        },
+      ),
+    );
   }
 
   void dispose() {

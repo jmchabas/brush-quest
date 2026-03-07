@@ -14,7 +14,8 @@ class HeroShopScreen extends StatefulWidget {
   State<HeroShopScreen> createState() => _HeroShopScreenState();
 }
 
-class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProviderStateMixin {
+class _HeroShopScreenState extends State<HeroShopScreen>
+    with SingleTickerProviderStateMixin {
   final _heroService = HeroService();
   final _weaponService = WeaponService();
   final _streakService = StreakService();
@@ -25,24 +26,6 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
   String _selectedWeaponId = 'star_blaster';
   int _stars = 0;
   String? _lastSelectionVoice;
-
-  static const Map<String, String> _heroSelectionVoice = {
-    'blaze': 'voice_hero_blaze.mp3',
-    'frost': 'voice_hero_frost.mp3',
-    'bolt': 'voice_hero_bolt.mp3',
-    'shadow': 'voice_hero_shadow.mp3',
-    'leaf': 'voice_hero_leaf.mp3',
-    'nova': 'voice_hero_nova.mp3',
-  };
-
-  static const Map<String, String> _weaponSelectionVoice = {
-    'star_blaster': 'voice_super.mp3',
-    'flame_sword': 'voice_wow_amazing.mp3',
-    'ice_hammer': 'voice_awesome.mp3',
-    'lightning_wand': 'voice_unstoppable.mp3',
-    'vine_whip': 'voice_keep_it_up.mp3',
-    'cosmic_burst': 'voice_great_choice.mp3',
-  };
 
   late TabController _tabController;
 
@@ -80,14 +63,14 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
     if (_unlockedHeroes.contains(hero.id)) {
       await _heroService.selectHero(hero.id);
       HapticFeedback.mediumImpact();
-      _playSelectionVoice(_heroSelectionVoice[hero.id] ?? 'voice_great_choice.mp3');
+      _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
       await _loadData();
     } else if (_stars >= hero.cost) {
       final success = await _heroService.unlockHero(hero.id);
       if (success) {
         await _heroService.selectHero(hero.id);
         HapticFeedback.heavyImpact();
-        _playSelectionVoice(_heroSelectionVoice[hero.id] ?? 'voice_great_choice.mp3');
+        _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
         if (mounted) _showHeroUnlockAnimation(hero);
         await _loadData();
       }
@@ -113,14 +96,14 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
     if (_unlockedWeapons.contains(weapon.id)) {
       await _weaponService.selectWeapon(weapon.id);
       HapticFeedback.mediumImpact();
-      _playSelectionVoice(_weaponSelectionVoice[weapon.id] ?? 'voice_awesome.mp3');
+      _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       await _loadData();
     } else if (_stars >= weapon.cost) {
       final success = await _weaponService.unlockWeapon(weapon.id);
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         HapticFeedback.heavyImpact();
-        _playSelectionVoice(_weaponSelectionVoice[weapon.id] ?? 'voice_awesome.mp3');
+        _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
         if (mounted) _showWeaponUnlockAnimation(weapon);
         await _loadData();
       }
@@ -145,7 +128,7 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
   void _playSelectionVoice(String fileName) {
     if (_lastSelectionVoice == fileName) return;
     _lastSelectionVoice = fileName;
-    AudioService().playVoice(fileName);
+    AudioService().playVoice(fileName, clearQueue: true, interrupt: true);
   }
 
   void _showHeroUnlockAnimation(HeroCharacter hero) {
@@ -178,37 +161,46 @@ class _HeroShopScreenState extends State<HeroShopScreen> with SingleTickerProvid
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(Icons.arrow_back,
-                          color: Colors.white, size: 28),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         'HEROES & WEAPONS',
-                        style:
-                            Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 28,
-                                  letterSpacing: 3,
-                                ),
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 28,
+                              letterSpacing: 3,
+                            ),
                       ),
                     ),
                     // Star balance
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: Colors.yellowAccent.withValues(alpha: 0.3)),
+                          color: Colors.yellowAccent.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.star,
-                              color: Colors.yellowAccent, size: 20),
+                          const Icon(
+                            Icons.star,
+                            color: Colors.yellowAccent,
+                            size: 20,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '$_stars',
@@ -376,8 +368,8 @@ class _HeroCard extends StatelessWidget {
             color: isSelected
                 ? hero.primaryColor
                 : isUnlocked
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.1),
+                ? Colors.white.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.1),
             width: isSelected ? 3 : 1,
           ),
           boxShadow: isSelected
@@ -401,14 +393,14 @@ class _HeroCard extends StatelessWidget {
                       child: ColorFiltered(
                         colorFilter: isUnlocked
                             ? const ColorFilter.mode(
-                                Colors.transparent, BlendMode.dst)
+                                Colors.transparent,
+                                BlendMode.dst,
+                              )
                             : ColorFilter.mode(
                                 Colors.black.withValues(alpha: 0.6),
-                                BlendMode.srcATop),
-                        child: Image.asset(
-                          hero.imagePath,
-                          fit: BoxFit.cover,
-                        ),
+                                BlendMode.srcATop,
+                              ),
+                        child: Image.asset(hero.imagePath, fit: BoxFit.cover),
                       ),
                     ),
                   ),
@@ -438,7 +430,9 @@ class _HeroCard extends StatelessWidget {
                   if (isSelected)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: hero.primaryColor.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
@@ -534,8 +528,8 @@ class _WeaponCard extends StatelessWidget {
             color: isSelected
                 ? weapon.primaryColor
                 : isUnlocked
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.1),
+                ? Colors.white.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.1),
             width: isSelected ? 3 : 1,
           ),
           boxShadow: isSelected
@@ -562,10 +556,14 @@ class _WeaponCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: isUnlocked
-                              ? RadialGradient(colors: [
-                                  weapon.primaryColor.withValues(alpha: 0.4),
-                                  weapon.secondaryColor.withValues(alpha: 0.1),
-                                ])
+                              ? RadialGradient(
+                                  colors: [
+                                    weapon.primaryColor.withValues(alpha: 0.4),
+                                    weapon.secondaryColor.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                  ],
+                                )
                               : null,
                           color: isUnlocked
                               ? null
@@ -611,7 +609,9 @@ class _WeaponCard extends StatelessWidget {
                   if (isSelected)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: weapon.primaryColor.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
@@ -803,10 +803,12 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [
-                    widget.weapon.primaryColor.withValues(alpha: 0.5),
-                    widget.weapon.secondaryColor.withValues(alpha: 0.2),
-                  ]),
+                  gradient: RadialGradient(
+                    colors: [
+                      widget.weapon.primaryColor.withValues(alpha: 0.5),
+                      widget.weapon.secondaryColor.withValues(alpha: 0.2),
+                    ],
+                  ),
                 ),
                 child: Icon(
                   widget.weapon.icon,
