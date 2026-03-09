@@ -804,7 +804,8 @@ class _BrushingScreenState extends State<BrushingScreen>
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
-        _audio.playSfx('countdown_beep.mp3');
+        // No SFX beep — voice_countdown.mp3 already says "3, 2, 1, GO!"
+        // Playing SFX during voice causes Android audio focus contention.
       } else {
         timer.cancel();
         setState(() {
@@ -812,7 +813,6 @@ class _BrushingScreenState extends State<BrushingScreen>
           _showGoText = true;
         });
         HapticFeedback.heavyImpact();
-        _audio.playSfx('countdown_beep.mp3');
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted) _startBrushing();
         });
@@ -974,7 +974,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _screenShakeController.forward(from: 0);
     _flashController.forward(from: 0).then((_) => _flashController.reverse());
     HapticFeedback.heavyImpact();
-    _audio.playSfx('zap.mp3');
+    if (!_audio.isVoicePlaying) _audio.playSfx('zap.mp3');
 
     for (int i = 0; i < 30; i++) {
       final angle = _random.nextDouble() * 2 * pi;
@@ -1017,7 +1017,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _playDefeatAnimation(VoidCallback onComplete) {
     _baseAttackTimer?.cancel();
-    _audio.playSfx('monster_defeat.mp3');
+    if (!_audio.isVoicePlaying) _audio.playSfx('monster_defeat.mp3');
     HapticFeedback.heavyImpact();
     _flashController.forward(from: 0).then((_) => _flashController.reverse());
     _spawnDefeatSparks();
@@ -1065,7 +1065,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showMouthGuideOverlay = true;
     });
     _phaseTransitionController.forward(from: 0);
-    _audio.playSfx('whoosh.mp3');
+    // Only play whoosh if no voice is active — SFX contends with voice on Android
+    if (!_audio.isVoicePlaying) {
+      _audio.playSfx('whoosh.mp3');
+    }
     HapticFeedback.mediumImpact();
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
@@ -1079,7 +1082,10 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _triggerAttack() {
     if (_phase == BrushPhase.done || _phase == BrushPhase.countdown) return;
-    _audio.playSfx(_audio.nextHitSound());
+    // Suppress hit SFX while voice is playing — voice has priority on Android
+    if (!_audio.isVoicePlaying) {
+      _audio.playSfx(_audio.nextHitSound());
+    }
     HapticFeedback.lightImpact();
 
     setState(() {
@@ -1142,7 +1148,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
 
     _startMonsterDeath(_monster);
-    _audio.playSfx('monster_defeat.mp3');
+    if (!_audio.isVoicePlaying) _audio.playSfx('monster_defeat.mp3');
     HapticFeedback.heavyImpact();
     _flashController.forward(from: 0).then((_) => _flashController.reverse());
     _spawnDefeatSparks();
