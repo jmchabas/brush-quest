@@ -756,7 +756,7 @@ class _BrushingScreenState extends State<BrushingScreen>
         : switch (_dailyModifier.type) {
             DailyModifierType.frenzy => 'voice_super.mp3',
             DailyModifierType.precision => 'voice_keep_it_up.mp3',
-            DailyModifierType.treasureBoost => 'voice_open_chest.mp3',
+            DailyModifierType.treasureBoost => 'voice_super.mp3',
             DailyModifierType.bossRush => 'voice_unstoppable.mp3',
             DailyModifierType.none => 'voice_lets_fight.mp3',
           };

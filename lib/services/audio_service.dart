@@ -260,35 +260,27 @@ class AudioService {
     if (clearQueue) {
       _clearVoiceQueue();
     }
-    if (interrupt && _voiceQueueProcessing) {
-      // Signal the pump loop to abort its current Future.any wait,
-      // then stop the player. Without this signal, _voicePlayer.stop()
-      // does NOT fire onPlayerComplete, so the pump would hang for up to
-      // 5 seconds on its safety timeout before processing the next voice.
+    if (interrupt) {
+      // Signal the pump to abort its current wait and move on.
+      // IMPORTANT: Do NOT await _voicePlayer.stop() here when the pump is
+      // running — the pump will stop the player itself before playing the
+      // next voice. Calling stop() here races with the pump and can kill
+      // the NEXT voice that the pump just started playing.
       final oldSignal = _interruptSignal;
       if (oldSignal != null && !oldSignal.isCompleted) {
         oldSignal.complete();
       }
-      try {
-        await _voicePlayer.stop();
-      } catch (e) {
-        _reportAudioIssue(
-          operation: 'voice_interrupt_stop_failed',
-          fileName: fileName,
-          error: e,
-        );
-      }
-      _voicePlaying = false;
-    } else if (interrupt) {
-      // Pump not running — just stop the player
-      try {
-        await _voicePlayer.stop();
-      } catch (e) {
-        _reportAudioIssue(
-          operation: 'voice_interrupt_stop_failed',
-          fileName: fileName,
-          error: e,
-        );
+      if (!_voiceQueueProcessing) {
+        // Pump not running — safe to stop the player directly
+        try {
+          await _voicePlayer.stop();
+        } catch (e) {
+          _reportAudioIssue(
+            operation: 'voice_interrupt_stop_failed',
+            fileName: fileName,
+            error: e,
+          );
+        }
       }
       _voicePlaying = false;
     }
