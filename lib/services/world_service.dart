@@ -35,6 +35,7 @@ class WorldData {
   final List<int> monsterIndices;
   final List<Color> gradientColors;
   final String particleType; // 'sparkle', 'bubble', 'ember', 'twinkle', 'crack'
+  final String? backgroundImage;
 
   const WorldData({
     required this.id,
@@ -46,6 +47,7 @@ class WorldData {
     required this.monsterIndices,
     required this.gradientColors,
     required this.particleType,
+    this.backgroundImage,
   });
 }
 
@@ -64,6 +66,7 @@ class WorldService {
       monsterIndices: [0, 1],
       gradientColors: [Color(0xFFFF80AB), Color(0xFFC2185B), Color(0xFF1A0A2E)],
       particleType: 'sparkle',
+      backgroundImage: 'assets/images/bg_battle_world1.png',
     ),
     WorldData(
       id: 'slime_swamp',
@@ -75,6 +78,7 @@ class WorldService {
       monsterIndices: [1, 2],
       gradientColors: [Color(0xFF69F0AE), Color(0xFF00897B), Color(0xFF0D1B2A)],
       particleType: 'bubble',
+      backgroundImage: 'assets/images/bg_battle_world2.png',
     ),
     WorldData(
       id: 'sugar_volcano',
@@ -86,6 +90,7 @@ class WorldService {
       monsterIndices: [2, 3],
       gradientColors: [Color(0xFFFF6E40), Color(0xFFD32F2F), Color(0xFF1A0A0A)],
       particleType: 'ember',
+      backgroundImage: 'assets/images/bg_battle_world3.png',
     ),
     WorldData(
       id: 'shadow_nebula',
@@ -97,6 +102,7 @@ class WorldService {
       monsterIndices: [0, 3],
       gradientColors: [Color(0xFFB388FF), Color(0xFF4A148C), Color(0xFF050510)],
       particleType: 'twinkle',
+      backgroundImage: 'assets/images/bg_battle_world4.png',
     ),
     WorldData(
       id: 'cavity_fortress',
@@ -108,6 +114,7 @@ class WorldService {
       monsterIndices: [0, 1, 2, 3],
       gradientColors: [Color(0xFFFF5252), Color(0xFFB71C1C), Color(0xFF050000)],
       particleType: 'crack',
+      backgroundImage: 'assets/images/bg_battle_world5.png',
     ),
   ];
 
