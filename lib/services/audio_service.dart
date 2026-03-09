@@ -1,6 +1,15 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'telemetry_service.dart';
+
+class _QueuedVoiceRequest {
+  final String fileName;
+  final Completer<void> completer = Completer<void>();
+  _QueuedVoiceRequest(this.fileName);
+}
 
 // Kept for API compatibility with callers — internally simplified.
 enum VoicePolicy { queue, skipIfBusy, interrupt }
@@ -11,19 +20,26 @@ class AudioService {
   factory AudioService() => _instance;
   AudioService._internal();
 
-  // Single SFX player — the original working architecture.
-  // A 3-player pool caused audio contention on Android that silenced the
-  // voice player mid-playback.
-  final AudioPlayer _sfxPlayer = AudioPlayer();
+  static const int _sfxPoolSize = 3;
+  final List<AudioPlayer> _sfxPool = List.generate(
+    _sfxPoolSize,
+    (_) => AudioPlayer(),
+  );
+  int _sfxIndex = 0;
   final AudioPlayer _voicePlayer = AudioPlayer();
   AudioPlayer _musicPlayer = AudioPlayer();
 
   bool _muted = false;
   bool _voicePlaying = false;
   int _voiceGeneration = 0; // prevents stale safety timeouts
+  bool _voiceQueueProcessing = false;
   bool _musicPlaying = false;
   String? _currentMusicFile;
-
+  final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
+  final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
+    false,
+  );
+  final Map<String, DateTime> _audioIssueDebounce = {};
   static const double _musicVolume = 0.18;
   static const double _musicDuckedVolume = 0.08;
 
@@ -34,6 +50,7 @@ class AudioService {
 
   bool get isMuted => _muted;
   bool get isVoicePlaying => _voicePlaying;
+  bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
 
   static const _hitSounds = ['zap.mp3', 'whoosh.mp3'];
   int _hitIndex = 0;
@@ -50,6 +67,24 @@ class AudioService {
     'voice_wow_amazing.mp3',
     'voice_unstoppable.mp3',
   ];
+
+  static const Map<String, String> heroPickerVoices = {
+    'blaze': 'voice_picker_hero_blaze.wav',
+    'frost': 'voice_picker_hero_frost.wav',
+    'bolt': 'voice_picker_hero_bolt.wav',
+    'shadow': 'voice_picker_hero_shadow.wav',
+    'leaf': 'voice_picker_hero_leaf.wav',
+    'nova': 'voice_picker_hero_nova.wav',
+  };
+
+  static const Map<String, String> weaponPickerVoices = {
+    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
+    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
+    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
+    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
+    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
+    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
+  };
 
   static const _allAudioFiles = [
     'countdown_beep.mp3',
@@ -115,9 +150,18 @@ class AudioService {
     await prefs.remove(_audioTraceKey);
   }
 
+  String heroPickerVoiceFor(String heroId) {
+    return heroPickerVoices[heroId] ?? 'voice_great_choice.mp3';
+  }
+
+  String weaponPickerVoiceFor(String weaponId) {
+    return weaponPickerVoices[weaponId] ?? 'voice_awesome.mp3';
+  }
+
   Future<void> preloadAll() async {
     final prefs = await SharedPreferences.getInstance();
     _muted = prefs.getBool('muted') ?? false;
+    int failures = 0;
 
     for (final file in _allAudioFiles) {
       final player = AudioPlayer();
@@ -125,44 +169,63 @@ class AudioService {
         await player
             .setSource(AssetSource('audio/$file'))
             .timeout(const Duration(milliseconds: 350));
-      } catch (_) {}
+      } catch (_) {
+        failures++;
+      }
       player.dispose();
+    }
+    if (failures > 0) {
+      _reportAudioIssue(
+        operation: 'preload_partial',
+        error: 'failed_files_$failures',
+      );
     }
   }
 
   Future<void> toggleMute() async {
     _muted = !_muted;
     if (_muted) {
-      try { await _sfxPlayer.stop(); } catch (_) {}
-      try { await _voicePlayer.stop(); } catch (_) {}
-      try { await _musicPlayer.stop(); } catch (_) {}
+      _clearVoiceQueue();
+      _voiceGeneration++;
+      for (final p in _sfxPool) {
+        try {
+          await p.stop();
+        } catch (_) {}
+      }
+      try {
+        await _voicePlayer.stop();
+      } catch (e) {
+        _reportAudioIssue(operation: 'mute_stop_voice_failed', error: e);
+      }
+      try {
+        await _musicPlayer.stop();
+      } catch (e) {
+        _reportAudioIssue(operation: 'mute_stop_music_failed', error: e);
+      }
       _musicPlaying = false;
       _voicePlaying = false;
-      _voiceGeneration++;
+      _updateVoicePipelineState();
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('muted', _muted);
   }
 
-  /// Play a sound effect. Single player — stop + play each time.
-  /// Suppresses SFX while a voice is playing to prevent Android audio
-  /// contention (MediaPlayer focus fights kill the voice mid-playback).
-  Future<void> playSfx(
-    String fileName, {
-    bool allowDuringVoice = false,
-    double volume = 0.7,
-  }) async {
+  Future<void> playSfx(String fileName) async {
     if (_muted) return;
-    if (_voicePlaying && !allowDuringVoice) {
-      _trace('sfx_suppressed:$fileName (voice playing)');
-      return;
-    }
+    final player = _sfxPool[_sfxIndex % _sfxPoolSize];
+    _sfxIndex++;
     try {
-      await _sfxPlayer.stop();
-      await _sfxPlayer.setVolume(volume);
-      await _sfxPlayer.play(AssetSource('audio/$fileName'));
+      // Keep SFX audible during narrator lines, but quieter while voice plays.
+      await player.setVolume(_voicePlaying ? 0.24 : 0.7);
+      await player.play(AssetSource('audio/$fileName'));
       _trace('sfx_play:$fileName');
-    } catch (_) {}
+    } catch (e) {
+      _reportAudioIssue(
+        operation: 'sfx_play_failed',
+        fileName: fileName,
+        error: e,
+      );
+    }
   }
 
   String nextHitSound() {
@@ -171,71 +234,104 @@ class AudioService {
     return sound;
   }
 
-  /// Fire-and-forget voice playback.
-  ///
-  /// If a voice is already playing:
-  /// - `interrupt` policy: stop current and play new
-  /// - `skipIfBusy` / `queue` policy: skip silently
-  ///
-  /// Priority and policy params are accepted for API compatibility.
-  /// Internally, only `interrupt` vs skip matters.
   Future<void> playVoice(
     String fileName, {
-    VoicePolicy policy = VoicePolicy.queue,
-    VoicePriority priority = VoicePriority.low,
+    bool clearQueue = false,
+    bool interrupt = false,
   }) async {
     if (_muted) return;
-
-    _trace('voice_req:$fileName pol=${policy.name} busy=$_voicePlaying');
-
-    if (_voicePlaying) {
-      if (policy == VoicePolicy.interrupt) {
-        _trace('voice_interrupt:$fileName');
-        try { await _voicePlayer.stop(); } catch (_) {}
-        _voicePlaying = false;
-      } else {
-        _trace('voice_skip:$fileName');
-        return;
+    _trace('voice_req:$fileName clearQueue=$clearQueue interrupt=$interrupt');
+    if (clearQueue) {
+      _clearVoiceQueue();
+    }
+    if (interrupt) {
+      try {
+        await _voicePlayer.stop();
+      } catch (e) {
+        _reportAudioIssue(
+          operation: 'voice_interrupt_stop_failed',
+          fileName: fileName,
+          error: e,
+        );
       }
+      _voicePlaying = false;
     }
 
-    final gen = ++_voiceGeneration;
-    _voicePlaying = true;
-    _trace('voice_start:$fileName gen=$gen');
+    final request = _QueuedVoiceRequest(fileName);
+    _voiceQueue.add(request);
+    _updateVoicePipelineState();
+    unawaited(_pumpVoiceQueue());
+    await request.completer.future;
+  }
 
-    // Duck music while voice plays
-    try { await _musicPlayer.setVolume(_musicDuckedVolume); } catch (_) {}
-
+  Future<void> _pumpVoiceQueue() async {
+    if (_voiceQueueProcessing) return;
+    _voiceQueueProcessing = true;
     try {
-      await _voicePlayer.stop();
-      await _voicePlayer.setVolume(1.0);
-      await _voicePlayer.play(AssetSource('audio/$fileName'));
-    } catch (_) {
-      _trace('voice_error:$fileName');
-      if (_voiceGeneration == gen) {
-        _voicePlaying = false;
-        _restoreMusicVolume();
+      while (!_muted && _voiceQueue.isNotEmpty) {
+        final request = _voiceQueue.removeFirst();
+        final gen = ++_voiceGeneration;
+        _voicePlaying = true;
+        _updateVoicePipelineState();
+        try {
+          await _musicPlayer.setVolume(_musicDuckedVolume);
+        } catch (_) {}
+
+        try {
+          await _voicePlayer.stop();
+          await _voicePlayer.setVolume(1.0);
+          await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
+          _trace('voice_start:${request.fileName} gen=$gen');
+          final completed = await Future.any<bool>([
+            _voicePlayer.onPlayerComplete.first.then((_) => true),
+            Future.delayed(const Duration(seconds: 5), () => false),
+          ]);
+          if (!completed) {
+            _trace('voice_timeout:${request.fileName} gen=$gen');
+            _reportAudioIssue(
+              operation: 'voice_timeout',
+              fileName: request.fileName,
+            );
+          } else {
+            _trace('voice_complete:${request.fileName} gen=$gen');
+          }
+        } catch (e) {
+          _trace('voice_error:${request.fileName} gen=$gen');
+          _reportAudioIssue(
+            operation: 'voice_play_failed',
+            fileName: request.fileName,
+            error: e,
+          );
+        } finally {
+          _voicePlaying = false;
+          _restoreMusicVolume();
+          if (!request.completer.isCompleted) {
+            request.completer.complete();
+          }
+          _updateVoicePipelineState();
+        }
       }
-      return;
+    } finally {
+      _voiceQueueProcessing = false;
+      _voicePlaying = false;
+      _updateVoicePipelineState();
     }
+  }
 
-    // Non-blocking completion detection
-    _voicePlayer.onPlayerComplete.first.then((_) {
-      if (_voiceGeneration == gen) {
-        _trace('voice_complete:$fileName gen=$gen');
-        _voicePlaying = false;
-        _restoreMusicVolume();
+  void _clearVoiceQueue() {
+    while (_voiceQueue.isNotEmpty) {
+      final request = _voiceQueue.removeFirst();
+      if (!request.completer.isCompleted) {
+        request.completer.complete();
       }
-    });
+    }
+  }
 
-    // Safety timeout — only resets if this is still the active voice
-    Future.delayed(const Duration(seconds: 5), () {
-      if (_voiceGeneration == gen && _voicePlaying) {
-        _trace('voice_safety_timeout:$fileName gen=$gen');
-        _voicePlaying = false;
-        _restoreMusicVolume();
-      }
-    });
+  void _updateVoicePipelineState() {
+    final active = _voicePlaying || _voiceQueue.isNotEmpty;
+    if (voicePipelineActiveNotifier.value != active) {
+      voicePipelineActiveNotifier.value = active;
+    }
   }
 
   void _restoreMusicVolume() {
@@ -249,7 +345,13 @@ class AudioService {
     try {
       await _musicPlayer.stop();
       _musicPlayer.dispose();
-    } catch (_) {}
+    } catch (e) {
+      _reportAudioIssue(
+        operation: 'music_reset_failed',
+        fileName: fileName,
+        error: e,
+      );
+    }
     try {
       _musicPlayer = AudioPlayer();
       _musicPlaying = true;
@@ -257,8 +359,13 @@ class AudioService {
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(_musicVolume);
       await _musicPlayer.resume();
-    } catch (_) {
+    } catch (e) {
       _musicPlaying = false;
+      _reportAudioIssue(
+        operation: 'music_play_failed',
+        fileName: fileName,
+        error: e,
+      );
     }
   }
 
@@ -273,7 +380,12 @@ class AudioService {
       if (state != PlayerState.playing) {
         await playMusic(_currentMusicFile!);
       }
-    } catch (_) {
+    } catch (e) {
+      _reportAudioIssue(
+        operation: 'music_health_restart',
+        fileName: _currentMusicFile,
+        error: e,
+      );
       await playMusic(_currentMusicFile!);
     }
   }
@@ -281,11 +393,44 @@ class AudioService {
   Future<void> stopMusic() async {
     _musicPlaying = false;
     _currentMusicFile = null;
-    try { await _musicPlayer.stop(); } catch (_) {}
+    try {
+      await _musicPlayer.stop();
+    } catch (e) {
+      _reportAudioIssue(operation: 'music_stop_failed', error: e);
+    }
+  }
+
+  void _reportAudioIssue({
+    required String operation,
+    String? fileName,
+    Object? error,
+  }) {
+    final key = '$operation|${fileName ?? 'none'}|${error.runtimeType}';
+    final now = DateTime.now();
+    final last = _audioIssueDebounce[key];
+    if (last != null && now.difference(last) < const Duration(seconds: 15)) {
+      return;
+    }
+    _audioIssueDebounce[key] = now;
+    debugPrint(
+      'audio issue: op=$operation file=${fileName ?? 'n/a'} err=${error ?? 'none'}',
+    );
+    unawaited(
+      TelemetryService().logEvent(
+        'audio_issue',
+        params: {
+          'op': operation,
+          'file': fileName ?? 'none',
+          'err': error?.runtimeType.toString() ?? 'unknown',
+        },
+      ),
+    );
   }
 
   void dispose() {
-    _sfxPlayer.dispose();
+    for (final p in _sfxPool) {
+      p.dispose();
+    }
     _voicePlayer.dispose();
     _musicPlayer.dispose();
   }

@@ -240,6 +240,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   bool _showChest = false;
   bool _chestOpened = false;
+  bool _missionRecapQueued = false;
   _ChestReward? _reward;
 
   @override
@@ -344,7 +345,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     _audio.playVoice(victoryVoice);
     Future.delayed(const Duration(milliseconds: 1100), () {
       if (mounted && _starsEarnedThisSession > 0) {
-        _audio.playVoice('voice_star_collected.mp3');
+        _audio.playVoice('voice_victory_star_and_chest.wav');
       }
     });
     _starController.forward();
@@ -410,8 +411,18 @@ class _VictoryScreenState extends State<VictoryScreen>
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) _doneButtonController.repeat(reverse: true);
       });
-      _playComebackVoiceSequence();
+      _startMissionRecap();
     });
+  }
+
+  Future<void> _startMissionRecap() async {
+    if (mounted) {
+      setState(() => _missionRecapQueued = true);
+    }
+    await _playComebackVoiceSequence();
+    if (mounted) {
+      setState(() => _missionRecapQueued = false);
+    }
   }
 
   Future<void> _refreshMilestoneHint() async {
@@ -629,7 +640,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                     Text(
                       _starsEarnedThisSession > 0
                           ? '+$_starsEarnedThisSession STAR THIS SESSION'
-                          : 'PRACTICE SESSION COMPLETE',
+                          : 'PRACTICE SESSION (NO STAR THIS SLOT)',
                       style: TextStyle(
                         color: _starsEarnedThisSession > 0
                             ? const Color(0xFFFFD54F)
@@ -639,6 +650,18 @@ class _VictoryScreenState extends State<VictoryScreen>
                         letterSpacing: 1.5,
                       ),
                     ),
+                    if (_starsEarnedThisSession == 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Stars are earned once each morning and evening.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
 
                     // Star bank
@@ -766,38 +789,47 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
                     if (_chestOpened)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(26, 14, 26, 0),
-                        child: GlassCard(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.record_voice_over,
-                                color: const Color(
-                                  0xFF69F0AE,
-                                ).withValues(alpha: 0.95),
-                                size: 18,
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _audio.voicePipelineActiveNotifier,
+                        builder: (context, voiceActive, _) {
+                          final showStatus = _missionRecapQueued || voiceActive;
+                          if (!showStatus) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(26, 14, 26, 0),
+                            child: GlassCard(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'MISSION UPDATE PLAYING...',
-                                style: TextStyle(
-                                  color: const Color(
-                                    0xFF69F0AE,
-                                  ).withValues(alpha: 0.95),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  letterSpacing: 1.2,
-                                ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.record_voice_over,
+                                    color: const Color(
+                                      0xFF69F0AE,
+                                    ).withValues(alpha: 0.95),
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    voiceActive
+                                        ? 'MISSION RECAP PLAYING...'
+                                        : 'MISSION RECAP READY',
+                                    style: TextStyle(
+                                      color: const Color(
+                                        0xFF69F0AE,
+                                      ).withValues(alpha: 0.95),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       ),
 
                     const Spacer(flex: 1),
