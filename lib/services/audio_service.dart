@@ -29,6 +29,7 @@ class AudioService {
   bool _muted = false;
   bool _voicePlaying = false;
   bool _voiceQueueProcessing = false;
+  Completer<void>? _interruptSignal;
   bool _musicPlaying = false;
   String? _currentMusicFile;
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
@@ -176,6 +177,8 @@ class AudioService {
     _muted = !_muted;
     if (_muted) {
       _clearVoiceQueue();
+      final sig = _interruptSignal;
+      if (sig != null && !sig.isCompleted) sig.complete();
       for (final p in _sfxPool) {
         try {
           await p.stop();
@@ -230,15 +233,11 @@ class AudioService {
       _clearVoiceQueue();
     }
     if (interrupt) {
-      try {
-        await _voicePlayer.stop();
-      } catch (e) {
-        _reportAudioIssue(
-          operation: 'voice_interrupt_stop_failed',
-          fileName: fileName,
-          error: e,
-        );
-      }
+      // Signal the pump to skip its current wait and move to next voice.
+      // NEVER call _voicePlayer.stop() here — that races with the pump.
+      // The pump will stop the player itself before playing the next voice.
+      final sig = _interruptSignal;
+      if (sig != null && !sig.isCompleted) sig.complete();
       _voicePlaying = false;
     }
 
@@ -262,14 +261,16 @@ class AudioService {
         } catch (_) {}
 
         try {
+          _interruptSignal = Completer<void>();
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
           await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
-          final completed = await Future.any<bool>([
-            _voicePlayer.onPlayerComplete.first.then((_) => true),
-            Future.delayed(const Duration(seconds: 5), () => false),
+          final result = await Future.any<String>([
+            _voicePlayer.onPlayerComplete.first.then((_) => 'done'),
+            Future.delayed(const Duration(seconds: 5), () => 'timeout'),
+            _interruptSignal!.future.then((_) => 'interrupted'),
           ]);
-          if (!completed) {
+          if (result == 'timeout') {
             _reportAudioIssue(
               operation: 'voice_timeout',
               fileName: request.fileName,
