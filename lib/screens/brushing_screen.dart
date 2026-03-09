@@ -800,22 +800,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = BrushPhase.countdown;
       _sessionStage = SessionStage.countdown;
     });
-    // Play voice and track when it finishes so we don't start brushing
-    // (and interrupt the voice) until it completes.
-    bool voiceDone = false;
-    bool timerDone = false;
-    _audio
-        .playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true)
-        .then((_) {
-      voiceDone = true;
-      // If the visual countdown already finished, start brushing now.
-      if (timerDone && mounted) _startBrushing();
-    });
+    _audio.playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
-        // No SFX beep — voice_countdown.mp3 already says "3, 2, 1, GO!"
-        // Playing SFX during voice causes Android audio contention.
+        _audio.playSfx('countdown_beep.mp3');
       } else {
         timer.cancel();
         setState(() {
@@ -823,12 +812,9 @@ class _BrushingScreenState extends State<BrushingScreen>
           _showGoText = true;
         });
         HapticFeedback.heavyImpact();
+        _audio.playSfx('countdown_beep.mp3');
         Future.delayed(const Duration(milliseconds: 800), () {
-          if (!mounted) return;
-          timerDone = true;
-          // Only start brushing if the countdown voice has finished.
-          // This prevents the guidance voice from interrupting "3, 2, 1, GO!"
-          if (voiceDone) _startBrushing();
+          if (mounted) _startBrushing();
         });
       }
     });
@@ -1079,19 +1065,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showMouthGuideOverlay = true;
     });
     _phaseTransitionController.forward(from: 0);
+    _audio.playSfx('whoosh.mp3');
     HapticFeedback.mediumImpact();
-    // Play whoosh ONLY if no voice is active, to avoid Android audio contention
-    if (!_audio.isVoicePlaying) {
-      _audio.playSfx('whoosh.mp3');
-    }
-    // Delay guidance voice to let music player settle after _startBrushing
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
-        _audio.playVoice(
-          _phaseVoiceFiles[newPhase]!,
-          clearQueue: true,
-          interrupt: true,
-        );
+        _audio.playVoice(_phaseVoiceFiles[newPhase]!);
       }
     });
     Future.delayed(const Duration(milliseconds: 3000), () {

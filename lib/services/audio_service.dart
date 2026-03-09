@@ -11,29 +11,24 @@ class _QueuedVoiceRequest {
   _QueuedVoiceRequest(this.fileName);
 }
 
-// Kept for API compatibility with callers — internally simplified.
-enum VoicePolicy { queue, skipIfBusy, interrupt }
-enum VoicePriority { low, encouragement, guidance, critical }
-
 class AudioService {
   static final AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
-  AudioService._internal();
+  AudioService._internal() {
+    for (int i = 0; i < _sfxPoolSize; i++) {
+      _sfxPool.add(AudioPlayer());
+    }
+  }
 
-  static const int _sfxPoolSize = 3;
-  final List<AudioPlayer> _sfxPool = List.generate(
-    _sfxPoolSize,
-    (_) => AudioPlayer(),
-  );
+  static const _sfxPoolSize = 3;
+  final List<AudioPlayer> _sfxPool = [];
   int _sfxIndex = 0;
+
   final AudioPlayer _voicePlayer = AudioPlayer();
   AudioPlayer _musicPlayer = AudioPlayer();
-
   bool _muted = false;
   bool _voicePlaying = false;
-  int _voiceGeneration = 0; // prevents stale safety timeouts
   bool _voiceQueueProcessing = false;
-  Completer<void>? _interruptSignal; // signals the pump to abort current wait
   bool _musicPlaying = false;
   String? _currentMusicFile;
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
@@ -44,17 +39,11 @@ class AudioService {
   static const double _musicVolume = 0.18;
   static const double _musicDuckedVolume = 0.08;
 
-  static const int _maxDebugTrace = 120;
-  static const String _audioTraceKey = 'audio_debug_trace';
-  final List<String> _debugTrace = [];
-  int _tracePersistCounter = 0;
-
   bool get isMuted => _muted;
   bool get isVoicePlaying => _voicePlaying;
   bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
 
   static const _hitSounds = ['zap.mp3', 'whoosh.mp3'];
-  int _hitIndex = 0;
 
   static const _encouragementVoices = [
     'voice_keep_going.mp3',
@@ -117,19 +106,6 @@ class AudioService {
     'voice_hero_shadow.mp3',
     'voice_hero_leaf.mp3',
     'voice_hero_nova.mp3',
-    'voice_great_choice.mp3',
-    'voice_great_job_tonight.mp3',
-    'voice_great_job_morning.mp3',
-    'voice_you_did_it.mp3',
-    'voice_victory_star_and_chest.wav',
-    'voice_see_you_soon.wav',
-    'voice_lets_fight.mp3',
-    'voice_chest_wow.mp3',
-    'voice_chest_dance.mp3',
-    'voice_chest_bonus_star.mp3',
-    'voice_chest_double.mp3',
-    'voice_chest_jackpot.mp3',
-    'voice_open_chest.mp3',
     'voice_picker_hero_blaze.mp3',
     'voice_picker_hero_frost.mp3',
     'voice_picker_hero_bolt.mp3',
@@ -142,6 +118,19 @@ class AudioService {
     'voice_picker_weapon_lightning_wand.mp3',
     'voice_picker_weapon_vine_whip.mp3',
     'voice_picker_weapon_cosmic_burst.mp3',
+    'voice_great_job_tonight.mp3',
+    'voice_great_job_morning.mp3',
+    'voice_you_did_it.mp3',
+    'voice_victory_star_and_chest.wav',
+    'voice_see_you_soon.wav',
+    'voice_great_choice.mp3',
+    'voice_lets_fight.mp3',
+    'voice_chest_wow.mp3',
+    'voice_chest_dance.mp3',
+    'voice_chest_bonus_star.mp3',
+    'voice_chest_double.mp3',
+    'voice_chest_jackpot.mp3',
+    'voice_open_chest.mp3',
     'whoosh.mp3',
     'zap.mp3',
     'star_chime.mp3',
@@ -150,18 +139,6 @@ class AudioService {
 
   List<String> get encouragementVoices =>
       List.unmodifiable(_encouragementVoices);
-
-  Future<List<String>> getDebugTrace() async {
-    if (_debugTrace.isNotEmpty) return List.unmodifiable(_debugTrace);
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_audioTraceKey) ?? const [];
-  }
-
-  Future<void> clearDebugTrace() async {
-    _debugTrace.clear();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_audioTraceKey);
-  }
 
   String heroPickerVoiceFor(String heroId) {
     return heroPickerVoices[heroId] ?? 'voice_great_choice.mp3';
@@ -199,10 +176,6 @@ class AudioService {
     _muted = !_muted;
     if (_muted) {
       _clearVoiceQueue();
-      _voiceGeneration++;
-      // Signal the pump to abort its current wait so it exits cleanly
-      final sig = _interruptSignal;
-      if (sig != null && !sig.isCompleted) sig.complete();
       for (final p in _sfxPool) {
         try {
           await p.stop();
@@ -234,7 +207,6 @@ class AudioService {
       // Keep SFX audible during narrator lines, but quieter while voice plays.
       await player.setVolume(_voicePlaying ? 0.24 : 0.7);
       await player.play(AssetSource('audio/$fileName'));
-      _trace('sfx_play:$fileName');
     } catch (e) {
       _reportAudioIssue(
         operation: 'sfx_play_failed',
@@ -245,9 +217,7 @@ class AudioService {
   }
 
   String nextHitSound() {
-    final sound = _hitSounds[_hitIndex % _hitSounds.length];
-    _hitIndex++;
-    return sound;
+    return _hitSounds[_sfxIndex % _hitSounds.length];
   }
 
   Future<void> playVoice(
@@ -256,31 +226,18 @@ class AudioService {
     bool interrupt = false,
   }) async {
     if (_muted) return;
-    _trace('voice_req:$fileName clearQueue=$clearQueue interrupt=$interrupt');
     if (clearQueue) {
       _clearVoiceQueue();
     }
     if (interrupt) {
-      // Signal the pump to abort its current wait and move on.
-      // IMPORTANT: Do NOT await _voicePlayer.stop() here when the pump is
-      // running — the pump will stop the player itself before playing the
-      // next voice. Calling stop() here races with the pump and can kill
-      // the NEXT voice that the pump just started playing.
-      final oldSignal = _interruptSignal;
-      if (oldSignal != null && !oldSignal.isCompleted) {
-        oldSignal.complete();
-      }
-      if (!_voiceQueueProcessing) {
-        // Pump not running — safe to stop the player directly
-        try {
-          await _voicePlayer.stop();
-        } catch (e) {
-          _reportAudioIssue(
-            operation: 'voice_interrupt_stop_failed',
-            fileName: fileName,
-            error: e,
-          );
-        }
+      try {
+        await _voicePlayer.stop();
+      } catch (e) {
+        _reportAudioIssue(
+          operation: 'voice_interrupt_stop_failed',
+          fileName: fileName,
+          error: e,
+        );
       }
       _voicePlaying = false;
     }
@@ -298,7 +255,6 @@ class AudioService {
     try {
       while (!_muted && _voiceQueue.isNotEmpty) {
         final request = _voiceQueue.removeFirst();
-        final gen = ++_voiceGeneration;
         _voicePlaying = true;
         _updateVoicePipelineState();
         try {
@@ -306,34 +262,20 @@ class AudioService {
         } catch (_) {}
 
         try {
-          // Create a fresh interrupt signal for this voice
-          _interruptSignal = Completer<void>();
-          final myInterrupt = _interruptSignal!;
-
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
           await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
-          _trace('voice_start:${request.fileName} gen=$gen');
-
-          // Wait for: natural completion, 5s safety timeout, or interrupt signal
-          final result = await Future.any<String>([
-            _voicePlayer.onPlayerComplete.first.then((_) => 'complete'),
-            Future.delayed(const Duration(seconds: 5), () => 'timeout'),
-            myInterrupt.future.then((_) => 'interrupted'),
+          final completed = await Future.any<bool>([
+            _voicePlayer.onPlayerComplete.first.then((_) => true),
+            Future.delayed(const Duration(seconds: 5), () => false),
           ]);
-          if (result == 'timeout') {
-            _trace('voice_timeout:${request.fileName} gen=$gen');
+          if (!completed) {
             _reportAudioIssue(
               operation: 'voice_timeout',
               fileName: request.fileName,
             );
-          } else if (result == 'interrupted') {
-            _trace('voice_interrupted:${request.fileName} gen=$gen');
-          } else {
-            _trace('voice_complete:${request.fileName} gen=$gen');
           }
         } catch (e) {
-          _trace('voice_error:${request.fileName} gen=$gen');
           _reportAudioIssue(
             operation: 'voice_play_failed',
             fileName: request.fileName,
@@ -373,7 +315,9 @@ class AudioService {
 
   void _restoreMusicVolume() {
     if (!_musicPlaying) return;
-    try { _musicPlayer.setVolume(_musicVolume); } catch (_) {}
+    try {
+      _musicPlayer.setVolume(_musicVolume);
+    } catch (_) {}
   }
 
   Future<void> playMusic(String fileName) async {
@@ -406,6 +350,8 @@ class AudioService {
     }
   }
 
+  /// Call periodically during brushing to recover music if it stopped.
+  /// Checks the player state and restarts if needed.
   Future<void> ensureMusicPlaying() async {
     if (_muted || !_musicPlaying || _currentMusicFile == null) return;
     try {
@@ -470,25 +416,5 @@ class AudioService {
     }
     _voicePlayer.dispose();
     _musicPlayer.dispose();
-  }
-
-  void _trace(String message) {
-    final now = DateTime.now();
-    final ts =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}.${(now.millisecond ~/ 10).toString().padLeft(2, '0')}';
-    _debugTrace.add('$ts|$message');
-    if (_debugTrace.length > _maxDebugTrace) {
-      _debugTrace.removeRange(0, _debugTrace.length - _maxDebugTrace);
-    }
-    _tracePersistCounter++;
-    if (_tracePersistCounter % 6 != 0) return;
-    unawaited(_persistTrace());
-  }
-
-  Future<void> _persistTrace() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_audioTraceKey, List.unmodifiable(_debugTrace));
-    } catch (_) {}
   }
 }
