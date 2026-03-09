@@ -22,6 +22,7 @@ class _ChestReward {
   final String voiceFile;
   final Color color;
   final IconData icon;
+  final String label;
 
   const _ChestReward({
     required this.type,
@@ -29,6 +30,7 @@ class _ChestReward {
     required this.voiceFile,
     required this.color,
     required this.icon,
+    required this.label,
   });
 }
 
@@ -40,6 +42,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_wow.mp3',
     color: Color(0xFF00E5FF),
     icon: Icons.celebration,
+    label: 'PARTY TIME!',
   ),
   _ChestReward(
     type: _ChestRewardType.confetti,
@@ -47,6 +50,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_wow.mp3',
     color: Color(0xFF00E5FF),
     icon: Icons.celebration,
+    label: 'PARTY TIME!',
   ),
   _ChestReward(
     type: _ChestRewardType.confetti,
@@ -54,6 +58,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_wow.mp3',
     color: Color(0xFF00E5FF),
     icon: Icons.celebration,
+    label: 'PARTY TIME!',
   ),
   _ChestReward(
     type: _ChestRewardType.confetti,
@@ -61,6 +66,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_wow.mp3',
     color: Color(0xFF00E5FF),
     icon: Icons.celebration,
+    label: 'PARTY TIME!',
   ),
   _ChestReward(
     type: _ChestRewardType.confetti,
@@ -68,6 +74,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_wow.mp3',
     color: Color(0xFF00E5FF),
     icon: Icons.celebration,
+    label: 'PARTY TIME!',
   ),
   _ChestReward(
     type: _ChestRewardType.confetti,
@@ -75,6 +82,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_wow.mp3',
     color: Color(0xFF00E5FF),
     icon: Icons.celebration,
+    label: 'PARTY TIME!',
   ),
   // 25% dance
   _ChestReward(
@@ -83,6 +91,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_dance.mp3',
     color: Color(0xFFFF4081),
     icon: Icons.music_note,
+    label: 'DANCE BREAK!',
   ),
   _ChestReward(
     type: _ChestRewardType.dance,
@@ -90,6 +99,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_dance.mp3',
     color: Color(0xFFFF4081),
     icon: Icons.music_note,
+    label: 'DANCE BREAK!',
   ),
   _ChestReward(
     type: _ChestRewardType.dance,
@@ -97,6 +107,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_dance.mp3',
     color: Color(0xFFFF4081),
     icon: Icons.music_note,
+    label: 'DANCE BREAK!',
   ),
   _ChestReward(
     type: _ChestRewardType.dance,
@@ -104,6 +115,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_dance.mp3',
     color: Color(0xFFFF4081),
     icon: Icons.music_note,
+    label: 'DANCE BREAK!',
   ),
   _ChestReward(
     type: _ChestRewardType.dance,
@@ -111,6 +123,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_dance.mp3',
     color: Color(0xFFFF4081),
     icon: Icons.music_note,
+    label: 'DANCE BREAK!',
   ),
   // 25% bonus star
   _ChestReward(
@@ -119,6 +132,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_bonus_star.mp3',
     color: Color(0xFFFFD54F),
     icon: Icons.star,
+    label: 'BONUS STAR!',
   ),
   _ChestReward(
     type: _ChestRewardType.bonusStar,
@@ -126,6 +140,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_bonus_star.mp3',
     color: Color(0xFFFFD54F),
     icon: Icons.star,
+    label: 'BONUS STAR!',
   ),
   _ChestReward(
     type: _ChestRewardType.bonusStar,
@@ -133,6 +148,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_bonus_star.mp3',
     color: Color(0xFFFFD54F),
     icon: Icons.star,
+    label: 'BONUS STAR!',
   ),
   _ChestReward(
     type: _ChestRewardType.bonusStar,
@@ -140,6 +156,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_bonus_star.mp3',
     color: Color(0xFFFFD54F),
     icon: Icons.star,
+    label: 'BONUS STAR!',
   ),
   _ChestReward(
     type: _ChestRewardType.bonusStar,
@@ -147,6 +164,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_bonus_star.mp3',
     color: Color(0xFFFFD54F),
     icon: Icons.star,
+    label: 'BONUS STAR!',
   ),
   // 15% double
   _ChestReward(
@@ -155,6 +173,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_double.mp3',
     color: Color(0xFF69F0AE),
     icon: Icons.auto_awesome,
+    label: 'DOUBLE POWER!',
   ),
   _ChestReward(
     type: _ChestRewardType.doubleStar,
@@ -162,6 +181,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_double.mp3',
     color: Color(0xFF69F0AE),
     icon: Icons.auto_awesome,
+    label: 'DOUBLE POWER!',
   ),
   _ChestReward(
     type: _ChestRewardType.doubleStar,
@@ -169,6 +189,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_double.mp3',
     color: Color(0xFF69F0AE),
     icon: Icons.auto_awesome,
+    label: 'DOUBLE POWER!',
   ),
   // 5% jackpot
   _ChestReward(
@@ -177,6 +198,7 @@ const _rewardTable = [
     voiceFile: 'voice_chest_jackpot.mp3',
     color: Color(0xFFFFD54F),
     icon: Icons.emoji_events,
+    label: 'JACKPOT!',
   ),
 ];
 
@@ -228,8 +250,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   String? _nextMilestoneLabel;
   int _starsToNextMilestone = 0;
   WorldData _world = WorldService.allWorlds[0];
-  int _worldProgress = 0;
-  int _worldRemaining = 0;
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
     title: 'NORMAL MISSION',
@@ -301,8 +321,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
-    _worldProgress = await _worldService.getWorldProgress(_world.id);
-    _worldRemaining = (_world.missionsRequired - _worldProgress).clamp(0, 9999);
+    await _worldService.getWorldProgress(_world.id);
 
     _newAchievements = await _achievementService.checkAndUnlock(
       streak: _newStreak,
@@ -390,7 +409,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     Future.delayed(const Duration(milliseconds: 500), () async {
       if (!mounted) return;
       _rewardRevealController.forward();
-      _audio.playVoice(_reward!.voiceFile);
+      await _audio.playVoice(_reward!.voiceFile);
 
       final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
       if (totalBonus > 0) {
@@ -408,9 +427,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         }
       }
 
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) _doneButtonController.repeat(reverse: true);
-      });
+      if (mounted) _doneButtonController.repeat(reverse: true);
       _startMissionRecap();
     });
   }
@@ -456,22 +473,19 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
   Future<void> _playComebackVoiceSequence() async {
-    // Voice-only comeback motivation using the existing app narrator style.
-    final milestoneVoice =
+    // Short motivational sequence + goodbye.
+    final streakVoice =
+        _newStreak > 1 ? 'voice_unstoppable.mp3' : 'voice_keep_going.mp3';
+    final closingVoice =
         (_nextMilestoneLabel != null && _starsToNextMilestone <= 1)
         ? 'voice_stars_unlock.mp3'
-        : 'voice_keep_going.mp3';
+        : 'voice_see_you_soon.wav';
 
-    final lines = <String>[
-      _newStreak > 1 ? 'voice_unstoppable.mp3' : 'voice_keep_going.mp3',
-      _worldRemaining <= 1 ? 'voice_wow_amazing.mp3' : 'voice_keep_it_up.mp3',
-      milestoneVoice,
-      'voice_welcome_back.mp3',
-    ];
+    final lines = <String>[streakVoice, closingVoice];
     for (final file in lines) {
       if (!mounted) return;
       await _audio.playVoice(file);
-      await Future.delayed(const Duration(milliseconds: 250));
+      await Future.delayed(const Duration(milliseconds: 300));
     }
   }
 
@@ -1166,25 +1180,25 @@ class _VictoryScreenState extends State<VictoryScreen>
         final lidLift = Curves.easeOutBack.transform(openProgress);
 
         return SizedBox(
-          width: 230,
-          height: 220,
+          width: 260,
+          height: 280,
           child: Stack(
             alignment: Alignment.center,
             children: [
               // Glow behind reward
               if (revealProgress > 0)
                 Container(
-                  width: 168 * revealProgress,
-                  height: 168 * revealProgress,
+                  width: 200 * revealProgress,
+                  height: 200 * revealProgress,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
                         color: reward.color.withValues(
-                          alpha: 0.4 * revealProgress,
+                          alpha: 0.5 * revealProgress,
                         ),
-                        blurRadius: 60,
-                        spreadRadius: 20,
+                        blurRadius: 80,
+                        spreadRadius: 30,
                       ),
                     ],
                   ),
@@ -1280,15 +1294,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                   ),
                 ),
               ),
-              // Reward icon rising from chest
+              // Reward icon rising from chest (larger)
               if (revealProgress > 0)
                 Transform.translate(
-                  offset: Offset(0, 24 - revealProgress * 84),
+                  offset: Offset(0, 14 - revealProgress * 100),
                   child: Transform.scale(
                     scale: revealProgress,
                     child: Container(
-                      width: 88,
-                      height: 88,
+                      width: 108,
+                      height: 108,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: RadialGradient(
@@ -1299,33 +1313,47 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: reward.color.withValues(alpha: 0.6),
-                            blurRadius: 30,
-                            spreadRadius: 5,
+                            color: reward.color.withValues(alpha: 0.7),
+                            blurRadius: 40,
+                            spreadRadius: 8,
                           ),
                         ],
                       ),
-                      child: Icon(reward.icon, color: Colors.white, size: 44),
+                      child: Icon(reward.icon, color: Colors.white, size: 56),
                     ),
                   ),
                 ),
+              // Sparkle decorations
               if (revealProgress > 0.2)
                 Positioned(
-                  top: 12,
-                  left: 36,
+                  top: 8,
+                  left: 30,
                   child: Opacity(
                     opacity: revealProgress,
                     child: const Icon(
                       Icons.auto_awesome,
                       color: Color(0xFFFFF59D),
-                      size: 16,
+                      size: 20,
                     ),
                   ),
                 ),
               if (revealProgress > 0.2)
                 Positioned(
-                  top: 18,
-                  right: 34,
+                  top: 14,
+                  right: 28,
+                  child: Opacity(
+                    opacity: revealProgress,
+                    child: const Icon(
+                      Icons.auto_awesome,
+                      color: Color(0xFFFFF59D),
+                      size: 18,
+                    ),
+                  ),
+                ),
+              if (revealProgress > 0.3)
+                Positioned(
+                  top: 42,
+                  left: 16,
                   child: Opacity(
                     opacity: revealProgress,
                     child: const Icon(
@@ -1335,25 +1363,91 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ),
                   ),
                 ),
-              // Bonus text
+              if (revealProgress > 0.3)
+                Positioned(
+                  top: 38,
+                  right: 18,
+                  child: Opacity(
+                    opacity: revealProgress,
+                    child: const Icon(
+                      Icons.auto_awesome,
+                      color: Color(0xFFFFF59D),
+                      size: 16,
+                    ),
+                  ),
+                ),
+              // Reward label — large, clear text
+              if (revealProgress > 0.4)
+                Positioned(
+                  top: 0,
+                  child: Opacity(
+                    opacity: ((revealProgress - 0.4) / 0.3).clamp(0.0, 1.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: reward.color.withValues(alpha: 0.2),
+                        border: Border.all(
+                          color: reward.color.withValues(alpha: 0.6),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        reward.label,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 22,
+                          letterSpacing: 1.5,
+                          shadows: [
+                            Shadow(
+                              color: reward.color,
+                              blurRadius: 16,
+                            ),
+                            Shadow(
+                              color: reward.color.withValues(alpha: 0.6),
+                              blurRadius: 30,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              // Bonus stars text (below label)
               if (revealProgress > 0.5 && reward.bonusStars > 0)
                 Positioned(
-                  top: 2,
+                  bottom: 8,
                   child: Opacity(
                     opacity: ((revealProgress - 0.5) * 2).clamp(0.0, 1.0),
-                    child: Text(
-                      '+${reward.bonusStars}',
-                      style: TextStyle(
-                        color: reward.color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 36,
-                        shadows: [
-                          Shadow(
-                            color: reward.color.withValues(alpha: 0.8),
-                            blurRadius: 12,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '+${reward.bonusStars} ',
+                          style: TextStyle(
+                            color: const Color(0xFFFFD54F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 32,
+                            shadows: [
+                              Shadow(
+                                color: const Color(0xFFFFD54F).withValues(
+                                  alpha: 0.8,
+                                ),
+                                blurRadius: 12,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const Icon(
+                          Icons.star,
+                          color: Color(0xFFFFD54F),
+                          size: 30,
+                        ),
+                      ],
                     ),
                   ),
                 ),

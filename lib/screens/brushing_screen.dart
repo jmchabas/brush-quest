@@ -800,7 +800,17 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = BrushPhase.countdown;
       _sessionStage = SessionStage.countdown;
     });
-    _audio.playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true);
+    // Play voice and track when it finishes so we don't start brushing
+    // (and interrupt the voice) until it completes.
+    bool voiceDone = false;
+    bool timerDone = false;
+    _audio
+        .playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true)
+        .then((_) {
+      voiceDone = true;
+      // If the visual countdown already finished, start brushing now.
+      if (timerDone && mounted) _startBrushing();
+    });
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
@@ -814,7 +824,11 @@ class _BrushingScreenState extends State<BrushingScreen>
         });
         HapticFeedback.heavyImpact();
         Future.delayed(const Duration(milliseconds: 800), () {
-          if (mounted) _startBrushing();
+          if (!mounted) return;
+          timerDone = true;
+          // Only start brushing if the countdown voice has finished.
+          // This prevents the guidance voice from interrupting "3, 2, 1, GO!"
+          if (voiceDone) _startBrushing();
         });
       }
     });
@@ -2321,18 +2335,29 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     final effectiveSize = size * _monster.personality.sizeMultiplier;
 
-    Widget monsterImage = ColorFiltered(
-      colorFilter: ColorFilter.mode(
-        _monster.personality.tintColor.withValues(
-          alpha: _monster.personality.tintStrength,
+    Widget monsterImage = ShaderMask(
+      shaderCallback: (Rect bounds) {
+        return RadialGradient(
+          center: Alignment.center,
+          radius: 0.85,
+          colors: [Colors.white, Colors.white, Colors.transparent],
+          stops: [0.0, 0.65, 1.0],
+        ).createShader(bounds);
+      },
+      blendMode: BlendMode.dstIn,
+      child: ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          _monster.personality.tintColor.withValues(
+            alpha: _monster.personality.tintStrength,
+          ),
+          BlendMode.overlay,
         ),
-        BlendMode.overlay,
-      ),
-      child: Image.asset(
-        _monsterImages[_monster.imageIndex],
-        width: effectiveSize,
-        height: effectiveSize,
-        fit: BoxFit.contain,
+        child: Image.asset(
+          _monsterImages[_monster.imageIndex],
+          width: effectiveSize,
+          height: effectiveSize,
+          fit: BoxFit.contain,
+        ),
       ),
     );
 
@@ -2438,7 +2463,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                       width: size * 0.7,
                       height: size * 0.7,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
+                        shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
                             color: _monster.personality.tintColor.withValues(
@@ -2456,7 +2481,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                         width: size + 20,
                         height: size + 20,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
+                          shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: Colors.redAccent.withValues(
@@ -2511,7 +2536,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                           width: size,
                           height: size,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
+                            shape: BoxShape.circle,
                             color: Colors.red.withValues(
                               alpha: (damageProgress - 0.5) * 0.25,
                             ),
@@ -2550,7 +2575,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                           width: size,
                           height: size,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
+                            shape: BoxShape.circle,
                             color: Colors.red.withValues(
                               alpha: 0.1 + breathT * 0.2,
                             ),
@@ -2565,7 +2590,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                           width: size,
                           height: size,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
+                            shape: BoxShape.circle,
                             color: Colors.white.withValues(
                               alpha: (_monster.hitRecoil - 0.6) * 2,
                             ),
@@ -2811,7 +2836,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                   width: size + 16,
                   height: size + 16,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
+                    shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
                         color: _hero.primaryColor.withValues(alpha: pulse),
@@ -2831,20 +2856,17 @@ class _BrushingScreenState extends State<BrushingScreen>
                     isAttacking: _heroLunging,
                   ),
                 ),
-                child!,
-                // Ring border with breathing glow
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _hero.primaryColor.withValues(
-                        alpha: 0.7 + breathCycle.abs() * 0.3,
-                      ),
-                      width: 3 + (_heroLunging ? 1.5 : 0),
-                    ),
-                  ),
+                ShaderMask(
+                  shaderCallback: (Rect bounds) {
+                    return RadialGradient(
+                      center: Alignment.center,
+                      radius: 0.85,
+                      colors: [Colors.white, Colors.white, Colors.transparent],
+                      stops: [0.0, 0.65, 1.0],
+                    ).createShader(bounds);
+                  },
+                  blendMode: BlendMode.dstIn,
+                  child: child!,
                 ),
                 // Weapon badge
                 Positioned(

@@ -33,6 +33,7 @@ class AudioService {
   bool _voicePlaying = false;
   int _voiceGeneration = 0; // prevents stale safety timeouts
   bool _voiceQueueProcessing = false;
+  Completer<void>? _interruptSignal; // signals the pump to abort current wait
   bool _musicPlaying = false;
   String? _currentMusicFile;
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
@@ -69,21 +70,21 @@ class AudioService {
   ];
 
   static const Map<String, String> heroPickerVoices = {
-    'blaze': 'voice_picker_hero_blaze.wav',
-    'frost': 'voice_picker_hero_frost.wav',
-    'bolt': 'voice_picker_hero_bolt.wav',
-    'shadow': 'voice_picker_hero_shadow.wav',
-    'leaf': 'voice_picker_hero_leaf.wav',
-    'nova': 'voice_picker_hero_nova.wav',
+    'blaze': 'voice_picker_hero_blaze.mp3',
+    'frost': 'voice_picker_hero_frost.mp3',
+    'bolt': 'voice_picker_hero_bolt.mp3',
+    'shadow': 'voice_picker_hero_shadow.mp3',
+    'leaf': 'voice_picker_hero_leaf.mp3',
+    'nova': 'voice_picker_hero_nova.mp3',
   };
 
   static const Map<String, String> weaponPickerVoices = {
-    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
-    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
-    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
-    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
-    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
-    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
+    'star_blaster': 'voice_picker_weapon_star_blaster.mp3',
+    'flame_sword': 'voice_picker_weapon_flame_sword.mp3',
+    'ice_hammer': 'voice_picker_weapon_ice_hammer.mp3',
+    'lightning_wand': 'voice_picker_weapon_lightning_wand.mp3',
+    'vine_whip': 'voice_picker_weapon_vine_whip.mp3',
+    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.mp3',
   };
 
   static const _allAudioFiles = [
@@ -129,6 +130,18 @@ class AudioService {
     'voice_chest_double.mp3',
     'voice_chest_jackpot.mp3',
     'voice_open_chest.mp3',
+    'voice_picker_hero_blaze.mp3',
+    'voice_picker_hero_frost.mp3',
+    'voice_picker_hero_bolt.mp3',
+    'voice_picker_hero_shadow.mp3',
+    'voice_picker_hero_leaf.mp3',
+    'voice_picker_hero_nova.mp3',
+    'voice_picker_weapon_star_blaster.mp3',
+    'voice_picker_weapon_flame_sword.mp3',
+    'voice_picker_weapon_ice_hammer.mp3',
+    'voice_picker_weapon_lightning_wand.mp3',
+    'voice_picker_weapon_vine_whip.mp3',
+    'voice_picker_weapon_cosmic_burst.mp3',
     'whoosh.mp3',
     'zap.mp3',
     'star_chime.mp3',
@@ -187,6 +200,9 @@ class AudioService {
     if (_muted) {
       _clearVoiceQueue();
       _voiceGeneration++;
+      // Signal the pump to abort its current wait so it exits cleanly
+      final sig = _interruptSignal;
+      if (sig != null && !sig.isCompleted) sig.complete();
       for (final p in _sfxPool) {
         try {
           await p.stop();
@@ -244,7 +260,27 @@ class AudioService {
     if (clearQueue) {
       _clearVoiceQueue();
     }
-    if (interrupt) {
+    if (interrupt && _voiceQueueProcessing) {
+      // Signal the pump loop to abort its current Future.any wait,
+      // then stop the player. Without this signal, _voicePlayer.stop()
+      // does NOT fire onPlayerComplete, so the pump would hang for up to
+      // 5 seconds on its safety timeout before processing the next voice.
+      final oldSignal = _interruptSignal;
+      if (oldSignal != null && !oldSignal.isCompleted) {
+        oldSignal.complete();
+      }
+      try {
+        await _voicePlayer.stop();
+      } catch (e) {
+        _reportAudioIssue(
+          operation: 'voice_interrupt_stop_failed',
+          fileName: fileName,
+          error: e,
+        );
+      }
+      _voicePlaying = false;
+    } else if (interrupt) {
+      // Pump not running — just stop the player
       try {
         await _voicePlayer.stop();
       } catch (e) {
@@ -278,20 +314,29 @@ class AudioService {
         } catch (_) {}
 
         try {
+          // Create a fresh interrupt signal for this voice
+          _interruptSignal = Completer<void>();
+          final myInterrupt = _interruptSignal!;
+
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
           await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
           _trace('voice_start:${request.fileName} gen=$gen');
-          final completed = await Future.any<bool>([
-            _voicePlayer.onPlayerComplete.first.then((_) => true),
-            Future.delayed(const Duration(seconds: 5), () => false),
+
+          // Wait for: natural completion, 5s safety timeout, or interrupt signal
+          final result = await Future.any<String>([
+            _voicePlayer.onPlayerComplete.first.then((_) => 'complete'),
+            Future.delayed(const Duration(seconds: 5), () => 'timeout'),
+            myInterrupt.future.then((_) => 'interrupted'),
           ]);
-          if (!completed) {
+          if (result == 'timeout') {
             _trace('voice_timeout:${request.fileName} gen=$gen');
             _reportAudioIssue(
               operation: 'voice_timeout',
               fileName: request.fileName,
             );
+          } else if (result == 'interrupted') {
+            _trace('voice_interrupted:${request.fileName} gen=$gen');
           } else {
             _trace('voice_complete:${request.fileName} gen=$gen');
           }
