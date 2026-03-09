@@ -75,21 +75,22 @@ class StreakService {
     final slotAlreadyDone = prefs.getString(slotKey) == today;
     final newSlotCompleted = !slotAlreadyDone;
 
-    // Update today's slots and stars (cap core progression to AM/PM completions).
-    final starsEarned = newSlotCompleted ? 1 : 0;
+    // Every completed brush earns 1 star — no daily cap.
+    const starsEarned = 1;
     if (newSlotCompleted) {
       await prefs.setString(slotKey, today);
-      final todaySlots = await getTodaySlots();
-      await prefs.setInt(_keyTodayBrushCount, todaySlots.completedCount);
-      await prefs.setString(_keyTodayDate, today);
     }
+    // Track total brushes done today (not capped to slots)
+    final storedDate = prefs.getString(_keyTodayDate) ?? '';
+    int todayCount = storedDate == today ? (prefs.getInt(_keyTodayBrushCount) ?? 0) : 0;
+    todayCount++;
+    await prefs.setInt(_keyTodayBrushCount, todayCount);
+    await prefs.setString(_keyTodayDate, today);
 
-    // Update streak
+    // Update streak (once per day, on first brush of the day)
     int streak = prefs.getInt(_keyCurrentStreak) ?? 0;
-    if (newSlotCompleted) {
-      if (lastDate == today) {
-        // Another slot in same day; keep streak unchanged.
-      } else if (lastDate == _yesterdayString()) {
+    if (lastDate != today) {
+      if (lastDate == _yesterdayString()) {
         streak++;
       } else if (lastDate.isEmpty) {
         streak = 1;
@@ -107,11 +108,9 @@ class StreakService {
     }
 
     // Update total stars
-    if (starsEarned > 0) {
-      int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
-      totalStars += starsEarned;
-      await prefs.setInt(_keyTotalStars, totalStars);
-    }
+    int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
+    totalStars += starsEarned;
+    await prefs.setInt(_keyTotalStars, totalStars);
 
     // Update lifetime brush count
     int totalBrushes = prefs.getInt(_keyTotalBrushes) ?? 0;
@@ -179,8 +178,11 @@ class StreakService {
   }
 
   Future<int> getTodayBrushCount() async {
-    final slots = await getTodaySlots();
-    return slots.completedCount;
+    final prefs = await SharedPreferences.getInstance();
+    final today = _todayString();
+    final storedDate = prefs.getString(_keyTodayDate) ?? '';
+    if (storedDate != today) return 0;
+    return prefs.getInt(_keyTodayBrushCount) ?? 0;
   }
 
   Future<TodaySlotsStatus> getTodaySlots() async {

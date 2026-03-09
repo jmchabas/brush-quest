@@ -28,6 +28,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _totalStars = 0;
   int _streak = 0;
   int _todayBrushCount = 0;
+  int _totalBrushes = 0;
+  int _bossProgress = 0;
+  int _bossRemaining = 4;
+  bool _bossReady = false;
   bool _morningDone = false;
   bool _eveningDone = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
@@ -41,23 +45,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _buttonPressed = false;
   bool _welcomePlayed = false;
   String? _lastPickerVoice;
+  bool _homeImpressionLogged = false;
 
   static const Map<String, String> _heroPickerVoice = {
-    'blaze': 'voice_picker_hero_blaze.wav',
-    'frost': 'voice_picker_hero_frost.wav',
-    'bolt': 'voice_picker_hero_bolt.wav',
-    'shadow': 'voice_picker_hero_shadow.wav',
-    'leaf': 'voice_picker_hero_leaf.wav',
-    'nova': 'voice_picker_hero_nova.wav',
+    'blaze': 'voice_hero_blaze.mp3',
+    'frost': 'voice_hero_frost.mp3',
+    'bolt': 'voice_hero_bolt.mp3',
+    'shadow': 'voice_hero_shadow.mp3',
+    'leaf': 'voice_hero_leaf.mp3',
+    'nova': 'voice_hero_nova.mp3',
+  };
+
+  static const Map<String, List<String>> _heroNarrationVoices = {
+    'blaze': ['voice_hero_blaze.mp3', 'voice_lets_fight.mp3'],
+    'frost': ['voice_hero_frost.mp3', 'voice_go_go_go.mp3'],
+    'bolt': ['voice_hero_bolt.mp3', 'voice_unstoppable.mp3'],
+    'shadow': ['voice_hero_shadow.mp3', 'voice_keep_going.mp3'],
+    'leaf': ['voice_hero_leaf.mp3', 'voice_keep_it_up.mp3'],
+    'nova': ['voice_hero_nova.mp3', 'voice_wow_amazing.mp3'],
   };
 
   static const Map<String, String> _weaponPickerVoice = {
-    'star_blaster': 'voice_picker_weapon_star_blaster.wav',
-    'flame_sword': 'voice_picker_weapon_flame_sword.wav',
-    'ice_hammer': 'voice_picker_weapon_ice_hammer.wav',
-    'lightning_wand': 'voice_picker_weapon_lightning_wand.wav',
-    'vine_whip': 'voice_picker_weapon_vine_whip.wav',
-    'cosmic_burst': 'voice_picker_weapon_cosmic_burst.wav',
+    'star_blaster': 'voice_super.mp3',
+    'flame_sword': 'voice_wow_amazing.mp3',
+    'ice_hammer': 'voice_awesome.mp3',
+    'lightning_wand': 'voice_unstoppable.mp3',
+    'vine_whip': 'voice_keep_it_up.mp3',
+    'cosmic_burst': 'voice_great_choice.mp3',
   };
 
   @override
@@ -102,7 +116,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
     final todayCount = await _streakService.getTodayBrushCount();
+    final totalBrushes = await _streakService.getTotalBrushes();
     final todaySlots = await _streakService.getTodaySlots();
+    final brushCycle = totalBrushes % 5;
+    final bossReady = brushCycle == 4;
+    final bossRemaining = bossReady ? 0 : (4 - brushCycle);
 
     if (mounted) {
       setState(() {
@@ -110,10 +128,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedHero = hero;
         _selectedWeapon = weapon;
         _streak = streak;
+        _totalBrushes = totalBrushes;
+        _bossProgress = brushCycle;
+        _bossRemaining = bossRemaining;
+        _bossReady = bossReady;
         _todayBrushCount = todayCount;
         _morningDone = todaySlots.morningDone;
         _eveningDone = todaySlots.eveningDone;
       });
+      if (!_homeImpressionLogged) {
+        _homeImpressionLogged = true;
+        _telemetry.logEvent(
+          'home_impression',
+          params: {
+            'total_stars': stars,
+            'streak': streak,
+            'today_brush_count': todayCount,
+            'total_brushes': totalBrushes,
+            'selected_hero': hero.id,
+            'selected_weapon': weapon.id,
+          },
+        );
+      }
     }
   }
 
@@ -134,7 +170,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _startBrushing() {
     HapticFeedback.heavyImpact();
     AudioService().playSfx('whoosh.mp3');
-    _telemetry.logEvent('session_start_tap');
+    _telemetry.logEvent(
+      'home_start_tap',
+      params: {
+        'selected_hero': _selectedHero.id,
+        'selected_weapon': _selectedWeapon.id,
+        'today_brush_count': _todayBrushCount,
+        'boss_ready': _bossReady,
+      },
+    );
     _startBrushingFlow();
   }
 
@@ -184,76 +228,95 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!mounted) return;
 
     _lastPickerVoice = null;
-    _playPickerVoice(
-      _heroPickerVoice[_selectedHero.id] ?? 'voice_great_choice.mp3',
-    );
+    _playHeroNarration(_selectedHero.id);
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _PreBrushPicker(
-        heroes: HeroService.allHeroes,
-        weapons: WeaponService.allWeapons,
-        unlockedHeroIds: unlocked,
-        unlockedWeaponIds: unlockedWeapons,
-        selectedHero: _selectedHero,
-        selectedWeapon: _selectedWeapon,
-        onHeroSelected: (hero) async {
-          await _heroService.selectHero(hero.id);
-          setState(() => _selectedHero = hero);
-          _telemetry.logEvent(
-            'picker_hero_selected',
-            params: {'hero_id': hero.id},
-          );
-          _playPickerVoice(
-            _heroPickerVoice[hero.id] ?? 'voice_great_choice.mp3',
-          );
-        },
-        onWeaponSelected: (weapon) async {
-          await _weaponService.selectWeapon(weapon.id);
-          setState(() => _selectedWeapon = weapon);
-          _telemetry.logEvent(
-            'picker_weapon_selected',
-            params: {'weapon_id': weapon.id},
-          );
-          _playPickerVoice(
-            _weaponPickerVoice[weapon.id] ?? 'voice_awesome.mp3',
-          );
-        },
-        onGo: () {
-          Navigator.pop(ctx);
-          _telemetry.logEvent(
-            'session_confirmed',
-            params: {
-              'hero_id': _selectedHero.id,
-              'weapon_id': _selectedWeapon.id,
-            },
-          );
-          AudioService().playVoice('voice_lets_fight.mp3');
-          Future.delayed(const Duration(milliseconds: 600), () {
-            if (mounted) _launchBrushingScreen();
-          });
-        },
+    final confirmed = await Navigator.of(context).push<bool>(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
+          opacity: animation,
+          child: _PreBrushLoadoutScreen(
+            child: _PreBrushPicker(
+              heroes: HeroService.allHeroes,
+              weapons: WeaponService.allWeapons,
+              unlockedHeroIds: unlocked,
+              unlockedWeaponIds: unlockedWeapons,
+              selectedHero: _selectedHero,
+              selectedWeapon: _selectedWeapon,
+              onHeroSelected: (hero) async {
+                await _heroService.selectHero(hero.id);
+                setState(() => _selectedHero = hero);
+                _telemetry.logEvent(
+                  'picker_hero_selected',
+                  params: {'hero_id': hero.id},
+                );
+                _playHeroNarration(hero.id);
+              },
+              onWeaponSelected: (weapon) async {
+                await _weaponService.selectWeapon(weapon.id);
+                setState(() => _selectedWeapon = weapon);
+                _telemetry.logEvent(
+                  'picker_weapon_selected',
+                  params: {'weapon_id': weapon.id},
+                );
+                _playWeaponNarration(weapon.id);
+              },
+              onGo: () => Navigator.of(context).pop(true),
+            ),
+          ),
+        ),
       ),
     );
+
+    if (confirmed != true || !mounted) return;
+    _telemetry.logEvent(
+      'session_confirmed',
+      params: {'hero_id': _selectedHero.id, 'weapon_id': _selectedWeapon.id},
+    );
+    AudioService().playVoice('voice_lets_fight.mp3');
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _launchBrushingScreen();
+    });
   }
 
-  void _playPickerVoice(String fileName) {
-    if (_lastPickerVoice == fileName) return;
-    _lastPickerVoice = fileName;
-    AudioService().playVoice(fileName);
+  void _playHeroNarration(String heroId) {
+    final seq =
+        _heroNarrationVoices[heroId] ??
+        [_heroPickerVoice[heroId] ?? 'voice_great_choice.mp3'];
+    final key = 'hero:$heroId';
+    if (_lastPickerVoice == key) return;
+    _lastPickerVoice = key;
+    AudioService().playVoice(seq.first, policy: VoicePolicy.interrupt);
+    for (int i = 1; i < seq.length; i++) {
+      AudioService().playVoice(seq[i], policy: VoicePolicy.queue);
+    }
+  }
+
+  void _playWeaponNarration(String weaponId) {
+    final file = _weaponPickerVoice[weaponId] ?? 'voice_awesome.mp3';
+    final key = 'weapon:$weaponId';
+    if (_lastPickerVoice == key) return;
+    _lastPickerVoice = key;
+    AudioService().playVoice(file, policy: VoicePolicy.interrupt);
   }
 
   void _openShop() {
+    _telemetry.logEvent('navigation_tap', params: {'target': 'heroes'});
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const HeroShopScreen()))
         .then((_) => _loadStats());
   }
 
   void _openWorldMap() {
+    _telemetry.logEvent('navigation_tap', params: {'target': 'map'});
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const WorldMapScreen()))
+        .then((_) => _loadStats());
+  }
+
+  void _openSettings() {
+    _telemetry.logEvent('navigation_tap', params: {'target': 'settings'});
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const SettingsScreen()))
         .then((_) => _loadStats());
   }
 
@@ -294,32 +357,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 right: 8,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      padding: const EdgeInsets.all(12),
-                      constraints: const BoxConstraints(
-                        minWidth: 56,
-                        minHeight: 56,
-                      ),
-                      splashRadius: 28,
-                      onPressed: () {
-                        Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(
-                                builder: (_) => const SettingsScreen(),
-                              ),
-                            )
-                            .then((_) => _loadStats());
-                      },
-                      icon: Icon(
-                        Icons.settings,
-                        color: Colors.white.withValues(alpha: 0.6),
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    const MuteButton(),
-                  ],
+                  children: [const MuteButton()],
                 ),
               ),
 
@@ -362,6 +400,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'HOME BASE',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2.2,
+                      fontSize: 11,
+                    ),
                   ),
 
                   const SizedBox(height: 4),
@@ -467,6 +515,73 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         size: 20,
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.workspace_premium,
+                                color: Color(0xFFFFD54F),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _bossReady
+                                    ? 'BOSS READY NEXT BRUSH'
+                                    : 'BOSS IN $_bossRemaining BRUSH${_bossRemaining == 1 ? '' : 'ES'}',
+                                style: TextStyle(
+                                  color: _bossReady
+                                      ? const Color(0xFFFFD54F)
+                                      : Colors.white.withValues(alpha: 0.85),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              minHeight: 8,
+                              value: _bossReady ? 1.0 : (_bossProgress / 4.0),
+                              backgroundColor: Colors.white10,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                _bossReady
+                                    ? const Color(0xFFFFD54F)
+                                    : const Color(0xFF00E5FF),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'MISSIONS CLEARED: $_totalBrushes',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
 
                   const Spacer(),
@@ -599,7 +714,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'BRUSH!',
+                            'BRUSH NOW',
                             style: Theme.of(context).textTheme.headlineMedium
                                 ?.copyWith(
                                   color: Colors.white,
@@ -625,6 +740,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               letterSpacing: 3,
                             ),
                           ),
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.touch_app,
+                                color: Colors.white.withValues(
+                                  alpha: 0.5 + _auraController.value * 0.4,
+                                ),
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'TAP TO START',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(
+                                    alpha: 0.5 + _auraController.value * 0.4,
+                                  ),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.6,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -632,26 +772,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   const Spacer(),
 
-                  // Big bottom buttons: MAP + SHOP
+                  // Secondary nav row
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
                       children: [
                         Expanded(
-                          child: _BigNavButton(
+                          child: _SmallNavButton(
                             icon: Icons.rocket_launch,
                             label: 'MAP',
                             color: const Color(0xFF00E5FF),
                             onTap: _openWorldMap,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: _BigNavButton(
+                          child: _SmallNavButton(
                             icon: Icons.shield,
                             label: 'HEROES',
                             color: const Color(0xFF7C4DFF),
                             onTap: _openShop,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _SmallNavButton(
+                            icon: Icons.settings,
+                            label: 'SETTINGS',
+                            color: const Color(0xFF69F0AE),
+                            onTap: _openSettings,
                           ),
                         ),
                       ],
@@ -693,6 +842,60 @@ class _PreBrushPicker extends StatefulWidget {
 
   @override
   State<_PreBrushPicker> createState() => _PreBrushPickerState();
+}
+
+class _PreBrushLoadoutScreen extends StatelessWidget {
+  final Widget child;
+  const _PreBrushLoadoutScreen({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SpaceBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'CHOOSE HERO + WEAPON',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.2,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SingleChildScrollView(child: child),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _PreBrushPickerState extends State<_PreBrushPicker> {
@@ -980,13 +1183,13 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
   }
 }
 
-class _BigNavButton extends StatelessWidget {
+class _SmallNavButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
-  const _BigNavButton({
+  const _SmallNavButton({
     required this.icon,
     required this.label,
     required this.color,
@@ -1000,29 +1203,24 @@ class _BigNavButton extends StatelessWidget {
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: 0.4), width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.2),
-              blurRadius: 12,
-              spreadRadius: 1,
-            ),
-          ],
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.45), width: 1.5),
         ),
-        child: Row(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(width: 10),
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 2),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
-                fontSize: 18,
+                fontSize: 10,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 3,
+                letterSpacing: 1.1,
               ),
             ),
           ],

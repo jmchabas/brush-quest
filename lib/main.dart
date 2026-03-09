@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,27 +12,26 @@ import 'services/telemetry_service.dart';
 import 'widgets/asset_preloader.dart';
 
 void main() async {
-  await runZonedGuarded<Future<void>>(
-    () async {
-      WidgetsFlutterBinding.ensureInitialized();
-      // Keep startup fully offline-safe on constrained devices/emulators.
-      GoogleFonts.config.allowRuntimeFetching = false;
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      FlutterError.onError =
-          FirebaseCrashlytics.instance.recordFlutterFatalError;
-      PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-        return true;
-      };
-      runApp(const BrushQuestApp());
-    },
-    (error, stack) {
+  WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
+  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
+  // Firebase init must never block app startup.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FlutterError.onError =
+        FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    },
-  );
+      return true;
+    };
+  } catch (_) {
+    // Firebase/Crashlytics unavailable — app still launches.
+  }
+
+  runApp(const BrushQuestApp());
 }
 
 class BrushQuestApp extends StatelessWidget {

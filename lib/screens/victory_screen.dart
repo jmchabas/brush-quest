@@ -185,12 +185,14 @@ class VictoryScreen extends StatefulWidget {
   final int totalHits;
   final int monstersDefeated;
   final bool isBossSession;
+  final String? sessionId;
   const VictoryScreen({
     super.key,
     this.starsCollected = 1,
     this.totalHits = 0,
     this.monstersDefeated = 4,
     this.isBossSession = false,
+    this.sessionId,
   });
 
   @override
@@ -312,6 +314,20 @@ class _VictoryScreenState extends State<VictoryScreen>
       if (_starsToNextHero < 0) _starsToNextHero = 0;
     }
     await _refreshMilestoneHint();
+    _telemetry.logEvent(
+      'session_complete',
+      params: {
+        'session_id': widget.sessionId ?? '',
+        'stars_earned': outcome.starsEarned,
+        'new_slot_completed': outcome.newSlotCompleted,
+        'slot': outcome.slot.name,
+        'streak_after': _newStreak,
+        'total_stars_after': _newStars,
+        'total_hits': widget.totalHits,
+        'monsters_defeated': widget.monstersDefeated,
+        'boss_session': widget.isBossSession,
+      },
+    );
 
     if (mounted) setState(() {});
 
@@ -889,218 +905,218 @@ class _VictoryScreenState extends State<VictoryScreen>
             final bounce = sin(_chestBounceController.value * pi) * 8;
             final wobble = sin(_chestBounceController.value * pi * 2) * 0.03;
             final sparkleDrift = sin(_chestBounceController.value * pi * 2) * 5;
-            return Transform.translate(
-              offset: Offset(0, -bounce),
-              child: Transform.rotate(
-                angle: wobble,
-                child: SizedBox(
-                  width: 220,
-                  height: 210,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 208,
-                        height: 208,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const RadialGradient(
-                            colors: [Color(0x55FFF59D), Color(0x00FFF59D)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFFFFD54F,
-                              ).withValues(alpha: 0.55),
-                              blurRadius: 40,
-                              spreadRadius: 8,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 18,
-                        child: Container(
-                          width: 170,
-                          height: 18,
+            return GestureDetector(
+              onTap: _openChest,
+              behavior: HitTestBehavior.opaque,
+              child: Transform.translate(
+                offset: Offset(0, -bounce),
+                child: Transform.rotate(
+                  angle: wobble,
+                  child: SizedBox(
+                    width: 220,
+                    height: 210,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 208,
+                          height: 208,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(40),
-                            color: Colors.black.withValues(alpha: 0.26),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 42,
-                        child: Container(
-                          width: 168,
-                          height: 88,
-                          decoration: BoxDecoration(
-                            borderRadius: const BorderRadius.vertical(
-                              bottom: Radius.circular(24),
-                            ),
-                            gradient: const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Color(0xFF8D5A33), Color(0xFF5D3420)],
-                            ),
-                            border: Border.all(
-                              color: const Color(0xFF4E2A17),
-                              width: 2.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 14,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 104,
-                        child: Container(
-                          width: 178,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(42),
-                              bottom: Radius.circular(16),
-                            ),
-                            gradient: const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Color(0xFFB77845), Color(0xFF7A4A2D)],
-                            ),
-                            border: Border.all(
-                              color: const Color(0xFF5F371F),
-                              width: 2.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 78,
-                        child: Container(
-                          width: 34,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            gradient: const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Color(0xFFFFF176), Color(0xFFFFC107)],
-                            ),
-                            border: Border.all(
-                              color: const Color(0xFFFFA000),
-                              width: 2,
+                            shape: BoxShape.circle,
+                            gradient: const RadialGradient(
+                              colors: [Color(0x55FFF59D), Color(0x00FFF59D)],
                             ),
                             boxShadow: [
                               BoxShadow(
                                 color: const Color(
                                   0xFFFFD54F,
-                                ).withValues(alpha: 0.4),
-                                blurRadius: 10,
+                                ).withValues(alpha: 0.55),
+                                blurRadius: 40,
+                                spreadRadius: 8,
                               ),
                             ],
                           ),
+                        ),
+                        Positioned(
+                          bottom: 18,
+                          child: Container(
+                            width: 170,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(40),
+                              color: Colors.black.withValues(alpha: 0.26),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 42,
+                          child: Container(
+                            width: 168,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(24),
+                              ),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0xFF8D5A33), Color(0xFF5D3420)],
+                              ),
+                              border: Border.all(
+                                color: const Color(0xFF4E2A17),
+                                width: 2.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 104,
+                          child: Container(
+                            width: 178,
+                            height: 68,
+                            decoration: BoxDecoration(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(42),
+                                bottom: Radius.circular(16),
+                              ),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0xFFB77845), Color(0xFF7A4A2D)],
+                              ),
+                              border: Border.all(
+                                color: const Color(0xFF5F371F),
+                                width: 2.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 78,
+                          child: Container(
+                            width: 34,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0xFFFFF176), Color(0xFFFFC107)],
+                              ),
+                              border: Border.all(
+                                color: const Color(0xFFFFA000),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFFFD54F,
+                                  ).withValues(alpha: 0.4),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.lock,
+                              color: Color(0xFF6D4C41),
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 113,
+                          child: Container(
+                            width: 184,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: const Color(0xFFFFC107),
+                              border: Border.all(
+                                color: const Color(0xFFFFA000),
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 65,
+                          child: Container(
+                            width: 168,
+                            height: 11,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: const Color(0xFFFFC107),
+                              border: Border.all(
+                                color: const Color(0xFFFFA000),
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 30 + sparkleDrift,
+                          left: 30,
                           child: const Icon(
-                            Icons.lock,
-                            color: Color(0xFF6D4C41),
-                            size: 18,
+                            Icons.auto_awesome,
+                            color: Color(0xFFFFF59D),
+                            size: 20,
                           ),
                         ),
-                      ),
-                      Positioned(
-                        bottom: 113,
-                        child: Container(
-                          width: 184,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: const Color(0xFFFFC107),
-                            border: Border.all(
-                              color: const Color(0xFFFFA000),
-                              width: 1.5,
+                        Positioned(
+                          right: 28,
+                          top: 56 - sparkleDrift * 0.8,
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: Color(0xFFFFF59D),
+                            size: 16,
+                          ),
+                        ),
+                        Positioned(
+                          right: 40,
+                          bottom: 56 + sparkleDrift * 0.5,
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: Color(0xFFFFF59D),
+                            size: 14,
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.black.withValues(alpha: 0.28),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: const Text(
+                              'TAP TO OPEN',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                                fontSize: 10,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        bottom: 65,
-                        child: Container(
-                          width: 168,
-                          height: 11,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: const Color(0xFFFFC107),
-                            border: Border.all(
-                              color: const Color(0xFFFFA000),
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 30 + sparkleDrift,
-                        left: 30,
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: Color(0xFFFFF59D),
-                          size: 20,
-                        ),
-                      ),
-                      Positioned(
-                        right: 28,
-                        top: 56 - sparkleDrift * 0.8,
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: Color(0xFFFFF59D),
-                          size: 16,
-                        ),
-                      ),
-                      Positioned(
-                        right: 40,
-                        bottom: 56 + sparkleDrift * 0.5,
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: Color(0xFFFFF59D),
-                          size: 14,
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Colors.black.withValues(alpha: 0.28),
-                            border: Border.all(color: Colors.white24),
-                          ),
-                          child: const Text(
-                            'TAP TO OPEN',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             );
           },
-          child: GestureDetector(
-            onTap: _openChest,
-            child: const SizedBox(width: 220, height: 210),
-          ),
         ),
       );
     }

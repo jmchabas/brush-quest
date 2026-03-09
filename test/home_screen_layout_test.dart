@@ -40,7 +40,7 @@ void main() {
   }
 
   testWidgets(
-    'home stats row uses new icon, balanced sizes, and wider top button separation',
+    'home stats row uses new icon and settings stays in secondary nav',
     (tester) async {
       await pumpHomeScreen(tester);
 
@@ -54,23 +54,15 @@ void main() {
       expect(starsText.style?.fontSize, 24);
       expect(todayText.style?.fontSize, 24);
 
-      final settingsButton = find
-          .ancestor(
-            of: find.byIcon(Icons.settings),
-            matching: find.byType(IconButton),
-          )
-          .first;
-      final muteButton = find
-          .ancestor(
-            of: find.byIcon(Icons.volume_up),
-            matching: find.byType(IconButton),
-          )
-          .first;
-
-      final settingsRect = tester.getRect(settingsButton);
-      final muteRect = tester.getRect(muteButton);
-      final gap = muteRect.left - settingsRect.right;
-      expect(gap, greaterThanOrEqualTo(16));
+      expect(find.text('SETTINGS'), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.byIcon(Icons.settings),
+          matching: find.byType(IconButton),
+        ),
+        findsNothing,
+      );
+      expect(find.byIcon(Icons.volume_up), findsOneWidget);
 
       await tester.binding.setSurfaceSize(null);
     },

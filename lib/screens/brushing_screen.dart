@@ -309,6 +309,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   IconData? _companionIcon;
   bool _showCompanionBubble = false;
   Timer? _companionTimer;
+  Timer? _microRewardTimer;
   Timer? _musicHealthTimer;
   int _encouragementIndex = 0;
   String? _lastEncouragementVoice;
@@ -324,6 +325,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   // Boss battle system
   bool _isBossSession = false;
   bool _isBossPhase = false;
+  late final String _sessionId;
 
   static const _phaseNames = {
     BrushPhase.topLeft: 'TOP LEFT',
@@ -374,6 +376,12 @@ class _BrushingScreenState extends State<BrushingScreen>
     Icons.flash_on,
     Icons.favorite,
   ];
+  static const _microRewardTexts = [
+    'GREAT RHYTHM!',
+    'SUPER BRUSHING!',
+    'SPACE COMBO!',
+    'POWER UP!',
+  ];
 
   bool _playedEncouragement = false;
   bool _playedAlmostThere = false;
@@ -381,6 +389,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   @override
   void initState() {
     super.initState();
+    _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
     WakelockPlus.enable();
     // Enter immersive mode for brushing (camera mode is configured in setup/settings)
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -737,6 +746,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _companionTimer?.cancel();
+    _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
     _worldIntroTimer?.cancel();
     _damageCleanupTimer?.cancel();
@@ -764,11 +774,16 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = BrushPhase.countdown;
       _sessionStage = SessionStage.countdown;
     });
-    _audio.playVoice('voice_countdown.mp3');
+    _audio.playVoice(
+      'voice_countdown.mp3',
+      policy: VoicePolicy.interrupt,
+      priority: VoicePriority.critical,
+    );
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
-        _audio.playSfx('countdown_beep.mp3');
+        // No SFX beep — voice_countdown.mp3 already says "3, 2, 1, GO!"
+        // Playing SFX during voice causes Android audio contention.
       } else {
         timer.cancel();
         setState(() {
@@ -776,7 +791,6 @@ class _BrushingScreenState extends State<BrushingScreen>
           _showGoText = true;
         });
         HapticFeedback.heavyImpact();
-        _audio.playSfx('countdown_beep.mp3');
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted) _startBrushing();
         });
@@ -795,6 +809,8 @@ class _BrushingScreenState extends State<BrushingScreen>
         'weapon_id': _weapon.id,
         'camera_ready': _cameraReady,
         'daily_modifier': _dailyModifier.type.name,
+        'session_id': _sessionId,
+        'phase_duration_sec': _phaseDuration,
       },
     );
     if (!resumeFromCheckpoint) {
@@ -819,6 +835,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       const Duration(seconds: 8),
       (_) => _showNextCompanionMessage(),
     );
+    _scheduleNextMicroReward();
 
     if (!resumeFromCheckpoint) {
       _switchToPhase(BrushPhase.topLeft);
@@ -837,7 +854,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
-        _audio.playVoice('voice_almost_there.mp3');
+        _audio.playVoice(
+          'voice_almost_there.mp3',
+          policy: VoicePolicy.skipIfBusy,
+          priority: VoicePriority.encouragement,
+        );
       }
 
       if (_phaseSecondsLeft <= 0) {
@@ -1026,11 +1047,19 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showMouthGuideOverlay = true;
     });
     _phaseTransitionController.forward(from: 0);
-    _audio.playSfx('whoosh.mp3');
     HapticFeedback.mediumImpact();
-    Future.delayed(const Duration(milliseconds: 300), () {
+    // Play whoosh ONLY if no voice is active, to avoid Android audio contention
+    if (!_audio.isVoicePlaying) {
+      _audio.playSfx('whoosh.mp3');
+    }
+    // Delay guidance voice to let music player settle after _startBrushing
+    Future.delayed(const Duration(milliseconds: 600), () {
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
-        _audio.playVoice(_phaseVoiceFiles[newPhase]!);
+        _audio.playVoice(
+          _phaseVoiceFiles[newPhase]!,
+          policy: VoicePolicy.interrupt,
+          priority: VoicePriority.guidance,
+        );
       }
     });
     Future.delayed(const Duration(milliseconds: 3000), () {
@@ -1110,8 +1139,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     Future.delayed(const Duration(milliseconds: 900), () {
       if (!mounted ||
           _phase == BrushPhase.done ||
-          _phase == BrushPhase.countdown)
+          _phase == BrushPhase.countdown) {
         return;
+      }
       setState(() {
         _isBossPhase = false; // Boss was one-time, back to normal
         _monster = _createWorldMonster();
@@ -1135,6 +1165,49 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
+  void _scheduleNextMicroReward() {
+    _microRewardTimer?.cancel();
+    final delaySecs = 8 + _random.nextInt(5); // 8-12s cadence
+    _microRewardTimer = Timer(Duration(seconds: delaySecs), () {
+      if (!mounted ||
+          _isPaused ||
+          _phase == BrushPhase.done ||
+          _phase == BrushPhase.countdown) {
+        _scheduleNextMicroReward();
+        return;
+      }
+      _triggerMicroReward();
+      _scheduleNextMicroReward();
+    });
+  }
+
+  void _triggerMicroReward() {
+    final text = _microRewardTexts[_random.nextInt(_microRewardTexts.length)];
+    setState(() {
+      _damagePopups.add(
+        _DamagePopup(
+          text: text,
+          x: 0.5,
+          y: 0.1,
+          color: const Color(0xFFFFD54F),
+          opacity: 1.0,
+          offsetY: 0,
+          rotation: (_random.nextDouble() - 0.5) * 0.2,
+          scale: 1.35,
+        ),
+      );
+    });
+    // Keep micro-reward as visual-only to avoid competing with guidance voices.
+    _telemetry.logEvent(
+      'micro_reward_triggered',
+      params: {
+        'session_id': _sessionId,
+        'phase': _phase.name,
+        'seconds_left': _phaseSecondsLeft,
+      },
+    );
+  }
+
   _MonsterSlot _createBossMonster() {
     return _MonsterSlot(
       imageIndex: _random.nextInt(_monsterImages.length),
@@ -1149,7 +1222,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     final voices = _audio.encouragementVoices;
     if (voices.isEmpty) return;
     if (voices.length == 1) {
-      _audio.playVoice(voices.first);
+      _audio.playVoice(
+        voices.first,
+        policy: VoicePolicy.skipIfBusy,
+        priority: VoicePriority.encouragement,
+      );
       _lastEncouragementVoice = voices.first;
       return;
     }
@@ -1161,7 +1238,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       selected = voices[_encouragementIndex % voices.length];
       safety++;
     }
-    _audio.playVoice(selected);
+    _audio.playVoice(
+      selected,
+      policy: VoicePolicy.skipIfBusy,
+      priority: VoicePriority.encouragement,
+    );
     _lastEncouragementVoice = selected;
     _encouragementIndex++;
   }
@@ -1222,6 +1303,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       _baseAttackTimer?.cancel();
       _stallTimer?.cancel();
       _companionTimer?.cancel();
+      _microRewardTimer?.cancel();
     } else {
       _monsterBreathController.repeat(reverse: true);
       _heroIdleController.repeat(reverse: true);
@@ -1234,12 +1316,14 @@ class _BrushingScreenState extends State<BrushingScreen>
         const Duration(seconds: 8),
         (_) => _showNextCompanionMessage(),
       );
+      _scheduleNextMicroReward();
     }
   }
 
   void _quitBrushing() {
     _timer?.cancel();
     _baseAttackTimer?.cancel();
+    _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
     _audio.stopMusic();
     _clearCheckpoint();
@@ -1253,11 +1337,13 @@ class _BrushingScreenState extends State<BrushingScreen>
         'total_hits': _totalHits,
         'monsters_defeated': _monstersDefeated,
         'boss_session': _isBossSession,
+        'session_id': _sessionId,
       },
     );
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _companionTimer?.cancel();
+    _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
     _stopMotionDetection();
     _audio.stopMusic();
@@ -1273,6 +1359,7 @@ class _BrushingScreenState extends State<BrushingScreen>
           totalHits: _totalHits,
           monstersDefeated: _monstersDefeated,
           isBossSession: _isBossSession,
+          sessionId: _sessionId,
         ),
         transitionsBuilder: (context, anim, secondaryAnimation, child) =>
             FadeTransition(opacity: anim, child: child),
@@ -1282,8 +1369,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   String _getEncouragementText() {
-    if (_phaseSecondsLeft > 20)
+    if (_phaseSecondsLeft > 20) {
       return _cameraReady ? 'BRUSH TO ATTACK!' : 'FIGHT THAT MONSTER!';
+    }
     if (_phaseSecondsLeft > 10) return 'KEEP BRUSHING!';
     if (_phaseSecondsLeft > 5) return 'ALMOST THERE!';
     return 'FINISH IT OFF!';
@@ -1984,10 +2072,11 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 themeColor: _world.themeColor,
                                 label: _phaseNames[_phase] ?? '',
                                 onDismiss: () {
-                                  if (mounted)
+                                  if (mounted) {
                                     setState(
                                       () => _showMouthGuideOverlay = false,
                                     );
+                                  }
                                 },
                               ),
                             ),
@@ -3310,16 +3399,18 @@ class _DamageCrackPainter extends CustomPainter {
       final y1 = cy + sin(startAngle) * 14;
       var x2 = x1 + cos(startAngle) * len;
       var y2 = y1 + sin(startAngle) * len;
-      if (glowPaint != null)
+      if (glowPaint != null) {
         canvas.drawLine(Offset(x1, y1), Offset(x2, y2), glowPaint);
+      }
       canvas.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
       if (rng.nextBool()) {
         final branchAngle = startAngle + (rng.nextDouble() - 0.5) * 1.2;
         final bLen = len * 0.5;
         final bx = x2 + cos(branchAngle) * bLen;
         final by = y2 + sin(branchAngle) * bLen;
-        if (glowPaint != null)
+        if (glowPaint != null) {
           canvas.drawLine(Offset(x2, y2), Offset(bx, by), glowPaint);
+        }
         canvas.drawLine(Offset(x2, y2), Offset(bx, by), paint);
       }
     }
