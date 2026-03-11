@@ -70,7 +70,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (success) {
         await _heroService.selectHero(hero.id);
         HapticFeedback.heavyImpact();
-        _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
+        _playSelectionVoice(AudioService().heroIntroVoiceFor(hero.id));
         if (mounted) _showHeroUnlockAnimation(hero);
         await _loadData();
       }
@@ -103,7 +103,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         HapticFeedback.heavyImpact();
-        _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
+        _playSelectionVoice(AudioService().weaponIntroVoiceFor(weapon.id));
         if (mounted) _showWeaponUnlockAnimation(weapon);
         await _loadData();
       }

@@ -67,6 +67,15 @@ class AudioService {
     'nova': 'voice_picker_hero_nova.mp3',
   };
 
+  static const Map<String, String> heroIntroVoices = {
+    'blaze': 'voice_intro_hero_blaze.mp3',
+    'frost': 'voice_intro_hero_frost.mp3',
+    'bolt': 'voice_intro_hero_bolt.mp3',
+    'shadow': 'voice_intro_hero_shadow.mp3',
+    'leaf': 'voice_intro_hero_leaf.mp3',
+    'nova': 'voice_intro_hero_nova.mp3',
+  };
+
   static const Map<String, String> weaponPickerVoices = {
     'star_blaster': 'voice_picker_weapon_star_blaster.mp3',
     'flame_sword': 'voice_picker_weapon_flame_sword.mp3',
@@ -74,6 +83,15 @@ class AudioService {
     'lightning_wand': 'voice_picker_weapon_lightning_wand.mp3',
     'vine_whip': 'voice_picker_weapon_vine_whip.mp3',
     'cosmic_burst': 'voice_picker_weapon_cosmic_burst.mp3',
+  };
+
+  static const Map<String, String> weaponIntroVoices = {
+    'star_blaster': 'voice_intro_weapon_star_blaster.mp3',
+    'flame_sword': 'voice_intro_weapon_flame_sword.mp3',
+    'ice_hammer': 'voice_intro_weapon_ice_hammer.mp3',
+    'lightning_wand': 'voice_intro_weapon_lightning_wand.mp3',
+    'vine_whip': 'voice_intro_weapon_vine_whip.mp3',
+    'cosmic_burst': 'voice_intro_weapon_cosmic_burst.mp3',
   };
 
   static const _allAudioFiles = [
@@ -129,6 +147,18 @@ class AudioService {
     'voice_chest_double.mp3',
     'voice_chest_jackpot.mp3',
     'voice_open_chest.mp3',
+    'voice_intro_hero_blaze.mp3',
+    'voice_intro_hero_frost.mp3',
+    'voice_intro_hero_bolt.mp3',
+    'voice_intro_hero_shadow.mp3',
+    'voice_intro_hero_leaf.mp3',
+    'voice_intro_hero_nova.mp3',
+    'voice_intro_weapon_star_blaster.mp3',
+    'voice_intro_weapon_flame_sword.mp3',
+    'voice_intro_weapon_ice_hammer.mp3',
+    'voice_intro_weapon_lightning_wand.mp3',
+    'voice_intro_weapon_vine_whip.mp3',
+    'voice_intro_weapon_cosmic_burst.mp3',
     'whoosh.mp3',
     'zap.mp3',
     'star_chime.mp3',
@@ -144,6 +174,14 @@ class AudioService {
 
   String weaponPickerVoiceFor(String weaponId) {
     return weaponPickerVoices[weaponId] ?? 'voice_awesome.mp3';
+  }
+
+  String heroIntroVoiceFor(String heroId) {
+    return heroIntroVoices[heroId] ?? heroPickerVoiceFor(heroId);
+  }
+
+  String weaponIntroVoiceFor(String weaponId) {
+    return weaponIntroVoices[weaponId] ?? weaponPickerVoiceFor(weaponId);
   }
 
   Future<void> preloadAll() async {
