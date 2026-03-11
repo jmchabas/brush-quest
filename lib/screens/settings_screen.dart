@@ -29,7 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _auth = AuthService();
   final _sync = SyncService();
   final _telemetry = TelemetryService();
-  bool _parentUnlocked = false;
+  DateTime? _parentUnlockedUntil;
 
   @override
   void initState() {
@@ -90,11 +90,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _setPhaseDuration(int seconds) async {
+    final clamped = seconds.clamp(5, 120);
     final allowed = await _ensureParentAccess();
     if (!allowed) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('phase_duration', seconds);
-    setState(() => _phaseDuration = seconds);
+    await prefs.setInt('phase_duration', clamped);
+    setState(() => _phaseDuration = clamped);
   }
 
   Future<void> _toggleCamera(bool value) async {
@@ -360,7 +361,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<bool> _ensureParentAccess() async {
-    if (_parentUnlocked) return true;
+    if (_parentUnlockedUntil != null &&
+        DateTime.now().isBefore(_parentUnlockedUntil!)) {
+      return true;
+    }
     final a = 2 + DateTime.now().second % 7;
     final b = 3 + DateTime.now().minute % 6;
     final controller = TextEditingController();
@@ -448,7 +452,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     focusNode.dispose();
     if (ok == true) {
-      _parentUnlocked = true;
+      _parentUnlockedUntil = DateTime.now().add(const Duration(minutes: 5));
       return true;
     }
     if (mounted) {

@@ -253,7 +253,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   Timer? _timer;
   Timer? _baseAttackTimer;
   bool _isPaused = false;
+  bool _isQuitting = false;
   bool _showGoText = false;
+  bool _phaseTransitioning = false;
 
   // Animation controllers
   late AnimationController _attackSequenceController;
@@ -804,8 +806,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
-        // No SFX beep — voice_countdown.mp3 already says "3, 2, 1, GO!"
-        // Playing SFX during voice causes Android audio focus contention.
+        _audio.playSfx('countdown_beep.mp3');
       } else {
         timer.cancel();
         setState(() {
@@ -813,6 +814,7 @@ class _BrushingScreenState extends State<BrushingScreen>
           _showGoText = true;
         });
         HapticFeedback.heavyImpact();
+        _audio.playSfx('countdown_beep.mp3');
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted) _startBrushing();
         });
@@ -879,7 +881,8 @@ class _BrushingScreenState extends State<BrushingScreen>
         _audio.playVoice('voice_almost_there.mp3');
       }
 
-      if (_phaseSecondsLeft <= 0) {
+      if (_phaseSecondsLeft <= 0 && !_phaseTransitioning) {
+        _phaseTransitioning = true;
         _playedEncouragement = false;
         _playedAlmostThere = false;
         final currentIndex = brushPhaseOrder.indexOf(_phase);
@@ -1059,6 +1062,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _switchToPhase(BrushPhase newPhase) {
+    _phaseTransitioning = false;
     setState(() {
       _phase = newPhase;
       _phaseSecondsLeft = _phaseDuration;
@@ -1331,7 +1335,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     _musicHealthTimer?.cancel();
     _audio.stopMusic();
     _clearCheckpoint();
-    Navigator.of(context).pop();
+    setState(() => _isQuitting = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
   }
 
   void _finishBrushing() {
@@ -1384,7 +1391,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _isQuitting,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) _togglePause();
       },

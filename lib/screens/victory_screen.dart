@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/hero_service.dart';
-import '../services/weapon_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
+import '../services/card_service.dart';
 import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
@@ -34,173 +34,97 @@ class _ChestReward {
   });
 }
 
-const _rewardTable = [
-  // 30% confetti
-  _ChestReward(
-    type: _ChestRewardType.confetti,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_wow.mp3',
-    color: Color(0xFF00E5FF),
-    icon: Icons.celebration,
-    label: 'PARTY TIME!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.confetti,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_wow.mp3',
-    color: Color(0xFF00E5FF),
-    icon: Icons.celebration,
-    label: 'PARTY TIME!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.confetti,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_wow.mp3',
-    color: Color(0xFF00E5FF),
-    icon: Icons.celebration,
-    label: 'PARTY TIME!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.confetti,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_wow.mp3',
-    color: Color(0xFF00E5FF),
-    icon: Icons.celebration,
-    label: 'PARTY TIME!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.confetti,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_wow.mp3',
-    color: Color(0xFF00E5FF),
-    icon: Icons.celebration,
-    label: 'PARTY TIME!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.confetti,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_wow.mp3',
-    color: Color(0xFF00E5FF),
-    icon: Icons.celebration,
-    label: 'PARTY TIME!',
-  ),
-  // 25% dance
-  _ChestReward(
-    type: _ChestRewardType.dance,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_dance.mp3',
-    color: Color(0xFFFF4081),
-    icon: Icons.music_note,
-    label: 'DANCE BREAK!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.dance,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_dance.mp3',
-    color: Color(0xFFFF4081),
-    icon: Icons.music_note,
-    label: 'DANCE BREAK!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.dance,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_dance.mp3',
-    color: Color(0xFFFF4081),
-    icon: Icons.music_note,
-    label: 'DANCE BREAK!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.dance,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_dance.mp3',
-    color: Color(0xFFFF4081),
-    icon: Icons.music_note,
-    label: 'DANCE BREAK!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.dance,
-    bonusStars: 0,
-    voiceFile: 'voice_chest_dance.mp3',
-    color: Color(0xFFFF4081),
-    icon: Icons.music_note,
-    label: 'DANCE BREAK!',
-  ),
-  // 25% bonus star
-  _ChestReward(
-    type: _ChestRewardType.bonusStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_bonus_star.mp3',
-    color: Color(0xFFFFD54F),
-    icon: Icons.star,
-    label: 'BONUS STAR!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.bonusStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_bonus_star.mp3',
-    color: Color(0xFFFFD54F),
-    icon: Icons.star,
-    label: 'BONUS STAR!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.bonusStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_bonus_star.mp3',
-    color: Color(0xFFFFD54F),
-    icon: Icons.star,
-    label: 'BONUS STAR!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.bonusStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_bonus_star.mp3',
-    color: Color(0xFFFFD54F),
-    icon: Icons.star,
-    label: 'BONUS STAR!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.bonusStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_bonus_star.mp3',
-    color: Color(0xFFFFD54F),
-    icon: Icons.star,
-    label: 'BONUS STAR!',
-  ),
-  // 15% double
-  _ChestReward(
-    type: _ChestRewardType.doubleStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_double.mp3',
-    color: Color(0xFF69F0AE),
-    icon: Icons.auto_awesome,
-    label: 'DOUBLE POWER!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.doubleStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_double.mp3',
-    color: Color(0xFF69F0AE),
-    icon: Icons.auto_awesome,
-    label: 'DOUBLE POWER!',
-  ),
-  _ChestReward(
-    type: _ChestRewardType.doubleStar,
-    bonusStars: 1,
-    voiceFile: 'voice_chest_double.mp3',
-    color: Color(0xFF69F0AE),
-    icon: Icons.auto_awesome,
-    label: 'DOUBLE POWER!',
-  ),
-  // 5% jackpot
-  _ChestReward(
-    type: _ChestRewardType.jackpot,
-    bonusStars: 2,
-    voiceFile: 'voice_chest_jackpot.mp3',
-    color: Color(0xFFFFD54F),
-    icon: Icons.emoji_events,
-    label: 'JACKPOT!',
-  ),
-];
+// Streak-aware reward selection using variable ratio scheduling.
+// Higher streaks increase chances of better rewards.
+_ChestReward _rollChestReward(Random rng, int streak) {
+  final roll = rng.nextInt(100);
+
+  // Streak >= 7: 20% confetti, 15% dance, 30% bonus, 18% double, 10% jackpot, 7% mega
+  // Streak >= 3: 25% confetti, 20% dance, 25% bonus, 15% double, 10% jackpot, 5% mega
+  // No streak:   35% confetti, 25% dance, 25% bonus, 10% double, 4% jackpot, 1% mega
+  final int confettiCeil;
+  final int danceCeil;
+  final int bonusCeil;
+  final int doubleCeil;
+  final int jackpotCeil;
+  // remainder = mega jackpot
+
+  if (streak >= 7) {
+    confettiCeil = 20;
+    danceCeil = 35;
+    bonusCeil = 65;
+    doubleCeil = 83;
+    jackpotCeil = 93;
+  } else if (streak >= 3) {
+    confettiCeil = 25;
+    danceCeil = 45;
+    bonusCeil = 70;
+    doubleCeil = 85;
+    jackpotCeil = 95;
+  } else {
+    confettiCeil = 35;
+    danceCeil = 60;
+    bonusCeil = 85;
+    doubleCeil = 95;
+    jackpotCeil = 99;
+  }
+
+  if (roll < confettiCeil) {
+    return const _ChestReward(
+      type: _ChestRewardType.confetti,
+      bonusStars: 0,
+      voiceFile: 'voice_chest_wow.mp3',
+      color: Color(0xFF00E5FF),
+      icon: Icons.celebration,
+      label: 'PARTY TIME!',
+    );
+  } else if (roll < danceCeil) {
+    return const _ChestReward(
+      type: _ChestRewardType.dance,
+      bonusStars: 0,
+      voiceFile: 'voice_chest_dance.mp3',
+      color: Color(0xFFFF4081),
+      icon: Icons.music_note,
+      label: 'DANCE BREAK!',
+    );
+  } else if (roll < bonusCeil) {
+    return const _ChestReward(
+      type: _ChestRewardType.bonusStar,
+      bonusStars: 1,
+      voiceFile: 'voice_chest_bonus_star.mp3',
+      color: Color(0xFFFFD54F),
+      icon: Icons.star,
+      label: 'BONUS STAR!',
+    );
+  } else if (roll < doubleCeil) {
+    return const _ChestReward(
+      type: _ChestRewardType.doubleStar,
+      bonusStars: 1,
+      voiceFile: 'voice_chest_double.mp3',
+      color: Color(0xFF69F0AE),
+      icon: Icons.auto_awesome,
+      label: 'DOUBLE POWER!',
+    );
+  } else if (roll < jackpotCeil) {
+    return const _ChestReward(
+      type: _ChestRewardType.jackpot,
+      bonusStars: 3,
+      voiceFile: 'voice_chest_jackpot.mp3',
+      color: Color(0xFFFFD54F),
+      icon: Icons.emoji_events,
+      label: 'JACKPOT!',
+    );
+  } else {
+    return const _ChestReward(
+      type: _ChestRewardType.jackpot,
+      bonusStars: 5,
+      voiceFile: 'voice_chest_jackpot.mp3',
+      color: Color(0xFFFF6D00),
+      icon: Icons.emoji_events,
+      label: 'MEGA JACKPOT!',
+    );
+  }
+}
 
 class VictoryScreen extends StatefulWidget {
   final int starsCollected;
@@ -226,7 +150,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _audio = AudioService();
   final _streakService = StreakService();
   final _heroService = HeroService();
-  final _weaponService = WeaponService();
   final _achievementService = AchievementService();
   final _worldService = WorldService();
   final _random = Random();
@@ -247,8 +170,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   List<Achievement> _newAchievements = [];
   HeroCharacter? _nextHero;
   int _starsToNextHero = 0;
-  String? _nextMilestoneLabel;
-  int _starsToNextMilestone = 0;
   WorldData _world = WorldService.allWorlds[0];
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
@@ -258,10 +179,14 @@ class _VictoryScreenState extends State<VictoryScreen>
     color: Color(0xFFB388FF),
   );
 
+  final _cardService = CardService();
+
   bool _showChest = false;
   bool _chestOpened = false;
-  bool _missionRecapQueued = false;
   _ChestReward? _reward;
+  CardDropResult? _cardDrop;
+  MonsterCard? _previewCard;
+  bool _showCardDrop = false;
 
   @override
   void initState() {
@@ -333,7 +258,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       _starsToNextHero = _nextHero!.cost - _newStars;
       if (_starsToNextHero < 0) _starsToNextHero = 0;
     }
-    await _refreshMilestoneHint();
     _telemetry.logEvent(
       'session_complete',
       params: {
@@ -362,11 +286,6 @@ class _VictoryScreenState extends State<VictoryScreen>
         ? 'voice_great_job_tonight.mp3'
         : 'voice_you_did_it.mp3';
     _audio.playVoice(victoryVoice);
-    Future.delayed(const Duration(milliseconds: 1100), () {
-      if (mounted && _starsEarnedThisSession > 0) {
-        _audio.playVoice('voice_victory_star_and_chest.wav');
-      }
-    });
     _starController.forward();
     _starRotationController.repeat();
     _starGlowController.repeat(reverse: true);
@@ -392,7 +311,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     setState(() => _chestOpened = true);
     HapticFeedback.heavyImpact();
 
-    _reward = _rewardTable[_random.nextInt(_rewardTable.length)];
+    _reward = _rollChestReward(_random, _newStreak);
     _telemetry.logEvent(
       'chest_opened',
       params: {
@@ -409,6 +328,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     Future.delayed(const Duration(milliseconds: 500), () async {
       if (!mounted) return;
       _rewardRevealController.forward();
+      if (_reward!.bonusStars > 0) HapticFeedback.mediumImpact();
       await _audio.playVoice(_reward!.voiceFile);
 
       final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
@@ -416,7 +336,6 @@ class _VictoryScreenState extends State<VictoryScreen>
         await _streakService.addBonusStars(totalBonus);
         final updated = await _streakService.getTotalStars();
         _newStars = updated;
-        await _refreshMilestoneHint();
         if (mounted) {
           setState(() {
             if (_nextHero != null) {
@@ -428,65 +347,329 @@ class _VictoryScreenState extends State<VictoryScreen>
       }
 
       if (mounted) _doneButtonController.repeat(reverse: true);
-      _startMissionRecap();
+
+      // Roll for card drop
+      final drop = await _cardService.rollCardDrop(_world.id, _newStreak);
+      if (drop != null && mounted) {
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (!mounted) return;
+        setState(() {
+          _cardDrop = drop;
+          _showCardDrop = true;
+        });
+        HapticFeedback.mediumImpact();
+        _audio.playSfx('star_chime.mp3');
+      }
+
+      // Load tomorrow's preview
+      final preview = await _cardService.getPreviewCard(_world.id);
+      if (preview != null && mounted) {
+        setState(() => _previewCard = preview);
+      }
     });
   }
 
-  Future<void> _startMissionRecap() async {
-    if (mounted) {
-      setState(() => _missionRecapQueued = true);
-    }
-    await _playComebackVoiceSequence();
-    if (mounted) {
-      setState(() => _missionRecapQueued = false);
-    }
+  void _showParentCelebration() {
+    HapticFeedback.mediumImpact();
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF1A0A2E), Color(0xFF0D1B2A)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFFFF80AB).withValues(alpha: 0.5),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF80AB).withValues(alpha: 0.3),
+                blurRadius: 24,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'GREAT JOB!',
+                style: TextStyle(
+                  color: Color(0xFFFFD54F),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 28,
+                  letterSpacing: 4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Icon(
+                Icons.star,
+                color: Color(0xFFFFD54F),
+                size: 60,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'I brushed my teeth!',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _parentStatBadge(
+                    Icons.local_fire_department,
+                    '$_newStreak day streak',
+                    const Color(0xFFFF6D00),
+                  ),
+                  const SizedBox(width: 16),
+                  _parentStatBadge(
+                    Icons.star,
+                    '$_newStars stars',
+                    const Color(0xFFFFD54F),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _parentStatBadge(
+                    Icons.bolt,
+                    '${widget.totalHits} hits',
+                    const Color(0xFF00E5FF),
+                  ),
+                  const SizedBox(width: 16),
+                  _parentStatBadge(
+                    Icons.dangerous,
+                    '${widget.monstersDefeated} K.O.',
+                    const Color(0xFFFF4081),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF80AB).withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFFFF80AB).withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: const Text(
+                    'AWESOME!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  Future<void> _refreshMilestoneHint() async {
-    final unlockedHeroes = await _heroService.getUnlockedHeroIds();
-    final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
-    final candidates = <MapEntry<String, int>>[];
-
-    for (final hero in HeroService.allHeroes) {
-      if (!unlockedHeroes.contains(hero.id)) {
-        candidates.add(
-          MapEntry(hero.name, (hero.cost - _newStars).clamp(0, 9999)),
-        );
-      }
-    }
-    for (final weapon in WeaponService.allWeapons) {
-      if (!unlockedWeapons.contains(weapon.id)) {
-        candidates.add(
-          MapEntry(weapon.name, (weapon.cost - _newStars).clamp(0, 9999)),
-        );
-      }
-    }
-
-    if (candidates.isEmpty) {
-      _nextMilestoneLabel = null;
-      _starsToNextMilestone = 0;
-      return;
-    }
-    candidates.sort((a, b) => a.value.compareTo(b.value));
-    _nextMilestoneLabel = candidates.first.key;
-    _starsToNextMilestone = candidates.first.value;
+  Widget _parentStatBadge(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _playComebackVoiceSequence() async {
-    // Short motivational sequence + goodbye.
-    final streakVoice =
-        _newStreak > 1 ? 'voice_unstoppable.mp3' : 'voice_keep_going.mp3';
-    final closingVoice =
-        (_nextMilestoneLabel != null && _starsToNextMilestone <= 1)
-        ? 'voice_stars_unlock.mp3'
-        : 'voice_see_you_soon.wav';
+  Widget _buildCardDropReveal() {
+    final drop = _cardDrop!;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.elasticOut,
+      builder: (context, scale, child) =>
+          Transform.scale(scale: scale, child: child),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        child: GlassCard(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Card image
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: drop.card.rarityColor.withValues(alpha: 0.6),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: drop.card.rarityColor.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: ShaderMask(
+                    shaderCallback: (bounds) => RadialGradient(
+                      colors: [
+                        Colors.white,
+                        Colors.white.withValues(alpha: 0.0),
+                      ],
+                      radius: 0.85,
+                    ).createShader(bounds),
+                    child: ColorFiltered(
+                      colorFilter: ColorFilter.mode(
+                        drop.card.tintColor.withValues(alpha: 0.35),
+                        BlendMode.srcATop,
+                      ),
+                      child: Image.asset(
+                        drop.card.imagePath,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      drop.isNew ? 'NEW CARD!' : 'CARD FRAGMENT +1',
+                      style: TextStyle(
+                        color: drop.isNew
+                            ? const Color(0xFF69F0AE)
+                            : const Color(0xFFFFD54F),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      drop.card.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      drop.card.rarityLabel,
+                      style: TextStyle(
+                        color: drop.card.rarityColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    final lines = <String>[streakVoice, closingVoice];
-    for (final file in lines) {
-      if (!mounted) return;
-      await _audio.playVoice(file);
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
+  Widget _buildTomorrowPreview() {
+    final card = _previewCard!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            // Silhouette
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.mode(
+                  Colors.black54,
+                  BlendMode.srcATop,
+                ),
+                child: Image.asset(card.imagePath, fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'A NEW MONSTER IS LURKING...',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Brush again to find it!',
+                    style: TextStyle(
+                      color: const Color(0xFF69F0AE).withValues(alpha: 0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.help_outline,
+              color: Colors.white.withValues(alpha: 0.3),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showAchievement(Achievement achievement) {
@@ -802,54 +985,54 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ],
                         ),
                       ),
-                    if (_chestOpened)
-                      ValueListenableBuilder<bool>(
-                        valueListenable: _audio.voicePipelineActiveNotifier,
-                        builder: (context, voiceActive, _) {
-                          final showStatus = _missionRecapQueued || voiceActive;
-                          if (!showStatus) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(26, 14, 26, 0),
-                            child: GlassCard(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.record_voice_over,
-                                    color: const Color(
-                                      0xFF69F0AE,
-                                    ).withValues(alpha: 0.95),
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    voiceActive
-                                        ? 'MISSION RECAP PLAYING...'
-                                        : 'MISSION RECAP READY',
-                                    style: TextStyle(
-                                      color: const Color(
-                                        0xFF69F0AE,
-                                      ).withValues(alpha: 0.95),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                      letterSpacing: 1.2,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                    // Card drop reveal
+                    if (_showCardDrop && _cardDrop != null)
+                      _buildCardDropReveal(),
+
+                    // Tomorrow's preview
+                    if (_chestOpened && _previewCard != null && !_showCardDrop)
+                      _buildTomorrowPreview(),
 
                     const Spacer(flex: 1),
 
                     // Buttons (only after chest opened)
                     if (_chestOpened) ...[
+                      // Show Mom/Dad button
+                      GestureDetector(
+                        onTap: _showParentCelebration,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF80AB).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: const Color(0xFFFF80AB).withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.favorite, color: Color(0xFFFF80AB), size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  'SHOW MOM & DAD!',
+                                  style: TextStyle(
+                                    color: Color(0xFFFF80AB),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                       GestureDetector(
                         onTap: _brushAgain,
                         child: Container(

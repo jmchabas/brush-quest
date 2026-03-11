@@ -121,6 +121,7 @@ class WeaponService {
 
   Future<bool> unlockWeapon(String weaponId) async {
     final weapon = getWeaponById(weaponId);
+    if (weapon.id != weaponId) return false; // Invalid ID
     final prefs = await SharedPreferences.getInstance();
 
     final unlocked = prefs.getStringList(_unlockedKey) ?? ['star_blaster'];

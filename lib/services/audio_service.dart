@@ -29,7 +29,6 @@ class AudioService {
   bool _muted = false;
   bool _voicePlaying = false;
   bool _voiceQueueProcessing = false;
-  Completer<void>? _interruptSignal;
   bool _musicPlaying = false;
   String? _currentMusicFile;
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
@@ -122,8 +121,6 @@ class AudioService {
     'voice_great_job_tonight.mp3',
     'voice_great_job_morning.mp3',
     'voice_you_did_it.mp3',
-    'voice_victory_star_and_chest.wav',
-    'voice_see_you_soon.wav',
     'voice_great_choice.mp3',
     'voice_lets_fight.mp3',
     'voice_chest_wow.mp3',
@@ -150,6 +147,17 @@ class AudioService {
   }
 
   Future<void> preloadAll() async {
+    // Disable Android audio focus for all players so they can play
+    // simultaneously without stealing focus from each other.
+    // We manage volume ducking manually instead.
+    await AudioPlayer.global.setAudioContext(
+      AudioContext(
+        android: const AudioContextAndroid(
+          audioFocus: AndroidAudioFocus.none,
+        ),
+      ),
+    );
+
     final prefs = await SharedPreferences.getInstance();
     _muted = prefs.getBool('muted') ?? false;
     int failures = 0;
@@ -177,8 +185,6 @@ class AudioService {
     _muted = !_muted;
     if (_muted) {
       _clearVoiceQueue();
-      final sig = _interruptSignal;
-      if (sig != null && !sig.isCompleted) sig.complete();
       for (final p in _sfxPool) {
         try {
           await p.stop();
@@ -233,11 +239,15 @@ class AudioService {
       _clearVoiceQueue();
     }
     if (interrupt) {
-      // Signal the pump to skip its current wait and move to next voice.
-      // NEVER call _voicePlayer.stop() here — that races with the pump.
-      // The pump will stop the player itself before playing the next voice.
-      final sig = _interruptSignal;
-      if (sig != null && !sig.isCompleted) sig.complete();
+      try {
+        await _voicePlayer.stop();
+      } catch (e) {
+        _reportAudioIssue(
+          operation: 'voice_interrupt_stop_failed',
+          fileName: fileName,
+          error: e,
+        );
+      }
       _voicePlaying = false;
     }
 
@@ -261,16 +271,14 @@ class AudioService {
         } catch (_) {}
 
         try {
-          _interruptSignal = Completer<void>();
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
           await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
-          final result = await Future.any<String>([
-            _voicePlayer.onPlayerComplete.first.then((_) => 'done'),
-            Future.delayed(const Duration(seconds: 5), () => 'timeout'),
-            _interruptSignal!.future.then((_) => 'interrupted'),
+          final completed = await Future.any<bool>([
+            _voicePlayer.onPlayerComplete.first.then((_) => true),
+            Future.delayed(const Duration(seconds: 5), () => false),
           ]);
-          if (result == 'timeout') {
+          if (!completed) {
             _reportAudioIssue(
               operation: 'voice_timeout',
               fileName: request.fileName,

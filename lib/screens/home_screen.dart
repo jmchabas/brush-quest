@@ -6,12 +6,14 @@ import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/telemetry_service.dart';
+import '../services/daily_login_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
 import 'settings_screen.dart';
+import 'card_album_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _heroService = HeroService();
   final _weaponService = WeaponService();
   final _telemetry = TelemetryService();
+  final _dailyLoginService = DailyLoginService();
+  bool _dailyLoginChecked = false;
   int _totalStars = 0;
   int _streak = 0;
   int _todayBrushCount = 0;
@@ -123,7 +127,123 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           },
         );
       }
+      _checkDailyLogin();
     }
+  }
+
+  Future<void> _checkDailyLogin() async {
+    if (_dailyLoginChecked) return;
+    _dailyLoginChecked = true;
+    final reward = await _dailyLoginService.checkAndClaimDailyLogin();
+    if (reward != null && mounted) {
+      // Refresh star count if bonus star was awarded
+      if (reward.type == DailyRewardType.bonusStar) {
+        final stars = await _streakService.getTotalStars();
+        if (mounted) setState(() => _totalStars = stars);
+      }
+      _showDailyLoginPopup(reward);
+    }
+  }
+
+  void _showDailyLoginPopup(DailyLoginReward reward) {
+    AudioService().playSfx('star_chime.mp3');
+    HapticFeedback.mediumImpact();
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.elasticOut,
+          builder: (context, scale, child) =>
+              Transform.scale(scale: scale, child: child),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 280),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF1A0A2E), Color(0xFF0D1B2A)],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: reward.color.withValues(alpha: 0.5),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: reward.color.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'WELCOME BACK!',
+                  style: TextStyle(
+                    color: Color(0xFF69F0AE),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    letterSpacing: 3,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Icon(reward.icon, color: reward.color, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  '+${reward.amount} ${reward.label}',
+                  style: TextStyle(
+                    color: reward.color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Daily login reward!',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: reward.color.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: reward.color.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: const Text(
+                      'COOL!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _playWelcomeVoice() async {
@@ -289,6 +409,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _telemetry.logEvent('navigation_tap', params: {'target': 'map'});
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const WorldMapScreen()))
+        .then((_) => _loadStats());
+  }
+
+  void _openCards() {
+    _telemetry.logEvent('navigation_tap', params: {'target': 'cards'});
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const CardAlbumScreen()))
         .then((_) => _loadStats());
   }
 
@@ -771,6 +898,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             label: 'HEROES',
                             color: const Color(0xFF7C4DFF),
                             onTap: _openShop,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _SmallNavButton(
+                            icon: Icons.collections_bookmark,
+                            label: 'CARDS',
+                            color: const Color(0xFFFFD54F),
+                            onTap: _openCards,
                           ),
                         ),
                         const SizedBox(width: 10),

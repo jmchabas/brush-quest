@@ -112,6 +112,7 @@ class HeroService {
 
   Future<bool> unlockHero(String heroId) async {
     final hero = getHeroById(heroId);
+    if (hero.id != heroId) return false; // Invalid ID
     final prefs = await SharedPreferences.getInstance();
 
     final unlocked = prefs.getStringList(_unlockedKey) ?? ['blaze'];
