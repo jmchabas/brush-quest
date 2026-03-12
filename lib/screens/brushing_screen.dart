@@ -1981,31 +1981,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                                           letterSpacing: 2,
                                         ),
                                       ),
-                                      const SizedBox(height: 3),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            _dailyModifier.icon,
-                                            size: 14,
-                                            color: Colors.white.withValues(
-                                              alpha: 0.85,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _dailyModifier.title,
-                                            style: TextStyle(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.85,
-                                              ),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 1.4,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
                                     ],
                                   ),
                                 ),
@@ -2255,30 +2230,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                               letterSpacing: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(
-                                _dailyModifier.icon,
-                                size: 12,
-                                color: _dailyModifier.color,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  _dailyModifier.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: _dailyModifier.color,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
@@ -2326,7 +2277,7 @@ class _BrushingScreenState extends State<BrushingScreen>
           center: Alignment.center,
           radius: 0.85,
           colors: [Colors.white, Colors.white, Colors.transparent],
-          stops: [0.0, 0.65, 1.0],
+          stops: [0.0, 0.55, 1.0],
         ).createShader(bounds);
       },
       blendMode: BlendMode.dstIn,
@@ -2847,11 +2798,27 @@ class _BrushingScreenState extends State<BrushingScreen>
                       center: Alignment.center,
                       radius: 0.85,
                       colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0.0, 0.65, 1.0],
+                      stops: [0.0, 0.55, 1.0],
                     ).createShader(bounds);
                   },
                   blendMode: BlendMode.dstIn,
                   child: child!,
+                ),
+                // Subtle circular vignette overlay for extra softening
+                Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.transparent,
+                        _hero.primaryColor.withValues(alpha: 0.08),
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
                 ),
                 // Weapon badge
                 Positioned(

@@ -359,6 +359,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         });
         HapticFeedback.mediumImpact();
         _audio.playSfx('star_chime.mp3');
+        _audio.playVoice(drop.isNew ? 'voice_card_new.mp3' : 'voice_card_fragment.mp3');
       }
 
       // Load tomorrow's preview
@@ -369,153 +370,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
   }
 
-  void _showParentCelebration() {
-    HapticFeedback.mediumImpact();
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 320),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF1A0A2E), Color(0xFF0D1B2A)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: const Color(0xFFFF80AB).withValues(alpha: 0.5),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF80AB).withValues(alpha: 0.3),
-                blurRadius: 24,
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'GREAT JOB!',
-                style: TextStyle(
-                  color: Color(0xFFFFD54F),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 28,
-                  letterSpacing: 4,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Icon(
-                Icons.star,
-                color: Color(0xFFFFD54F),
-                size: 60,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'I brushed my teeth!',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _parentStatBadge(
-                    Icons.local_fire_department,
-                    '$_newStreak day streak',
-                    const Color(0xFFFF6D00),
-                  ),
-                  const SizedBox(width: 16),
-                  _parentStatBadge(
-                    Icons.star,
-                    '$_newStars stars',
-                    const Color(0xFFFFD54F),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _parentStatBadge(
-                    Icons.bolt,
-                    '${widget.totalHits} hits',
-                    const Color(0xFF00E5FF),
-                  ),
-                  const SizedBox(width: 16),
-                  _parentStatBadge(
-                    Icons.dangerous,
-                    '${widget.monstersDefeated} K.O.',
-                    const Color(0xFFFF4081),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF80AB).withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: const Color(0xFFFF80AB).withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: const Text(
-                    'AWESOME!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _parentStatBadge(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildCardDropReveal() {
     final drop = _cardDrop!;
@@ -743,10 +597,14 @@ class _VictoryScreenState extends State<VictoryScreen>
                 ),
 
               Center(
-                child: Column(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Spacer(flex: 1),
+                    const SizedBox(height: 24),
 
                     // Big star
                     AnimatedBuilder(
@@ -813,52 +671,16 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ),
 
                     const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _dailyModifier.icon,
-                          color: _dailyModifier.color,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _dailyModifier.title,
-                          style: TextStyle(
-                            color: _dailyModifier.color,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _starsEarnedThisSession > 0
-                          ? '+$_starsEarnedThisSession STAR THIS SESSION'
-                          : 'PRACTICE SESSION (NO STAR THIS SLOT)',
-                      style: TextStyle(
-                        color: _starsEarnedThisSession > 0
-                            ? const Color(0xFFFFD54F)
-                            : Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    if (_starsEarnedThisSession == 0) ...[
-                      const SizedBox(height: 4),
+                    if (_starsEarnedThisSession > 0)
                       Text(
-                        'Stars are earned once each morning and evening.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 11,
+                        '+$_starsEarnedThisSession STAR THIS SESSION',
+                        style: const TextStyle(
+                          color: Color(0xFFFFD54F),
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
                         ),
                       ),
-                    ],
                     const SizedBox(height: 12),
 
                     // Star bank
@@ -993,46 +815,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                     if (_chestOpened && _previewCard != null && !_showCardDrop)
                       _buildTomorrowPreview(),
 
-                    const Spacer(flex: 1),
+                    const SizedBox(height: 24),
 
                     // Buttons (only after chest opened)
                     if (_chestOpened) ...[
-                      // Show Mom/Dad button
-                      GestureDetector(
-                        onTap: _showParentCelebration,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF80AB).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                color: const Color(0xFFFF80AB).withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.favorite, color: Color(0xFFFF80AB), size: 18),
-                                SizedBox(width: 8),
-                                Text(
-                                  'SHOW MOM & DAD!',
-                                  style: TextStyle(
-                                    color: Color(0xFFFF80AB),
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                       GestureDetector(
                         onTap: _brushAgain,
                         child: Container(
@@ -1110,6 +896,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ],
                     const SizedBox(height: 28),
                   ],
+                ),
+                ),
                 ),
               ),
             ],

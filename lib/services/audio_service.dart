@@ -163,6 +163,8 @@ class AudioService {
     'zap.mp3',
     'star_chime.mp3',
     'battle_music_loop.mp3',
+    'voice_card_new.mp3',
+    'voice_card_fragment.mp3',
   ];
 
   List<String> get encouragementVoices =>
