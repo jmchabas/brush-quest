@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 
@@ -110,6 +112,19 @@ class SyncService {
     }
   }
 
+  /// Delete the user's Firestore document (cloud data).
+  Future<bool> deleteCloudData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return false;
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete cloud data: $e');
+      return false;
+    }
+  }
+
   bool _shouldSyncKey(String key) {
     if (_syncKeys.contains(key)) return true;
     if (key == 'brush_history') return true;
@@ -117,16 +132,25 @@ class SyncService {
   }
 
   Future<void> _writeValue(SharedPreferences prefs, String key, dynamic val) async {
-    if (val is int) {
-      await prefs.setInt(key, val);
-    } else if (val is String) {
-      await prefs.setString(key, val);
-    } else if (val is bool) {
-      await prefs.setBool(key, val);
-    } else if (val is double) {
-      await prefs.setDouble(key, val);
-    } else if (val is List) {
-      await prefs.setStringList(key, val.cast<String>());
+    try {
+      if (val is int) {
+        await prefs.setInt(key, val);
+      } else if (val is String) {
+        await prefs.setString(key, val);
+      } else if (val is bool) {
+        await prefs.setBool(key, val);
+      } else if (val is double) {
+        await prefs.setDouble(key, val);
+      } else if (val is List) {
+        try {
+          final stringList = val.whereType<String>().toList();
+          await prefs.setStringList(key, stringList);
+        } catch (e) {
+          debugPrint('Sync: failed to write list for $key: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Sync: failed to write $key: $e');
     }
   }
 

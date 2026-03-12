@@ -5,7 +5,6 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
-import '../services/telemetry_service.dart';
 import '../services/daily_login_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -26,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
-  final _telemetry = TelemetryService();
   final _dailyLoginService = DailyLoginService();
   bool _dailyLoginChecked = false;
   int _totalStars = 0;
@@ -47,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _buttonPressed = false;
   bool _welcomePlayed = false;
   String? _lastPickerVoice;
-  bool _homeImpressionLogged = false;
 
   @override
   void initState() {
@@ -108,20 +105,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _bossReady = bossReady;
         _todayBrushCount = todayCount;
       });
-      if (!_homeImpressionLogged) {
-        _homeImpressionLogged = true;
-        _telemetry.logEvent(
-          'home_impression',
-          params: {
-            'total_stars': stars,
-            'streak': streak,
-            'today_brush_count': todayCount,
-            'total_brushes': totalBrushes,
-            'selected_hero': hero.id,
-            'selected_weapon': weapon.id,
-          },
-        );
-      }
       _checkDailyLogin();
     }
   }
@@ -259,15 +242,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _startBrushing() {
     HapticFeedback.heavyImpact();
     AudioService().playSfx('whoosh.mp3');
-    _telemetry.logEvent(
-      'home_start_tap',
-      params: {
-        'selected_hero': _selectedHero.id,
-        'selected_weapon': _selectedWeapon.id,
-        'today_brush_count': _todayBrushCount,
-        'boss_ready': _bossReady,
-      },
-    );
     _startBrushingFlow();
   }
 
@@ -333,30 +307,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         onHeroSelected: (hero) async {
           await _heroService.selectHero(hero.id);
           setState(() => _selectedHero = hero);
-          _telemetry.logEvent(
-            'picker_hero_selected',
-            params: {'hero_id': hero.id},
-          );
           _playPickerVoice(AudioService().heroPickerVoiceFor(hero.id));
         },
         onWeaponSelected: (weapon) async {
           await _weaponService.selectWeapon(weapon.id);
           setState(() => _selectedWeapon = weapon);
-          _telemetry.logEvent(
-            'picker_weapon_selected',
-            params: {'weapon_id': weapon.id},
-          );
           _playPickerVoice(AudioService().weaponPickerVoiceFor(weapon.id));
         },
         onGo: () {
           Navigator.pop(ctx);
-          _telemetry.logEvent(
-            'session_confirmed',
-            params: {
-              'hero_id': _selectedHero.id,
-              'weapon_id': _selectedWeapon.id,
-            },
-          );
           AudioService().playVoice(
             'voice_lets_fight.mp3',
             clearQueue: true,
@@ -377,28 +336,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openShop() {
-    _telemetry.logEvent('navigation_tap', params: {'target': 'heroes'});
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const HeroShopScreen()))
         .then((_) => _loadStats());
   }
 
   void _openWorldMap() {
-    _telemetry.logEvent('navigation_tap', params: {'target': 'map'});
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const WorldMapScreen()))
         .then((_) => _loadStats());
   }
 
   void _openCards() {
-    _telemetry.logEvent('navigation_tap', params: {'target': 'cards'});
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const CardAlbumScreen()))
         .then((_) => _loadStats());
   }
 
   void _openSettings() {
-    _telemetry.logEvent('navigation_tap', params: {'target': 'settings'});
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const SettingsScreen()))
         .then((_) => _loadStats());

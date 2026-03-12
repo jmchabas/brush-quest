@@ -8,7 +8,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'services/telemetry_service.dart';
 import 'widgets/asset_preloader.dart';
 
 void main() async {
@@ -50,7 +49,6 @@ class BrushQuestApp extends StatelessWidget {
         ),
         textTheme: GoogleFonts.fredokaTextTheme(ThemeData.dark().textTheme),
       ),
-      navigatorObservers: [TelemetryService().observer],
       home: const AssetPreloader(child: _AppEntry()),
     );
   }

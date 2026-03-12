@@ -7,7 +7,6 @@ import '../services/hero_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
 import '../services/card_service.dart';
-import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
@@ -153,7 +152,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _achievementService = AchievementService();
   final _worldService = WorldService();
   final _random = Random();
-  final _telemetry = TelemetryService();
 
   late AnimationController _starController;
   late Animation<double> _starScale;
@@ -258,20 +256,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       _starsToNextHero = _nextHero!.cost - _newStars;
       if (_starsToNextHero < 0) _starsToNextHero = 0;
     }
-    _telemetry.logEvent(
-      'session_complete',
-      params: {
-        'session_id': widget.sessionId ?? '',
-        'stars_earned': outcome.starsEarned,
-        'new_slot_completed': outcome.newSlotCompleted,
-        'slot': outcome.slot.name,
-        'streak_after': _newStreak,
-        'total_stars_after': _newStars,
-        'total_hits': widget.totalHits,
-        'monsters_defeated': widget.monstersDefeated,
-        'boss_session': widget.isBossSession,
-      },
-    );
 
     if (mounted) setState(() {});
 
@@ -312,14 +296,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     HapticFeedback.heavyImpact();
 
     _reward = _rollChestReward(_random, _newStreak);
-    _telemetry.logEvent(
-      'chest_opened',
-      params: {
-        'reward_type': _reward!.type.name,
-        'bonus_stars': _reward!.bonusStars + _dailyModifier.chestBonusStars,
-        'streak': _newStreak,
-      },
-    );
     _chestBounceController.stop();
     _chestOpenController.forward();
 

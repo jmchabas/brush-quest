@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/audio_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
-import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -28,7 +27,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final _auth = AuthService();
   final _sync = SyncService();
-  final _telemetry = TelemetryService();
   DateTime? _parentUnlockedUntil;
 
   @override
@@ -113,7 +111,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final user = await _auth.signInWithGoogle();
       if (user != null && mounted) {
         await _sync.smartSync();
-        _telemetry.logEvent('auth_signin_success');
         await _loadSettings();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -132,7 +129,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
-      _telemetry.logEvent('auth_signin_failed');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -157,7 +153,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final allowed = await _ensureParentAccess();
     if (!allowed) return;
     await _auth.signOut();
-    _telemetry.logEvent('auth_signout');
     if (mounted) setState(() {});
   }
 
@@ -167,7 +162,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _syncing = true);
     try {
       await _sync.uploadProgress();
-      _telemetry.logEvent('sync_upload_success');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -184,7 +178,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
-      _telemetry.logEvent('sync_upload_failed');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -248,9 +241,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _syncing = true);
     try {
       final restored = await _sync.downloadProgress();
-      _telemetry.logEvent(
-        restored ? 'sync_restore_success' : 'sync_restore_empty',
-      );
       await _loadSettings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -340,7 +330,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await prefs.remove(key);
       }
     }
-    _telemetry.logEvent('progress_reset');
+    // Also delete cloud data if signed in
+    await SyncService().deleteCloudData();
 
     if (mounted) {
       _loadSettings();
@@ -620,17 +611,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 20,
-                                  backgroundImage: user.photoURL != null
-                                      ? NetworkImage(user.photoURL!)
-                                      : null,
                                   backgroundColor: const Color(0xFF7C4DFF),
-                                  child: user.photoURL == null
-                                      ? const Icon(
-                                          Icons.person,
-                                          color: Colors.white,
-                                          size: 20,
-                                        )
-                                      : null,
+                                  child: const Icon(Icons.person, color: Colors.white, size: 20),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(

@@ -3,7 +3,6 @@ import 'dart:collection';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'telemetry_service.dart';
 
 class _QueuedVoiceRequest {
   final String fileName;
@@ -30,6 +29,7 @@ class AudioService {
   bool _voicePlaying = false;
   bool _voiceQueueProcessing = false;
   bool _musicPlaying = false;
+  bool _musicTransitioning = false;
   String? _currentMusicFile;
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
   final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
@@ -316,10 +316,12 @@ class AudioService {
       } catch (e) {
         _reportAudioIssue(operation: 'mute_stop_voice_failed', error: e);
       }
-      try {
-        await _musicPlayer.stop();
-      } catch (e) {
-        _reportAudioIssue(operation: 'mute_stop_music_failed', error: e);
+      if (!_musicTransitioning) {
+        try {
+          await _musicPlayer.stop();
+        } catch (e) {
+          _reportAudioIssue(operation: 'mute_stop_music_failed', error: e);
+        }
       }
       _musicPlaying = false;
       _voicePlaying = false;
@@ -387,9 +389,11 @@ class AudioService {
         final request = _voiceQueue.removeFirst();
         _voicePlaying = true;
         _updateVoicePipelineState();
-        try {
-          await _musicPlayer.setVolume(_musicDuckedVolume);
-        } catch (_) {}
+        if (!_musicTransitioning) {
+          try {
+            await _musicPlayer.setVolume(_musicDuckedVolume);
+          } catch (_) {}
+        }
 
         try {
           await _voicePlayer.stop();
@@ -444,7 +448,7 @@ class AudioService {
   }
 
   void _restoreMusicVolume() {
-    if (!_musicPlaying) return;
+    if (!_musicPlaying || _musicTransitioning) return;
     try {
       _musicPlayer.setVolume(_musicVolume);
     } catch (_) {}
@@ -453,6 +457,7 @@ class AudioService {
   Future<void> playMusic(String fileName) async {
     if (_muted) return;
     _currentMusicFile = fileName;
+    _musicTransitioning = true;
     try {
       await _musicPlayer.stop();
       _musicPlayer.dispose();
@@ -470,7 +475,9 @@ class AudioService {
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer.setVolume(_musicVolume);
       await _musicPlayer.resume();
+      _musicTransitioning = false;
     } catch (e) {
+      _musicTransitioning = false;
       _musicPlaying = false;
       _reportAudioIssue(
         operation: 'music_play_failed',
@@ -483,6 +490,7 @@ class AudioService {
   /// Call periodically during brushing to recover music if it stopped.
   /// Checks the player state and restarts if needed.
   Future<void> ensureMusicPlaying() async {
+    if (_musicTransitioning) return;
     if (_muted || !_musicPlaying || _currentMusicFile == null) return;
     try {
       final state = _musicPlayer.state;
@@ -504,6 +512,7 @@ class AudioService {
   }
 
   Future<void> stopMusic() async {
+    if (_musicTransitioning) return;
     _musicPlaying = false;
     _currentMusicFile = null;
     try {
@@ -527,16 +536,6 @@ class AudioService {
     _audioIssueDebounce[key] = now;
     debugPrint(
       'audio issue: op=$operation file=${fileName ?? 'n/a'} err=${error ?? 'none'}',
-    );
-    unawaited(
-      TelemetryService().logEvent(
-        'audio_issue',
-        params: {
-          'op': operation,
-          'file': fileName ?? 'none',
-          'err': error?.runtimeType.toString() ?? 'unknown',
-        },
-      ),
     );
   }
 

@@ -26,6 +26,7 @@ class HeroCharacter {
 class HeroService {
   static const _unlockedKey = 'unlocked_heroes';
   static const _selectedKey = 'selected_hero';
+  static bool _purchasing = false;
 
   static const List<HeroCharacter> allHeroes = [
     HeroCharacter(
@@ -111,20 +112,26 @@ class HeroService {
   }
 
   Future<bool> unlockHero(String heroId) async {
-    final hero = getHeroById(heroId);
-    if (hero.id != heroId) return false; // Invalid ID
-    final prefs = await SharedPreferences.getInstance();
+    if (_purchasing) return false;
+    _purchasing = true;
+    try {
+      final hero = getHeroById(heroId);
+      if (hero.id != heroId) return false; // Invalid ID
+      final prefs = await SharedPreferences.getInstance();
 
-    final unlocked = prefs.getStringList(_unlockedKey) ?? ['blaze'];
-    if (unlocked.contains(heroId)) return true;
+      final unlocked = prefs.getStringList(_unlockedKey) ?? ['blaze'];
+      if (unlocked.contains(heroId)) return true;
 
-    final stars = prefs.getInt('total_stars') ?? 0;
-    if (stars < hero.cost) return false;
+      final stars = prefs.getInt('total_stars') ?? 0;
+      if (stars < hero.cost) return false;
 
-    await prefs.setInt('total_stars', stars - hero.cost);
-    unlocked.add(heroId);
-    await prefs.setStringList(_unlockedKey, unlocked);
-    return true;
+      await prefs.setInt('total_stars', stars - hero.cost);
+      unlocked.add(heroId);
+      await prefs.setStringList(_unlockedKey, unlocked);
+      return true;
+    } finally {
+      _purchasing = false;
+    }
   }
 
   Future<bool> isHeroUnlocked(String heroId) async {

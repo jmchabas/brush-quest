@@ -62,6 +62,7 @@ class CardDropResult {
 class CardService {
   static const _collectedKey = 'collected_cards';
   static const _fragmentsKey = 'card_fragments';
+  static bool _redeeming = false;
 
   // ~40% base drop chance, boosted by streak
   static double dropChance(int streak) => (0.40 + streak * 0.02).clamp(0.0, 0.70);
@@ -202,6 +203,7 @@ class CardService {
       'storm_citadel', 'dark_dimension',
     ];
     final currentIdx = worldOrder.indexOf(currentWorldId);
+    if (currentIdx < 0) return null;
     final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
     final pool = allCards.where((c) => eligibleWorlds.contains(c.worldId)).toList();
     if (pool.isEmpty) return null;
@@ -238,29 +240,36 @@ class CardService {
 
   /// Redeem 3 fragments for a random uncollected card from any eligible world.
   Future<MonsterCard?> redeemFragments(String currentWorldId) async {
-    final fragments = await getFragments();
-    if (fragments < 3) return null;
+    if (_redeeming) return null;
+    _redeeming = true;
+    try {
+      final fragments = await getFragments();
+      if (fragments < 3) return null;
 
-    final collected = await getCollectedCardIds();
-    final worldOrder = [
-      'candy_crater', 'slime_swamp', 'sugar_volcano',
-      'shadow_nebula', 'cavity_fortress',
-      'frozen_tundra', 'toxic_jungle', 'crystal_cave',
-      'storm_citadel', 'dark_dimension',
-    ];
-    final currentIdx = worldOrder.indexOf(currentWorldId);
-    final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
-    final uncollected = allCards
-        .where((c) => eligibleWorlds.contains(c.worldId) && !collected.contains(c.id))
-        .toList();
-    if (uncollected.isEmpty) return null;
+      final collected = await getCollectedCardIds();
+      final worldOrder = [
+        'candy_crater', 'slime_swamp', 'sugar_volcano',
+        'shadow_nebula', 'cavity_fortress',
+        'frozen_tundra', 'toxic_jungle', 'crystal_cave',
+        'storm_citadel', 'dark_dimension',
+      ];
+      final currentIdx = worldOrder.indexOf(currentWorldId);
+      if (currentIdx < 0) return null;
+      final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
+      final uncollected = allCards
+          .where((c) => eligibleWorlds.contains(c.worldId) && !collected.contains(c.id))
+          .toList();
+      if (uncollected.isEmpty) return null;
 
-    final rng = Random();
-    final card = uncollected[rng.nextInt(uncollected.length)];
-    await collectCard(card.id);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_fragmentsKey, fragments - 3);
-    return card;
+      final rng = Random();
+      final card = uncollected[rng.nextInt(uncollected.length)];
+      await collectCard(card.id);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_fragmentsKey, fragments - 3);
+      return card;
+    } finally {
+      _redeeming = false;
+    }
   }
 
   int get totalCards => allCards.length;
@@ -280,6 +289,7 @@ class CardService {
       'storm_citadel', 'dark_dimension',
     ];
     final currentIdx = worldOrder.indexOf(currentWorldId);
+    if (currentIdx < 0) return null;
     final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
     final uncollected = allCards
         .where((c) => eligibleWorlds.contains(c.worldId) && !collected.contains(c.id))

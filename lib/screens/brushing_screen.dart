@@ -10,7 +10,6 @@ import '../services/world_service.dart';
 import '../services/camera_service.dart';
 import '../services/weapon_service.dart';
 import '../services/streak_service.dart';
-import '../services/telemetry_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'package:lottie/lottie.dart';
@@ -233,7 +232,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   final _worldService = WorldService();
   final _cameraService = CameraService();
   final _weaponService = WeaponService();
-  final _telemetry = TelemetryService();
 
   HeroCharacter _hero = HeroService.allHeroes[0];
   WorldData _world = WorldService.allWorlds[0];
@@ -448,6 +446,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       duration: const Duration(milliseconds: 600),
     )..addStatusListener((status) {
       if (status == AnimationStatus.completed) {
+        if (!mounted) return;
         setState(() => _showHitEffect = false);
       }
     });
@@ -458,11 +457,17 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     _damageCleanupTimer = Timer.periodic(
       const Duration(milliseconds: 40),
-      (_) => _cleanupEffects(),
+      (_) {
+        if (!mounted) return;
+        _cleanupEffects();
+      },
     );
     _starCleanupTimer = Timer.periodic(
       const Duration(milliseconds: 30),
-      (_) => _updateFloatingStars(),
+      (_) {
+        if (!mounted) return;
+        _updateFloatingStars();
+      },
     );
   }
 
@@ -584,25 +589,29 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _startMotionDetection() {
     if (!_cameraReady) return;
     _cameraService.startMotionDetection((intensity) {
-      if (!mounted || _isPaused || _phase == BrushPhase.done) return;
+      try {
+        if (!mounted || _isPaused || _phase == BrushPhase.done) return;
 
-      // Threshold: ignore tiny noise, respond to real brushing motion
-      if (intensity < 0.04) return;
+        // Threshold: ignore tiny noise, respond to real brushing motion
+        if (intensity < 0.04) return;
 
-      final now = DateTime.now().millisecondsSinceEpoch;
-      // Variable cooldown based on brushing intensity:
-      // Gentle motion → 800ms, normal brushing → 500ms, vigorous → 300ms
-      final cooldownMs = _intensityToCooldown(intensity);
+        final now = DateTime.now().millisecondsSinceEpoch;
+        // Variable cooldown based on brushing intensity:
+        // Gentle motion → 800ms, normal brushing → 500ms, vigorous → 300ms
+        final cooldownMs = _intensityToCooldown(intensity);
 
-      if (now - _lastAttackTime >= cooldownMs) {
-        _lastAttackTime = now;
-        // Show motion glow feedback — hero lights up when brushing detected
-        setState(() => _motionGlow = true);
-        Future.delayed(const Duration(milliseconds: 400), () {
-          if (mounted) setState(() => _motionGlow = false);
-        });
-        _triggerAttack();
-        _resetStallTimer(); // Reset mercy timer on successful attack
+        if (now - _lastAttackTime >= cooldownMs) {
+          _lastAttackTime = now;
+          // Show motion glow feedback — hero lights up when brushing detected
+          setState(() => _motionGlow = true);
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (mounted) setState(() => _motionGlow = false);
+          });
+          _triggerAttack();
+          _resetStallTimer(); // Reset mercy timer on successful attack
+        }
+      } catch (e) {
+        debugPrint('Motion callback error: $e');
       }
     });
   }
@@ -702,10 +711,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = restoredPhase.first;
       _phaseSecondsLeft = secondsLeft.clamp(1, _phaseDuration);
     });
-    _telemetry.logEvent(
-      'session_restored',
-      params: {'phase': _phase.name, 'seconds_left': _phaseSecondsLeft},
-    );
     _startBrushing(resumeFromCheckpoint: true);
     return true;
   }
@@ -804,6 +809,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
     _audio.playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
         _audio.playSfx('countdown_beep.mp3');
@@ -825,18 +831,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== BRUSHING ====================
 
   void _startBrushing({bool resumeFromCheckpoint = false}) {
-    _telemetry.logEvent(
-      'brushing_started',
-      params: {
-        'world_id': _world.id,
-        'hero_id': _hero.id,
-        'weapon_id': _weapon.id,
-        'camera_ready': _cameraReady,
-        'daily_modifier': _dailyModifier.type.name,
-        'session_id': _sessionId,
-        'phase_duration_sec': _phaseDuration,
-      },
-    );
     if (!resumeFromCheckpoint) {
       _totalHits = 0;
       _attackStyleIndex = 0;
@@ -850,14 +844,20 @@ class _BrushingScreenState extends State<BrushingScreen>
     _musicHealthTimer?.cancel();
     _musicHealthTimer = Timer.periodic(
       const Duration(seconds: 5),
-      (_) => _audio.ensureMusicPlaying(),
+      (_) {
+        if (!mounted) return;
+        _audio.ensureMusicPlaying();
+      },
     );
 
     // Companion speech bubbles every 8 seconds
     _companionTimer?.cancel();
     _companionTimer = Timer.periodic(
       const Duration(seconds: 8),
-      (_) => _showNextCompanionMessage(),
+      (_) {
+        if (!mounted) return;
+        _showNextCompanionMessage();
+      },
     );
     _scheduleNextMicroReward();
 
@@ -866,6 +866,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     }
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) { timer.cancel(); return; }
       if (_isPaused) return;
       setState(() => _phaseSecondsLeft--);
       _saveCheckpoint();
@@ -925,7 +926,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       _startMotionDetection();
       _resetStallTimer();
     } else {
-      _telemetry.logEvent('camera_unavailable_fallback');
       _startBaseAttackTimer();
     }
   }
@@ -975,7 +975,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _attackStyleIndex = 4;
     _attackSequenceController.forward(from: 0);
     _screenShakeController.forward(from: 0);
-    _flashController.forward(from: 0).then((_) => _flashController.reverse());
+    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     HapticFeedback.heavyImpact();
     _audio.playSfx('zap.mp3');
 
@@ -1022,7 +1022,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _audio.playSfx('monster_defeat.mp3');
     HapticFeedback.heavyImpact();
-    _flashController.forward(from: 0).then((_) => _flashController.reverse());
+    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     _spawnDefeatSparks();
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) onComplete();
@@ -1104,7 +1104,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     setState(() => _showHitEffect = true);
     _hitLottieController.forward(from: 0);
     _screenShakeController.forward(from: 0);
-    _flashController.forward(from: 0).then((_) => _flashController.reverse());
+    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
 
     // Hero lunge animation
     setState(() => _heroLunging = true);
@@ -1148,7 +1148,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _startMonsterDeath(_monster);
     _audio.playSfx('monster_defeat.mp3');
     HapticFeedback.heavyImpact();
-    _flashController.forward(from: 0).then((_) => _flashController.reverse());
+    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     _spawnDefeatSparks();
 
     // Spawn a new monster in the same phase after death animation
@@ -1214,14 +1214,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       );
     });
     // Keep micro-reward as visual-only to avoid competing with guidance voices.
-    _telemetry.logEvent(
-      'micro_reward_triggered',
-      params: {
-        'session_id': _sessionId,
-        'phase': _phase.name,
-        'seconds_left': _phaseSecondsLeft,
-      },
-    );
   }
 
   _MonsterSlot _createBossMonster() {
@@ -1322,7 +1314,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
       _companionTimer = Timer.periodic(
         const Duration(seconds: 8),
-        (_) => _showNextCompanionMessage(),
+        (_) {
+          if (!mounted) return;
+          _showNextCompanionMessage();
+        },
       );
       _scheduleNextMicroReward();
     }
@@ -1335,6 +1330,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _musicHealthTimer?.cancel();
     _audio.stopMusic();
     _clearCheckpoint();
+    if (!mounted) return;
     setState(() => _isQuitting = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Navigator.of(context).pop();
@@ -1342,15 +1338,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _finishBrushing() {
-    _telemetry.logEvent(
-      'brushing_completed',
-      params: {
-        'total_hits': _totalHits,
-        'monsters_defeated': _monstersDefeated,
-        'boss_session': _isBossSession,
-        'session_id': _sessionId,
-      },
-    );
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _companionTimer?.cancel();
@@ -1359,6 +1346,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _stopMotionDetection();
     _audio.stopMusic();
     _clearCheckpoint();
+    if (!mounted) return;
     setState(() {
       _phase = BrushPhase.done;
       _sessionStage = SessionStage.done;

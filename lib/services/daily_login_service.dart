@@ -23,19 +23,26 @@ class DailyLoginReward {
 class DailyLoginService {
   static const _lastLoginDateKey = 'daily_login_date';
   static const _loginStreakKey = 'daily_login_streak';
+  static const _lastLoginEpochKey = 'last_login_epoch';
 
   /// Check if the user has already claimed today's login.
   /// Returns a reward if not yet claimed, null if already claimed today.
   Future<DailyLoginReward?> checkAndClaimDailyLogin() async {
     final prefs = await SharedPreferences.getInstance();
-    final today = _dateString(DateTime.now());
+    final now = DateTime.now();
+    final nowEpoch = now.millisecondsSinceEpoch;
+    final today = _dateString(now);
     final lastLogin = prefs.getString(_lastLoginDateKey);
 
     if (lastLogin == today) return null; // Already claimed
 
+    // Reject if clock went backwards (manipulation attempt)
+    final lastEpoch = prefs.getInt(_lastLoginEpochKey) ?? 0;
+    if (nowEpoch < lastEpoch) return null;
+
     // Update streak
     final yesterday = _dateString(
-      DateTime.now().subtract(const Duration(days: 1)),
+      now.subtract(const Duration(days: 1)),
     );
     int streak = prefs.getInt(_loginStreakKey) ?? 0;
     if (lastLogin == yesterday) {
@@ -46,6 +53,7 @@ class DailyLoginService {
 
     await prefs.setString(_lastLoginDateKey, today);
     await prefs.setInt(_loginStreakKey, streak);
+    await prefs.setInt(_lastLoginEpochKey, nowEpoch);
 
     // Roll reward
     final rng = Random();

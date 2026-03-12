@@ -37,6 +37,7 @@ class WeaponItem {
 class WeaponService {
   static const _unlockedKey = 'unlocked_weapons';
   static const _selectedKey = 'selected_weapon';
+  static bool _purchasing = false;
 
   static const List<WeaponItem> allWeapons = [
     WeaponItem(
@@ -128,20 +129,26 @@ class WeaponService {
   }
 
   Future<bool> unlockWeapon(String weaponId) async {
-    final weapon = getWeaponById(weaponId);
-    if (weapon.id != weaponId) return false; // Invalid ID
-    final prefs = await SharedPreferences.getInstance();
+    if (_purchasing) return false;
+    _purchasing = true;
+    try {
+      final weapon = getWeaponById(weaponId);
+      if (weapon.id != weaponId) return false; // Invalid ID
+      final prefs = await SharedPreferences.getInstance();
 
-    final unlocked = prefs.getStringList(_unlockedKey) ?? ['star_blaster'];
-    if (unlocked.contains(weaponId)) return true;
+      final unlocked = prefs.getStringList(_unlockedKey) ?? ['star_blaster'];
+      if (unlocked.contains(weaponId)) return true;
 
-    final stars = prefs.getInt('total_stars') ?? 0;
-    if (stars < weapon.cost) return false;
+      final stars = prefs.getInt('total_stars') ?? 0;
+      if (stars < weapon.cost) return false;
 
-    await prefs.setInt('total_stars', stars - weapon.cost);
-    unlocked.add(weaponId);
-    await prefs.setStringList(_unlockedKey, unlocked);
-    return true;
+      await prefs.setInt('total_stars', stars - weapon.cost);
+      unlocked.add(weaponId);
+      await prefs.setStringList(_unlockedKey, unlocked);
+      return true;
+    } finally {
+      _purchasing = false;
+    }
   }
 
   Future<bool> isWeaponUnlocked(String weaponId) async {
