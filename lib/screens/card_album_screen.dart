@@ -26,7 +26,7 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 10, vsync: this);
     _loadData();
   }
 
@@ -69,6 +69,7 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
         isNew: isNewReveal,
       ),
     );
+    AudioService().playVoice('voice_card_${card.id}.mp3', clearQueue: true, interrupt: true);
   }
 
   @override

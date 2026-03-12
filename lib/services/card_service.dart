@@ -66,7 +66,7 @@ class CardService {
   // ~40% base drop chance, boosted by streak
   static double dropChance(int streak) => (0.40 + streak * 0.02).clamp(0.0, 0.70);
 
-  // 35 cards: 7 per world (4 common, 2 rare, 1 epic)
+  // 70 cards: 7 per world (4 common, 2 rare, 1 epic) x 10 worlds
   static const List<MonsterCard> allCards = [
     // ── World 1: Candy Crater ──
     MonsterCard(id: 'cc_01', name: 'Gummy Grub', title: 'Sugar Slimer', worldId: 'candy_crater', baseImageIndex: 0, tintColor: Color(0xFFFF80AB), rarity: CardRarity.common, flavorText: 'Leaves sticky gum trails everywhere!'),
@@ -112,6 +112,51 @@ class CardService {
     MonsterCard(id: 'cf_05', name: 'Crown Cruncher', title: 'Golden Fang', worldId: 'cavity_fortress', baseImageIndex: 1, tintColor: Color(0xFFFFD54F), rarity: CardRarity.rare, flavorText: 'Has a golden tooth crown!'),
     MonsterCard(id: 'cf_06', name: 'Enamel Eater', title: 'Tooth Destroyer', worldId: 'cavity_fortress', baseImageIndex: 2, tintColor: Color(0xFFFFB300), rarity: CardRarity.rare, flavorText: 'Eats tooth enamel for breakfast!'),
     MonsterCard(id: 'cf_07', name: 'Cavity King', title: 'Supreme Ruler', worldId: 'cavity_fortress', baseImageIndex: 3, tintColor: Color(0xFFFF1744), rarity: CardRarity.epic, flavorText: 'The ultimate boss of all cavities!'),
+
+    // ── World 6: Frozen Tundra ──
+    MonsterCard(id: 'ft_01', name: 'Frost Nibbler', title: 'Ice Chomper', worldId: 'frozen_tundra', baseImageIndex: 0, tintColor: Color(0xFF81D4FA), rarity: CardRarity.common, flavorText: 'Nibbles on icicles for breakfast!'),
+    MonsterCard(id: 'ft_02', name: 'Blizzard Bug', title: 'Snow Buzzer', worldId: 'frozen_tundra', baseImageIndex: 1, tintColor: Color(0xFF4FC3F7), rarity: CardRarity.common, flavorText: 'Creates tiny snowstorms wherever it flies!'),
+    MonsterCard(id: 'ft_03', name: 'Snowball Snapper', title: 'Frozen Fury', worldId: 'frozen_tundra', baseImageIndex: 2, tintColor: Color(0xFF29B6F6), rarity: CardRarity.common, flavorText: 'Throws snowballs at lightning speed!'),
+    MonsterCard(id: 'ft_04', name: 'Glacier Gremlin', title: 'Icy Trickster', worldId: 'frozen_tundra', baseImageIndex: 3, tintColor: Color(0xFF039BE5), rarity: CardRarity.common, flavorText: 'Hides inside glaciers and jumps out!'),
+    MonsterCard(id: 'ft_05', name: 'Avalanche Yeti', title: 'Mountain Rumbler', worldId: 'frozen_tundra', baseImageIndex: 0, tintColor: Color(0xFF0288D1), rarity: CardRarity.rare, flavorText: 'One stomp starts an avalanche!'),
+    MonsterCard(id: 'ft_06', name: 'Hailstorm Hawk', title: 'Sky Freezer', worldId: 'frozen_tundra', baseImageIndex: 2, tintColor: Color(0xFF0277BD), rarity: CardRarity.rare, flavorText: 'Drops hailstones from the clouds!'),
+    MonsterCard(id: 'ft_07', name: 'Ice Titan', title: 'Frozen Overlord', worldId: 'frozen_tundra', baseImageIndex: 0, tintColor: Color(0xFF01579B), rarity: CardRarity.epic, flavorText: 'Can freeze an entire planet solid!'),
+
+    // ── World 7: Toxic Jungle ──
+    MonsterCard(id: 'tj_01', name: 'Vine Viper', title: 'Leaf Lurker', worldId: 'toxic_jungle', baseImageIndex: 1, tintColor: Color(0xFF66BB6A), rarity: CardRarity.common, flavorText: 'Wraps around trees like a sneaky vine!'),
+    MonsterCard(id: 'tj_02', name: 'Spore Spitter', title: 'Puff Blaster', worldId: 'toxic_jungle', baseImageIndex: 2, tintColor: Color(0xFF4CAF50), rarity: CardRarity.common, flavorText: 'Shoots stinky spore clouds!'),
+    MonsterCard(id: 'tj_03', name: 'Mossy Muncher', title: 'Green Gobbler', worldId: 'toxic_jungle', baseImageIndex: 3, tintColor: Color(0xFF43A047), rarity: CardRarity.common, flavorText: 'Eats moss faster than you can blink!'),
+    MonsterCard(id: 'tj_04', name: 'Thorn Tumbler', title: 'Prickly Roller', worldId: 'toxic_jungle', baseImageIndex: 0, tintColor: Color(0xFF388E3C), rarity: CardRarity.common, flavorText: 'Rolls into a spiky ball to attack!'),
+    MonsterCard(id: 'tj_05', name: 'Venom Frog', title: 'Poison Hopper', worldId: 'toxic_jungle', baseImageIndex: 1, tintColor: Color(0xFF2E7D32), rarity: CardRarity.rare, flavorText: 'Its tongue glows bright green!'),
+    MonsterCard(id: 'tj_06', name: 'Fungus Fury', title: 'Mushroom Menace', worldId: 'toxic_jungle', baseImageIndex: 3, tintColor: Color(0xFF1B5E20), rarity: CardRarity.rare, flavorText: 'Grows mushrooms on everything it touches!'),
+    MonsterCard(id: 'tj_07', name: 'Jungle Hydra', title: 'Overgrowth King', worldId: 'toxic_jungle', baseImageIndex: 1, tintColor: Color(0xFF00C853), rarity: CardRarity.epic, flavorText: 'Has three heads and each one bites!'),
+
+    // ── World 8: Crystal Cave ──
+    MonsterCard(id: 'cr_01', name: 'Gem Gnat', title: 'Sparkle Fly', worldId: 'crystal_cave', baseImageIndex: 0, tintColor: Color(0xFF80DEEA), rarity: CardRarity.common, flavorText: 'Glows like a tiny flying diamond!'),
+    MonsterCard(id: 'cr_02', name: 'Quartz Crawler', title: 'Cave Creeper', worldId: 'crystal_cave', baseImageIndex: 1, tintColor: Color(0xFF4DD0E1), rarity: CardRarity.common, flavorText: 'Skitters across crystal walls!'),
+    MonsterCard(id: 'cr_03', name: 'Prism Pup', title: 'Rainbow Rascal', worldId: 'crystal_cave', baseImageIndex: 2, tintColor: Color(0xFF26C6DA), rarity: CardRarity.common, flavorText: 'Splits light into rainbows when it barks!'),
+    MonsterCard(id: 'cr_04', name: 'Stalactite Snail', title: 'Drip Rider', worldId: 'crystal_cave', baseImageIndex: 3, tintColor: Color(0xFF00BCD4), rarity: CardRarity.common, flavorText: 'Hangs from cave ceilings upside down!'),
+    MonsterCard(id: 'cr_05', name: 'Diamond Drill', title: 'Gem Borer', worldId: 'crystal_cave', baseImageIndex: 0, tintColor: Color(0xFF00ACC1), rarity: CardRarity.rare, flavorText: 'Drills through solid rock in seconds!'),
+    MonsterCard(id: 'cr_06', name: 'Amethyst Angler', title: 'Deep Glower', worldId: 'crystal_cave', baseImageIndex: 1, tintColor: Color(0xFF00838F), rarity: CardRarity.rare, flavorText: 'Lures prey with a glowing crystal lure!'),
+    MonsterCard(id: 'cr_07', name: 'Crystal Colossus', title: 'Cavern Guardian', worldId: 'crystal_cave', baseImageIndex: 0, tintColor: Color(0xFF006064), rarity: CardRarity.epic, flavorText: 'Made entirely of unbreakable crystal!'),
+
+    // ── World 9: Storm Citadel ──
+    MonsterCard(id: 'sc_01', name: 'Spark Sprite', title: 'Zap Fairy', worldId: 'storm_citadel', baseImageIndex: 2, tintColor: Color(0xFFFFD740), rarity: CardRarity.common, flavorText: 'Tiny but shocks everything it touches!'),
+    MonsterCard(id: 'sc_02', name: 'Thunder Tick', title: 'Boom Bug', worldId: 'storm_citadel', baseImageIndex: 3, tintColor: Color(0xFFFFC400), rarity: CardRarity.common, flavorText: 'Makes a tiny thunder sound when it jumps!'),
+    MonsterCard(id: 'sc_03', name: 'Lightning Lizard', title: 'Bolt Dasher', worldId: 'storm_citadel', baseImageIndex: 0, tintColor: Color(0xFFFFAB00), rarity: CardRarity.common, flavorText: 'Runs as fast as a lightning bolt!'),
+    MonsterCard(id: 'sc_04', name: 'Gale Goblin', title: 'Wind Troubler', worldId: 'storm_citadel', baseImageIndex: 1, tintColor: Color(0xFFFF8F00), rarity: CardRarity.common, flavorText: 'Blows everything away with a sneeze!'),
+    MonsterCard(id: 'sc_05', name: 'Cyclone Crab', title: 'Whirlwind Pincher', worldId: 'storm_citadel', baseImageIndex: 2, tintColor: Color(0xFFF57F17), rarity: CardRarity.rare, flavorText: 'Spins so fast it becomes a tornado!'),
+    MonsterCard(id: 'sc_06', name: 'Voltage Vulture', title: 'Storm Soarer', worldId: 'storm_citadel', baseImageIndex: 3, tintColor: Color(0xFFE65100), rarity: CardRarity.rare, flavorText: 'Rides lightning bolts through the sky!'),
+    MonsterCard(id: 'sc_07', name: 'Storm Emperor', title: 'Thunder Sovereign', worldId: 'storm_citadel', baseImageIndex: 2, tintColor: Color(0xFFFF6D00), rarity: CardRarity.epic, flavorText: 'Commands every storm in the galaxy!'),
+
+    // ── World 10: Dark Dimension ──
+    MonsterCard(id: 'dd_01', name: 'Void Mite', title: 'Darkness Nibbler', worldId: 'dark_dimension', baseImageIndex: 0, tintColor: Color(0xFFE040FB), rarity: CardRarity.common, flavorText: 'So dark you can barely see it!'),
+    MonsterCard(id: 'dd_02', name: 'Rift Rat', title: 'Dimension Hopper', worldId: 'dark_dimension', baseImageIndex: 1, tintColor: Color(0xFFD500F9), rarity: CardRarity.common, flavorText: 'Jumps between dimensions for fun!'),
+    MonsterCard(id: 'dd_03', name: 'Warp Worm', title: 'Space Bender', worldId: 'dark_dimension', baseImageIndex: 2, tintColor: Color(0xFFAA00FF), rarity: CardRarity.common, flavorText: 'Bends space around itself to hide!'),
+    MonsterCard(id: 'dd_04', name: 'Null Newt', title: 'Zero Crawler', worldId: 'dark_dimension', baseImageIndex: 3, tintColor: Color(0xFF9C27B0), rarity: CardRarity.common, flavorText: 'Erases footprints as it walks!'),
+    MonsterCard(id: 'dd_05', name: 'Entropy Eagle', title: 'Chaos Flyer', worldId: 'dark_dimension', baseImageIndex: 0, tintColor: Color(0xFF8E24AA), rarity: CardRarity.rare, flavorText: 'Its wings scatter reality like dust!'),
+    MonsterCard(id: 'dd_06', name: 'Abyss Anaconda', title: 'Deep Dark Coiler', worldId: 'dark_dimension', baseImageIndex: 1, tintColor: Color(0xFF6A1B9A), rarity: CardRarity.rare, flavorText: 'Wraps around entire planets!'),
+    MonsterCard(id: 'dd_07', name: 'Dimension Devourer', title: 'Reality Breaker', worldId: 'dark_dimension', baseImageIndex: 3, tintColor: Color(0xFF4A148C), rarity: CardRarity.epic, flavorText: 'Eats entire dimensions for lunch!'),
   ];
 
   static List<MonsterCard> cardsForWorld(String worldId) =>
@@ -153,6 +198,8 @@ class CardService {
     final worldOrder = [
       'candy_crater', 'slime_swamp', 'sugar_volcano',
       'shadow_nebula', 'cavity_fortress',
+      'frozen_tundra', 'toxic_jungle', 'crystal_cave',
+      'storm_citadel', 'dark_dimension',
     ];
     final currentIdx = worldOrder.indexOf(currentWorldId);
     final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
@@ -198,6 +245,8 @@ class CardService {
     final worldOrder = [
       'candy_crater', 'slime_swamp', 'sugar_volcano',
       'shadow_nebula', 'cavity_fortress',
+      'frozen_tundra', 'toxic_jungle', 'crystal_cave',
+      'storm_citadel', 'dark_dimension',
     ];
     final currentIdx = worldOrder.indexOf(currentWorldId);
     final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
@@ -227,6 +276,8 @@ class CardService {
     final worldOrder = [
       'candy_crater', 'slime_swamp', 'sugar_volcano',
       'shadow_nebula', 'cavity_fortress',
+      'frozen_tundra', 'toxic_jungle', 'crystal_cave',
+      'storm_citadel', 'dark_dimension',
     ];
     final currentIdx = worldOrder.indexOf(currentWorldId);
     final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);

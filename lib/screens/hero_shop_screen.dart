@@ -553,33 +553,18 @@ class _WeaponCard extends StatelessWidget {
               child: Column(
                 children: [
                   Expanded(
-                    child: Center(
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: isUnlocked
-                              ? RadialGradient(
-                                  colors: [
-                                    weapon.primaryColor.withValues(alpha: 0.4),
-                                    weapon.secondaryColor.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                  ],
-                                )
-                              : null,
-                          color: isUnlocked
-                              ? null
-                              : Colors.white.withValues(alpha: 0.05),
-                        ),
-                        child: Icon(
-                          weapon.icon,
-                          color: isUnlocked
-                              ? weapon.primaryColor
-                              : Colors.white.withValues(alpha: 0.3),
-                          size: 40,
-                        ),
+                    child: ClipOval(
+                      child: ColorFiltered(
+                        colorFilter: isUnlocked
+                            ? const ColorFilter.mode(
+                                Colors.transparent,
+                                BlendMode.dst,
+                              )
+                            : ColorFilter.mode(
+                                Colors.black.withValues(alpha: 0.6),
+                                BlendMode.srcATop,
+                              ),
+                        child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
                       ),
                     ),
                   ),
@@ -802,22 +787,11 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      widget.weapon.primaryColor.withValues(alpha: 0.5),
-                      widget.weapon.secondaryColor.withValues(alpha: 0.2),
-                    ],
-                  ),
-                ),
-                child: Icon(
-                  widget.weapon.icon,
-                  color: widget.weapon.primaryColor,
-                  size: 50,
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: ClipOval(
+                  child: Image.asset(widget.weapon.imagePath, fit: BoxFit.cover),
                 ),
               ),
               const SizedBox(height: 16),

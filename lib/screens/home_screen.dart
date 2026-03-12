@@ -36,8 +36,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _bossProgress = 0;
   int _bossRemaining = 4;
   bool _bossReady = false;
-  bool _morningDone = false;
-  bool _eveningDone = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
 
@@ -94,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final streak = await _streakService.getStreak();
     final todayCount = await _streakService.getTodayBrushCount();
     final totalBrushes = await _streakService.getTotalBrushes();
-    final todaySlots = await _streakService.getTodaySlots();
     final brushCycle = totalBrushes % 5;
     final bossReady = brushCycle == 4;
     final bossRemaining = bossReady ? 0 : (4 - brushCycle);
@@ -110,8 +107,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _bossRemaining = bossRemaining;
         _bossReady = bossReady;
         _todayBrushCount = todayCount;
-        _morningDone = todaySlots.morningDone;
-        _eveningDone = todaySlots.eveningDone;
       });
       if (!_homeImpressionLogged) {
         _homeImpressionLogged = true;
@@ -147,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _showDailyLoginPopup(DailyLoginReward reward) {
     AudioService().playSfx('star_chime.mp3');
+    AudioService().playVoice('voice_daily_login.mp3');
     HapticFeedback.mediumImpact();
     showDialog(
       context: context,
@@ -320,20 +316,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     if (!mounted) return;
 
-    final nowHour = DateTime.now().hour;
-    final isMorningSlot = nowHour < 15;
-    final activeSlotDone = isMorningSlot ? _morningDone : _eveningDone;
-    final bothSlotsDone = _morningDone && _eveningDone;
-    final starHint = !activeSlotDone
-        ? (isMorningSlot
-              ? 'Morning mission star is ready!'
-              : 'Evening mission star is ready!')
-        : bothSlotsDone
-        ? 'Both stars collected today. This run is practice only.'
-        : (isMorningSlot
-              ? 'Morning star already earned. Next star unlocks this evening.'
-              : 'Evening star already earned. Next star unlocks tomorrow morning.');
-
     _lastPickerVoice = null;
     _playPickerVoice(AudioService().heroPickerVoiceFor(_selectedHero.id));
 
@@ -348,10 +330,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         unlockedWeaponIds: unlockedWeapons,
         selectedHero: _selectedHero,
         selectedWeapon: _selectedWeapon,
-        willEarnStarNow: !activeSlotDone,
-        starHint: starHint,
-        morningDone: _morningDone,
-        eveningDone: _eveningDone,
         onHeroSelected: (hero) async {
           await _heroService.selectHero(hero.id);
           setState(() => _selectedHero = hero);
@@ -595,30 +573,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(width: statPairSpacing),
                       Text(
-                        '$_todayBrushCount/2',
+                        '$_todayBrushCount',
                         style: TextStyle(
-                          color: _todayBrushCount >= 2
+                          color: _todayBrushCount > 0
                               ? const Color(0xFF69F0AE)
                               : Colors.white.withValues(alpha: 0.6),
                           fontWeight: FontWeight.bold,
                           fontSize: statValueSize,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        _morningDone ? Icons.wb_sunny : Icons.wb_sunny_outlined,
-                        color: _morningDone ? Colors.amber : Colors.white38,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        _eveningDone
-                            ? Icons.nightlight_round
-                            : Icons.nightlight_outlined,
-                        color: _eveningDone
-                            ? const Color(0xFF90CAF9)
-                            : Colors.white38,
-                        size: 20,
                       ),
                     ],
                   ),
@@ -803,11 +765,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 ),
                                               ],
                                             ),
-                                            child: Icon(
-                                              _selectedWeapon.icon,
-                                              color:
-                                                  _selectedWeapon.primaryColor,
-                                              size: 26,
+                                            child: ClipOval(
+                                              child: Image.asset(
+                                                _selectedWeapon.imagePath,
+                                                width: 46,
+                                                height: 46,
+                                                fit: BoxFit.cover,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -939,10 +903,6 @@ class _PreBrushPicker extends StatefulWidget {
   final List<String> unlockedWeaponIds;
   final HeroCharacter selectedHero;
   final WeaponItem selectedWeapon;
-  final bool willEarnStarNow;
-  final String starHint;
-  final bool morningDone;
-  final bool eveningDone;
   final ValueChanged<HeroCharacter> onHeroSelected;
   final ValueChanged<WeaponItem> onWeaponSelected;
   final VoidCallback onGo;
@@ -954,10 +914,6 @@ class _PreBrushPicker extends StatefulWidget {
     required this.unlockedWeaponIds,
     required this.selectedHero,
     required this.selectedWeapon,
-    required this.willEarnStarNow,
-    required this.starHint,
-    required this.morningDone,
-    required this.eveningDone,
     required this.onHeroSelected,
     required this.onWeaponSelected,
     required this.onGo,

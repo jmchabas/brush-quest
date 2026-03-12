@@ -19,6 +19,7 @@ class WeaponItem {
   final Color primaryColor;
   final Color secondaryColor;
   final IconData icon;
+  final String imagePath;
 
   const WeaponItem({
     required this.id,
@@ -29,6 +30,7 @@ class WeaponItem {
     required this.primaryColor,
     required this.secondaryColor,
     required this.icon,
+    required this.imagePath,
   });
 }
 
@@ -46,6 +48,7 @@ class WeaponService {
       primaryColor: Color(0xFF7C4DFF),
       secondaryColor: Color(0xFFB388FF),
       icon: Icons.flash_on,
+      imagePath: 'assets/images/weapon_star_blaster.png',
     ),
     WeaponItem(
       id: 'flame_sword',
@@ -56,6 +59,7 @@ class WeaponService {
       primaryColor: Color(0xFFFF6D00),
       secondaryColor: Color(0xFFFFAB40),
       icon: Icons.local_fire_department,
+      imagePath: 'assets/images/weapon_flame_sword.png',
     ),
     WeaponItem(
       id: 'ice_hammer',
@@ -66,6 +70,7 @@ class WeaponService {
       primaryColor: Color(0xFF40C4FF),
       secondaryColor: Color(0xFF80D8FF),
       icon: Icons.ac_unit,
+      imagePath: 'assets/images/weapon_ice_hammer.png',
     ),
     WeaponItem(
       id: 'lightning_wand',
@@ -76,6 +81,7 @@ class WeaponService {
       primaryColor: Color(0xFFFFD600),
       secondaryColor: Color(0xFFFFFF00),
       icon: Icons.bolt,
+      imagePath: 'assets/images/weapon_lightning_wand.png',
     ),
     WeaponItem(
       id: 'vine_whip',
@@ -86,6 +92,7 @@ class WeaponService {
       primaryColor: Color(0xFF00E676),
       secondaryColor: Color(0xFF69F0AE),
       icon: Icons.eco,
+      imagePath: 'assets/images/weapon_vine_whip.png',
     ),
     WeaponItem(
       id: 'cosmic_burst',
@@ -96,6 +103,7 @@ class WeaponService {
       primaryColor: Color(0xFFFF4081),
       secondaryColor: Color(0xFFFFD54F),
       icon: Icons.auto_awesome,
+      imagePath: 'assets/images/weapon_cosmic_burst.png',
     ),
   ];
 
