@@ -4,7 +4,12 @@
 An Android app to help 7-year-old boys build a toothbrushing habit through gamification.
 Theme: Space Rangers vs Cavity Monsters.
 
-## Status: v4 — Settings + Firebase Auth/Sync
+## Status: v7 — Play Store submission prep (feature-complete)
+
+## Cross-Session Coordination
+- **FEATURE FREEZE**: No new features until 100 real users (D-003). Only: bug fixes, Play Store requirements, analytics.
+- After significant work (commits, deploys, decisions), auto-update your workstream section in `STATUS.md`. Don't wait for Jim to ask.
+- For strategy/CEO mode, use `/ceo`. For manual status update, use `/status`.
 
 ## Pre-Ship UX Checklist
 Before shipping any screen or flow, do a first-person walkthrough as the end user (a 7-year-old who can't read). For every screen ask:
@@ -102,6 +107,15 @@ assets/
 - Periodic music health check (every 5s) restarts music if player gets stuck
 - Mute state persisted in SharedPreferences
 
+## Quality Gates
+After modifying `.dart` files, run these before reporting done:
+1. **`dart analyze`** — static analysis (auto-runs via Claude Code hook on Edit/Write)
+2. **`flutter test`** — unit/widget tests must pass
+3. **`semgrep --config auto lib/`** — security scanning (if installed)
+4. **`gitleaks detect --source .`** — secret detection (if installed)
+
+If a gate fails, fix the issue before presenting the result.
+
 ## Build & Run
 ```bash
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"
@@ -110,6 +124,22 @@ flutter run          # run on connected device/emulator
 flutter build apk    # build release APK
 ```
 Note: JDK 17 required. JDK 25 is incompatible with AGP 8.11.1.
+
+## Landing Page / Marketing Copy Rules
+
+### Copy & Messaging
+1. **Write from the parent's lived experience, not the product's features.** Ask: "What does the parent already feel about this problem?" Acknowledge it with humor or empathy, then pivot to the outcome. Read each line aloud — would a real person say this to a friend?
+2. **Never state a business commitment the codebase can't guarantee.** No "Free Forever," "No Tracking," "No Ads Ever" unless architecturally enforced. Check actual dependencies (Firebase Analytics, ad SDKs) before making privacy/pricing claims. Use softer language ("No in-app purchases," "Kid-safe privacy").
+3. **Kill filler sections.** If two sections say the same thing (e.g., stats bar + feature cards both listing "4 quadrants, 2 minutes"), cut the weaker one. Every section must earn its scroll.
+
+### Visual / Technical
+4. **Lock aspect ratios for all media.** Every `<img>` must have `height: auto` + explicit `aspect-ratio` in CSS matching source dimensions. Never rely on `width: 100%` alone. Verify at 320px, 768px, 1440px widths.
+5. **Check every absolute/fixed element for overlap at all breakpoints.** Test at 375px, 768px, 1440px. Overlapping text is never acceptable.
+
+### Process
+6. **Do a parent CUJ walkthrough before shipping.** Simulate a tired parent scrolling on their phone at 9pm. Walk each section: "Does this make me trust the app more, or is it noise?"
+7. **Story sections center the child, not the parent.** The parent is the buyer but the child is the user. The child's transformation is the story.
+8. **Self-review checklist before done:** (a) Every factual claim true given the codebase? (b) Would I cringe reading this copy on someone else's site? (c) Tested every image at 3 viewport widths? (d) Does each section say something the previous didn't?
 
 ## Next Steps / Ideas
 - Morning/evening detection (sun/moon icon)

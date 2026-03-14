@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brush Quest - Kids Toothbrushing App That Makes Brushing Fun</title>
-  <meta name="description" content="Your kid will beg to brush their teeth. Free Android app that turns 2 minutes of brushing into a space battle. 10 worlds, 70 monsters.">
+  <meta name="description" content="Your kid will beg to brush their teeth. Android app that turns 2 minutes of brushing into a space battle. 10 worlds, 70 monsters.">
   <meta name="author" content="Jim Chabas">
   <meta name="theme-color" content="#0D0B2E">
   <meta name="robots" content="index, follow">
@@ -23,7 +23,7 @@
 
   <!-- Open Graph -->
   <meta property="og:title" content="Brush Quest - Kids Toothbrushing App That Makes Brushing Fun">
-  <meta property="og:description" content="Your kid will actually ask to brush their teeth. Free Android toothbrushing app for kids — no ads, no tracking.">
+  <meta property="og:description" content="Your kid will actually ask to brush their teeth. Android toothbrushing app for kids — 10 worlds, 70 monsters, no ads.">
   <meta property="og:image" content="https://jmchabas.github.io/brush-quest/feature-graphic.jpg">
   <meta property="og:image:width" content="1024">
   <meta property="og:image:height" content="500">
@@ -34,7 +34,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Brush Quest - Kids Toothbrushing App That Makes Brushing Fun">
-  <meta name="twitter:description" content="Your kid will actually ask to brush their teeth. Free Android toothbrushing app for kids — no ads, no tracking.">
+  <meta name="twitter:description" content="Your kid will actually ask to brush their teeth. Android toothbrushing app for kids — 10 worlds, 70 monsters, no ads.">
   <meta name="twitter:image" content="https://jmchabas.github.io/brush-quest/feature-graphic.jpg">
 
   <!-- Structured Data: SoftwareApplication -->
@@ -76,7 +76,7 @@
         "name": "Is it really free?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes, completely. No ads, no in-app purchases, no premium tiers, no subscriptions. Jim built it for his own kids and shares it with other families for free."
+          "text": "Yes. No ads, no in-app purchases, no subscriptions. Built for Jim's own kids and shared with other families."
         }
       },
       {
@@ -84,7 +84,7 @@
         "name": "Is it safe for my child?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Brush Quest collects no personal data. The optional Google Sign-In is only for cloud saves. There are no social features, no chat, no links to external sites. The app is designed to be COPPA-compliant."
+          "text": "The optional Google Sign-In is only for cloud saves. There are no social features, no chat, no links to external sites. The app is designed to be COPPA-compliant."
         }
       },
       {
@@ -312,6 +312,9 @@
     .hero-graphic {
       width: 100%;
       max-width: 560px;
+      height: auto;
+      aspect-ratio: 1024 / 500;
+      object-fit: contain;
       border-radius: 20px;
       margin-bottom: 32px;
       box-shadow:
@@ -516,6 +519,7 @@
 
     .phone-bezel img {
       width: 100%;
+      height: auto;
       border-radius: 18px;
       display: block;
     }
@@ -755,17 +759,15 @@
 
     .story-photo {
       width: 100%;
-      aspect-ratio: 4 / 3;
       border-radius: 20px;
-      border: 2px dashed rgba(124, 77, 255, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg-card);
-      color: var(--white-dim);
-      font-size: 0.9rem;
-      text-align: center;
-      padding: 24px;
+      overflow: hidden;
+    }
+
+    .story-photo img {
+      width: 100%;
+      height: auto;
+      border-radius: 20px;
+      display: block;
     }
 
     /* === FAQ === */
@@ -1128,20 +1130,14 @@
     <!-- ========== HERO ========== -->
     <section class="hero" id="hero">
       <p class="hero-pain">"Every night, the same battle.<br>'Brush your teeth!' &hellip; 'I don't want to!'"</p>
-      <p class="hero-pivot">What if they begged to fight cavity monsters instead?</p>
+      <p class="hero-pivot">What if brushing was the one battle they wanted to fight?</p>
       <img src="feature-graphic.jpg" alt="Brush Quest - A space astronaut hero fighting cavity monsters with a glowing toothbrush" class="hero-graphic" width="1024" height="500" fetchpriority="high">
       <h1>Brush Quest</h1>
-      <p class="tagline">10 worlds. 70 monsters. 2 minutes of brushing. 0 arguments.</p>
+      <p class="tagline">The toothbrushing app that turns 2 minutes into an adventure.</p>
       <a href="https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" class="hero-cta" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
-        Download Free for Android
+        Download for Android
       </a>
-      <div class="numbers-bar">
-        <span class="number-stat">&#x1F30D; 10 Worlds</span>
-        <span class="number-stat">&#x1F47E; 70 Monsters</span>
-        <span class="number-stat">&#x1F9D1;&#x200D;&#x1F680; 12 Heroes &amp; Weapons</span>
-        <span class="number-stat">&#x2B50; 100% Free</span>
-      </div>
       <div class="trust-badges">
         <span class="trust-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
@@ -1149,11 +1145,7 @@
         </span>
         <span class="trust-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-          No Tracking
-        </span>
-        <span class="trust-badge">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-          Free Forever
+          No In-App Purchases
         </span>
         <span class="trust-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
@@ -1161,10 +1153,6 @@
         </span>
       </div>
       <p class="hero-note">Android phones and tablets</p>
-      <div class="scroll-hint">
-        Scroll to learn more
-        <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
-      </div>
     </section>
 
     <!-- ========== SCREENSHOTS ========== -->
@@ -1178,25 +1166,25 @@
       <div class="phone-scroll">
         <div class="phone-frame">
           <div class="phone-bezel">
-            <img src="screenshot_home.jpg" alt="Home screen showing hero character Blaze with stats and Brush Now button" loading="lazy" width="540" height="1200">
+            <img src="screenshot_home.jpg" alt="Home screen showing hero character Blaze with stats and Brush Now button" loading="lazy" width="540" height="1205">
           </div>
           <p class="phone-caption">Choose your hero</p>
         </div>
         <div class="phone-frame">
           <div class="phone-bezel">
-            <img src="screenshot_battle.jpg" alt="Battle screen fighting Lord Tartar monster with POW effects in Candy Crater world" loading="lazy" width="540" height="1200">
+            <img src="screenshot_battle.jpg" alt="Battle screen fighting Lord Tartar monster with POW effects in Candy Crater world" loading="lazy" width="540" height="1205">
           </div>
           <p class="phone-caption">Brush to attack monsters</p>
         </div>
         <div class="phone-frame">
           <div class="phone-bezel">
-            <img src="screenshot_shop.jpg" alt="Heroes and Weapons shop showing unlockable characters Blaze, Frost, Bolt, Shadow" loading="lazy" width="540" height="1200">
+            <img src="screenshot_shop.jpg" alt="Heroes and Weapons shop showing unlockable characters Blaze, Frost, Bolt, Shadow" loading="lazy" width="540" height="1205">
           </div>
           <p class="phone-caption">Unlock heroes &amp; weapons</p>
         </div>
         <div class="phone-frame">
           <div class="phone-bezel">
-            <img src="screenshot_victory.jpg" alt="Victory screen with confetti, star reward, and treasure chest after brushing session" loading="lazy" width="540" height="1200">
+            <img src="screenshot_victory.jpg" alt="Victory screen with confetti, star reward, and treasure chest after brushing session" loading="lazy" width="540" height="1205">
           </div>
           <p class="phone-caption">Earn stars &amp; open reward chests</p>
         </div>
@@ -1207,14 +1195,14 @@
     <div class="mid-cta">
       <a href="https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
-        Like what you see? Download Free
+        Get Brush Quest for Android
       </a>
     </div>
 
     <!-- ========== GAMEPLAY VIDEO ========== -->
     <section class="video-section">
       <div class="video-phone">
-        <video muted loop playsinline preload="none" poster="gameplay-poster.jpg" aria-label="Gameplay video showing a child brushing their teeth while fighting monsters in Brush Quest">
+        <video muted loop playsinline controls preload="none" poster="gameplay-poster.jpg" aria-label="Gameplay video showing a child brushing their teeth while fighting monsters in Brush Quest">
           <source src="gameplay.mp4" type="video/mp4">
         </video>
       </div>
@@ -1266,34 +1254,29 @@
         </div>
         <div class="features-grid">
           <div class="feature-card">
-            <span class="feature-icon">&#x23F1;&#xFE0F;</span>
-            <h3>2 Minutes, Zero Arguments</h3>
-            <p>Dentist-recommended brushing time split into 4 mouth zones. A voice guide and tooth diagram show exactly where to brush. They won't want to stop.</p>
-          </div>
-          <div class="feature-card">
             <span class="feature-icon">&#x1F47E;</span>
-            <h3>70 Monsters. New Ones Every Session.</h3>
-            <p>Collectible monster cards across 10 space worlds. Each brush session reveals new creatures. "Can I brush again?" &mdash; actual words you'll hear.</p>
+            <h3>They'll Beg to Brush Again</h3>
+            <p>70 monsters across 10 worlds. New enemies every session, unlockable heroes and weapons. The "one more level" loop &mdash; for dental hygiene.</p>
           </div>
           <div class="feature-card">
-            <span class="feature-icon">&#x1F9D1;&#x200D;&#x1F680;</span>
-            <h3>They Pick the Hero. You Pick Your Battles.</h3>
-            <p>6 heroes and 6 weapons to unlock. Kids earn stars from brushing and choose their own character. Ownership drives consistency.</p>
-          </div>
-          <div class="feature-card">
-            <span class="feature-icon">&#x1FA90;</span>
-            <h3>10 Worlds of "Can I Brush Again?"</h3>
-            <p>From Candy Crater to Dark Dimension. Progress unlocks naturally &mdash; no pressure, just adventure.</p>
-          </div>
-          <div class="feature-card feature-highlight">
-            <span class="feature-icon">&#x1F49A;</span>
-            <h3>Free. No Catches.</h3>
-            <p>No ads. No in-app purchases. No subscriptions. No data collection. Built by a parent for parents. Your kid's attention isn't for sale.</p>
+            <span class="feature-icon">&#x23F1;&#xFE0F;</span>
+            <h3>Two Minutes. Four Zones. Done.</h3>
+            <p>Voice guide tells them where to brush: top left, top right, bottom left, bottom right. You press start. They follow along.</p>
           </div>
           <div class="feature-card">
             <span class="feature-icon">&#x1F399;&#xFE0F;</span>
             <h3>Works Before They Can Read</h3>
-            <p>Voice guidance and icons throughout. Designed for children ages 5&ndash;12 who can't read yet. They can play independently from day one.</p>
+            <p>Every instruction spoken aloud. Visual mouth guide shows which teeth to brush. Designed for ages 5 and up.</p>
+          </div>
+          <div class="feature-card">
+            <span class="feature-icon">&#x2B50;</span>
+            <h3>Earned, Never Bought</h3>
+            <p>6 heroes and 6 weapons, unlocked by brushing consistently. No in-app purchases. Every reward comes from showing up.</p>
+          </div>
+          <div class="feature-card feature-highlight">
+            <span class="feature-icon">&#x1F9D1;&#x200D;&#x1F680;</span>
+            <h3>Built by a Dad. Tested by a 7-Year-Old.</h3>
+            <p>Not a corporation. A dad who got tired of the brushing fight. Tested on his own kids, every single night.</p>
           </div>
         </div>
       </div>
@@ -1303,23 +1286,22 @@
     <section class="story-section">
       <div class="container">
         <div class="section-title">
-          <h2>Built by a Dad, Tested by His Kids</h2>
+          <h2>How Oliver Stopped Hating Toothbrushing</h2>
         </div>
         <div class="story-grid">
           <div class="story-text">
-            <h3>This app exists because of a 7-year-old named Oliver.</h3>
-            <p>Every night was the same fight. "Go brush your teeth." "I don't want to." Repeat until someone loses their patience. Sound familiar?</p>
-            <p>So his dad Jim &mdash; a developer &mdash; built a game. Oliver became the lead designer: he chose the heroes, picked which monsters were scary enough, and demanded surprise rewards after every session.</p>
-            <p>Oliver now reminds US it's brushing time. He literally runs to the bathroom. We created a monster. A cavity-fighting, star-collecting, hero-unlocking monster.</p>
-            <p>Then something unexpected happened. Oliver's 3-year-old brother Theo saw the app and insisted on brushing "like a big boy." Two kids, fighting over who gets to brush first &mdash; making dental hygiene fun instead of a fight.</p>
+            <h3>Oliver is 7. He used to fight his parents every single night.</h3>
+            <p>"Go brush your teeth." "I don't want to." Repeat until someone loses their patience. Sound familiar?</p>
+            <p>Then his dad built him a game. Oliver became the lead designer: he chose which heroes looked cool, which monsters were scary enough, and demanded surprise rewards after every session.</p>
+            <p>Now Oliver reminds his parents it's brushing time. He runs to the bathroom. He fights over who goes first with his 3-year-old brother Theo, who insists on brushing "like a big boy."</p>
+            <p>Two kids. Zero arguments. The same app, shared with your family.</p>
             <div class="story-quote">
               <p>"I built this because no app on the store felt right &mdash; too many ads, too much screen time guilt. This one just helps them brush."</p>
-              <span class="quote-attr">&mdash; Jim, parent to parent</span>
+              <span class="quote-attr">&mdash; Jim, Oliver's dad</span>
             </div>
-            <p>Brush Quest isn't a corporate product. It's a family project, shared with yours.</p>
           </div>
           <div class="story-photo">
-            Photo coming soon &mdash;<br>Jim, Oliver (7) &amp; Theo (3)<br>testing Brush Quest together
+            <img src="family-photo.jpg" alt="Jim reading a bedtime story with Oliver (7) and Theo (3)" width="800" height="721" loading="lazy">
           </div>
         </div>
       </div>
@@ -1334,11 +1316,11 @@
         <div class="faq-list">
           <details>
             <summary>Is it really free?</summary>
-            <div class="faq-answer">Yes, completely. No ads, no in-app purchases, no premium tiers, no subscriptions. Jim built it for his own kids and shares it with other families for free.</div>
+            <div class="faq-answer">Yes. No ads, no in-app purchases, no subscriptions. Built for Jim's own kids and shared with other families.</div>
           </details>
           <details>
             <summary>Is it safe for my child?</summary>
-            <div class="faq-answer">Brush Quest collects no personal data. The optional Google Sign-In is only for cloud saves (so you don't lose progress if you switch phones). There are no social features, no chat, no links to external sites. The app is designed to be COPPA-compliant.</div>
+            <div class="faq-answer">The optional Google Sign-In is only for cloud saves (so you don't lose progress if you switch phones). There are no social features, no chat, no links to external sites. The app is designed to be COPPA-compliant.</div>
           </details>
           <details>
             <summary>Does it work offline?</summary>
@@ -1398,11 +1380,11 @@
           </span>
           <span class="trust-badge">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-            No Tracking
+            No In-App Purchases
           </span>
           <span class="trust-badge">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-            Free Forever
+            Kid-Safe Privacy
           </span>
         </div>
         <button class="share-btn" onclick="shareApp()">
@@ -1427,10 +1409,10 @@
 
   <!-- Sticky CTA bar -->
   <div class="sticky-cta" id="stickyCta">
-    <span class="sticky-cta-text">Free toothbrushing app for kids</span>
+    <span class="sticky-cta-text">Toothbrushing app for kids</span>
     <a href="https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" rel="noopener noreferrer">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
-      Download Free
+      Download Now
     </a>
   </div>
 
@@ -1468,7 +1450,7 @@
         btns.forEach(function(btn) {
           btn.removeAttribute('href');
           btn.style.cursor = 'default';
-          btn.innerHTML = btn.innerHTML.replace(/Download.*/, 'Coming Soon to iOS');
+          btn.innerHTML = btn.innerHTML.replace(/Download[^<]*|Get[^<]*/, 'Coming Soon to iOS');
         });
         var sub = document.querySelector('.download-sub');
         if (sub) sub.textContent = 'Android only for now — share this with an Android friend!';
