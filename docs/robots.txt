@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://jmchabas.github.io/brush-quest/sitemap.xml
