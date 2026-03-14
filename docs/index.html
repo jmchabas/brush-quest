@@ -3,22 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Brush Quest - Space Rangers vs Cavity Monsters</title>
-  <meta name="description" content="A fun toothbrushing game for kids aged 5-12. Fight monsters, earn stars, and unlock heroes while building healthy brushing habits!">
+  <title>Brush Quest - Turn Toothbrushing Into an Adventure</title>
+  <meta name="description" content="Your kid will actually ask to brush their teeth. A free Android game that turns 2 minutes of brushing into an epic space battle against cavity monsters.">
   <meta name="theme-color" content="#0D0B2E">
 
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+
   <!-- Open Graph -->
-  <meta property="og:title" content="Brush Quest - Space Rangers vs Cavity Monsters">
-  <meta property="og:description" content="A fun toothbrushing game for kids aged 5-12. Fight monsters, earn stars, and unlock heroes while building healthy brushing habits!">
-  <meta property="og:image" content="feature-graphic.png">
+  <meta property="og:title" content="Brush Quest - Turn Toothbrushing Into an Adventure">
+  <meta property="og:description" content="Your kid will actually ask to brush their teeth. Free Android game — no ads, no tracking.">
+  <meta property="og:image" content="https://brushquest.app/feature-graphic.png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://brushquest.app">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Brush Quest - Space Rangers vs Cavity Monsters">
-  <meta name="twitter:description" content="A fun toothbrushing game for kids aged 5-12. Fight monsters, earn stars, unlock heroes!">
-  <meta name="twitter:image" content="feature-graphic.png">
+  <meta name="twitter:title" content="Brush Quest - Turn Toothbrushing Into an Adventure">
+  <meta name="twitter:description" content="Your kid will actually ask to brush their teeth. Free Android game — no ads, no tracking.">
+  <meta name="twitter:image" content="https://brushquest.app/feature-graphic.png">
 
   <style>
     /* === Reset & Base === */
@@ -154,6 +159,24 @@
       position: relative;
     }
 
+    .hero-pain {
+      font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+      color: var(--white-soft);
+      font-style: italic;
+      margin-bottom: 16px;
+      max-width: 520px;
+    }
+
+    .hero-pivot {
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      font-weight: 800;
+      margin-bottom: 28px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
     .hero-graphic {
       width: 100%;
       max-width: 560px;
@@ -182,17 +205,9 @@
     }
 
     .hero .tagline {
-      font-size: clamp(1.1rem, 3vw, 1.5rem);
-      font-weight: 600;
-      color: var(--cyan);
-      margin-bottom: 8px;
-      text-shadow: 0 0 20px var(--cyan-glow);
-    }
-
-    .hero .subtitle {
       font-size: clamp(1rem, 2.5vw, 1.2rem);
       color: var(--white-soft);
-      margin-bottom: 40px;
+      margin-bottom: 32px;
     }
 
     .hero-cta {
@@ -209,6 +224,7 @@
       transition: all 0.3s ease;
       box-shadow: 0 4px 30px rgba(124, 77, 255, 0.5);
       animation: pulse-btn 2s ease-in-out infinite;
+      margin-bottom: 24px;
     }
 
     .hero-cta:hover {
@@ -225,6 +241,35 @@
       width: 24px;
       height: 24px;
       fill: currentColor;
+    }
+
+    /* Trust badges */
+    .trust-badges {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .trust-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--cyan);
+    }
+
+    .trust-badge svg {
+      width: 16px;
+      height: 16px;
+      fill: var(--cyan);
+    }
+
+    .hero-note {
+      font-size: 0.8rem;
+      color: var(--white-dim);
     }
 
     .scroll-hint {
@@ -274,6 +319,86 @@
       margin: 0 auto;
     }
 
+    /* === Screenshots Carousel === */
+    .screenshots {
+      padding: 80px 0;
+    }
+
+    .phone-scroll {
+      display: flex;
+      gap: 32px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 24px 24px;
+      scrollbar-width: none;
+    }
+
+    .phone-scroll::-webkit-scrollbar { display: none; }
+
+    .phone-frame {
+      flex: 0 0 auto;
+      scroll-snap-align: center;
+      text-align: center;
+    }
+
+    .phone-bezel {
+      width: 240px;
+      background: #1a1a2e;
+      border-radius: 28px;
+      padding: 12px 8px;
+      border: 2px solid rgba(124, 77, 255, 0.25);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
+    }
+
+    .phone-bezel:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 8px 40px rgba(0, 229, 255, 0.2);
+      transform: translateY(-4px);
+    }
+
+    .phone-bezel img {
+      width: 100%;
+      border-radius: 18px;
+      display: block;
+    }
+
+    .phone-caption {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--white-soft);
+    }
+
+    /* === Video Section === */
+    .video-section {
+      text-align: center;
+      padding: 40px 0 80px;
+    }
+
+    .video-phone {
+      display: inline-block;
+      background: #1a1a2e;
+      border-radius: 28px;
+      padding: 12px 8px;
+      border: 2px solid rgba(124, 77, 255, 0.25);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .video-phone video {
+      width: 260px;
+      border-radius: 18px;
+      display: block;
+    }
+
+    .video-caption {
+      margin-top: 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--white-soft);
+    }
+
     /* === How It Works === */
     .steps {
       display: grid;
@@ -282,7 +407,6 @@
       position: relative;
     }
 
-    /* Connection line */
     .steps::before {
       content: '';
       position: absolute;
@@ -341,6 +465,12 @@
       color: var(--white);
     }
 
+    .step p {
+      font-size: 0.85rem;
+      color: var(--white-dim);
+      margin-top: 4px;
+    }
+
     /* === Features === */
     .features-grid {
       display: grid;
@@ -389,6 +519,139 @@
       background: linear-gradient(135deg, rgba(124, 77, 255, 0.1), rgba(0, 229, 255, 0.05));
     }
 
+    /* === Story Section === */
+    .story-section {
+      padding: 80px 0;
+    }
+
+    .story-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .story-text h3 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--white);
+    }
+
+    .story-text p {
+      font-size: 1rem;
+      color: var(--white-soft);
+      margin-bottom: 14px;
+      line-height: 1.7;
+    }
+
+    .story-photo {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 20px;
+      border: 2px dashed rgba(124, 77, 255, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-card);
+      color: var(--white-dim);
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 24px;
+    }
+
+    /* === Quotes Section === */
+    .quotes-section {
+      padding: 60px 0;
+    }
+
+    .quotes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .quote-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(124, 77, 255, 0.15);
+      border-radius: 20px;
+      padding: 28px 24px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .quote-card p {
+      font-size: 1.05rem;
+      color: var(--white-soft);
+      line-height: 1.6;
+      font-style: italic;
+      margin-bottom: 14px;
+    }
+
+    .quote-attr {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--cyan);
+      font-style: normal !important;
+    }
+
+    /* === FAQ === */
+    .faq-section {
+      padding: 80px 0;
+    }
+
+    .faq-list {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .faq-list details {
+      background: var(--bg-card);
+      border: 1px solid rgba(124, 77, 255, 0.15);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .faq-list details[open] {
+      border-color: rgba(0, 229, 255, 0.3);
+    }
+
+    .faq-list summary {
+      padding: 18px 24px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--white);
+    }
+
+    .faq-list summary::-webkit-details-marker { display: none; }
+
+    .faq-list summary::after {
+      content: '+';
+      font-size: 1.4rem;
+      font-weight: 300;
+      color: var(--cyan);
+      transition: transform 0.2s;
+    }
+
+    .faq-list details[open] summary::after {
+      transform: rotate(45deg);
+    }
+
+    .faq-list .faq-answer {
+      padding: 0 24px 18px;
+      font-size: 0.95rem;
+      color: var(--white-soft);
+      line-height: 1.6;
+    }
+
     /* === Download Section === */
     .download {
       text-align: center;
@@ -410,23 +673,17 @@
     .download-box h2 {
       font-size: clamp(1.8rem, 4vw, 2.5rem);
       font-weight: 800;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       background: linear-gradient(135deg, var(--white), var(--cyan));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
 
-    .download-box .badge {
-      display: inline-block;
-      background: rgba(0, 229, 255, 0.15);
-      color: var(--cyan);
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 24px;
-      border: 1px solid rgba(0, 229, 255, 0.2);
+    .download-box .download-sub {
+      color: var(--white-soft);
+      font-size: 1.05rem;
+      margin-bottom: 28px;
     }
 
     .download-btn {
@@ -459,7 +716,7 @@
     .install-steps {
       text-align: left;
       display: inline-block;
-      margin: 0 auto 32px;
+      margin: 0 auto 28px;
       color: var(--white-soft);
       font-size: 0.95rem;
     }
@@ -473,61 +730,41 @@
       color: var(--white);
     }
 
-    .also-available {
-      margin-top: 32px;
-      padding-top: 28px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .also-available p {
-      font-size: 0.85rem;
-      color: var(--white-dim);
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-weight: 600;
-    }
-
-    .store-badges {
+    .download-trust {
       display: flex;
       justify-content: center;
       gap: 16px;
       flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .store-badge {
+    .share-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 20px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 12px;
-      color: var(--white-dim);
-      font-size: 0.85rem;
-      font-weight: 500;
-      text-decoration: none;
+      padding: 10px 24px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 50px;
+      color: var(--white-soft);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
       transition: all 0.3s ease;
     }
 
-    .store-badge:hover {
-      border-color: rgba(255, 255, 255, 0.25);
-      color: var(--white-soft);
+    .share-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--cyan);
+      color: var(--cyan);
     }
 
-    .store-badge svg {
-      width: 20px;
-      height: 20px;
+    .share-btn svg {
+      width: 18px;
+      height: 18px;
       fill: currentColor;
-    }
-
-    .coming-soon-tag {
-      font-size: 0.7rem;
-      background: rgba(124, 77, 255, 0.3);
-      color: var(--purple-light);
-      padding: 2px 8px;
-      border-radius: 8px;
-      font-weight: 600;
     }
 
     /* === Footer === */
@@ -592,6 +829,18 @@
       .hero-graphic { margin-bottom: 24px; }
 
       .scroll-hint { display: none; }
+
+      .story-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .quotes-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .phone-bezel { width: 200px; }
     }
 
     @media (max-width: 480px) {
@@ -608,7 +857,17 @@
       .hero-cta { padding: 16px 32px; font-size: 1.1rem; }
       .download-btn { padding: 16px 36px; font-size: 1.1rem; }
 
-      .store-badges { flex-direction: column; align-items: center; }
+      .trust-badges { gap: 12px; }
+      .trust-badge { font-size: 0.75rem; }
+
+      .phone-bezel { width: 180px; }
+    }
+
+    @media (min-width: 769px) {
+      .phone-scroll {
+        justify-content: center;
+        overflow-x: visible;
+      }
     }
   </style>
 </head>
@@ -626,18 +885,84 @@
 
     <!-- ========== HERO ========== -->
     <section class="hero">
-      <img src="feature-graphic.png" alt="Brush Quest - A space astronaut character surrounded by colorful cavity monsters" class="hero-graphic" width="1024" height="500">
+      <p class="hero-pain">"Every night, the same battle.<br>'Brush your teeth!' &hellip; 'I don't want to!'"</p>
+      <p class="hero-pivot">What if your kid actually asked to brush?</p>
+      <img src="feature-graphic.png" alt="Brush Quest - A space astronaut hero fighting cavity monsters with a glowing toothbrush" class="hero-graphic" width="1024" height="500">
       <h1>Brush Quest</h1>
-      <p class="tagline">Space Rangers vs Cavity Monsters</p>
-      <p class="subtitle">A fun toothbrushing game for kids aged 5&ndash;12</p>
+      <p class="tagline">A free Android game that turns 2 minutes of brushing into an epic space battle</p>
       <a href="#download" class="hero-cta">
         <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
-        Download Free
+        Download Free for Android
       </a>
+      <div class="trust-badges">
+        <span class="trust-badge">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          No Ads
+        </span>
+        <span class="trust-badge">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          No Tracking
+        </span>
+        <span class="trust-badge">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          Free Forever
+        </span>
+        <span class="trust-badge">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+          COPPA Safe
+        </span>
+      </div>
+      <p class="hero-note">Android phones and tablets</p>
       <div class="scroll-hint">
         Scroll to learn more
         <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
       </div>
+    </section>
+
+    <!-- ========== SCREENSHOTS ========== -->
+    <section class="screenshots">
+      <div class="container">
+        <div class="section-title">
+          <h2>See It In Action</h2>
+          <p>Real screenshots from the app your kid will love</p>
+        </div>
+      </div>
+      <div class="phone-scroll">
+        <div class="phone-frame">
+          <div class="phone-bezel">
+            <img src="screenshot_home.png" alt="Home screen showing hero character Blaze with stats and Brush Now button" loading="lazy">
+          </div>
+          <p class="phone-caption">Choose your hero</p>
+        </div>
+        <div class="phone-frame">
+          <div class="phone-bezel">
+            <img src="screenshot_battle.png" alt="Battle screen fighting Lord Tartar monster with POW effects in Candy Crater world" loading="lazy">
+          </div>
+          <p class="phone-caption">Brush to attack monsters</p>
+        </div>
+        <div class="phone-frame">
+          <div class="phone-bezel">
+            <img src="screenshot_shop.png" alt="Heroes and Weapons shop showing unlockable characters Blaze, Frost, Bolt, Shadow" loading="lazy">
+          </div>
+          <p class="phone-caption">Unlock heroes &amp; weapons</p>
+        </div>
+        <div class="phone-frame">
+          <div class="phone-bezel">
+            <img src="screenshot_cards.png" alt="Monster Cards album showing collectible cards across 10 worlds" loading="lazy">
+          </div>
+          <p class="phone-caption">Collect all 70 monster cards</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== GAMEPLAY VIDEO ========== -->
+    <section class="video-section">
+      <div class="video-phone">
+        <video autoplay muted loop playsinline>
+          <source src="gameplay.mp4" type="video/mp4">
+        </video>
+      </div>
+      <p class="video-caption">Monsters don't stand a chance</p>
     </section>
 
     <!-- ========== HOW IT WORKS ========== -->
@@ -645,28 +970,32 @@
       <div class="container">
         <div class="section-title">
           <h2>How It Works</h2>
-          <p>Four simple steps to make brushing teeth the best part of your kid's day</p>
+          <p>Four steps to make brushing the best part of your kid's day</p>
         </div>
         <div class="steps">
           <div class="step">
             <div class="step-icon">&#x1FAA5;</div>
             <span class="step-number">1</span>
-            <h3>Start Brushing</h3>
+            <h3>Tap "Brush Now"</h3>
+            <p>Pick a hero and go</p>
           </div>
           <div class="step">
             <div class="step-icon">&#x1F47E;</div>
             <span class="step-number">2</span>
             <h3>Fight Monsters</h3>
+            <p>Brushing powers attacks</p>
           </div>
           <div class="step">
             <div class="step-icon">&#x2B50;</div>
             <span class="step-number">3</span>
             <h3>Earn Stars</h3>
+            <p>Full 2 min = 1 star</p>
           </div>
           <div class="step">
             <div class="step-icon">&#x1F9D1;&#x200D;&#x1F680;</div>
             <span class="step-number">4</span>
-            <h3>Unlock Heroes</h3>
+            <h3>Unlock Rewards</h3>
+            <p>Heroes, weapons, worlds</p>
           </div>
         </div>
       </div>
@@ -676,40 +1005,123 @@
     <section>
       <div class="container">
         <div class="section-title">
-          <h2>Features</h2>
-          <p>Everything your child needs to build a healthy brushing habit</p>
+          <h2>Why Kids Love It</h2>
+          <p>And why parents love it even more</p>
         </div>
         <div class="features-grid">
           <div class="feature-card">
             <span class="feature-icon">&#x23F1;&#xFE0F;</span>
-            <h3>2-Minute Guided Timer</h3>
-            <p>Dentist-recommended brushing time split into 4 mouth zones with voice guidance and a visual tooth diagram.</p>
+            <h3>2 Minutes Flies By</h3>
+            <p>Dentist-recommended brushing time split into 4 mouth zones. A voice guide and tooth diagram show exactly where to brush. They won't want to stop.</p>
           </div>
           <div class="feature-card">
-            <span class="feature-icon">&#x1FA90;</span>
-            <h3>10 Space Worlds</h3>
-            <p>From Nebula Station to Dark Dimension &mdash; explore unique planets with themed monsters and battle backgrounds.</p>
+            <span class="feature-icon">&#x1F47E;</span>
+            <h3>Gotta Defeat 'Em All</h3>
+            <p>70 unique monster cards to collect across 10 space worlds. Each brush session reveals new monsters. "Can I brush again?" &mdash; actual words you'll hear.</p>
           </div>
           <div class="feature-card">
             <span class="feature-icon">&#x1F9D1;&#x200D;&#x1F680;</span>
-            <h3>6 Heroes &amp; 6 Weapons</h3>
-            <p>Unlock new Space Rangers and powerful weapons as your child earns stars from brushing consistently.</p>
+            <h3>Their Hero, Their Way</h3>
+            <p>6 heroes and 6 weapons to unlock. Kids earn stars from brushing and choose their own character. Ownership drives consistency.</p>
           </div>
           <div class="feature-card">
-            <span class="feature-icon">&#x1F0CF;</span>
-            <h3>70 Monster Cards</h3>
-            <p>Collect unique monster cards with names, titles, and voice descriptions. Gotta defeat 'em all!</p>
+            <span class="feature-icon">&#x1FA90;</span>
+            <h3>A New World Every Week</h3>
+            <p>10 themed space worlds from Candy Crater to Dark Dimension. Progress unlocks naturally &mdash; no pressure, just adventure.</p>
           </div>
           <div class="feature-card feature-highlight">
             <span class="feature-icon">&#x1F49A;</span>
-            <h3>Free Forever</h3>
-            <p>No ads, no in-app purchases, no subscriptions. Made by a parent, for parents. Completely free.</p>
+            <h3>Free. No Catches.</h3>
+            <p>No ads. No in-app purchases. No subscriptions. No data collection. Built by a parent for parents. Your kid's attention isn't for sale.</p>
           </div>
           <div class="feature-card">
-            <span class="feature-icon">&#x2601;&#xFE0F;</span>
-            <h3>Cloud Save</h3>
-            <p>Optional Google Sign-In to back up progress. Switch devices without losing your child's stars and unlocks.</p>
+            <span class="feature-icon">&#x1F399;&#xFE0F;</span>
+            <h3>No Reading Required</h3>
+            <p>Voice guidance and icons throughout. Designed for kids 5 and up who can't read yet. They can play independently from day one.</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== OUR STORY ========== -->
+    <section class="story-section">
+      <div class="container">
+        <div class="section-title">
+          <h2>Built by a Dad, Tested by His Kids</h2>
+        </div>
+        <div class="story-grid">
+          <div class="story-text">
+            <h3>This app exists because of a 7-year-old named Oliver.</h3>
+            <p>Every night was the same fight. "Go brush your teeth." "I don't want to." Repeat until someone loses their patience. Sound familiar?</p>
+            <p>So his dad Jim &mdash; a developer &mdash; built a game. Oliver became the lead designer: he chose the heroes, picked which monsters were scary enough, and demanded surprise rewards after every session.</p>
+            <p>Then something unexpected happened. Oliver's 3-year-old brother Theo saw the app and insisted on brushing "like a big boy." Two kids, fighting over who gets to brush first. Problem solved.</p>
+            <p>Brush Quest isn't a corporate product. It's a family project, shared with yours.</p>
+          </div>
+          <div class="story-photo">
+            Photo coming soon &mdash;<br>Jim, Oliver (7) &amp; Theo (3)<br>testing Brush Quest together
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== FROM OUR FAMILY ========== -->
+    <section class="quotes-section">
+      <div class="container">
+        <div class="section-title">
+          <h2>From Our Family</h2>
+        </div>
+        <div class="quotes-grid">
+          <div class="quote-card">
+            <p>"Oliver now reminds US it's brushing time. He literally runs to the bathroom."</p>
+            <span class="quote-attr">&mdash; Jim, Oliver's dad (and the developer)</span>
+          </div>
+          <div class="quote-card">
+            <p>"Theo is 3 and insists on brushing 'like a big boy' because he wants to fight the monsters too."</p>
+            <span class="quote-attr">&mdash; The unexpected side effect</span>
+          </div>
+          <div class="quote-card">
+            <p>"I built this because no app on the store felt right &mdash; too many ads, too much screen time guilt. This one just helps them brush."</p>
+            <span class="quote-attr">&mdash; Jim, parent to parent</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== FAQ ========== -->
+    <section class="faq-section">
+      <div class="container">
+        <div class="section-title">
+          <h2>Questions Parents Ask</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>Is it really free?</summary>
+            <div class="faq-answer">Yes, completely. No ads, no in-app purchases, no premium tiers, no subscriptions. Jim built it for his own kids and shares it with other families for free.</div>
+          </details>
+          <details>
+            <summary>Is it safe for my child?</summary>
+            <div class="faq-answer">Brush Quest collects no personal data. The optional Google Sign-In is only for cloud saves (so you don't lose progress if you switch phones). There are no social features, no chat, no links to external sites. The app is designed to be COPPA-compliant.</div>
+          </details>
+          <details>
+            <summary>Does it work offline?</summary>
+            <div class="faq-answer">Yes. The entire game works without an internet connection. Cloud save is the only feature that needs connectivity, and it's completely optional.</div>
+          </details>
+          <details>
+            <summary>How long is a brushing session?</summary>
+            <div class="faq-answer">The default is 2 minutes (4 zones x 30 seconds each), following dentist recommendations. Parents can adjust the timer per zone in settings &mdash; 15, 20, or 30 seconds per zone.</div>
+          </details>
+          <details>
+            <summary>Why isn't it on the Play Store?</summary>
+            <div class="faq-answer">We're working on it! In the meantime, you can download the APK directly. It's the same app &mdash; just tap Download, open the file, and tap Install. Takes about 30 seconds.</div>
+          </details>
+          <details>
+            <summary>What age is it for?</summary>
+            <div class="faq-answer">Designed for ages 5&ndash;12, but works great for younger kids too (Theo started at 3). Voice guidance means kids don't need to read. The space theme and monster battles keep older kids engaged.</div>
+          </details>
+          <details>
+            <summary>Does it actually make them brush properly?</summary>
+            <div class="faq-answer">The app guides kids through all 4 quadrants of their mouth with a visual tooth diagram and voice prompts. An optional camera feature detects brushing motion and powers the attacks &mdash; so the more they brush, the more damage they deal. No brushing = no attacks.</div>
+          </details>
         </div>
       </div>
     </section>
@@ -717,35 +1129,36 @@
     <!-- ========== DOWNLOAD ========== -->
     <section class="download" id="download">
       <div class="download-box">
-        <h2>Get Brush Quest</h2>
-        <span class="badge">Direct Android install &mdash; no Play Store needed</span>
-        <br><br>
+        <h2>Ready to End the Brushing Battle?</h2>
+        <p class="download-sub">Free. 2 minutes. Your kid will thank you. (Probably.)</p>
         <a href="https://drive.google.com/open?id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" class="download-btn" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
           Download APK
         </a>
         <br>
         <ol class="install-steps">
-          <li><strong>Download</strong> the APK file to your Android phone</li>
+          <li><strong>Tap Download</strong> on your Android phone</li>
           <li><strong>Open</strong> the downloaded file</li>
-          <li><strong>Allow</strong> install from unknown sources if prompted</li>
+          <li><strong>Tap Install</strong> &mdash; done!</li>
         </ol>
-
-        <div class="also-available">
-          <p>Also available on</p>
-          <div class="store-badges">
-            <span class="store-badge">
-              <svg viewBox="0 0 24 24"><path d="M17.9 5c-.1.1-.2.2-.3.3L14.3 9H20c.6 0 1 .4 1 1v4c0 .6-.4 1-1 1h-5.7l3.3 3.7c.3.4.3 1-.1 1.4-.4.3-1 .3-1.4-.1L12 15.4 7.9 20c-.4.4-1 .4-1.4.1-.4-.4-.4-1-.1-1.4L9.7 15H4c-.6 0-1-.4-1-1v-4c0-.6.4-1 1-1h5.7L6.4 5.3c-.3-.4-.3-1 .1-1.4.4-.3 1-.3 1.4.1L12 8.6 16.1 4c.4-.4 1-.4 1.4-.1.2.2.3.4.4.7z"/></svg>
-              Amazon Appstore
-              <span class="coming-soon-tag">Soon</span>
-            </span>
-            <span class="store-badge">
-              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-              Galaxy Store
-              <span class="coming-soon-tag">Soon</span>
-            </span>
-          </div>
+        <div class="download-trust">
+          <span class="trust-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+            No Ads
+          </span>
+          <span class="trust-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+            No Tracking
+          </span>
+          <span class="trust-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+            Free Forever
+          </span>
         </div>
+        <button class="share-btn" onclick="shareApp()">
+          <svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
+          Know another parent? Share this
+        </button>
       </div>
     </section>
 
@@ -755,10 +1168,31 @@
         <a href="privacy-policy.html">Privacy Policy</a>
         <a href="mailto:brushquest.app@gmail.com">Contact</a>
       </div>
-      <p class="footer-love">Made with <span>&hearts;</span> by a dad</p>
+      <p class="footer-love">Made with <span>&hearts;</span> for Oliver, Theo, and kids everywhere</p>
     </footer>
 
   </div>
+
+  <script>
+    function shareApp() {
+      const shareData = {
+        title: 'Brush Quest',
+        text: 'My kid actually asks to brush their teeth now. This free app turns brushing into a space battle game.',
+        url: 'https://brushquest.app'
+      };
+
+      if (navigator.share) {
+        navigator.share(shareData).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(shareData.url + ' - ' + shareData.text).then(() => {
+          const btn = document.querySelector('.share-btn');
+          const original = btn.innerHTML;
+          btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Link copied!';
+          setTimeout(() => { btn.innerHTML = original; }, 2000);
+        });
+      }
+    }
+  </script>
 
 </body>
 </html>
