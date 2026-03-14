@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/audio_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
+import '../services/analytics_service.dart';
 import '../widgets/space_background.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -76,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _phaseDuration = prefs.getInt('phase_duration') ?? 30;
-        _cameraEnabled = prefs.getBool('camera_enabled') ?? true;
+        _cameraEnabled = prefs.getBool('camera_enabled') ?? false;
         _totalBrushes = prefs.getInt('total_brushes') ?? 0;
         _bestStreak = prefs.getInt('best_streak') ?? 0;
       });
@@ -91,17 +93,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _toggleCamera(bool value) async {
+    // Show consent notice when enabling camera
+    if (value) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1A0A3E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            'Motion Camera',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: const Text(
+            'The camera detects brushing motion to drive the game. '
+            'No images are stored, recorded, or sent anywhere. '
+            'Processing happens entirely on this device.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text(
+                'ENABLE',
+                style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_enabled', value);
     await prefs.setBool('camera_mode_configured', true);
     setState(() => _cameraEnabled = value);
   }
 
+  Future<bool> _showDataConsentDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Cloud Save — Data Notice',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'By signing in, you consent to storing your child\'s game progress in Google\'s cloud (Firebase). This data includes:',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              '• Brush counts and streaks\n• Stars and unlocked items\n• Settings preferences',
+              style: TextStyle(color: Colors.white60, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'No personal information about your child is collected. You can delete all cloud data at any time from Settings.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => _openPrivacyPolicy(),
+              child: const Text(
+                'Read our Privacy Policy',
+                style: TextStyle(
+                  color: Color(0xFF7C4DFF),
+                  fontSize: 14,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'I CONSENT',
+              style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
   Future<void> _handleSignIn() async {
+    final consented = await _showDataConsentDialog();
+    if (!consented || !mounted) return;
+
     setState(() => _signingIn = true);
     try {
       final user = await _auth.signInWithGoogle();
       if (user != null && mounted) {
+        AnalyticsService().logSignIn();
         await _sync.smartSync();
         await _loadSettings();
         if (mounted) {
@@ -258,11 +359,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: const Color(0xFF1A0A3E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
-          'Reset Progress?',
+          "Delete Child's Data?",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'This will reset all stars, heroes, weapons, streaks, and achievements. This cannot be undone.',
+          'This will delete all stars, heroes, weapons, streaks, achievements, and cloud data. This cannot be undone.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -276,7 +377,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
-              'RESET',
+              'DELETE',
               style: TextStyle(
                 color: Colors.redAccent,
                 fontWeight: FontWeight.bold,
@@ -332,6 +433,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final uri = Uri.parse('https://brushquest.app/privacy-policy.html');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -811,7 +919,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
                     _SettingCard(
                       icon: Icons.delete_forever,
-                      title: 'Reset all progress',
+                      title: "Delete child's data",
                       child: IconButton(
                         icon: const Icon(
                           Icons.delete_outline,
@@ -819,6 +927,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           size: 24,
                         ),
                         onPressed: _resetProgress,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _SettingCard(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy policy',
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.open_in_new,
+                          color: Color(0xFF7C4DFF),
+                          size: 24,
+                        ),
+                        onPressed: _openPrivacyPolicy,
                       ),
                     ),
 
