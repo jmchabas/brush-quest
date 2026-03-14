@@ -11,7 +11,6 @@ import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
 import 'home_screen.dart';
-import 'brushing_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
 
@@ -183,7 +182,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _chestOpened = false;
   _ChestReward? _reward;
   CardDropResult? _cardDrop;
-  MonsterCard? _previewCard;
   bool _showCardDrop = false;
 
   @override
@@ -270,6 +268,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         ? 'voice_great_job_tonight.mp3'
         : 'voice_you_did_it.mp3';
     _audio.playVoice(victoryVoice);
+    _audio.playVoice('voice_earned_star.mp3');
     _starController.forward();
     _starRotationController.repeat();
     _starGlowController.repeat(reverse: true);
@@ -282,7 +281,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
 
     // Show chest after initial celebration
-    Future.delayed(const Duration(milliseconds: 3400), () {
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
       setState(() => _showChest = true);
       _chestBounceController.repeat(reverse: true);
@@ -336,13 +335,10 @@ class _VictoryScreenState extends State<VictoryScreen>
         HapticFeedback.mediumImpact();
         _audio.playSfx('star_chime.mp3');
         _audio.playVoice(drop.isNew ? 'voice_card_new.mp3' : 'voice_card_fragment.mp3');
+        // Queue the specific card description voice after the generic announcement
+        _audio.playVoice('voice_card_${drop.card.id}.mp3');
       }
 
-      // Load tomorrow's preview
-      final preview = await _cardService.getPreviewCard(_world.id);
-      if (preview != null && mounted) {
-        setState(() => _previewCard = preview);
-      }
     });
   }
 
@@ -445,63 +441,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  Widget _buildTomorrowPreview() {
-    final card = _previewCard!;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            // Silhouette
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: ColorFiltered(
-                colorFilter: const ColorFilter.mode(
-                  Colors.black54,
-                  BlendMode.srcATop,
-                ),
-                child: Image.asset(card.imagePath, fit: BoxFit.contain),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'A NEW MONSTER IS LURKING...',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Brush again to find it!',
-                    style: TextStyle(
-                      color: const Color(0xFF69F0AE).withValues(alpha: 0.8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.help_outline,
-              color: Colors.white.withValues(alpha: 0.3),
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showAchievement(Achievement achievement) {
     _audio.playSfx('whoosh.mp3');
     showAchievementPopup(context, achievement);
@@ -520,24 +459,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     super.dispose();
   }
 
-  void _brushAgain() {
-    Navigator.of(context).pushAndRemoveUntil(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const BrushingScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-      (route) => false,
-    );
-  }
-
   void _goHome() {
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomeScreen(),
+            const HomeScreen(skipDailyLogin: true),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -787,48 +713,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                     if (_showCardDrop && _cardDrop != null)
                       _buildCardDropReveal(),
 
-                    // Tomorrow's preview
-                    if (_chestOpened && _previewCard != null && !_showCardDrop)
-                      _buildTomorrowPreview(),
-
                     const SizedBox(height: 24),
 
                     // Buttons (only after chest opened)
                     if (_chestOpened) ...[
-                      GestureDetector(
-                        onTap: _brushAgain,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 48,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF00E5FF), Color(0xFF00B8D4)],
-                            ),
-                            borderRadius: BorderRadius.circular(40),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFF00E5FF,
-                                ).withValues(alpha: 0.4),
-                                blurRadius: 16,
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            'BRUSH AGAIN',
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  letterSpacing: 3,
-                                ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
                       AnimatedBuilder(
                         animation: _doneButtonController,
                         builder: (context, child) => Transform.scale(
@@ -856,15 +744,22 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 ),
                               ],
                             ),
-                            child: Text(
-                              'DONE',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    letterSpacing: 4,
-                                  ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.home, color: Colors.white, size: 24),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'DONE',
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        letterSpacing: 4,
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -895,7 +790,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         child: AnimatedBuilder(
           animation: _chestBounceController,
           builder: (context, child) {
-            final bounce = sin(_chestBounceController.value * pi) * 8;
+            final bounce = sin(_chestBounceController.value * pi) * 12;
             final wobble = sin(_chestBounceController.value * pi * 2) * 0.03;
             final sparkleDrift = sin(_chestBounceController.value * pi * 2) * 5;
             return GestureDetector(
@@ -906,8 +801,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                 child: Transform.rotate(
                   angle: wobble,
                   child: SizedBox(
-                    width: 220,
-                    height: 210,
+                    width: 260,
+                    height: 250,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [

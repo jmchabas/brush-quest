@@ -19,7 +19,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   final _pageController = PageController();
   final _audio = AudioService();
   int _currentPage = 0;
-  bool _cameraMotionEnabled = true;
   int _lastNarratedPage = -1;
 
   late AnimationController _pulseController;
@@ -41,7 +40,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     )..repeat(reverse: true);
-    _loadInitialCameraChoice();
     Future.delayed(const Duration(milliseconds: 450), () {
       if (mounted) _playPageNarration(0, force: true);
     });
@@ -68,20 +66,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-  Future<void> _loadInitialCameraChoice() async {
-    final prefs = await SharedPreferences.getInstance();
-    final enabled = prefs.getBool('camera_enabled') ?? true;
-    if (mounted) {
-      setState(() => _cameraMotionEnabled = enabled);
-    }
-  }
-
   Future<void> _completeOnboarding() async {
     HapticFeedback.heavyImpact();
     _audio.playSfx('victory.mp3');
     _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('camera_enabled', _cameraMotionEnabled);
     await prefs.setBool('camera_mode_configured', true);
     await prefs.setBool('onboarding_completed', true);
     if (mounted) {
@@ -110,10 +99,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (!force && _lastNarratedPage == page) return;
     _lastNarratedPage = page;
     final voiceFile = switch (page) {
-      0 => 'voice_welcome.mp3',
-      1 => 'voice_keep_it_up.mp3',
-      2 => 'voice_great_choice.mp3',
-      _ => 'voice_welcome.mp3',
+      0 => 'voice_onboarding_1.mp3',
+      1 => 'voice_onboarding_2.mp3',
+      2 => 'voice_onboarding_3.mp3',
+      _ => 'voice_onboarding_1.mp3',
     };
     _audio.playVoice(voiceFile, clearQueue: true, interrupt: true);
   }
@@ -251,7 +240,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
           const SizedBox(height: 36),
           _OnboardingStep(
-            icon: Icons.brush,
+            imagePath: 'assets/images/toothbrush_icon.png',
             color: const Color(0xFF69F0AE),
             title: 'BRUSH YOUR TEETH',
             subtitle: 'Brush for 2 minutes to win!',
@@ -261,8 +250,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           _OnboardingStep(
             icon: Icons.videocam,
             color: const Color(0xFF7C4DFF),
-            title: 'CAMERA WATCHES YOU',
-            subtitle: 'Brush harder to attack faster!',
+            title: 'YOUR MOVES POWER ATTACKS',
+            subtitle: 'The faster you brush, the harder you fight the monsters!',
             animation: _pulseController,
           ),
           const SizedBox(height: 20),
@@ -332,51 +321,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFF00E5FF).withValues(alpha: 0.4),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.videocam, color: Color(0xFF00E5FF), size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Camera motion mode',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      Text(
-                        'Use brushing motion to power attacks.',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: _cameraMotionEnabled,
-                  onChanged: (value) =>
-                      setState(() => _cameraMotionEnabled = value),
-                  activeThumbColor: const Color(0xFF00E5FF),
-                ),
-              ],
-            ),
-          ),
           const Spacer(flex: 3),
         ],
       ),
@@ -442,15 +386,29 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                   ],
                 ),
-                child: Text(
-                  _currentPage == 2 ? "LET'S GO!" : 'NEXT',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 4,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_currentPage == 2)
+                      const Icon(Icons.rocket_launch, color: Colors.white, size: 24)
+                    else
+                      const SizedBox.shrink(),
+                    if (_currentPage == 2)
+                      const SizedBox(width: 8),
+                    Text(
+                      _currentPage == 2 ? "LET'S GO!" : 'NEXT',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                    if (_currentPage < 2) ...[
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward, color: Colors.white, size: 24),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -462,14 +420,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 }
 
 class _OnboardingStep extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final String? imagePath;
   final Color color;
   final String title;
   final String subtitle;
   final AnimationController animation;
 
   const _OnboardingStep({
-    required this.icon,
+    this.icon,
+    this.imagePath,
     required this.color,
     required this.title,
     required this.subtitle,
@@ -502,7 +462,11 @@ class _OnboardingStep extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: imagePath != null
+                  ? ClipOval(
+                      child: Image.asset(imagePath!, width: 40, height: 40),
+                    )
+                  : Icon(icon, color: color, size: 28),
             );
           },
         ),

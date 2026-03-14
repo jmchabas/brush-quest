@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/card_service.dart';
 import '../services/world_service.dart';
 import '../services/audio_service.dart';
@@ -13,40 +14,72 @@ class CardAlbumScreen extends StatefulWidget {
   State<CardAlbumScreen> createState() => _CardAlbumScreenState();
 }
 
-class _CardAlbumScreenState extends State<CardAlbumScreen>
-    with SingleTickerProviderStateMixin {
+class _CardAlbumScreenState extends State<CardAlbumScreen> {
   final _cardService = CardService();
   final _worldService = WorldService();
 
   List<String> _collectedIds = [];
   int _fragments = 0;
   String _currentWorldId = 'candy_crater';
-  late TabController _tabController;
+  List<String> _unlockedWorldIds = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 10, vsync: this);
     _loadData();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        AudioService().playVoice('voice_entry_card_album.mp3', clearQueue: true, interrupt: true);
+      }
+    });
   }
 
   Future<void> _loadData() async {
     final collected = await _cardService.getCollectedCardIds();
     final fragments = await _cardService.getFragments();
     final worldId = await _worldService.getCurrentWorldId();
+
+    // Determine which worlds are unlocked
+    final unlocked = <String>[];
+    for (final world in WorldService.allWorlds) {
+      if (await _worldService.isWorldUnlocked(world.id)) {
+        unlocked.add(world.id);
+      }
+    }
+
     if (mounted) {
+      final wasBelow = _fragments < 3;
       setState(() {
         _collectedIds = collected;
         _fragments = fragments;
         _currentWorldId = worldId;
+        _unlockedWorldIds = unlocked;
       });
+      // Play fragments ready voice when we first detect >= 3 fragments
+      if (fragments >= 3 && wasBelow) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            AudioService().playVoice('voice_fragments_ready.mp3');
+          }
+        });
+      }
+      // Fragment tutorial voice on first view with fragments > 0
+      _maybePlayFragmentTutorial(fragments);
     }
+  }
+
+  Future<void> _maybePlayFragmentTutorial(int fragments) async {
+    if (fragments <= 0) return;
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('fragment_tutorial_shown') ?? false;
+    if (shown) return;
+    await prefs.setBool('fragment_tutorial_shown', true);
+    // Delay to let entry voice finish
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        AudioService().playVoice('voice_fragment_explain.mp3');
+      }
+    });
   }
 
   Future<void> _redeemFragments() async {
@@ -76,6 +109,11 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
   Widget build(BuildContext context) {
     final totalCollected = _collectedIds.length;
     final totalCards = CardService.allCards.length;
+
+    // Filter to only unlocked worlds
+    final unlockedWorlds = WorldService.allWorlds
+        .where((w) => _unlockedWorldIds.contains(w.id))
+        .toList();
 
     return Scaffold(
       body: SpaceBackground(
@@ -127,14 +165,19 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '$totalCollected / $totalCards COLLECTED',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                letterSpacing: 1.5,
-                              ),
+                            Row(
+                              children: [
+                                const Icon(Icons.style, color: Colors.white70, size: 16),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '$totalCollected / $totalCards',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 6),
                             ClipRRect(
@@ -155,7 +198,7 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
                         ),
                       ),
                       const SizedBox(width: 16),
-                      // Fragment redeem button
+                      // Fragment display with puzzle pieces
                       GestureDetector(
                         onTap: _fragments >= 3 ? _redeemFragments : null,
                         child: Container(
@@ -178,12 +221,20 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.auto_awesome_mosaic,
-                                color: Color(0xFFFFD54F),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
+                              for (int i = 0; i < 3; i++)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 2),
+                                  child: Icon(
+                                    i < _fragments
+                                        ? Icons.extension
+                                        : Icons.extension_outlined,
+                                    color: i < _fragments
+                                        ? const Color(0xFFFFD54F)
+                                        : Colors.white24,
+                                    size: 16,
+                                  ),
+                                ),
+                              const SizedBox(width: 4),
                               Text(
                                 '$_fragments/3',
                                 style: TextStyle(
@@ -205,54 +256,15 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
 
               const SizedBox(height: 8),
 
-              // World tabs
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  indicator: BoxDecoration(
-                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: Colors.transparent,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white54,
-                  labelStyle: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 1,
-                  ),
-                  tabAlignment: TabAlignment.start,
-                  tabs: WorldService.allWorlds.map((world) {
-                    final worldCards = CardService.cardsForWorld(world.id);
-                    final collected = worldCards
-                        .where((c) => _collectedIds.contains(c.id))
-                        .length;
-                    return Tab(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text('${world.name.toUpperCase()} $collected/7'),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Card grid
+              // Scrollable list of worlds with cards
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: WorldService.allWorlds.map((world) {
-                    return _buildWorldCards(world);
-                  }).toList(),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: unlockedWorlds.length,
+                  itemBuilder: (context, index) {
+                    final world = unlockedWorlds[index];
+                    return _buildWorldSection(world);
+                  },
                 ),
               ),
             ],
@@ -262,22 +274,78 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
     );
   }
 
-  Widget _buildWorldCards(WorldData world) {
-    final cards = CardService.cardsForWorld(world.id);
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.7,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: cards.length,
-      itemBuilder: (context, index) {
-        final card = cards[index];
-        final isCollected = _collectedIds.contains(card.id);
-        return _buildCardTile(card, isCollected);
-      },
+  Widget _buildWorldSection(WorldData world) {
+    final visibleCards = CardService.visibleCardsForWorld(world.id, _collectedIds);
+    final worldCards = CardService.cardsForWorld(world.id);
+    final collectedCount = worldCards.where((c) => _collectedIds.contains(c.id)).length;
+    final totalCount = worldCards.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // World header
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            children: [
+              ClipOval(
+                child: Image.asset(
+                  world.imagePath,
+                  width: 28,
+                  height: 28,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  world.name.toUpperCase(),
+                  style: TextStyle(
+                    color: world.themeColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: world.themeColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: world.themeColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  '$collectedCount/$totalCount',
+                  style: TextStyle(
+                    color: world.themeColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Cards grid
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: visibleCards.map((card) {
+            final isCollected = _collectedIds.contains(card.id);
+            return SizedBox(
+              width: (MediaQuery.of(context).size.width - 32 - 24) / 3,
+              child: AspectRatio(
+                aspectRatio: 0.7,
+                child: _buildCardTile(card, isCollected),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 
@@ -288,7 +356,10 @@ class _CardAlbumScreenState extends State<CardAlbumScreen>
               HapticFeedback.lightImpact();
               _showCardDetail(card);
             }
-          : null,
+          : () {
+              HapticFeedback.lightImpact();
+              AudioService().playVoice('voice_card_mystery.mp3', clearQueue: true, interrupt: true);
+            },
       child: Container(
         decoration: BoxDecoration(
           color: isCollected

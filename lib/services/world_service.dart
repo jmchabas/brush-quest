@@ -230,6 +230,11 @@ class WorldService {
     return true;
   }
 
+  Future<void> setCurrentWorld(String worldId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currentWorldKey, worldId);
+  }
+
   static WorldData getWorldById(String id) {
     return allWorlds.firstWhere((w) => w.id == id, orElse: () => allWorlds[0]);
   }

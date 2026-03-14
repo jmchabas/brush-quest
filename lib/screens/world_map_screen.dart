@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../services/audio_service.dart';
 import '../services/world_service.dart';
 import '../widgets/space_background.dart';
 
@@ -19,6 +21,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   void initState() {
     super.initState();
     _loadData();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        AudioService().playVoice('voice_entry_world_map.mp3', clearQueue: true, interrupt: true);
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -115,6 +122,21 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           isCurrent: isCurrent,
                           isCompleted: isCompleted,
                           progress: progress,
+                          onSetCurrent: (isUnlocked && !isCurrent && !isCompleted)
+                              ? () async {
+                                  await _worldService.setCurrentWorld(world.id);
+                                  await _loadData();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('${world.name} is now your world!'),
+                                        backgroundColor: world.themeColor,
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  }
+                                }
+                              : null,
                         ),
                       ],
                     );
@@ -169,6 +191,7 @@ class _WorldCard extends StatelessWidget {
   final bool isCurrent;
   final bool isCompleted;
   final int progress;
+  final VoidCallback? onSetCurrent;
 
   const _WorldCard({
     required this.world,
@@ -176,33 +199,48 @@ class _WorldCard extends StatelessWidget {
     required this.isCurrent,
     required this.isCompleted,
     required this.progress,
+    this.onSetCurrent,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isCurrent
-              ? world.themeColor
-              : isCompleted
-              ? const Color(0xFF69F0AE).withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.1),
-          width: isCurrent ? 2 : 1,
+    return GestureDetector(
+      onTap: () {
+        if (!isUnlocked) {
+          // Locked world — play "need stars" voice
+          AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
+          return;
+        }
+        if (onSetCurrent != null) {
+          // Unlocked but not current — set as current world
+          onSetCurrent!();
+        }
+        // Always play the world voice for unlocked worlds
+        AudioService().playVoice('voice_world_${world.id}.mp3', clearQueue: true, interrupt: true);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isCurrent
+                ? world.themeColor
+                : isCompleted
+                ? const Color(0xFF69F0AE).withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.1),
+            width: isCurrent ? 2 : 1,
+          ),
+          boxShadow: isCurrent
+              ? [
+                  BoxShadow(
+                    color: world.themeColor.withValues(alpha: 0.3),
+                    blurRadius: 15,
+                  ),
+                ]
+              : null,
         ),
-        boxShadow: isCurrent
-            ? [
-                BoxShadow(
-                  color: world.themeColor.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                ),
-              ]
-            : null,
-      ),
-      child: Padding(
+        child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
@@ -239,18 +277,6 @@ class _WorldCard extends StatelessWidget {
                       letterSpacing: 1,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    world.description,
-                    style: TextStyle(
-                      color: isUnlocked
-                          ? Colors.white.withValues(alpha: 0.6)
-                          : Colors.white.withValues(alpha: 0.2),
-                      fontSize: 12,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                   const SizedBox(height: 8),
                   // Progress bar
                   if (isUnlocked) ...[
@@ -269,38 +295,11 @@ class _WorldCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isCompleted
-                          ? 'COMPLETED!'
-                          : '$progress / ${world.missionsRequired} missions',
-                      style: TextStyle(
-                        color: isCompleted
-                            ? const Color(0xFF69F0AE)
-                            : world.themeColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
                   ] else
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.lock,
-                          color: Colors.white.withValues(alpha: 0.3),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'LOCKED',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            fontSize: 11,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
+                    Icon(
+                      Icons.lock,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      size: 18,
                     ),
                 ],
               ),
@@ -309,10 +308,68 @@ class _WorldCard extends StatelessWidget {
             if (isCompleted)
               const Icon(Icons.check_circle, color: Color(0xFF69F0AE), size: 28)
             else if (isCurrent)
-              Icon(Icons.play_circle_fill, color: world.themeColor, size: 28),
+              _PulsingArrowIndicator(color: world.themeColor),
           ],
         ),
       ),
+      ),
+    );
+  }
+
+}
+
+class _PulsingArrowIndicator extends StatefulWidget {
+  final Color color;
+
+  const _PulsingArrowIndicator({required this.color});
+
+  @override
+  State<_PulsingArrowIndicator> createState() => _PulsingArrowIndicatorState();
+}
+
+class _PulsingArrowIndicatorState extends State<_PulsingArrowIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final pulse = (math.sin(_controller.value * 2 * math.pi) + 1) / 2;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Opacity(
+              opacity: 0.5 + 0.5 * pulse,
+              child: Transform.translate(
+                offset: Offset(0, -3 + 3 * pulse),
+                child: Icon(
+                  Icons.arrow_downward,
+                  color: widget.color,
+                  size: 18,
+                ),
+              ),
+            ),
+            Icon(Icons.play_circle_fill, color: widget.color, size: 28),
+          ],
+        );
+      },
     );
   }
 }

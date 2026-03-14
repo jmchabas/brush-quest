@@ -6,6 +6,15 @@ Theme: Space Rangers vs Cavity Monsters.
 
 ## Status: v4 — Settings + Firebase Auth/Sync
 
+## Pre-Ship UX Checklist
+Before shipping any screen or flow, do a first-person walkthrough as the end user (a 7-year-old who can't read). For every screen ask:
+1. Does every icon/image literally represent what it says? (e.g. a toothbrush app must show a toothbrush, not a paint brush)
+2. Does every voice line make sense in THIS context? Don't reuse generic voice files — check what they actually say.
+3. Can the child understand this screen without reading? If there's text, there must be a voiceover.
+4. Is every setting/toggle placed next to the thing it relates to?
+5. Trace the full audio timeline for the screen: what plays, when, and can anything collide?
+6. Is the state correct? What does the user's data look like at this point in the journey? (e.g. don't congratulate a new user for a streak they don't have)
+
 ## Key Decisions
 - **Concept**: Gamified 2-minute timer (4 x configurable quadrants), defeat cavity monsters
 - **Theme**: Space + Monsters. Kid is a "Space Ranger"

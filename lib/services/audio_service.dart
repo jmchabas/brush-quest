@@ -166,6 +166,30 @@ class AudioService {
     'voice_card_new.mp3',
     'voice_card_fragment.mp3',
     'voice_daily_login.mp3',
+    'voice_onboarding_1.mp3',
+    'voice_onboarding_2.mp3',
+    'voice_onboarding_3.mp3',
+    'voice_entry_hero_shop.mp3',
+    'voice_entry_world_map.mp3',
+    'voice_entry_card_album.mp3',
+    'voice_entry_settings.mp3',
+    'voice_need_stars.mp3',
+    'voice_earned_star.mp3',
+    'voice_tomorrow_preview.mp3',
+    'voice_fragments_ready.mp3',
+    'voice_card_mystery.mp3',
+    'voice_fragment_explain.mp3',
+    // Per-world description voices
+    'voice_world_candy_crater.mp3',
+    'voice_world_slime_swamp.mp3',
+    'voice_world_sugar_volcano.mp3',
+    'voice_world_shadow_nebula.mp3',
+    'voice_world_cavity_fortress.mp3',
+    'voice_world_frozen_tundra.mp3',
+    'voice_world_toxic_jungle.mp3',
+    'voice_world_crystal_cave.mp3',
+    'voice_world_storm_citadel.mp3',
+    'voice_world_dark_dimension.mp3',
     // Monster card voice-overs (World 1: Candy Crater)
     'voice_card_cc_01.mp3',
     'voice_card_cc_02.mp3',
@@ -509,6 +533,13 @@ class AudioService {
       );
       await playMusic(_currentMusicFile!);
     }
+  }
+
+  Future<void> setMusicVolume(double volume) async {
+    if (_musicTransitioning || !_musicPlaying) return;
+    try {
+      await _musicPlayer.setVolume(volume.clamp(0.0, 1.0));
+    } catch (_) {}
   }
 
   Future<void> stopMusic() async {

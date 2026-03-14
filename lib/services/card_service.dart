@@ -272,6 +272,24 @@ class CardService {
     }
   }
 
+  /// Progressive card reveal: commons always visible (4),
+  /// rares revealed when all commons collected (→6),
+  /// epic revealed when all rares collected (→7).
+  static List<MonsterCard> visibleCardsForWorld(String worldId, List<String> collectedIds) {
+    final worldCards = cardsForWorld(worldId);
+    final commons = worldCards.where((c) => c.rarity == CardRarity.common).toList();
+    final rares = worldCards.where((c) => c.rarity == CardRarity.rare).toList();
+    final epics = worldCards.where((c) => c.rarity == CardRarity.epic).toList();
+
+    final allCommonsCollected = commons.every((c) => collectedIds.contains(c.id));
+    final allRaresCollected = rares.every((c) => collectedIds.contains(c.id));
+
+    final visible = <MonsterCard>[...commons];
+    if (allCommonsCollected) visible.addAll(rares);
+    if (allCommonsCollected && allRaresCollected) visible.addAll(epics);
+    return visible;
+  }
+
   int get totalCards => allCards.length;
 
   Future<int> getCollectedCount() async {

@@ -25,7 +25,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   List<String> _unlockedWeapons = ['star_blaster'];
   String _selectedWeaponId = 'star_blaster';
   int _stars = 0;
-  String? _lastSelectionVoice;
 
   late TabController _tabController;
 
@@ -34,6 +33,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadData();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        AudioService().playVoice('voice_entry_hero_shop.mp3', clearQueue: true, interrupt: true);
+      }
+    });
   }
 
   @override
@@ -76,16 +80,20 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     } else {
       HapticFeedback.lightImpact();
+      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
+      final needed = hero.cost - _stars;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Need ${hero.cost - _stars} more stars!',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
+            content: Row(
+              children: [
+                const Icon(Icons.star, color: Colors.yellowAccent, size: 18),
+                const SizedBox(width: 6),
+                Text('Need $needed more!'),
+              ],
             ),
-            backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -109,16 +117,20 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     } else {
       HapticFeedback.lightImpact();
+      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
+      final needed = weapon.cost - _stars;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Need ${weapon.cost - _stars} more stars!',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
+            content: Row(
+              children: [
+                const Icon(Icons.star, color: Colors.yellowAccent, size: 18),
+                const SizedBox(width: 6),
+                Text('Need $needed more!'),
+              ],
             ),
-            backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -126,8 +138,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   }
 
   void _playSelectionVoice(String fileName) {
-    if (_lastSelectionVoice == fileName) return;
-    _lastSelectionVoice = fileName;
     AudioService().playVoice(fileName, clearQueue: true, interrupt: true);
   }
 
@@ -408,59 +418,8 @@ class _HeroCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    hero.name,
-                    style: TextStyle(
-                      color: isUnlocked
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hero.title,
-                    style: TextStyle(
-                      color: isUnlocked
-                          ? hero.primaryColor
-                          : Colors.white.withValues(alpha: 0.3),
-                      fontSize: 12,
-                    ),
-                  ),
                   const SizedBox(height: 6),
-                  if (isSelected)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: hero.primaryColor.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'SELECTED',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    )
-                  else if (isUnlocked)
-                    Text(
-                      'TAP TO SELECT',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 10,
-                        letterSpacing: 1,
-                      ),
-                    )
-                  else
+                  if (!isUnlocked)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -495,6 +454,33 @@ class _HeroCard extends StatelessWidget {
                   Icons.lock,
                   color: Colors.white.withValues(alpha: 0.5),
                   size: 20,
+                ),
+              ),
+            if (isSelected)
+              Positioned(
+                bottom: 8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withValues(alpha: 0.6),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
                 ),
               ),
           ],
@@ -568,63 +554,8 @@ class _WeaponCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    weapon.name,
-                    style: TextStyle(
-                      color: isUnlocked
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      letterSpacing: 1,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    weapon.description,
-                    style: TextStyle(
-                      color: isUnlocked
-                          ? Colors.white.withValues(alpha: 0.5)
-                          : Colors.white.withValues(alpha: 0.2),
-                      fontSize: 10,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                   const SizedBox(height: 6),
-                  if (isSelected)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: weapon.primaryColor.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'EQUIPPED',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    )
-                  else if (isUnlocked)
-                    Text(
-                      'TAP TO EQUIP',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 10,
-                        letterSpacing: 1,
-                      ),
-                    )
-                  else
+                  if (!isUnlocked)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -661,6 +592,33 @@ class _WeaponCard extends StatelessWidget {
                   size: 20,
                 ),
               ),
+            if (isSelected)
+              Positioned(
+                bottom: 8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withValues(alpha: 0.6),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -689,7 +647,9 @@ class _HeroUnlockDialogState extends State<_HeroUnlockDialog>
       vsync: this,
     )..forward();
 
-    Future.delayed(const Duration(seconds: 2), () {
+    AudioService().playVoice('voice_intro_hero_${widget.hero.id}.mp3', clearQueue: true, interrupt: true);
+
+    Future.delayed(const Duration(seconds: 6), () {
       if (mounted) Navigator.of(context).pop();
     });
   }
@@ -704,39 +664,42 @@ class _HeroUnlockDialogState extends State<_HeroUnlockDialog>
   Widget build(BuildContext context) {
     return ScaleTransition(
       scale: CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        child: GlassCard(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: ClipOval(
-                  child: Image.asset(widget.hero.imagePath, fit: BoxFit.cover),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassCard(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: ClipOval(
+                    child: Image.asset(widget.hero.imagePath, fit: BoxFit.cover),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '${widget.hero.name} UNLOCKED!',
-                style: TextStyle(
-                  color: widget.hero.primaryColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+                const SizedBox(height: 16),
+                Text(
+                  '${widget.hero.name} UNLOCKED!',
+                  style: TextStyle(
+                    color: widget.hero.primaryColor,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.hero.title,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 16,
+                const SizedBox(height: 8),
+                Text(
+                  widget.hero.title,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 16,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -765,7 +728,9 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
       vsync: this,
     )..forward();
 
-    Future.delayed(const Duration(seconds: 2), () {
+    AudioService().playVoice('voice_intro_weapon_${widget.weapon.id}.mp3', clearQueue: true, interrupt: true);
+
+    Future.delayed(const Duration(seconds: 6), () {
       if (mounted) Navigator.of(context).pop();
     });
   }
@@ -780,41 +745,44 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
   Widget build(BuildContext context) {
     return ScaleTransition(
       scale: CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        child: GlassCard(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 120,
-                height: 120,
-                child: ClipOval(
-                  child: Image.asset(widget.weapon.imagePath, fit: BoxFit.cover),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassCard(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: ClipOval(
+                    child: Image.asset(widget.weapon.imagePath, fit: BoxFit.cover),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '${widget.weapon.name} UNLOCKED!',
-                style: TextStyle(
-                  color: widget.weapon.primaryColor,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+                const SizedBox(height: 16),
+                Text(
+                  '${widget.weapon.name} UNLOCKED!',
+                  style: TextStyle(
+                    color: widget.weapon.primaryColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.weapon.description,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 14,
+                const SizedBox(height: 8),
+                Text(
+                  widget.weapon.description,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

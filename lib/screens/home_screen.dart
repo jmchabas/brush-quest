@@ -15,7 +15,8 @@ import 'settings_screen.dart';
 import 'card_album_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool skipDailyLogin;
+  const HomeScreen({super.key, this.skipDailyLogin = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -27,12 +28,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _weaponService = WeaponService();
   final _dailyLoginService = DailyLoginService();
   bool _dailyLoginChecked = false;
+  bool _dailyLoginShown = false;
   int _totalStars = 0;
   int _streak = 0;
   int _todayBrushCount = 0;
-  int _totalBrushes = 0;
   int _bossProgress = 0;
-  int _bossRemaining = 4;
   bool _bossReady = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
@@ -76,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    AudioService().stopMusic();
     _pulseController.dispose();
     _floatController.dispose();
     _auraController.dispose();
@@ -91,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final totalBrushes = await _streakService.getTotalBrushes();
     final brushCycle = totalBrushes % 5;
     final bossReady = brushCycle == 4;
-    final bossRemaining = bossReady ? 0 : (4 - brushCycle);
 
     if (mounted) {
       setState(() {
@@ -99,21 +99,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedHero = hero;
         _selectedWeapon = weapon;
         _streak = streak;
-        _totalBrushes = totalBrushes;
         _bossProgress = brushCycle;
-        _bossRemaining = bossRemaining;
         _bossReady = bossReady;
         _todayBrushCount = todayCount;
       });
       _checkDailyLogin();
+      // Ambient music on home screen (very low volume)
+      AudioService().playMusic('battle_music_loop.mp3');
+      AudioService().setMusicVolume(0.06);
     }
   }
 
   Future<void> _checkDailyLogin() async {
     if (_dailyLoginChecked) return;
     _dailyLoginChecked = true;
+    // Skip daily login when returning from a brush session
+    if (widget.skipDailyLogin) return;
+    // Skip daily login on first launch — user hasn't brushed yet
+    final total = await _streakService.getTotalBrushes();
+    if (total == 0) return;
     final reward = await _dailyLoginService.checkAndClaimDailyLogin();
     if (reward != null && mounted) {
+      _dailyLoginShown = true;
       // Refresh star count if bonus star was awarded
       if (reward.type == DailyRewardType.bonusStar) {
         final stars = await _streakService.getTotalStars();
@@ -130,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),
@@ -193,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
+                  onTap: () => Navigator.of(dialogContext).pop(),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 32,
@@ -223,6 +230,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+    // Auto-dismiss after 4 seconds
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
+    });
   }
 
   Future<void> _playWelcomeVoice() async {
@@ -230,11 +241,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _welcomePlayed = true;
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-    final brushCount = await _streakService.getTodayBrushCount();
+    // Skip if daily login popup already handled the welcome
+    if (_dailyLoginShown) return;
     final total = await _streakService.getTotalBrushes();
-    if (total == 0) {
-      AudioService().playVoice('voice_welcome.mp3');
-    } else if (brushCount == 0) {
+    // Skip on first launch — onboarding already played voices
+    if (total == 0) return;
+    final brushCount = await _streakService.getTodayBrushCount();
+    if (brushCount == 0) {
       AudioService().playVoice('voice_welcome_back.mp3');
     }
   }
@@ -293,38 +306,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _lastPickerVoice = null;
     _playPickerVoice(AudioService().heroPickerVoiceFor(_selectedHero.id));
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _PreBrushPicker(
-        heroes: HeroService.allHeroes,
-        weapons: WeaponService.allWeapons,
-        unlockedHeroIds: unlocked,
-        unlockedWeaponIds: unlockedWeapons,
-        selectedHero: _selectedHero,
-        selectedWeapon: _selectedWeapon,
-        onHeroSelected: (hero) async {
-          await _heroService.selectHero(hero.id);
-          setState(() => _selectedHero = hero);
-          _playPickerVoice(AudioService().heroPickerVoiceFor(hero.id));
-        },
-        onWeaponSelected: (weapon) async {
-          await _weaponService.selectWeapon(weapon.id);
-          setState(() => _selectedWeapon = weapon);
-          _playPickerVoice(AudioService().weaponPickerVoiceFor(weapon.id));
-        },
-        onGo: () {
-          Navigator.pop(ctx);
-          AudioService().playVoice(
-            'voice_lets_fight.mp3',
-            clearQueue: true,
-            interrupt: true,
-          );
-          Future.delayed(const Duration(milliseconds: 600), () {
-            if (mounted) _launchBrushingScreen();
-          });
-        },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _PreBrushLoadoutScreen(
+          child: _PreBrushPicker(
+            heroes: HeroService.allHeroes,
+            weapons: WeaponService.allWeapons,
+            unlockedHeroIds: unlocked,
+            unlockedWeaponIds: unlockedWeapons,
+            selectedHero: _selectedHero,
+            selectedWeapon: _selectedWeapon,
+            onHeroSelected: (hero) async {
+              await _heroService.selectHero(hero.id);
+              setState(() => _selectedHero = hero);
+              _playPickerVoice(AudioService().heroPickerVoiceFor(hero.id));
+            },
+            onWeaponSelected: (weapon) async {
+              await _weaponService.selectWeapon(weapon.id);
+              setState(() => _selectedWeapon = weapon);
+              _playPickerVoice(AudioService().weaponPickerVoiceFor(weapon.id));
+            },
+            onGo: () {
+              Navigator.of(context).pop();
+              AudioService().playVoice(
+                'voice_lets_fight.mp3',
+                clearQueue: true,
+                interrupt: true,
+              );
+              Future.delayed(const Duration(milliseconds: 600), () {
+                if (mounted) _launchBrushingScreen();
+              });
+            },
+          ),
+        ),
       ),
     );
   }
@@ -390,6 +404,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: SafeArea(
           child: Stack(
             children: [
+              // Top-left settings gear
+              Positioned(
+                top: 8,
+                left: 8,
+                child: IconButton(
+                  onPressed: () {
+                    AudioService().playSfx('whoosh.mp3');
+                    _openSettings();
+                  },
+                  icon: Icon(
+                    Icons.settings,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    size: 26,
+                  ),
+                ),
+              ),
               // Top-right controls
               Positioned(
                 top: 8,
@@ -522,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       // Today count
                       const SizedBox(width: statGroupSpacing),
                       Icon(
-                        Icons.sanitizer_rounded,
+                        Icons.brush,
                         color: const Color(0xFF69F0AE).withValues(alpha: 0.85),
                         size: statIconSize,
                       ),
@@ -540,6 +570,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  // Boss progress: 5 skull icons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Container(
@@ -552,56 +583,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.white12),
                       ),
-                      child: Column(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.workspace_premium,
-                                color: Color(0xFFFFD54F),
-                                size: 16,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _bossReady
-                                    ? 'BOSS READY NEXT BRUSH'
-                                    : 'BOSS IN $_bossRemaining BRUSH${_bossRemaining == 1 ? '' : 'ES'}',
-                                style: TextStyle(
-                                  color: _bossReady
-                                      ? const Color(0xFFFFD54F)
-                                      : Colors.white.withValues(alpha: 0.85),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                  letterSpacing: 1.2,
+                          const Icon(
+                            Icons.workspace_premium,
+                            color: Color(0xFFFFD54F),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 10),
+                          ...List.generate(5, (i) {
+                            final filled = i < _bossProgress || _bossReady;
+                            return AnimatedBuilder(
+                              animation: _bossReady ? _pulseController : const AlwaysStoppedAnimation(0),
+                              builder: (context, child) {
+                                final scale = _bossReady
+                                    ? 1.0 + _pulseController.value * 0.15
+                                    : 1.0;
+                                return Transform.scale(
+                                  scale: scale,
+                                  child: child,
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(
+                                  Icons.dangerous,
+                                  color: filled
+                                      ? (_bossReady
+                                          ? const Color(0xFFFFD54F)
+                                          : const Color(0xFF00E5FF))
+                                      : Colors.white.withValues(alpha: 0.2),
+                                  size: 24,
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              minHeight: 8,
-                              value: _bossReady ? 1.0 : (_bossProgress / 4.0),
-                              backgroundColor: Colors.white10,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                _bossReady
-                                    ? const Color(0xFFFFD54F)
-                                    : const Color(0xFF00E5FF),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'MISSIONS CLEARED: $_totalBrushes',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
+                            );
+                          }),
                         ],
                       ),
                     ),
@@ -822,19 +839,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         const SizedBox(width: 10),
                         Expanded(
                           child: _SmallNavButton(
-                            icon: Icons.collections_bookmark,
+                            icon: Icons.style,
                             label: 'CARDS',
                             color: const Color(0xFFFFD54F),
                             onTap: _openCards,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _SmallNavButton(
-                            icon: Icons.settings,
-                            label: 'SETTINGS',
-                            color: const Color(0xFF69F0AE),
-                            onTap: _openSettings,
                           ),
                         ),
                       ],
@@ -945,26 +953,11 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0D0B2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border(top: BorderSide(color: Color(0xFF7C4DFF), width: 2)),
-      ),
+    return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 16),
-
           // Hero + weapon display
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1001,57 +994,16 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
                     ),
                   ],
                 ),
-                child: Icon(
-                  _weapon.icon,
-                  color: _weapon.primaryColor,
-                  size: 28,
+                child: ClipOval(
+                  child: Image.asset(
+                    _weapon.imagePath,
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _hero.name,
-            style: TextStyle(
-              color: _hero.primaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              letterSpacing: 3,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _hero.description,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 12,
-              height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _weapon.name,
-            style: TextStyle(
-              color: _weapon.primaryColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _weapon.description,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.65),
-              fontSize: 11,
-              height: 1.2,
-            ),
           ),
           const SizedBox(height: 16),
 
@@ -1072,7 +1024,10 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
                           setState(() => _hero = h);
                           widget.onHeroSelected(h);
                         }
-                      : null,
+                      : () {
+                          HapticFeedback.mediumImpact();
+                          AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
+                        },
                   child: Container(
                     width: 64,
                     height: 64,
@@ -1146,7 +1101,10 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
                           setState(() => _weapon = w);
                           widget.onWeaponSelected(w);
                         }
-                      : null,
+                      : () {
+                          HapticFeedback.mediumImpact();
+                          AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
+                        },
                   child: Container(
                     width: 48,
                     height: 48,
@@ -1163,13 +1121,20 @@ class _PreBrushPickerState extends State<_PreBrushPicker> {
                         width: selected ? 2 : 1,
                       ),
                     ),
-                    child: Icon(
-                      unlocked ? w.icon : Icons.lock,
-                      color: unlocked
-                          ? (selected ? w.primaryColor : Colors.white54)
-                          : Colors.white24,
-                      size: 22,
-                    ),
+                    child: unlocked
+                        ? ClipOval(
+                            child: Image.asset(
+                              w.imagePath,
+                              width: 22,
+                              height: 22,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.lock,
+                            color: Colors.white24,
+                            size: 22,
+                          ),
                   ),
                 );
               },
@@ -1233,7 +1198,10 @@ class _SmallNavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        AudioService().playSfx('whoosh.mp3');
+        onTap();
+      },
       child: Container(
         height: 56,
         decoration: BoxDecoration(

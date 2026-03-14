@@ -296,7 +296,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _cameraReady = false;
   int _lastAttackTime = 0;
   bool _motionGlow = false; // visual feedback for motion detected
-  bool _showZoneBanner = false; // "NEW MONSTER!" banner between phases
+  // _showZoneBanner removed (visual banner removed in UX overhaul)
   bool _heroLunging = false; // hero attack lunge animation
   int _monstersDefeated = 0; // monsters killed by damage during this session
   Timer? _stallTimer; // mercy timer when camera works but no motion detected
@@ -316,7 +316,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   int _encouragementIndex = 0;
   String? _lastEncouragementVoice;
   bool _showWorldIntro = true;
-  int _worldIntroSecondsLeft = 3;
   Timer? _worldIntroTimer;
   SessionStage _sessionStage = SessionStage.worldIntro;
   static const _checkpointTsKey = 'session_checkpoint_ts';
@@ -386,15 +385,41 @@ class _BrushingScreenState extends State<BrushingScreen>
   ];
 
   bool _playedEncouragement = false;
+  bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
+
+  // Encouragement voice categories
+  static const _energizingVoices = [
+    'voice_go_go_go.mp3',
+    'voice_super.mp3',
+    'voice_unstoppable.mp3',
+    'voice_nice_combo.mp3',
+  ];
+  static const _supportiveVoices = [
+    'voice_youre_doing_great.mp3',
+    'voice_keep_it_up.mp3',
+    'voice_keep_going.mp3',
+    'voice_so_strong.mp3',
+  ];
+  static const _almostThereVoices = [
+    'voice_almost_there.mp3',
+    'voice_awesome.mp3',
+    'voice_wow_amazing.mp3',
+  ];
 
   @override
   void initState() {
     super.initState();
     _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
     WakelockPlus.enable();
-    // Enter immersive mode for brushing (camera mode is configured in setup/settings)
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Briefly show edge-to-edge, then switch to immersive after 1.5s
+    // so Android's "Viewing full screen" toast auto-dismisses before battle.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
+    });
 
     // Init single monster
     _monster = _createMonster();
@@ -737,36 +762,24 @@ class _BrushingScreenState extends State<BrushingScreen>
     _worldIntroTimer?.cancel();
     setState(() {
       _showWorldIntro = true;
-      _worldIntroSecondsLeft = 3;
       _sessionStage = SessionStage.worldIntro;
     });
     _playWorldMissionBriefing();
+  }
 
-    _worldIntroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      if (_worldIntroSecondsLeft > 1) {
-        setState(() => _worldIntroSecondsLeft--);
-      } else {
-        timer.cancel();
-        setState(() {
-          _showWorldIntro = false;
-          _sessionStage = SessionStage.countdown;
-        });
-        _startCountdown();
-      }
+  void _dismissWorldIntro() {
+    _worldIntroTimer?.cancel();
+    setState(() {
+      _showWorldIntro = false;
+      _sessionStage = SessionStage.countdown;
     });
+    _startCountdown();
   }
 
   void _playWorldMissionBriefing() {
     final voiceFile = _isBossSession
         ? 'voice_unstoppable.mp3'
-        : switch (_dailyModifier.type) {
-            DailyModifierType.frenzy => 'voice_super.mp3',
-            DailyModifierType.precision => 'voice_keep_it_up.mp3',
-            DailyModifierType.treasureBoost => 'voice_super.mp3',
-            DailyModifierType.bossRush => 'voice_unstoppable.mp3',
-            DailyModifierType.none => 'voice_lets_fight.mp3',
-          };
+        : 'voice_world_${_world.id}.mp3';
     _audio.playVoice(voiceFile, clearQueue: true, interrupt: true);
   }
 
@@ -871,20 +884,32 @@ class _BrushingScreenState extends State<BrushingScreen>
       setState(() => _phaseSecondsLeft--);
       _saveCheckpoint();
 
-      final encourageAt = (_phaseDuration * 0.65).round();
-      final almostAt = (_phaseDuration * 0.33).round();
-      if (_phaseSecondsLeft == encourageAt && !_playedEncouragement) {
+      final energizeAt = (_phaseDuration * 0.80).round();
+      final supportAt = (_phaseDuration * 0.50).round();
+      final almostAt = (_phaseDuration * 0.20).round();
+      if (_phaseSecondsLeft == energizeAt && !_playedEncouragement) {
         _playedEncouragement = true;
-        _playNextEncouragementVoice();
+        _audio.playVoice(
+          _energizingVoices[_random.nextInt(_energizingVoices.length)],
+        );
+      }
+      if (_phaseSecondsLeft == supportAt && !_playedMidEncouragement) {
+        _playedMidEncouragement = true;
+        _audio.playVoice(
+          _supportiveVoices[_random.nextInt(_supportiveVoices.length)],
+        );
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
-        _audio.playVoice('voice_almost_there.mp3');
+        _audio.playVoice(
+          _almostThereVoices[_random.nextInt(_almostThereVoices.length)],
+        );
       }
 
       if (_phaseSecondsLeft <= 0 && !_phaseTransitioning) {
         _phaseTransitioning = true;
         _playedEncouragement = false;
+        _playedMidEncouragement = false;
         _playedAlmostThere = false;
         final currentIndex = brushPhaseOrder.indexOf(_phase);
         if (currentIndex < brushPhaseOrder.length - 1) {
@@ -902,10 +927,6 @@ class _BrushingScreenState extends State<BrushingScreen>
               }
               _switchToPhase(brushPhaseOrder[nextIndex]);
               _playEntranceAnimation();
-              setState(() => _showZoneBanner = true);
-              Future.delayed(const Duration(milliseconds: 1200), () {
-                if (mounted) setState(() => _showZoneBanner = false);
-              });
             });
           });
         } else {
@@ -1063,6 +1084,9 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _switchToPhase(BrushPhase newPhase) {
     _phaseTransitioning = false;
+    // Cancel companion timer to prevent stale encouragement from queuing
+    // during the phase transition voice. Restart it after transition.
+    _companionTimer?.cancel();
     setState(() {
       _phase = newPhase;
       _phaseSecondsLeft = _phaseDuration;
@@ -1074,6 +1098,19 @@ class _BrushingScreenState extends State<BrushingScreen>
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
         _audio.playVoice(_phaseVoiceFiles[newPhase]!);
+      }
+    });
+    // Restart companion timer after phase voice plays
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        _companionTimer?.cancel();
+        _companionTimer = Timer.periodic(
+          const Duration(seconds: 8),
+          (_) {
+            if (!mounted) return;
+            _showNextCompanionMessage();
+          },
+        );
       }
     });
     Future.delayed(const Duration(milliseconds: 3000), () {
@@ -1248,18 +1285,21 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _spawnDamagePopup() {
-    final text = _damageTexts[_random.nextInt(_damageTexts.length)];
+    final isCritical = _totalHits > 0 && _totalHits % 5 == 0;
+    final text = isCritical
+        ? 'CRITICAL!'
+        : _damageTexts[_random.nextInt(_damageTexts.length)];
     setState(() {
       _damagePopups.add(
         _DamagePopup(
           text: text,
           x: 0.25 + _random.nextDouble() * 0.5,
           y: 0.1 + _random.nextDouble() * 0.3,
-          color: _weapon.primaryColor,
+          color: isCritical ? const Color(0xFFFFD54F) : _weapon.primaryColor,
           opacity: 1.0,
           offsetY: 0,
           rotation: (_random.nextDouble() - 0.5) * 0.4,
-          scale: 1.0,
+          scale: isCritical ? 1.8 : 1.3,
         ),
       );
     });
@@ -1455,10 +1495,13 @@ class _BrushingScreenState extends State<BrushingScreen>
                           ),
                         ],
                       ),
-                      child: Icon(
-                        _weapon.icon,
-                        color: _weapon.primaryColor,
-                        size: 22,
+                      child: ClipOval(
+                        child: Image.asset(
+                          _weapon.imagePath,
+                          width: 22,
+                          height: 22,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
@@ -1536,81 +1579,77 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Widget _buildWorldIntro() {
     return Scaffold(
-      body: _WorldBackground(
-        world: _world,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.22,
-                child: Image.asset(_world.imagePath, fit: BoxFit.cover),
-              ),
-            ),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _world.themeColor, width: 4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _world.themeColor.withValues(alpha: 0.55),
-                            blurRadius: 28,
-                            spreadRadius: 3,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(_world.imagePath, fit: BoxFit.cover),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      _world.name.toUpperCase(),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 3,
-                            shadows: [
-                              Shadow(
-                                color: _world.themeColor.withValues(alpha: 0.8),
-                                blurRadius: 18,
-                              ),
-                            ],
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _world.description,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'MISSION STARTS IN $_worldIntroSecondsLeft',
-                      style: TextStyle(
-                        color: _world.themeColor,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ],
+      body: GestureDetector(
+        onTap: _dismissWorldIntro,
+        behavior: HitTestBehavior.opaque,
+        child: _WorldBackground(
+          world: _world,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.22,
+                  child: Image.asset(_world.imagePath, fit: BoxFit.cover),
                 ),
               ),
-            ),
-          ],
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _world.themeColor, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _world.themeColor.withValues(alpha: 0.55),
+                              blurRadius: 28,
+                              spreadRadius: 3,
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        _world.name.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 3,
+                              shadows: [
+                                Shadow(
+                                  color: _world.themeColor.withValues(alpha: 0.8),
+                                  blurRadius: 18,
+                                ),
+                              ],
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _world.description,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _PulsingTapToFight(themeColor: _world.themeColor),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1799,7 +1838,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                                       popup.text,
                                       style: TextStyle(
                                         color: popup.color,
-                                        fontSize: 26,
+                                        fontSize: 34,
                                         fontWeight: FontWeight.bold,
                                         shadows: [
                                           Shadow(
@@ -1890,91 +1929,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                               ),
                             ),
 
-                          // Zone transition banner
-                          if (_showZoneBanner)
-                            Center(
-                              child: TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0.0, end: 1.0),
-                                duration: const Duration(milliseconds: 400),
-                                curve: Curves.elasticOut,
-                                builder: (context, value, child) =>
-                                    Transform.scale(scale: value, child: child),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 32,
-                                    vertical: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: _isBossPhase
-                                          ? [
-                                              const Color(
-                                                0xFFFFD54F,
-                                              ).withValues(alpha: 0.95),
-                                              const Color(
-                                                0xFFFF6D00,
-                                              ).withValues(alpha: 0.7),
-                                            ]
-                                          : [
-                                              _world.themeColor.withValues(
-                                                alpha: 0.9,
-                                              ),
-                                              _world.themeColor.withValues(
-                                                alpha: 0.6,
-                                              ),
-                                            ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            (_isBossPhase
-                                                    ? const Color(0xFFFFD54F)
-                                                    : _world.themeColor)
-                                                .withValues(alpha: 0.5),
-                                        blurRadius: 30,
-                                        spreadRadius: 5,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        _isBossPhase
-                                            ? 'BOSS BATTLE!'
-                                            : 'NEW MONSTER!',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 4,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black54,
-                                              blurRadius: 8,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _monster.personality.name.toUpperCase(),
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.7,
-                                          ),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
                           // Mouth guide overlay at phase transitions
                           if (_showMouthGuideOverlay &&
                               _phaseToMouthQuadrant.containsKey(_phase))
@@ -2035,12 +1989,16 @@ class _BrushingScreenState extends State<BrushingScreen>
                             ),
                           ),
                         const MuteButton(),
-                        IconButton(
-                          onPressed: _togglePause,
-                          icon: const Icon(
-                            Icons.pause,
-                            color: Colors.white70,
-                            size: 24,
+                        GestureDetector(
+                          onTap: _togglePause,
+                          behavior: HitTestBehavior.opaque,
+                          child: const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Icon(
+                              Icons.pause,
+                              color: Colors.white70,
+                              size: 32,
+                            ),
                           ),
                         ),
                       ],
@@ -2050,15 +2008,17 @@ class _BrushingScreenState extends State<BrushingScreen>
               ),
 
               // Flash overlay
-              AnimatedBuilder(
-                animation: _flashController,
-                builder: (context, _) => _flashController.value > 0
-                    ? Container(
-                        color: _weapon.primaryColor.withValues(
-                          alpha: _flashController.value * 0.15,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+              IgnorePointer(
+                child: AnimatedBuilder(
+                  animation: _flashController,
+                  builder: (context, _) => _flashController.value > 0
+                      ? Container(
+                          color: _weapon.primaryColor.withValues(
+                            alpha: _flashController.value * 0.15,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ),
 
               if (_isPaused) _buildPauseOverlay(),
@@ -2070,7 +2030,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Widget _buildMissionHud() {
-    final phaseName = _phaseNames[_phase] ?? '';
     return Padding(
       padding: const EdgeInsets.only(left: 12, right: 84),
       child: SlideTransition(
@@ -2128,32 +2087,16 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _world.name.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          Text(
-                            phaseName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: _world.themeColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              letterSpacing: 1.4,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        _world.name.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
                     Container(
@@ -2832,10 +2775,13 @@ class _BrushingScreenState extends State<BrushingScreen>
                         ),
                       ],
                     ),
-                    child: Icon(
-                      _weapon.icon,
-                      color: Colors.white,
-                      size: _heroLunging ? 28 : 24,
+                    child: ClipOval(
+                      child: Image.asset(
+                        _weapon.imagePath,
+                        width: _heroLunging ? 28 : 24,
+                        height: _heroLunging ? 28 : 24,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),
@@ -2940,13 +2886,20 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                   ],
                 ),
-                child: Text(
-                  'RESUME',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 4,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.play_arrow, color: Colors.white, size: 28),
+                    const SizedBox(width: 8),
+                    Text(
+                      'RESUME',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -2963,12 +2916,19 @@ class _BrushingScreenState extends State<BrushingScreen>
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(color: Colors.white24),
                 ),
-                child: Text(
-                  'QUIT',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white70,
-                    letterSpacing: 3,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.close, color: Colors.white70, size: 22),
+                    const SizedBox(width: 6),
+                    Text(
+                      'QUIT',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white70,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -3671,4 +3631,84 @@ class _MonsterDeathPainter extends CustomPainter {
   @override
   bool shouldRepaint(_MonsterDeathPainter oldDelegate) =>
       progress != oldDelegate.progress;
+}
+
+class _PulsingTapToFight extends StatefulWidget {
+  final Color themeColor;
+  const _PulsingTapToFight({required this.themeColor});
+
+  @override
+  State<_PulsingTapToFight> createState() => _PulsingTapToFightState();
+}
+
+class _PulsingTapToFightState extends State<_PulsingTapToFight>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final scale = 1.0 + _controller.value * 0.12;
+        final glowAlpha = 0.3 + _controller.value * 0.4;
+        return Transform.scale(
+          scale: scale,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  widget.themeColor,
+                  widget.themeColor.withValues(alpha: 0.7),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.themeColor.withValues(alpha: glowAlpha),
+                  blurRadius: 24,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.touch_app, color: Colors.white, size: 28),
+                const SizedBox(width: 10),
+                const Text(
+                  'TAP TO FIGHT!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                    shadows: [
+                      Shadow(color: Colors.black54, blurRadius: 8),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
