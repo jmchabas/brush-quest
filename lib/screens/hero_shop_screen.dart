@@ -6,6 +6,7 @@ import '../services/weapon_service.dart';
 import '../services/streak_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
+import '../services/analytics_service.dart';
 
 class HeroShopScreen extends StatefulWidget {
   const HeroShopScreen({super.key});
@@ -33,6 +34,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadData();
+    AnalyticsService().logShopVisit();
     Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) {
         AudioService().playVoice('voice_entry_hero_shop.mp3', clearQueue: true, interrupt: true);
@@ -74,6 +76,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (success) {
         await _heroService.selectHero(hero.id);
         HapticFeedback.heavyImpact();
+        AnalyticsService().logHeroUnlock(heroId: hero.id, starsSpent: hero.cost);
         _playSelectionVoice(AudioService().heroIntroVoiceFor(hero.id));
         if (mounted) _showHeroUnlockAnimation(hero);
         await _loadData();
@@ -111,6 +114,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         HapticFeedback.heavyImpact();
+        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsSpent: weapon.cost);
         _playSelectionVoice(AudioService().weaponIntroVoiceFor(weapon.id));
         if (mounted) _showWeaponUnlockAnimation(weapon);
         await _loadData();

@@ -29,39 +29,48 @@ void main() {
       'last_brush_date': today,
       'morning_done_date': today,
       'total_brushes': 1,
+      'today_brush_count': 1,
+      'today_date': today,
       'muted': false,
     });
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
-    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
+    await tester.pumpWidget(
+      const MaterialApp(home: HomeScreen(skipDailyLogin: true)),
+    );
+    // Allow async _loadStats to complete and rebuild
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 1000));
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
   }
 
   testWidgets(
-    'home stats row uses new icon and settings stays in secondary nav',
+    'home stats row uses brush icon and settings is a gear IconButton',
     (tester) async {
       await pumpHomeScreen(tester);
 
-      expect(find.byIcon(Icons.sanitizer_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.brush), findsNothing);
+      // Today count uses a brush icon (not sanitizer)
+      expect(find.byIcon(Icons.brush), findsOneWidget);
 
+      // Stats display: streak, stars, today count as plain number
       final streakText = tester.widget<Text>(find.text('3'));
       final starsText = tester.widget<Text>(find.text('12'));
-      final todayText = tester.widget<Text>(find.text('1/2'));
+      final todayText = tester.widget<Text>(find.text('1'));
       expect(streakText.style?.fontSize, 24);
       expect(starsText.style?.fontSize, 24);
       expect(todayText.style?.fontSize, 24);
 
-      expect(find.text('SETTINGS'), findsOneWidget);
+      // Settings is an IconButton with gear icon (no text label)
       expect(
         find.ancestor(
           of: find.byIcon(Icons.settings),
           matching: find.byType(IconButton),
         ),
-        findsNothing,
+        findsOneWidget,
       );
+      // MuteButton shows volume_up when not muted
       expect(find.byIcon(Icons.volume_up), findsOneWidget);
 
       await tester.binding.setSurfaceSize(null);

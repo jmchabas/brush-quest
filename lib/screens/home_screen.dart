@@ -13,6 +13,7 @@ import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
 import 'settings_screen.dart';
 import 'card_album_screen.dart';
+import '../services/analytics_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool skipDailyLogin;
@@ -121,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final reward = await _dailyLoginService.checkAndClaimDailyLogin();
     if (reward != null && mounted) {
       _dailyLoginShown = true;
+      AnalyticsService().logDailyLogin(streak: await _streakService.getStreak());
       // Refresh star count if bonus star was awarded
       if (reward.type == DailyRewardType.bonusStar) {
         final stars = await _streakService.getTotalStars();
@@ -263,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!mounted) return;
     if (!prefs.containsKey('camera_mode_configured')) {
       if (!prefs.containsKey('camera_enabled')) {
-        await prefs.setBool('camera_enabled', true);
+        await prefs.setBool('camera_enabled', false);
       }
       await prefs.setBool('camera_mode_configured', true);
     }
@@ -272,6 +274,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _launchBrushingScreen() {
+    AnalyticsService().logBrushSessionStart(
+      heroId: _selectedHero.id,
+      weaponId: _selectedWeapon.id,
+      worldId: '', // world selected in brushing screen
+      isBossSession: _bossReady,
+    );
     Navigator.of(context)
         .push(
           PageRouteBuilder(

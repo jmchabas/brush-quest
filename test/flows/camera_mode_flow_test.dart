@@ -16,16 +16,13 @@ void main() {
     expect(source.contains('_showPreBrushPicker();'), isTrue);
   });
 
-  test('onboarding captures one-time camera setup choice', () {
+  test('onboarding marks camera as configured on completion', () {
     final source = File(
       'lib/screens/onboarding_screen.dart',
     ).readAsStringSync();
 
-    expect(source.contains('Camera motion mode'), isTrue);
-    expect(
-      source.contains("prefs.setBool('camera_enabled', _cameraMotionEnabled)"),
-      isTrue,
-    );
+    // Camera setup choice was removed from onboarding; it just marks configured
+    expect(source.contains('Camera motion mode'), isFalse);
     expect(
       source.contains("prefs.setBool('camera_mode_configured', true)"),
       isTrue,

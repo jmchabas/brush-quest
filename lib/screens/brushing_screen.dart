@@ -14,6 +14,7 @@ import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'package:lottie/lottie.dart';
 import '../widgets/mouth_guide.dart';
+import '../services/analytics_service.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -603,7 +604,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Future<void> _initCamera() async {
     final prefs = await SharedPreferences.getInstance();
-    final cameraEnabled = prefs.getBool('camera_enabled') ?? true;
+    final cameraEnabled = prefs.getBool('camera_enabled') ?? false;
     if (!cameraEnabled) return;
     final ready = await _cameraService.initialize();
     if (mounted) {
@@ -1370,6 +1371,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     _musicHealthTimer?.cancel();
     _audio.stopMusic();
     _clearCheckpoint();
+    AnalyticsService().logBrushSessionAbandon(
+      phase: _phase.name,
+      secondsRemaining: _phaseSecondsLeft,
+      totalHits: _totalHits,
+    );
     if (!mounted) return;
     setState(() => _isQuitting = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {

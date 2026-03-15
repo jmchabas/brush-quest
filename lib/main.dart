@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
+import 'services/analytics_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'widgets/asset_preloader.dart';
@@ -26,8 +27,10 @@ void main() async {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
+    // COPPA-compliant analytics: no ad IDs, no ad personalization.
+    await AnalyticsService().init();
   } catch (_) {
-    // Firebase/Crashlytics unavailable — app still launches.
+    // Firebase/Crashlytics/Analytics unavailable — app still launches.
   }
 
   runApp(const BrushQuestApp());

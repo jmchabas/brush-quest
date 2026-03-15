@@ -10,6 +10,7 @@ import '../services/card_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
+import '../services/analytics_service.dart';
 import 'home_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
@@ -254,6 +255,23 @@ class _VictoryScreenState extends State<VictoryScreen>
       _starsToNextHero = _nextHero!.cost - _newStars;
       if (_starsToNextHero < 0) _starsToNextHero = 0;
     }
+
+    // Analytics: log completion + update user properties
+    final analytics = AnalyticsService();
+    analytics.logBrushSessionComplete(
+      totalHits: widget.totalHits,
+      monstersDefeated: widget.monstersDefeated,
+      isBossSession: widget.isBossSession,
+      starsEarned: _starsEarnedThisSession,
+      newStreak: _newStreak,
+      totalStars: _newStars,
+    );
+    final lifetimeBrushes = await _streakService.getTotalBrushes();
+    analytics.setUserProperties(
+      lifetimeBrushes: lifetimeBrushes,
+      currentStreak: _newStreak,
+      totalStars: _newStars,
+    );
 
     if (mounted) setState(() {});
 
