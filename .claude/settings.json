@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=$(cat | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get(\\\"file_path\\\",\\\"\"))\" 2>/dev/null); if [[ \"$FILE\" == *.dart ]]; then dart analyze --no-fatal-warnings 2>&1 | tail -20; fi'"
+          }
+        ]
+      }
+    ]
+  }
+}

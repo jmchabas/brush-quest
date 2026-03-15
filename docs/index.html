@@ -663,15 +663,15 @@
     /* === Features === */
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
     }
 
     .feature-card {
       background: var(--bg-card);
       border: 1px solid rgba(124, 77, 255, 0.15);
       border-radius: 20px;
-      padding: 32px 24px;
+      padding: 28px 18px;
       text-align: center;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
@@ -684,28 +684,44 @@
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
     }
 
+    .feature-card:hover .feature-icon {
+      border-color: var(--cyan);
+      box-shadow: 0 0 30px var(--cyan-glow);
+      transform: scale(1.1);
+    }
+
     .feature-icon {
-      font-size: 44px;
-      margin-bottom: 16px;
-      display: block;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.12), rgba(124, 77, 255, 0.12));
+      border: 2px solid rgba(0, 229, 255, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+      transition: all 0.3s ease;
+      color: var(--cyan);
+    }
+
+    .feature-icon svg {
+      width: 36px;
+      height: 36px;
+      fill: currentColor;
     }
 
     .feature-card h3 {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       margin-bottom: 8px;
       color: var(--white);
     }
 
     .feature-card p {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--white-soft);
       line-height: 1.5;
-    }
-
-    .feature-highlight {
-      border-color: rgba(0, 229, 255, 0.3);
-      background: linear-gradient(135deg, rgba(124, 77, 255, 0.1), rgba(0, 229, 255, 0.05));
     }
 
     /* === Story Section === */
@@ -1063,11 +1079,21 @@
       .steps::before { display: none; }
 
       .features-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 16px;
       }
 
-      .feature-card { padding: 24px 20px; }
+      .feature-card { padding: 24px 18px; }
+
+      .feature-icon {
+        width: 64px;
+        height: 64px;
+      }
+
+      .feature-icon svg {
+        width: 28px;
+        height: 28px;
+      }
 
       .download-box { padding: 40px 24px; }
 
@@ -1166,12 +1192,6 @@
         </div>
         <div class="phone-frame">
           <div class="phone-bezel">
-            <img src="screenshot_battle.jpg" alt="Battle screen fighting Lord Tartar monster with POW effects in Candy Crater world" loading="lazy" width="540" height="1205">
-          </div>
-          <p class="phone-caption">Brush to attack monsters</p>
-        </div>
-        <div class="phone-frame">
-          <div class="phone-bezel">
             <img src="screenshot_shop.jpg" alt="Heroes and Weapons shop showing unlockable characters Blaze, Frost, Bolt, Shadow" loading="lazy" width="540" height="1205">
           </div>
           <p class="phone-caption">Unlock heroes &amp; weapons</p>
@@ -1188,7 +1208,7 @@
               <source src="gameplay.mp4" type="video/mp4">
             </video>
           </div>
-          <p class="phone-caption">Watch it in action</p>
+          <p class="phone-caption">Brush to attack monsters</p>
         </div>
       </div>
     </section>
@@ -1210,29 +1230,32 @@
         </div>
         <div class="features-grid">
           <div class="feature-card">
-            <span class="feature-icon">&#x1F9B7;</span>
-            <h3>Voice-Guided Brushing</h3>
-            <p>A friendly voice tells your child exactly where to brush, with a visual mouth map. No reading, no supervision needed.</p>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8.5v7a4.47 4.47 0 002.5-3.5zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            </div>
+            <h3>A Voice Guides Every Brush</h3>
+            <p>A friendly voice tells your child exactly where to brush, with a visual mouth map. No reading needed.</p>
           </div>
           <div class="feature-card">
-            <span class="feature-icon">&#x1F4F7;</span>
-            <h3>Real Brushing, Real Attacks</h3>
-            <p>The front camera detects brushing motion. The hero only fights when your child actually brushes. No faking it.</p>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+            </div>
+            <h3>Brush = Attack</h3>
+            <p>The camera detects brushing motion. The hero only fights when your child actually brushes. No faking it.</p>
           </div>
           <div class="feature-card">
-            <span class="feature-icon">&#x1F381;</span>
-            <h3>Keeps the Fun Coming</h3>
-            <p>Treasure chests, bonus stars, 70 monsters, and new heroes drop to keep every session suspenseful.</p>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <h3>70 Monsters. Always New.</h3>
+            <p>Treasure chests, daily rewards, new monsters every session, heroes and weapons to unlock. Months of content.</p>
           </div>
           <div class="feature-card">
-            <span class="feature-icon">&#x23F1;&#xFE0F;</span>
-            <h3>Built to End on Time</h3>
-            <p>The timer ends the session automatically. No arguments, no endless screen time. Done in two minutes.</p>
-          </div>
-          <div class="feature-card feature-highlight">
-            <span class="feature-icon">&#x1F6E1;&#xFE0F;</span>
-            <h3>No Ads. No In-App Purchases.</h3>
-            <p>Nothing to buy, nothing to click, nothing to worry about. Kid-safe privacy. The app does its job and stops.</p>
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+            </div>
+            <h3>Safe. 2 Minutes. Done.</h3>
+            <p>No ads, no in-app purchases, no endless screen time. The session ends on its own. Kid-safe privacy.</p>
           </div>
         </div>
       </div>
@@ -1246,9 +1269,9 @@
         </div>
         <div class="story-grid">
           <div class="story-text">
-            <h3>It started because I was the dad who yelled about toothbrushing.</h3>
+            <h3>Built by a dad. Designed by a 7-year-old.</h3>
             <p>Not proud of it. But if you've ever stood in a bathroom at 7:45pm, running late on bedtime, bargaining with a kid who won't open his mouth &mdash; you know. The patience runs out. The voice gets loud. Everyone goes to bed feeling bad about it. That was us, most nights.</p>
-            <p>I'm a developer, so I built a thing. But honestly, Oliver built it. He's 7 and he has opinions about everything. He decided which space heroes were cool and which were "lame, Dad." He tested every monster and ranked them. He said "there should be a surprise at the end" and refused to brush without one until I added it. Working with a 7-year-old is humbling &mdash; he always knows what he wants, and he's always right.</p>
+            <p>Oliver wondered why brushing teeth was not like playing a video game &#x1F4A1; &mdash; BrushQuest was born. He's 7 and he has opinions about everything &mdash; he decided which space heroes were cool and which were "lame, Dad." He tested every monster and ranked them. He said "there should be a surprise at the end". He knows what's fun!</p>
             <p>Now brushing time sounds different in our house. Oliver runs to the bathroom. Theo, who's 3, screams "ME FIRST." They actually fight over the toothbrush. It's the best problem I've ever had.</p>
             <div class="story-quote">
               <p>"I went from losing my temper every night to watching my kids race each other to the sink. I still can't believe toothbrushing is the easy part of bedtime now."</p>

@@ -13,12 +13,19 @@
 **Affects**: APP workstream
 **Status**: ACTIVE
 
-### D-002: Content-led subscription — "Space Ranger Pass" (2026-03-14, revised)
-**Context**: Deep research done (see `research/`). Parent-feature subscription rejected — camera "verification" is dishonest (motion ≠ brushing proof), dentist reports are gimmicks, reminders are table stakes. Content-led model recommended instead.
-**Decision**: Free = 3 worlds + 2 heroes + 2 weapons (excellent standalone). "Space Ranger Pass" = all 10 worlds + all heroes/weapons + monthly content drops + family profiles + parent activity log + cooperative family quests. **$2.99/mo or $24.99/yr.** Use RevenueCat.
-**Key constraint**: Never frame camera motion detection as "brushing verification." It's a gameplay feature, not proof.
+### D-002: "Space Ranger Pass" — $4.99/mo or $39.99/yr (2026-03-15, APPROVED)
+**Context**: Deep research done (see `research/`). Parent-feature subscription rejected — camera "verification" is dishonest. Content-led model approved by Jim.
+**Decision**:
+- **Free tier**: 3 worlds, 2 heroes, 2 weapons, 21/70 cards visible (49 as silhouettes), **parent activity log FREE**, **weekly parent email FREE**
+- **Space Ranger Pass**: All 10 worlds, all heroes/weapons, all 70 cards collectible, monthly content drops, family profiles (5 kids), cooperative family quests. **$4.99/mo or $39.99/yr.**
+- Use RevenueCat for subscription management.
+**Key decisions**:
+- Monster card collection (21/70 gap) is the primary kid-driven conversion engine
+- Parent activity log + weekly email are FREE — proves value before asking for money, email is owned marketing channel
+- $4.99 not $2.99 — signals quality, matches Roblox spending habits, $39.99/yr < one cavity filling
+- Never frame camera as "brushing verification"
 **Affects**: APP, PRICING workstreams
-**Status**: PENDING — awaiting Jim's feedback on revised pricing + model
+**Status**: APPROVED — implement after Phase 1 validation (100 users, D7 retention > 35%)
 
 ### D-003: Feature freeze until 100 users (2026-03-14)
 **Context**: App has 10 worlds, 70 monsters, 6 heroes, 6 weapons, boss battles, card collecting. More than enough.

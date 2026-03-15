@@ -85,26 +85,29 @@ Based on cross-category research:
 
 Key finding: **Outcome positioning > feature positioning.** Sleep apps charge 2-3x educational apps because they solve an OUTCOME, not provide a feature.
 
-## Recommended Pricing
+## Approved Pricing (2026-03-15)
 
 | Tier | Monthly | Annual | Effective Monthly |
 |------|---------|--------|-------------------|
 | Free | $0 | $0 | $0 |
-| Space Ranger Pass | $2.99 | $24.99 | $2.08 |
+| **Space Ranger Pass** | **$4.99** | **$39.99** | **$3.33** |
 
-### Why $2.99/mo, Not Higher
+### Why $4.99/mo (revised up from $2.99)
 
-1. **Market context**: Every competitor is free. $2.99 is already the most expensive toothbrushing app.
-2. **Parent features don't justify $5.99**: The evaluation showed most proposed parent features are weak (see `parent-features-evaluation.md`).
-3. **Content-led, not outcome-led**: Until brushing verification is real (requires hardware partner), the value is "more game content" not "proof your kid brushed."
-4. **Impulse buy territory**: Parents seeing genuine kid engagement will pay $2.99 without deliberation.
-5. **Annual incentive strong**: $24.99/year = 30% discount vs monthly. Annual plans retain 50-60% vs ~25% monthly.
+Jim's feedback: "$2.99 signals cheap and doesn't reflect the health value. Parents spend $5-10/mo on Roblox without thinking."
 
-### Future Price Increases
+1. **Roblox anchoring**: $4.99 = one Roblox skin, one coffee. Parents already spend this routinely on kids' digital content.
+2. **Health value framing**: $39.99/year < one cavity filling ($100-300). 52% of kids 6-8 have had cavities. Easy ROI story.
+3. **Quality signal**: $2.99 makes the app look budget. $4.99 says "this is a quality product" without being premium-scary.
+4. **Parent features are free**: Activity log + weekly email are in the free tier. The $4.99 buys content the kid wants, not features the parent evaluates rationally. Kids don't compare prices — they want more worlds.
+5. **Annual incentive strong**: $39.99/year = 33% discount vs monthly. Annual plans retain 50-60% vs ~25% monthly.
+6. **Room to A/B test up**: Can test $5.99 once we have conversion data. Easier to test up from $4.99 than to raise from $2.99.
+
+### Future Price Adjustments
 Once proven with data:
-- Add genuine parent features (real verification via smart toothbrush partner) → justify $5.99-$7.99/mo
-- Family plan ($4.99/mo for up to 5 kids) → higher ARPU from multi-child families
+- A/B test $5.99/mo ($49.99/yr) for new users
 - B2B pricing (dental insurer per-member) → $1-3 PMPM, different channel entirely
+- Smart toothbrush partnership → justify premium tier at $7.99/mo
 
 ## Sources
 - RevenueCat: State of Subscription Apps 2025
