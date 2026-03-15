@@ -13,7 +13,7 @@
 ### APP
 - **Status**: v7 shipped + COPPA compliance DONE (all P1 items complete)
 - **Last session**: 2026-03-15
-- **Last commit**: uncommitted (COPPA compliance changes — camera default OFF, consent dialogs, privacy policy, url_launcher)
+- **Last commit**: `bd6811e` — COPPA compliance, Firebase Analytics, business research & ops system
 - **What happened**:
   - Firebase Analytics with COPPA child-directed treatment (10 events, ad IDs disabled)
   - COPPA compliance: camera defaults OFF, consent dialogs for Sign-In + camera, privacy policy link in Settings, "Delete child's data" relabeled, privacy policy rewritten (operator info, retention table, parental rights, consent mechanisms, internal ops exception)
@@ -42,12 +42,17 @@
 - **Needs CEO decision**: None
 
 ### PRICING
-- **Status**: Research complete, model proposed, awaiting Jim's decision
+- **Status**: APPROVED — "Space Ranger Pass" $4.99/mo or $39.99/yr
 - **Last session**: 2026-03-15
-- **What happened**: Deep research done (6 files in `research/`). Parent subscription at $5.99/mo rejected — camera "verification" is dishonest, other features are table stakes. Proposed content-led "Space Ranger Pass" at $2.99/mo or $24.99/yr instead. Jim said to hold on pricing front for now.
-- **Blocked on**: Jim's decision on pricing model + needs analytics data from real users
-- **Next up**: Jim reviews `research/monetization-models.md` and `research/parent-features-evaluation.md`, decides on model
-- **Needs CEO decision**: Approve/modify "Space Ranger Pass" model ($2.99/mo or $24.99/yr) — see D-002 in STRATEGY.md
+- **What happened**:
+  - Deep research (6 files in `research/`). Parent subscription rejected. Content-led model approved.
+  - Jim raised price from $2.99→$4.99 ("$2.99 signals cheap, doesn't reflect health value, Roblox parents spend $5-10/mo without thinking")
+  - Free parent activity log + weekly email approved as conversion funnel
+  - Monster card collection (21/70 gap) approved as kid-driven conversion engine
+  - Full spec in `research/monetization-models.md` (Section 5)
+- **Blocked on**: Phase 1 validation needed before implementation (100 users, D7 retention > 35% per D-003)
+- **Next up**: Implement paywall + RevenueCat after Phase 1 metrics hit
+- **Needs CEO decision**: None — model approved
 
 ### LLC
 - **Status**: In progress — registered agent hired, filing next
