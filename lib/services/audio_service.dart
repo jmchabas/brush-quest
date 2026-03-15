@@ -11,20 +11,33 @@ class _QueuedVoiceRequest {
 }
 
 class AudioService {
-  static final AudioService _instance = AudioService._internal();
+  static AudioService _instance = AudioService._internal();
   factory AudioService() => _instance;
+
+  /// Replace the singleton for testing. Pass null to restore the default.
+  @visibleForTesting
+  static set testInstance(AudioService? instance) {
+    _instance = instance ?? AudioService._internal();
+  }
+
   AudioService._internal() {
+    _voicePlayer = AudioPlayer();
+    _musicPlayer = AudioPlayer();
     for (int i = 0; i < _sfxPoolSize; i++) {
       _sfxPool.add(AudioPlayer());
     }
   }
 
+  /// Protected constructor for subclasses (e.g. FakeAudioService in tests).
+  @visibleForTesting
+  AudioService.forTesting();
+
   static const _sfxPoolSize = 3;
   final List<AudioPlayer> _sfxPool = [];
   int _sfxIndex = 0;
 
-  final AudioPlayer _voicePlayer = AudioPlayer();
-  AudioPlayer _musicPlayer = AudioPlayer();
+  late final AudioPlayer _voicePlayer;
+  late AudioPlayer _musicPlayer;
   bool _muted = false;
   bool _voicePlaying = false;
   bool _voiceQueueProcessing = false;

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/mouth_guide.dart';
 import '../widgets/space_background.dart';
 import '../services/audio_service.dart';
+import '../services/analytics_service.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -70,6 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     HapticFeedback.heavyImpact();
     _audio.playSfx('victory.mp3');
     _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
+    AnalyticsService().logOnboardingComplete();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_mode_configured', true);
     await prefs.setBool('onboarding_completed', true);
