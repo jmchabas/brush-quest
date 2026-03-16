@@ -177,7 +177,8 @@ class AudioService {
     'star_chime.mp3',
     'battle_music_loop.mp3',
     'voice_card_new.mp3',
-    'voice_card_fragment.mp3',
+    'voice_card_album_tutorial_1.mp3',
+    'voice_card_album_tutorial_2.mp3',
     'voice_greet_just_started_1.mp3',
     'voice_greet_just_started_2.mp3',
     'voice_greet_just_started_3.mp3',
@@ -196,14 +197,11 @@ class AudioService {
     'voice_onboarding_3.mp3',
     'voice_entry_hero_shop.mp3',
     'voice_entry_world_map.mp3',
-    'voice_entry_card_album.mp3',
     'voice_entry_settings.mp3',
     'voice_need_stars.mp3',
     'voice_earned_star.mp3',
     'voice_tomorrow_preview.mp3',
-    'voice_fragments_ready.mp3',
     'voice_card_mystery.mp3',
-    'voice_fragment_explain.mp3',
     // Per-world description voices
     'voice_world_candy_crater.mp3',
     'voice_world_slime_swamp.mp3',
@@ -410,6 +408,13 @@ class AudioService {
     if (clearQueue) {
       _clearVoiceQueue();
     }
+
+    // Add request to queue BEFORE any await, so sequential calls
+    // preserve their order even when interrupt yields to the event loop.
+    final request = _QueuedVoiceRequest(fileName);
+    _voiceQueue.add(request);
+    _updateVoicePipelineState();
+
     if (interrupt) {
       try {
         await _voicePlayer.stop();
@@ -423,9 +428,6 @@ class AudioService {
       _voicePlaying = false;
     }
 
-    final request = _QueuedVoiceRequest(fileName);
-    _voiceQueue.add(request);
-    _updateVoicePipelineState();
     unawaited(_pumpVoiceQueue());
     await request.completer.future;
   }

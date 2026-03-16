@@ -49,20 +49,12 @@ class MonsterCard {
 
 class CardDropResult {
   final MonsterCard card;
-  final bool isNew;
-  final int fragments; // fragments awarded if duplicate
 
-  const CardDropResult({
-    required this.card,
-    required this.isNew,
-    this.fragments = 0,
-  });
+  const CardDropResult({required this.card});
 }
 
 class CardService {
   static const _collectedKey = 'collected_cards';
-  static const _fragmentsKey = 'card_fragments';
-  static bool _redeeming = false;
 
   // ~40% base drop chance, boosted by streak
   static double dropChance(int streak) => (0.40 + streak * 0.02).clamp(0.0, 0.70);
@@ -168,17 +160,6 @@ class CardService {
     return prefs.getStringList(_collectedKey) ?? [];
   }
 
-  Future<int> getFragments() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_fragmentsKey) ?? 0;
-  }
-
-  Future<void> addFragments(int count) async {
-    final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getInt(_fragmentsKey) ?? 0;
-    await prefs.setInt(_fragmentsKey, current + count);
-  }
-
   Future<void> collectCard(String cardId) async {
     final prefs = await SharedPreferences.getInstance();
     final collected = prefs.getStringList(_collectedKey) ?? [];
@@ -223,53 +204,13 @@ class CardService {
     var candidates = pool.where((c) => c.rarity == targetRarity).toList();
     if (candidates.isEmpty) candidates = pool;
 
-    // Prefer uncollected cards
+    // Prefer uncollected cards — if all collected, no drop
     final uncollected = candidates.where((c) => !collected.contains(c.id)).toList();
-    final MonsterCard card;
-    if (uncollected.isNotEmpty) {
-      card = uncollected[rng.nextInt(uncollected.length)];
-      await collectCard(card.id);
-      return CardDropResult(card: card, isNew: true);
-    } else {
-      // Duplicate → give 1 fragment
-      card = candidates[rng.nextInt(candidates.length)];
-      await addFragments(1);
-      return CardDropResult(card: card, isNew: false, fragments: 1);
-    }
-  }
+    if (uncollected.isEmpty) return null;
 
-  /// Redeem 3 fragments for a random uncollected card from any eligible world.
-  Future<MonsterCard?> redeemFragments(String currentWorldId) async {
-    if (_redeeming) return null;
-    _redeeming = true;
-    try {
-      final fragments = await getFragments();
-      if (fragments < 3) return null;
-
-      final collected = await getCollectedCardIds();
-      final worldOrder = [
-        'candy_crater', 'slime_swamp', 'sugar_volcano',
-        'shadow_nebula', 'cavity_fortress',
-        'frozen_tundra', 'toxic_jungle', 'crystal_cave',
-        'storm_citadel', 'dark_dimension',
-      ];
-      final currentIdx = worldOrder.indexOf(currentWorldId);
-      if (currentIdx < 0) return null;
-      final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
-      final uncollected = allCards
-          .where((c) => eligibleWorlds.contains(c.worldId) && !collected.contains(c.id))
-          .toList();
-      if (uncollected.isEmpty) return null;
-
-      final rng = Random();
-      final card = uncollected[rng.nextInt(uncollected.length)];
-      await collectCard(card.id);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_fragmentsKey, fragments - 3);
-      return card;
-    } finally {
-      _redeeming = false;
-    }
+    final card = uncollected[rng.nextInt(uncollected.length)];
+    await collectCard(card.id);
+    return CardDropResult(card: card);
   }
 
   /// Progressive card reveal: commons always visible (4),

@@ -388,11 +388,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    const statIconSize = 24.0;
-    const statValueSize = 24.0;
-    const statPairSpacing = 5.0;
-    const statGroupSpacing = 24.0;
-
     return Scaffold(
       body: SpaceBackground(
         child: SafeArea(
@@ -428,19 +423,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   const SizedBox(height: 40),
 
-                  // Title
+                  // Title (36px, strokeWidth 3)
                   Stack(
                     children: [
                       Text(
                         'BRUSH QUEST',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
-                              fontSize: 48,
+                              fontSize: 36,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 3,
                               foreground: Paint()
                                 ..style = PaintingStyle.stroke
-                                ..strokeWidth = 4
+                                ..strokeWidth = 3
                                 ..color = const Color(0xFF7C4DFF),
                             ),
                       ),
@@ -448,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         'BRUSH QUEST',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
-                              fontSize: 48,
+                              fontSize: 36,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 3,
@@ -466,45 +461,66 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 16),
 
-                  // Stats row: streak + stars + today count
+                  // Stats row: streak + star pill
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Streak
+                      // Streak — always visible
+                      Icon(
+                        Icons.local_fire_department,
+                        color: _streak > 0
+                            ? Colors.orangeAccent
+                            : Colors.white.withValues(alpha: 0.2),
+                        size: 26,
+                      ),
                       if (_streak > 0) ...[
-                        const Icon(
-                          Icons.local_fire_department,
-                          color: Colors.orangeAccent,
-                          size: statIconSize,
-                        ),
-                        const SizedBox(width: statPairSpacing),
+                        const SizedBox(width: 4),
                         Text(
                           '$_streak',
                           style: const TextStyle(
                             color: Colors.orangeAccent,
                             fontWeight: FontWeight.bold,
-                            fontSize: statValueSize,
+                            fontSize: 22,
                           ),
                         ),
-                        const SizedBox(width: statGroupSpacing),
                       ],
-                      // Stars
-                      const Icon(
-                        Icons.star,
-                        color: Colors.yellowAccent,
-                        size: statIconSize,
-                      ),
-                      const SizedBox(width: statPairSpacing),
-                      Text(
-                        '$_totalStars',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: statValueSize,
-                          shadows: [
-                            Shadow(
-                              color: Colors.yellowAccent.withValues(alpha: 0.5),
-                              blurRadius: 8,
+                      const SizedBox(width: 20),
+                      // Golden star pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFD54F),
+                              size: 28,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$_totalStars',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 32,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x80FFD54F),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -642,25 +658,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               );
                             },
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'BRUSH NOW',
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 28,
-                                  letterSpacing: 3,
-                                  shadows: [
-                                    Shadow(
-                                      color: _selectedHero.primaryColor
-                                          .withValues(alpha: 0.8),
-                                      blurRadius: 16,
-                                    ),
-                                  ],
-                                ),
-                          ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 10),
                           Text(
                             _selectedHero.name,
                             style: TextStyle(
@@ -669,31 +667,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               fontWeight: FontWeight.bold,
                               letterSpacing: 3,
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.touch_app,
-                                color: Colors.white.withValues(
-                                  alpha: 0.5 + _auraController.value * 0.4,
-                                ),
-                                size: 14,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'TAP TO START',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(
-                                    alpha: 0.5 + _auraController.value * 0.4,
-                                  ),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.6,
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),

@@ -51,11 +51,12 @@ void main() {
     (tester) async {
       await pumpHomeScreen(tester);
 
-      // Stats display: streak and stars
-      final streakText = tester.widget<Text>(find.text('3'));
+      // Stats display: star pill shows 32px font
       final starsText = tester.widget<Text>(find.text('12'));
-      expect(streakText.style?.fontSize, 24);
-      expect(starsText.style?.fontSize, 24);
+      expect(starsText.style?.fontSize, 32);
+      // Streak shows at 22px
+      final streakText = tester.widget<Text>(find.text('3'));
+      expect(streakText.style?.fontSize, 22);
 
       // Settings is an IconButton with gear icon (no text label)
       expect(

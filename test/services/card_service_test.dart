@@ -71,11 +71,6 @@ void main() {
       expect(count, 0);
     });
 
-    test('fragments start at zero', () async {
-      final fragments = await service.getFragments();
-      expect(fragments, 0);
-    });
-
     // ── Collecting cards ──
 
     test('collectCard adds card to collection', () async {
@@ -108,22 +103,6 @@ void main() {
       expect(count, 2);
     });
 
-    // ── Fragments ──
-
-    test('addFragments increases fragment count', () async {
-      await service.addFragments(1);
-      expect(await service.getFragments(), 1);
-      await service.addFragments(2);
-      expect(await service.getFragments(), 3);
-    });
-
-    test('addFragments accumulates correctly', () async {
-      await service.addFragments(5);
-      await service.addFragments(3);
-      await service.addFragments(2);
-      expect(await service.getFragments(), 10);
-    });
-
     // ── Drop chance ──
 
     test('dropChance is 40% at streak 0', () {
@@ -140,51 +119,18 @@ void main() {
       expect(CardService.dropChance(20), closeTo(0.70, 0.001));
     });
 
-    // ── Redeem fragments ──
+    // ── rollCardDrop returns null when all collected ──
 
-    test('redeemFragments returns null when fewer than 3 fragments', () async {
-      await service.addFragments(2);
-      final result = await service.redeemFragments('candy_crater');
-      expect(result, isNull);
-      // Fragments should not be deducted
-      expect(await service.getFragments(), 2);
-    });
-
-    test('redeemFragments deducts 3 fragments and returns a card', () async {
-      await service.addFragments(5);
-      final card = await service.redeemFragments('candy_crater');
-      expect(card, isNotNull);
-      expect(await service.getFragments(), 2);
-      // Card should now be in collection
-      final ids = await service.getCollectedCardIds();
-      expect(ids, contains(card!.id));
-    });
-
-    test('redeemFragments returns null for invalid world', () async {
-      await service.addFragments(5);
-      final card = await service.redeemFragments('nonexistent_world');
-      expect(card, isNull);
-      // Fragments should not be deducted
-      expect(await service.getFragments(), 5);
-    });
-
-    test('redeemFragments only picks from eligible worlds', () async {
-      await service.addFragments(3);
-      final card = await service.redeemFragments('candy_crater');
-      expect(card, isNotNull);
-      expect(card!.worldId, 'candy_crater');
-    });
-
-    test('redeemFragments returns null when all eligible cards collected', () async {
+    test('rollCardDrop returns null when all eligible cards collected', () async {
       // Collect all candy_crater cards
       for (final c in CardService.cardsForWorld('candy_crater')) {
         await service.collectCard(c.id);
       }
-      await service.addFragments(3);
-      final card = await service.redeemFragments('candy_crater');
-      expect(card, isNull);
-      // Fragments should not be deducted when nothing to redeem
-      expect(await service.getFragments(), 3);
+      // Run many trials — should always be null
+      for (int i = 0; i < 20; i++) {
+        final result = await service.rollCardDrop('candy_crater', 15);
+        expect(result, isNull);
+      }
     });
 
     // ── Progressive card visibility ──

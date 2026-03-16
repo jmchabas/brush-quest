@@ -361,7 +361,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         });
         HapticFeedback.mediumImpact();
         _audio.playSfx('star_chime.mp3');
-        _audio.playVoice(drop.isNew ? 'voice_card_new.mp3' : 'voice_card_fragment.mp3');
+        _audio.playVoice('voice_card_new.mp3');
         // Queue the specific card description voice after the generic announcement
         _audio.playVoice('voice_card_${drop.card.id}.mp3');
       }
@@ -430,11 +430,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      drop.isNew ? 'NEW CARD!' : 'CARD FRAGMENT +1',
-                      style: TextStyle(
-                        color: drop.isNew
-                            ? const Color(0xFF69F0AE)
-                            : const Color(0xFFFFD54F),
+                      'NEW CARD!',
+                      style: const TextStyle(
+                        color: Color(0xFF69F0AE),
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                         letterSpacing: 1.5,

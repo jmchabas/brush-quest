@@ -5,7 +5,6 @@ import '../services/card_service.dart';
 import '../services/world_service.dart';
 import '../services/audio_service.dart';
 import '../widgets/space_background.dart';
-import '../widgets/glass_card.dart';
 
 class CardAlbumScreen extends StatefulWidget {
   const CardAlbumScreen({super.key});
@@ -19,27 +18,27 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
   final _worldService = WorldService();
 
   List<String> _collectedIds = [];
-  int _fragments = 0;
-  String _currentWorldId = 'candy_crater';
   List<String> _unlockedWorldIds = [];
+  late PageController _pageController;
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     _loadData();
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) {
-        AudioService().playVoice('voice_entry_card_album.mp3', clearQueue: true, interrupt: true);
-      }
-    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
     final collected = await _cardService.getCollectedCardIds();
-    final fragments = await _cardService.getFragments();
     final worldId = await _worldService.getCurrentWorldId();
 
-    // Determine which worlds are unlocked
     final unlocked = <String>[];
     for (final world in WorldService.allWorlds) {
       if (await _worldService.isWorldUnlocked(world.id)) {
@@ -48,69 +47,54 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
     }
 
     if (mounted) {
-      final wasBelow = _fragments < 3;
       setState(() {
         _collectedIds = collected;
-        _fragments = fragments;
-        _currentWorldId = worldId;
         _unlockedWorldIds = unlocked;
       });
-      // Play fragments ready voice when we first detect >= 3 fragments
-      if (fragments >= 3 && wasBelow) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            AudioService().playVoice('voice_fragments_ready.mp3');
-          }
-        });
+      // Set initial page to current world
+      final idx = unlocked.indexOf(worldId);
+      if (idx > 0) {
+        _pageController.jumpToPage(idx);
+        _currentPage = idx;
       }
-      // Fragment tutorial voice on first view with fragments > 0
-      _maybePlayFragmentTutorial(fragments);
+      _maybePlayTutorial();
     }
   }
 
-  Future<void> _maybePlayFragmentTutorial(int fragments) async {
-    if (fragments <= 0) return;
+  Future<void> _maybePlayTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    final shown = prefs.getBool('fragment_tutorial_shown') ?? false;
-    if (shown) return;
-    await prefs.setBool('fragment_tutorial_shown', true);
-    // Delay to let entry voice finish
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        AudioService().playVoice('voice_fragment_explain.mp3');
-      }
-    });
-  }
+    final visitCount = prefs.getInt('card_album_visit_count') ?? 0;
+    await prefs.setInt('card_album_visit_count', visitCount + 1);
 
-  Future<void> _redeemFragments() async {
-    if (_fragments < 3) return;
-    final card = await _cardService.redeemFragments(_currentWorldId);
-    if (card != null && mounted) {
-      HapticFeedback.heavyImpact();
-      AudioService().playSfx('star_chime.mp3');
-      _showCardDetail(card, isNewReveal: true);
-      await _loadData();
+    if (visitCount == 0) {
+      // First visit
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) {
+        AudioService().playVoice('voice_card_album_tutorial_1.mp3',
+            clearQueue: true, interrupt: true);
+      }
+    } else if (visitCount == 1 && _collectedIds.length <= 1) {
+      // Second visit with <=1 card
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) {
+        AudioService().playVoice('voice_card_album_tutorial_2.mp3',
+            clearQueue: true, interrupt: true);
+      }
     }
   }
 
-  void _showCardDetail(MonsterCard card, {bool isNewReveal = false}) {
+  void _showCardDetail(MonsterCard card) {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => _CardDetailDialog(
-        card: card,
-        isNew: isNewReveal,
-      ),
+      builder: (context) => _CardDetailDialog(card: card),
     );
-    AudioService().playVoice('voice_card_${card.id}.mp3', clearQueue: true, interrupt: true);
+    AudioService().playVoice('voice_card_${card.id}.mp3',
+        clearQueue: true, interrupt: true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalCollected = _collectedIds.length;
-    final totalCards = CardService.allCards.length;
-
-    // Filter to only unlocked worlds
     final unlockedWorlds = WorldService.allWorlds
         .where((w) => _unlockedWorldIds.contains(w.id))
         .toList();
@@ -120,153 +104,93 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+              // Header with back button
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        'MONSTER CARDS',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 26,
-                              letterSpacing: 3,
-                            ),
-                      ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back,
+                          color: Colors.white, size: 28),
                     ),
                   ],
                 ),
               ),
 
-              // Progress bar + fragments
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: GlassCard(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+              // World pages
+              Expanded(
+                child: unlockedWorlds.isEmpty
+                    ? const SizedBox.shrink()
+                    : PageView.builder(
+                        controller: _pageController,
+                        itemCount: unlockedWorlds.length,
+                        onPageChanged: (page) =>
+                            setState(() => _currentPage = page),
+                        itemBuilder: (context, index) {
+                          final world = unlockedWorlds[index];
+                          return _buildWorldPage(world);
+                        },
+                      ),
+              ),
+
+              // Page dots + arrows
+              if (unlockedWorlds.length > 1)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Collection progress
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.style, color: Colors.white70, size: 16),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '$totalCollected / $totalCards',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: LinearProgressIndicator(
-                                value: totalCards > 0
-                                    ? totalCollected / totalCards
-                                    : 0,
-                                backgroundColor:
-                                    Colors.white.withValues(alpha: 0.15),
-                                valueColor: const AlwaysStoppedAnimation(
-                                  Color(0xFF69F0AE),
-                                ),
-                                minHeight: 8,
-                              ),
-                            ),
-                          ],
+                      // Left arrow
+                      GestureDetector(
+                        onTap: _currentPage > 0
+                            ? () => _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut)
+                            : null,
+                        child: Icon(
+                          Icons.chevron_left,
+                          color: _currentPage > 0
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.2),
+                          size: 32,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      // Fragment display with puzzle pieces
-                      GestureDetector(
-                        onTap: _fragments >= 3 ? _redeemFragments : null,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                      const SizedBox(width: 8),
+                      // Dots
+                      for (int i = 0; i < unlockedWorlds.length; i++)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: i == _currentPage ? 10 : 8,
+                          height: i == _currentPage ? 10 : 8,
                           decoration: BoxDecoration(
-                            color: _fragments >= 3
-                                ? const Color(0xFFFFD54F).withValues(alpha: 0.3)
-                                : Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _fragments >= 3
-                                  ? const Color(0xFFFFD54F)
-                                      .withValues(alpha: 0.6)
-                                  : Colors.white.withValues(alpha: 0.2),
-                            ),
+                            shape: BoxShape.circle,
+                            color: i == _currentPage
+                                ? unlockedWorlds[i].themeColor
+                                : Colors.white.withValues(alpha: 0.3),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              for (int i = 0; i < 3; i++)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 2),
-                                  child: Icon(
-                                    i < _fragments
-                                        ? Icons.extension
-                                        : Icons.extension_outlined,
-                                    color: i < _fragments
-                                        ? const Color(0xFFFFD54F)
-                                        : Colors.white24,
-                                    size: 16,
-                                  ),
-                                ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '$_fragments/3',
-                                style: TextStyle(
-                                  color: _fragments >= 3
-                                      ? const Color(0xFFFFD54F)
-                                      : Colors.white54,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      // Right arrow
+                      GestureDetector(
+                        onTap: _currentPage < unlockedWorlds.length - 1
+                            ? () => _pageController.nextPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut)
+                            : null,
+                        child: Icon(
+                          Icons.chevron_right,
+                          color: _currentPage < unlockedWorlds.length - 1
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.2),
+                          size: 32,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-
               const SizedBox(height: 8),
-
-              // Scrollable list of worlds with cards
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: unlockedWorlds.length,
-                  itemBuilder: (context, index) {
-                    final world = unlockedWorlds[index];
-                    return _buildWorldSection(world);
-                  },
-                ),
-              ),
             ],
           ),
         ),
@@ -274,78 +198,110 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
     );
   }
 
-  Widget _buildWorldSection(WorldData world) {
-    final visibleCards = CardService.visibleCardsForWorld(world.id, _collectedIds);
+  Widget _buildWorldPage(WorldData world) {
     final worldCards = CardService.cardsForWorld(world.id);
-    final collectedCount = worldCards.where((c) => _collectedIds.contains(c.id)).length;
-    final totalCount = worldCards.length;
+    final visibleCards =
+        CardService.visibleCardsForWorld(world.id, _collectedIds);
+    final collectedCount =
+        worldCards.where((c) => _collectedIds.contains(c.id)).length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // World header
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            children: [
-              ClipOval(
-                child: Image.asset(
-                  world.imagePath,
-                  width: 28,
-                  height: 28,
-                  fit: BoxFit.cover,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          // Large planet image
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: world.themeColor.withValues(alpha: 0.4),
+                  blurRadius: 20,
+                  spreadRadius: 4,
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  world.name.toUpperCase(),
-                  style: TextStyle(
-                    color: world.themeColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    letterSpacing: 2,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: world.themeColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: world.themeColor.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Text(
-                  '$collectedCount/$totalCount',
-                  style: TextStyle(
-                    color: world.themeColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
+            child: ClipOval(
+              child: Image.asset(world.imagePath,
+                  width: 80, height: 80, fit: BoxFit.cover),
+            ),
           ),
-        ),
-        // Cards grid
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: visibleCards.map((card) {
-            final isCollected = _collectedIds.contains(card.id);
-            return SizedBox(
-              width: (MediaQuery.of(context).size.width - 32 - 24) / 3,
-              child: AspectRatio(
-                aspectRatio: 0.7,
-                child: _buildCardTile(card, isCollected),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 16),
-      ],
+          const SizedBox(height: 10),
+          // World name
+          Text(
+            world.name.toUpperCase(),
+            style: TextStyle(
+              color: world.themeColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              letterSpacing: 3,
+            ),
+          ),
+          const SizedBox(height: 10),
+          // 7-dot progress indicator
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(worldCards.length, (i) {
+              final card = worldCards[i];
+              final collected = _collectedIds.contains(card.id);
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: collected
+                      ? card.rarityColor
+                      : Colors.white.withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: collected
+                        ? card.rarityColor
+                        : Colors.white.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: collected
+                      ? [
+                          BoxShadow(
+                            color: card.rarityColor.withValues(alpha: 0.5),
+                            blurRadius: 6,
+                          ),
+                        ]
+                      : null,
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 4),
+          // Small collection count (just for parent reference)
+          Text(
+            '$collectedCount / ${worldCards.length}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Card grid
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: visibleCards.map((card) {
+              final isCollected = _collectedIds.contains(card.id);
+              return SizedBox(
+                width: (MediaQuery.of(context).size.width - 40 - 24) / 3,
+                child: AspectRatio(
+                  aspectRatio: 0.75,
+                  child: _buildCardTile(card, isCollected),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
@@ -358,7 +314,8 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
             }
           : () {
               HapticFeedback.lightImpact();
-              AudioService().playVoice('voice_card_mystery.mp3', clearQueue: true, interrupt: true);
+              AudioService().playVoice('voice_card_mystery.mp3',
+                  clearQueue: true, interrupt: true);
             },
       child: Container(
         decoration: BoxDecoration(
@@ -369,7 +326,7 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
           border: Border.all(
             color: isCollected
                 ? card.rarityColor.withValues(alpha: 0.7)
-                : Colors.white.withValues(alpha: 0.1),
+                : Colors.white.withValues(alpha: 0.08),
             width: isCollected ? 2 : 1,
           ),
           boxShadow: isCollected
@@ -381,76 +338,71 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
                 ]
               : null,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            // Monster image or silhouette
-            SizedBox(
-              width: 64,
-              height: 64,
-              child: isCollected
-                  ? ShaderMask(
-                      shaderCallback: (bounds) => RadialGradient(
-                        colors: [
-                          Colors.white,
-                          Colors.white.withValues(alpha: 0.0),
-                        ],
-                        radius: 0.75,
-                      ).createShader(bounds),
-                      child: ColorFiltered(
-                        colorFilter: ColorFilter.mode(
-                          card.tintColor.withValues(alpha: 0.35),
-                          BlendMode.srcATop,
+            // Monster image
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: isCollected
+                    ? ShaderMask(
+                        shaderCallback: (bounds) => RadialGradient(
+                          colors: [
+                            Colors.white,
+                            Colors.white.withValues(alpha: 0.0),
+                          ],
+                          radius: 0.75,
+                        ).createShader(bounds),
+                        child: ColorFiltered(
+                          colorFilter: ColorFilter.mode(
+                            card.tintColor.withValues(alpha: 0.35),
+                            BlendMode.srcATop,
+                          ),
+                          child:
+                              Image.asset(card.imagePath, fit: BoxFit.contain),
                         ),
-                        child: Image.asset(card.imagePath, fit: BoxFit.contain),
-                      ),
-                    )
-                  : ShaderMask(
-                      shaderCallback: (bounds) => RadialGradient(
-                        colors: [
-                          Colors.white,
-                          Colors.white.withValues(alpha: 0.0),
-                        ],
-                        radius: 0.75,
-                      ).createShader(bounds),
-                      child: ColorFiltered(
-                        colorFilter: const ColorFilter.mode(
-                          Colors.black54,
-                          BlendMode.srcATop,
+                      )
+                    : // Uncollected: desaturated peek at 35% opacity
+                    Opacity(
+                        opacity: 0.35,
+                        child: ShaderMask(
+                          shaderCallback: (bounds) => RadialGradient(
+                            colors: [
+                              Colors.white,
+                              Colors.white.withValues(alpha: 0.0),
+                            ],
+                            radius: 0.75,
+                          ).createShader(bounds),
+                          child: ColorFiltered(
+                            colorFilter: const ColorFilter.mode(
+                              Colors.black54,
+                              BlendMode.saturation,
+                            ),
+                            child: Image.asset(card.imagePath,
+                                fit: BoxFit.contain),
+                          ),
                         ),
-                        child: Image.asset(card.imagePath, fit: BoxFit.contain),
                       ),
-                    ),
-            ),
-            const SizedBox(height: 6),
-            // Name or "???"
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                isCollected ? card.name : '???',
-                style: TextStyle(
-                  color: isCollected ? Colors.white : Colors.white24,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-            if (isCollected) ...[
-              const SizedBox(height: 2),
-              Text(
-                card.rarityLabel,
-                style: TextStyle(
-                  color: card.rarityColor,
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
+            // Rarity dot at bottom center
+            Positioned(
+              bottom: 6,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isCollected
+                        ? card.rarityColor
+                        : card.rarityColor.withValues(alpha: 0.25),
+                  ),
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -460,9 +412,8 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
 
 class _CardDetailDialog extends StatefulWidget {
   final MonsterCard card;
-  final bool isNew;
 
-  const _CardDetailDialog({required this.card, this.isNew = false});
+  const _CardDetailDialog({required this.card});
 
   @override
   State<_CardDetailDialog> createState() => _CardDetailDialogState();
@@ -528,29 +479,7 @@ class _CardDetailDialogState extends State<_CardDetailDialog>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (widget.isNew)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: card.rarityColor.withValues(alpha: 0.3),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(18),
-                      topRight: Radius.circular(18),
-                    ),
-                  ),
-                  child: Text(
-                    'NEW CARD!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: card.rarityColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      letterSpacing: 3,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               // Monster image
               SizedBox(
                 width: 120,
