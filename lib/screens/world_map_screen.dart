@@ -119,10 +119,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                           progress: progress,
                           onSetCurrent: (isUnlocked && !isCurrent && !isCompleted)
                               ? () async {
+                                  final messenger = ScaffoldMessenger.of(context);
                                   await _worldService.setCurrentWorld(world.id);
                                   await _loadData();
                                   if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    messenger.showSnackBar(
                                       SnackBar(
                                         content: Text('${world.name} is now your world!'),
                                         backgroundColor: world.themeColor,
@@ -241,8 +242,8 @@ class _WorldCard extends StatelessWidget {
           children: [
             // Planet image
             SizedBox(
-              width: 80,
-              height: 80,
+              width: 100,
+              height: 100,
               child: ColorFiltered(
                 colorFilter: isUnlocked
                     ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)

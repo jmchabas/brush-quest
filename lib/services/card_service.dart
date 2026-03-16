@@ -9,7 +9,7 @@ class MonsterCard {
   final String name;
   final String title;
   final String worldId;
-  final int baseImageIndex; // 0-3 → monster_blue, monster_green, monster_orange, monster_red
+  final int baseImageIndex; // 0-3 → monster_purple, monster_green, monster_orange, monster_red
   final Color tintColor;
   final CardRarity rarity;
   final String flavorText;
@@ -40,7 +40,7 @@ class MonsterCard {
   };
 
   static const _monsterImages = [
-    'assets/images/monster_blue.png',
+    'assets/images/monster_purple.png',
     'assets/images/monster_green.png',
     'assets/images/monster_orange.png',
     'assets/images/monster_red.png',

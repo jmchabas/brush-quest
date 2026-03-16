@@ -36,6 +36,17 @@ class _AssetPreloaderState extends State<AssetPreloader>
     'assets/images/planet_volcano.png',
     'assets/images/planet_shadow.png',
     'assets/images/planet_fortress.png',
+    'assets/images/planet_frozen.png',
+    'assets/images/planet_toxic.png',
+    'assets/images/planet_crystal.png',
+    'assets/images/planet_storm.png',
+    'assets/images/planet_dark.png',
+    'assets/images/weapon_star_blaster.png',
+    'assets/images/weapon_flame_sword.png',
+    'assets/images/weapon_ice_hammer.png',
+    'assets/images/weapon_lightning_wand.png',
+    'assets/images/weapon_vine_whip.png',
+    'assets/images/weapon_cosmic_burst.png',
   ];
 
   @override
