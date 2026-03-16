@@ -2531,14 +2531,23 @@ class _BrushingScreenState extends State<BrushingScreen>
     final effectiveSize = size * _monster.personality.sizeMultiplier;
 
     // Monster image: transparent PNGs — no ShaderMask needed
+    // At high damage, shift tint toward red to show the monster is hurt
+    final damageTint = damageProgress > 0.5
+        ? Color.lerp(
+            _monster.personality.tintColor,
+            Colors.red,
+            ((damageProgress - 0.5) * 1.5).clamp(0.0, 0.6),
+          )!
+        : _monster.personality.tintColor;
+    final damageTintStrength = _monster.personality.tintStrength +
+        (damageProgress > 0.5 ? (damageProgress - 0.5) * 0.2 : 0.0);
+
     Widget monsterImage = ColorFiltered(
-      colorFilter: _monster.hitRecoil > 0.7
-          // Tier 1: White flash on hit — sprite turns white for impact
+      colorFilter: _monster.hitRecoil > 0.93
+          // Tier 1: White flash on hit — 1-2 frames only, not overused
           ? const ColorFilter.mode(Colors.white, BlendMode.srcATop)
           : ColorFilter.mode(
-              _monster.personality.tintColor.withValues(
-                alpha: _monster.personality.tintStrength,
-              ),
+              damageTint.withValues(alpha: damageTintStrength.clamp(0.0, 0.35)),
               BlendMode.overlay,
             ),
       child: Image.asset(
@@ -2718,31 +2727,17 @@ class _BrushingScreenState extends State<BrushingScreen>
                         ),
                       ),
                     ),
-                    // Health-dependent color tinting
-                    if (damageProgress > 0.5)
-                      Positioned(
-                        bottom: 10,
-                        child: Container(
-                          width: size,
-                          height: size,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.red.withValues(
-                              alpha: (damageProgress - 0.5) * 0.25,
-                            ),
-                          ),
-                        ),
-                      ),
-                    // Damage cracks
-                    if (damageProgress > 0.3)
+                    // (Circle overlays removed — don't match transparent PNGs)
+                    // Damage cracks (only at heavy damage, subtle)
+                    if (damageProgress > 0.6)
                       Positioned(
                         bottom: 10,
                         child: CustomPaint(
                           size: Size(size, size),
                           painter: _DamageCrackPainter(
                             progress: damageProgress,
-                            color: Colors.white,
-                            glowColor: damageProgress > 0.5
+                            color: Colors.white.withValues(alpha: 0.5),
+                            glowColor: damageProgress > 0.7
                                 ? _weapon.primaryColor
                                 : null,
                           ),
@@ -2757,21 +2752,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                           painter: _MonsterOverlayPainter(animValue: breathT),
                         ),
                       ),
-                    // Red pulse overlay (> 70% damage)
-                    if (damageProgress > 0.7)
-                      Positioned(
-                        bottom: 10,
-                        child: Container(
-                          width: size,
-                          height: size,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.red.withValues(
-                              alpha: 0.1 + breathT * 0.2,
-                            ),
-                          ),
-                        ),
-                      ),
+                    // (Red pulse circle removed — replaced by damage-reactive tint on sprite)
                     // (White flash now handled by ColorFilter on the sprite itself)
                     // Boss crown glow + label
                     if (_isBossPhase) ...[
@@ -3060,34 +3041,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                     isAttacking: _heroLunging,
                   ),
                 ),
-                ShaderMask(
-                  shaderCallback: (Rect bounds) {
-                    return RadialGradient(
-                      center: Alignment.center,
-                      radius: 0.85,
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0.0, 0.55, 1.0],
-                    ).createShader(bounds);
-                  },
-                  blendMode: BlendMode.dstIn,
-                  child: child!,
-                ),
-                // Subtle circular vignette overlay for extra softening
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Colors.transparent,
-                        Colors.transparent,
-                        _hero.primaryColor.withValues(alpha: 0.08),
-                      ],
-                      stops: const [0.0, 0.5, 1.0],
-                    ),
-                  ),
-                ),
+                // Hero image (transparent PNGs — no ShaderMask needed)
+                child!,
                 // Weapon badge
                 Positioned(
                   right: -8,
