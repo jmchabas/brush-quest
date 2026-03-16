@@ -275,6 +275,12 @@ class _BrushingScreenState extends State<BrushingScreen>
   int _attackStyleIndex = 0;
   int _totalHits = 0;
   bool _isFinisher = false;
+  int _hitStopFrames = 0; // Tier 1: freeze frame on hit
+  double _ghostHealth = 1.0; // Tier 1: ghost health bar drain
+  int _comboCount = 0; // Tier 2: combo counter
+  int _lastComboTime = 0; // Tier 2: combo window tracking
+  double _monsterBlinkTimer = 0.0; // Tier 2: eye blink timer
+  bool _monsterBlinking = false; // Tier 2: eye blink state
   AttackStyle get _currentAttackStyle =>
       AttackStyle.values[_attackStyleIndex % AttackStyle.values.length];
 
@@ -307,6 +313,14 @@ class _BrushingScreenState extends State<BrushingScreen>
   late AnimationController _mouthGuideGlowController;
   late AnimationController _hitLottieController;
   bool _showHitEffect = false;
+  bool _showDefeatExplosion = false; // Tier 2: Lottie defeat explosion
+  late AnimationController _defeatLottieController;
+  bool _showSparkleStars = false; // Tier 2: Lottie sparkle stars on defeat
+  late AnimationController _sparkleLottieController;
+
+  // Entrance dust cloud
+  bool _showEntranceDust = false; // Tier 2: dust cloud on monster landing
+  late AnimationController _dustLottieController;
 
   // Companion speech bubbles (icon-only for non-readers)
   IconData? _companionIcon;
@@ -477,6 +491,36 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
     });
 
+    _defeatLottieController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (!mounted) return;
+        setState(() => _showDefeatExplosion = false);
+      }
+    });
+
+    _sparkleLottieController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (!mounted) return;
+        setState(() => _showSparkleStars = false);
+      }
+    });
+
+    _dustLottieController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        if (!mounted) return;
+        setState(() => _showEntranceDust = false);
+      }
+    });
+
     _initParticles();
     _prepareSession();
     _initCamera();
@@ -542,6 +586,11 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _updateParticlesAndSparks() {
     if (!mounted || _isPaused) return;
+    // Hit stop: skip updates during freeze frames for impactful hits
+    if (_hitStopFrames > 0) {
+      _hitStopFrames--;
+      return;
+    }
     for (int i = 0; i < _particles.length; i++) {
       final p = _particles[i];
       p.x += p.vx;
@@ -582,6 +631,31 @@ class _BrushingScreenState extends State<BrushingScreen>
       d.life -= 0.03;
     }
     _monster.debris.removeWhere((d) => d.life <= 0);
+
+    // Ghost health bar: smoothly drain toward actual health
+    if (_ghostHealth > _monster.health) {
+      _ghostHealth -= 0.008; // Slow drain
+      if (_ghostHealth < _monster.health) _ghostHealth = _monster.health;
+    }
+
+    // Monster eye blink timer
+    _monsterBlinkTimer += 0.05;
+    if (!_monsterBlinking && _monsterBlinkTimer > 3.0 + (_monster.wobblePhase * 2)) {
+      _monsterBlinking = true;
+      _monsterBlinkTimer = 0;
+    }
+    if (_monsterBlinking && _monsterBlinkTimer > 0.15) {
+      _monsterBlinking = false;
+      _monsterBlinkTimer = 0;
+    }
+
+    // Combo decay: reset if no hits for 2 seconds
+    if (_comboCount > 0) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now - _lastComboTime > 2000) {
+        _comboCount = 0;
+      }
+    }
   }
 
   void _updateFloatingStars() {
@@ -810,6 +884,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     _heroIdleController.dispose();
     _mouthGuideGlowController.dispose();
     _hitLottieController.dispose();
+    _defeatLottieController.dispose();
+    _sparkleLottieController.dispose();
+    _dustLottieController.dispose();
     _audio.stopMusic();
     super.dispose();
   }
@@ -1046,6 +1123,15 @@ class _BrushingScreenState extends State<BrushingScreen>
     HapticFeedback.heavyImpact();
     _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     _spawnDefeatSparks();
+
+    // Tier 2: Lottie defeat explosion + sparkle stars
+    setState(() {
+      _showDefeatExplosion = true;
+      _showSparkleStars = true;
+    });
+    _defeatLottieController.forward(from: 0);
+    _sparkleLottieController.forward(from: 0);
+
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) onComplete();
     });
@@ -1070,10 +1156,19 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _playEntranceAnimation() {
-    setState(() => _monsterEntering = true);
+    setState(() {
+      _monsterEntering = true;
+      _ghostHealth = 1.0; // Reset ghost health for new monster
+    });
     _monsterEntranceController.forward(from: 0).then((_) {
       if (mounted) {
-        setState(() => _monsterEntering = false);
+        setState(() {
+          _monsterEntering = false;
+          // Tier 2: dust cloud on landing
+          _showEntranceDust = true;
+        });
+        _dustLottieController.forward(from: 0);
+        HapticFeedback.mediumImpact();
         if (_cameraReady) {
           _resetStallTimer();
         } else {
@@ -1123,6 +1218,18 @@ class _BrushingScreenState extends State<BrushingScreen>
     if (_phase == BrushPhase.done || _phase == BrushPhase.countdown) return;
     _audio.playSfx(_audio.nextHitSound());
     HapticFeedback.lightImpact();
+
+    // Hit stop: freeze 3 frames on impact for meaty feel
+    _hitStopFrames = 3;
+
+    // Combo tracking
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastComboTime < 2000) {
+      _comboCount++;
+    } else {
+      _comboCount = 1;
+    }
+    _lastComboTime = now;
 
     setState(() {
       _totalHits++;
@@ -1290,6 +1397,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     final text = isCritical
         ? 'CRITICAL!'
         : _damageTexts[_random.nextInt(_damageTexts.length)];
+
+    // Combo scaling: bigger text the higher the combo
+    final comboScale = _comboCount >= 8 ? 1.6 : (_comboCount >= 5 ? 1.4 : (_comboCount >= 3 ? 1.2 : 1.0));
+    final baseScale = isCritical ? 1.8 : 1.3;
+
     setState(() {
       _damagePopups.add(
         _DamagePopup(
@@ -1300,9 +1412,25 @@ class _BrushingScreenState extends State<BrushingScreen>
           opacity: 1.0,
           offsetY: 0,
           rotation: (_random.nextDouble() - 0.5) * 0.4,
-          scale: isCritical ? 1.8 : 1.3,
+          scale: baseScale * comboScale,
         ),
       );
+
+      // Show combo counter at milestones (3, 5, 8, 10+)
+      if (_comboCount == 3 || _comboCount == 5 || _comboCount == 8 || (_comboCount >= 10 && _comboCount % 5 == 0)) {
+        _damagePopups.add(
+          _DamagePopup(
+            text: 'COMBO x$_comboCount!',
+            x: 0.5,
+            y: 0.05,
+            color: const Color(0xFF69F0AE),
+            opacity: 1.0,
+            offsetY: 0,
+            rotation: 0,
+            scale: 1.5 + (_comboCount / 20).clamp(0.0, 0.8),
+          ),
+        );
+      }
     });
   }
 
@@ -1829,6 +1957,63 @@ class _BrushingScreenState extends State<BrushingScreen>
                               ),
                             ),
 
+                          // Tier 2: Lottie defeat explosion
+                          if (_showDefeatExplosion)
+                            Positioned(
+                              top: 20,
+                              left: 0,
+                              right: 0,
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Lottie.asset(
+                                    'assets/animations/explosion.json',
+                                    width: 280,
+                                    height: 280,
+                                    repeat: false,
+                                    controller: _defeatLottieController,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Tier 2: Lottie sparkle stars on defeat
+                          if (_showSparkleStars)
+                            Positioned(
+                              top: 40,
+                              left: 0,
+                              right: 0,
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Lottie.asset(
+                                    'assets/animations/sparkle_stars.json',
+                                    width: 240,
+                                    height: 240,
+                                    repeat: false,
+                                    controller: _sparkleLottieController,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Tier 2: Entrance dust cloud
+                          if (_showEntranceDust)
+                            Positioned(
+                              top: 60,
+                              left: 0,
+                              right: 0,
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Lottie.asset(
+                                    'assets/animations/smoke_puff.json',
+                                    width: 200,
+                                    height: 200,
+                                    repeat: false,
+                                    controller: _dustLottieController,
+                                  ),
+                                ),
+                              ),
+                            ),
+
                           // Damage popups
                           ..._damagePopups.map(
                             (popup) => Positioned(
@@ -2208,29 +2393,22 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     final effectiveSize = size * _monster.personality.sizeMultiplier;
 
-    Widget monsterImage = ShaderMask(
-      shaderCallback: (Rect bounds) {
-        return RadialGradient(
-          center: Alignment.center,
-          radius: 0.85,
-          colors: [Colors.white, Colors.white, Colors.transparent],
-          stops: [0.0, 0.55, 1.0],
-        ).createShader(bounds);
-      },
-      blendMode: BlendMode.dstIn,
-      child: ColorFiltered(
-        colorFilter: ColorFilter.mode(
-          _monster.personality.tintColor.withValues(
-            alpha: _monster.personality.tintStrength,
-          ),
-          BlendMode.overlay,
-        ),
-        child: Image.asset(
-          _monsterImages[_monster.imageIndex],
-          width: effectiveSize,
-          height: effectiveSize,
-          fit: BoxFit.contain,
-        ),
+    // Monster image: transparent PNGs — no ShaderMask needed
+    Widget monsterImage = ColorFiltered(
+      colorFilter: _monster.hitRecoil > 0.7
+          // Tier 1: White flash on hit — sprite turns white for impact
+          ? const ColorFilter.mode(Colors.white, BlendMode.srcATop)
+          : ColorFilter.mode(
+              _monster.personality.tintColor.withValues(
+                alpha: _monster.personality.tintStrength,
+              ),
+              BlendMode.overlay,
+            ),
+      child: Image.asset(
+        _monsterImages[_monster.imageIndex],
+        width: effectiveSize,
+        height: effectiveSize,
+        fit: BoxFit.contain,
       ),
     );
 
@@ -2377,7 +2555,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                     // Monster image
                     Positioned(bottom: 10, child: child!),
-                    // Menacing eye glow (always visible, pulse with breath)
+                    // Menacing eye glow with blink + pupil tracking
                     Positioned(
                       bottom: 10,
                       child: CustomPaint(
@@ -2386,6 +2564,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                           animValue: breathT,
                           tintColor: _monster.personality.tintColor,
                           damage: damageProgress,
+                          isBlinking: _monsterBlinking,
+                          pupilOffsetY: 0.15, // Looking down toward hero
                         ),
                       ),
                     ),
@@ -2455,21 +2635,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                           ),
                         ),
                       ),
-                    // White flash on hit
-                    if (_monster.hitRecoil > 0.6)
-                      Positioned(
-                        bottom: 10,
-                        child: Container(
-                          width: size,
-                          height: size,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(
-                              alpha: (_monster.hitRecoil - 0.6) * 2,
-                            ),
-                          ),
-                        ),
-                      ),
+                    // (White flash now handled by ColorFilter on the sprite itself)
                     // Boss crown glow + label
                     if (_isBossPhase) ...[
                       Positioned(
@@ -2590,6 +2756,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Widget _buildMonsterHealthBar() {
     final health = _monster.health.clamp(0.0, 1.0);
+    final ghostHealthClamped = _ghostHealth.clamp(0.0, 1.0);
     final barColor = Color.lerp(
       const Color(0xFFFF5252),
       const Color(0xFF69F0AE),
@@ -2617,6 +2784,22 @@ class _BrushingScreenState extends State<BrushingScreen>
         child: Stack(
           children: [
             Container(color: Colors.black.withValues(alpha: 0.5)),
+            // Ghost health layer (drains slowly — shows recent damage)
+            if (ghostHealthClamped > health)
+              FractionallySizedBox(
+                widthFactor: ghostHealthClamped,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withValues(alpha: 0.25),
+                        Colors.white.withValues(alpha: 0.12),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            // Actual health layer
             FractionallySizedBox(
               widthFactor: health,
               child: Container(
@@ -3056,7 +3239,29 @@ class _HitSparkPainter extends CustomPainter {
       final paint = Paint()
         ..color = s.color.withValues(alpha: s.life.clamp(0, 1))
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-      canvas.drawCircle(Offset(cx + s.x, cy + s.y), s.size * s.life, paint);
+      final glowPaint = Paint()
+        ..color = s.color.withValues(alpha: s.life.clamp(0, 1) * 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+      final px = cx + s.x;
+      final py = cy + s.y;
+      final r = s.size * s.life;
+
+      // Tier 2: Draw 4-pointed star shape instead of circle
+      final path = Path();
+      for (int i = 0; i < 4; i++) {
+        final outerAngle = i * pi / 2;
+        final innerAngle = outerAngle + pi / 4;
+        if (i == 0) {
+          path.moveTo(px + cos(outerAngle) * r, py + sin(outerAngle) * r);
+        } else {
+          path.lineTo(px + cos(outerAngle) * r, py + sin(outerAngle) * r);
+        }
+        path.lineTo(px + cos(innerAngle) * r * 0.4, py + sin(innerAngle) * r * 0.4);
+      }
+      path.close();
+
+      canvas.drawPath(path, glowPaint);
+      canvas.drawPath(path, paint);
     }
   }
 
@@ -3297,16 +3502,20 @@ class _WeaponBattleEffectPainter extends CustomPainter {
       progress != oldDelegate.progress;
 }
 
-/// Glowing eyes that pulse menacingly on the monster face
+/// Glowing eyes that pulse menacingly with blink and pupil tracking
 class _MonsterEyeGlowPainter extends CustomPainter {
   final double animValue;
   final Color tintColor;
   final double damage;
+  final bool isBlinking;
+  final double pupilOffsetY;
 
   _MonsterEyeGlowPainter({
     required this.animValue,
     required this.tintColor,
     required this.damage,
+    this.isBlinking = false,
+    this.pupilOffsetY = 0.0,
   });
 
   @override
@@ -3321,8 +3530,17 @@ class _MonsterEyeGlowPainter extends CustomPainter {
     final glowAlpha = (0.5 + pulse * 0.3).clamp(0.0, 1.0);
     final eyeRadius = eyeSize + pulse * eyeSize * 0.3;
 
+    // Blink: squash eye vertically
+    final blinkScaleY = isBlinking ? 0.1 : 1.0;
+
     for (final side in [-1.0, 1.0]) {
       final ex = cx + side * eyeSpacing;
+
+      canvas.save();
+      // Apply blink by scaling Y around eye center
+      canvas.translate(ex, cy);
+      canvas.scale(1.0, blinkScaleY);
+      canvas.translate(-ex, -cy);
 
       // Outer glow
       final glowPaint = Paint()
@@ -3336,16 +3554,22 @@ class _MonsterEyeGlowPainter extends CustomPainter {
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
       canvas.drawCircle(Offset(ex, cy), eyeRadius, corePaint);
 
-      // Bright center
+      // Pupil: offset toward hero (downward)
+      final pupilX = ex;
+      final pupilY = cy + pupilOffsetY * eyeRadius * 2;
       final centerPaint = Paint()
         ..color = Colors.white.withValues(alpha: glowAlpha * 0.7);
-      canvas.drawCircle(Offset(ex, cy), eyeRadius * 0.4, centerPaint);
+      canvas.drawCircle(Offset(pupilX, pupilY), eyeRadius * 0.4, centerPaint);
+
+      canvas.restore();
     }
   }
 
   @override
   bool shouldRepaint(_MonsterEyeGlowPainter oldDelegate) =>
-      animValue != oldDelegate.animValue || damage != oldDelegate.damage;
+      animValue != oldDelegate.animValue ||
+      damage != oldDelegate.damage ||
+      isBlinking != oldDelegate.isBlinking;
 }
 
 /// Drool/slime particles dripping from the monster's bottom edge
