@@ -16,7 +16,6 @@ import '../widgets/mute_button.dart';
 import 'package:lottie/lottie.dart';
 import '../widgets/mouth_guide.dart';
 import '../services/analytics_service.dart';
-import '../widgets/sprite_sheet.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -2543,15 +2542,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     final damageTintStrength = _monster.personality.tintStrength +
         (damageProgress > 0.5 ? (damageProgress - 0.5) * 0.2 : 0.0);
 
-    // Use sprite sheet for animated frames, fall back to static image
-    final monsterSpriteSheet = _monster.imageIndex < SpriteSheets.monsterSheets.length
-        ? SpriteSheets.monsterSheets[_monster.imageIndex]
-        : null;
-    final monsterFrame = SpriteSheets.getMonsterFrame(
-      _monsterBreathController.value,
-      _monster.hitRecoil,
-    );
-
     Widget monsterImage = ColorFiltered(
       colorFilter: _monster.hitRecoil > 0.93
           // Tier 1: White flash on hit — 1-2 frames only, not overused
@@ -2560,20 +2550,12 @@ class _BrushingScreenState extends State<BrushingScreen>
               damageTint.withValues(alpha: damageTintStrength.clamp(0.0, 0.35)),
               BlendMode.overlay,
             ),
-      child: monsterSpriteSheet != null
-          ? SpriteFrame(
-              assetPath: monsterSpriteSheet,
-              frameCount: SpriteSheets.frameCount,
-              currentFrame: monsterFrame,
-              width: effectiveSize,
-              height: effectiveSize,
-            )
-          : Image.asset(
-              _monsterImages[_monster.imageIndex],
-              width: effectiveSize,
-              height: effectiveSize,
-              fit: BoxFit.contain,
-            ),
+      child: Image.asset(
+        _monsterImages[_monster.imageIndex],
+        width: effectiveSize,
+        height: effectiveSize,
+        fit: BoxFit.contain,
+      ),
     );
 
     Widget monsterWidget = AnimatedBuilder(
@@ -2996,28 +2978,12 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== HERO ====================
 
   Widget _buildHero(double size) {
-    // Use sprite sheet for animated hero frames
-    final heroSheet = SpriteSheets.heroSheets[_hero.id];
-    final heroFrame = SpriteSheets.getHeroFrame(
-      _heroIdleController.value,
-      _heroLunging,
-      _motionGlow,
+    final avatar = Image.asset(
+      _hero.imagePath,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
     );
-
-    final avatar = heroSheet != null
-        ? SpriteFrame(
-            assetPath: heroSheet,
-            frameCount: SpriteSheets.frameCount,
-            currentFrame: heroFrame,
-            width: size,
-            height: size,
-          )
-        : Image.asset(
-            _hero.imagePath,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-          );
 
     return AnimatedBuilder(
       animation: _heroIdleController,
