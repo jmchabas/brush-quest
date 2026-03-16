@@ -11,9 +11,9 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v7 shipped + COPPA compliance DONE + new app icon
+- **Status**: v7 shipped + COPPA compliance DONE + Cycle 1 complete
 - **Last session**: 2026-03-16
-- **Last commit**: `bd6811e` — COPPA compliance, Firebase Analytics, business research & ops system
+- **Last commit**: `35227d9` — Cycle 1: fix broken card images, COPPA data deletion, onboarding visuals, UX polish
 - **What happened**:
   - Firebase Analytics with COPPA child-directed treatment (10 events, ad IDs disabled)
   - COPPA compliance: camera defaults OFF, consent dialogs for Sign-In + camera, privacy policy link in Settings, "Delete child's data" relabeled, privacy policy rewritten (operator info, retention table, parental rights, consent mechanisms, internal ops exception)
@@ -29,7 +29,7 @@
   - [ ] P2.1: Google Play Console families policy config
   - [ ] P2.2: Physical mailing address → LLC workstream (see `/llc`) — AnemosGP LLC filed, waiting on approval
 - **Blocked on**: Google Play developer account suspended (appeal pending)
-- **Next up**: Commit COPPA changes, update privacy policy with LLC address once approved, Play Store submission
+- **Next up**: Run Cycle 2 after kid testing, update privacy policy with LLC address once approved, Play Store submission
 - **Needs CEO decision**: None — COPPA code complete, LLC in progress via `/llc` workstream
 
 ### LANDING PAGE
@@ -116,6 +116,23 @@
   - Design decisions: no QR on shirts, black tees, character-first with small branding
 - **Assets**: `assets/images/merch/` (source) + `assets/images/merch/print-ready/` (4x upscaled)
 - **Next up**: Order on Printful (Oliver YS/YM black, Theo 4T/5T black)
+- **Needs CEO decision**: None
+
+### DEV CYCLE
+- **Status**: Framework built, command installed, ready for first cycle
+- **Last session**: 2026-03-16
+- **Command**: `/cycle` (full audit), `/cycle ship` (verify+ship), `/cycle visual` (emulator screenshots)
+- **Repo**: `~/Projects/dev-cycle` (GitHub: jmchabas/dev-cycle, private)
+- **What happened**:
+  - Built structured dev loop framework: CONTEXT → ANALYZE → PLAN → APPROVE → IMPLEMENT → VERIFY → SHIP → LEARN → FEEDBACK
+  - 3 parallel analysis agents: visual walkthrough (emulator), code health, kid experience + freshness
+  - 4th synthesizer agent de-duplicates and ranks findings
+  - Config with 3 personas, 12 audit lenses, economy model, emulator setup
+  - Cycle history (append-only) + kid feedback file (Jim writes after real-world testing)
+  - Symlinked command: `brush-quest/.claude/commands/cycle.md` → `dev-cycle/commands/cycle.md`
+  - `settings.local.json` updated with permissions for flutter, adb, emulator, rclone
+- **Blocked on**: Nothing — ready to run first cycle
+- **Next up**: Run `/cycle` for first full audit
 - **Needs CEO decision**: None
 
 ### STRATEGY
