@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -343,6 +344,19 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _isBossPhase = false;
   late final String _sessionId;
 
+  // Tier 3: Fragment shaders
+  ui.FragmentProgram? _dissolveProgram;
+  ui.FragmentProgram? _shockwaveProgram;
+  // Tier 3: Slow-motion on finisher kill
+  bool _slowMotion = false;
+
+  // Tier 3: Shockwave overlay
+  double _shockwaveProgress = -1.0; // -1 = inactive
+  late AnimationController _shockwaveController;
+
+  // Tier 3: Weapon trail
+  final List<Offset> _weaponTrailPoints = [];
+
   static const _phaseNames = {
     BrushPhase.topLeft: 'TOP LEFT',
     BrushPhase.topRight: 'TOP RIGHT',
@@ -521,6 +535,19 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
     });
 
+    _shockwaveController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _shockwaveProgress = -1.0;
+      }
+    });
+    _shockwaveController.addListener(() {
+      _shockwaveProgress = _shockwaveController.value;
+    });
+
+    _loadShaders();
     _initParticles();
     _prepareSession();
     _initCamera();
@@ -539,6 +566,20 @@ class _BrushingScreenState extends State<BrushingScreen>
         _updateFloatingStars();
       },
     );
+  }
+
+  Future<void> _loadShaders() async {
+    try {
+      _dissolveProgram = await ui.FragmentProgram.fromAsset(
+        'assets/shaders/dissolve.frag',
+      );
+      _shockwaveProgram = await ui.FragmentProgram.fromAsset(
+        'assets/shaders/shockwave.frag',
+      );
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Shader load failed (non-fatal): $e');
+    }
   }
 
   _MonsterSlot _createMonster() {
@@ -591,6 +632,8 @@ class _BrushingScreenState extends State<BrushingScreen>
       _hitStopFrames--;
       return;
     }
+    // Slow-motion: skip every other frame for cinematic finisher
+    if (_slowMotion && _random.nextBool()) return;
     for (int i = 0; i < _particles.length; i++) {
       final p = _particles[i];
       p.x += p.vx;
@@ -887,6 +930,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _defeatLottieController.dispose();
     _sparkleLottieController.dispose();
     _dustLottieController.dispose();
+    _shockwaveController.dispose();
     _audio.stopMusic();
     super.dispose();
   }
@@ -1070,13 +1114,19 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _triggerFinisher(VoidCallback onComplete) {
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
-    setState(() => _isFinisher = true);
+    setState(() {
+      _isFinisher = true;
+      _slowMotion = true; // Tier 3: cinematic slow-motion
+    });
     _attackStyleIndex = 4;
     _attackSequenceController.forward(from: 0);
     _screenShakeController.forward(from: 0);
     _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     HapticFeedback.heavyImpact();
     _audio.playSfx('zap.mp3');
+
+    // Tier 3: Shockwave on finisher
+    _shockwaveController.forward(from: 0);
 
     for (int i = 0; i < 30; i++) {
       final angle = _random.nextDouble() * 2 * pi;
@@ -1109,9 +1159,12 @@ class _BrushingScreenState extends State<BrushingScreen>
       );
     });
 
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) {
-        setState(() => _isFinisher = false);
+        setState(() {
+          _isFinisher = false;
+          _slowMotion = false;
+        });
         onComplete();
       }
     });
@@ -1260,6 +1313,15 @@ class _BrushingScreenState extends State<BrushingScreen>
     _spawnDamagePopup();
     _spawnHitSparks();
 
+    // Tier 3: Shockwave on critical hits
+    if (_totalHits > 0 && _totalHits % 5 == 0) {
+      _shockwaveController.forward(from: 0);
+    }
+
+    // Tier 3: Weapon trail point
+    _weaponTrailPoints.add(Offset(0, _heroLunging ? -35 : 0));
+    if (_weaponTrailPoints.length > 8) _weaponTrailPoints.removeAt(0);
+
     // Monster killed by damage — trigger early phase transition!
     if (_monster.alive && _monster.health <= 0) {
       _monsterKilledByDamage();
@@ -1295,6 +1357,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     HapticFeedback.heavyImpact();
     _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     _spawnDefeatSparks();
+
+    // Tier 3: Shockwave + slow-motion on K.O.
+    _shockwaveController.forward(from: 0);
+    setState(() => _slowMotion = true);
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _slowMotion = false);
+    });
 
     // Spawn a new monster in the same phase after death animation
     Future.delayed(const Duration(milliseconds: 900), () {
@@ -1938,6 +2007,38 @@ class _BrushingScreenState extends State<BrushingScreen>
                             ),
                           ),
 
+                          // Tier 3: Shockwave shader overlay
+                          if (_shockwaveProgress >= 0 && _shockwaveProgram != null)
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: AnimatedBuilder(
+                                  animation: _shockwaveController,
+                                  builder: (context, _) => CustomPaint(
+                                    painter: _ShockwavePainter(
+                                      program: _shockwaveProgram!,
+                                      progress: _shockwaveController.value,
+                                      color: _weapon.primaryColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Tier 3: Weapon trail during attacks
+                          if (_heroLunging && _weaponTrailPoints.length > 2)
+                            Positioned.fill(
+                              child: IgnorePointer(
+                                child: CustomPaint(
+                                  painter: _WeaponTrailPainter(
+                                    points: _weaponTrailPoints,
+                                    color: _weapon.primaryColor,
+                                    heroY: screenHeight * 0.6,
+                                    centerX: screenWidth / 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+
                           // Lottie hit effect
                           if (_showHitEffect)
                             Positioned(
@@ -2370,20 +2471,56 @@ class _BrushingScreenState extends State<BrushingScreen>
   Widget _buildBigMonster(double size) {
     final damageProgress = 1.0 - _monster.health;
 
-    // Death explosion
+    // Death: dissolve shader + debris particles
     if (_monster.isDefeating) {
       return SizedBox(
         width: size + 60,
         height: size + 60,
         child: AnimatedBuilder(
           animation: _particleController,
-          builder: (context, _) => CustomPaint(
-            painter: _MonsterDeathPainter(
-              progress: _monster.defeatProgress,
-              debris: _monster.debris,
-              themeColor: _world.themeColor,
-              monsterSize: size,
-            ),
+          builder: (context, _) => Stack(
+            alignment: Alignment.center,
+            children: [
+              // Monster dissolving via fragment shader
+              if (_dissolveProgram != null && _monster.defeatProgress < 0.85)
+                ShaderMask(
+                  shaderCallback: (bounds) {
+                    final shader = _dissolveProgram!.fragmentShader();
+                    shader.setFloat(0, _monster.defeatProgress);
+                    shader.setFloat(1, bounds.width);
+                    shader.setFloat(2, bounds.height);
+                    return shader;
+                  },
+                  blendMode: BlendMode.dstIn,
+                  child: Image.asset(
+                    _monsterImages[_monster.imageIndex],
+                    width: size,
+                    height: size,
+                    fit: BoxFit.contain,
+                  ),
+                )
+              else if (_dissolveProgram == null)
+                // Fallback: simple opacity fade if shader didn't load
+                Opacity(
+                  opacity: (1.0 - _monster.defeatProgress).clamp(0.0, 1.0),
+                  child: Image.asset(
+                    _monsterImages[_monster.imageIndex],
+                    width: size,
+                    height: size,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              // Debris chunks on top
+              CustomPaint(
+                size: Size(size + 60, size + 60),
+                painter: _MonsterDeathPainter(
+                  progress: _monster.defeatProgress,
+                  debris: _monster.debris,
+                  themeColor: _world.themeColor,
+                  monsterSize: size,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -2699,6 +2836,17 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 spreadRadius: 12,
                               ),
                             ],
+                          ),
+                        ),
+                      ),
+                      // Tier 3: Boss energy shield shimmer
+                      Positioned(
+                        bottom: 10,
+                        child: CustomPaint(
+                          size: Size(size + 40, size + 40),
+                          painter: _BossShieldPainter(
+                            animValue: breathT,
+                            health: _monster.health,
                           ),
                         ),
                       ),
@@ -3065,12 +3213,12 @@ class _BrushingScreenState extends State<BrushingScreen>
                 ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
+                    colors: [Color(0xFF00E676), Color(0xFF00BFA5)],
                   ),
                   borderRadius: BorderRadius.circular(40),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.5),
+                      color: const Color(0xFF00E676).withValues(alpha: 0.5),
                       blurRadius: 20,
                     ),
                   ],
@@ -3078,7 +3226,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.play_arrow, color: Colors.white, size: 28),
+                    const Icon(Icons.play_arrow, color: Colors.white, size: 36),
                     const SizedBox(width: 8),
                     Text(
                       'RESUME',
@@ -3098,22 +3246,23 @@ class _BrushingScreenState extends State<BrushingScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
-                  vertical: 12,
+                  vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: Colors.redAccent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white24),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.close, color: Colors.white70, size: 22),
+                    const Icon(Icons.close, color: Colors.redAccent, size: 28),
                     const SizedBox(width: 6),
                     Text(
                       'QUIT',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white70,
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
                         letterSpacing: 3,
                       ),
                     ),
@@ -3941,4 +4090,155 @@ class _PulsingTapToFightState extends State<_PulsingTapToFight>
       },
     );
   }
+}
+
+// ==================== TIER 3 PAINTERS ====================
+
+/// Shockwave ripple effect using fragment shader
+class _ShockwavePainter extends CustomPainter {
+  final ui.FragmentProgram program;
+  final double progress;
+  final Color color;
+
+  _ShockwavePainter({
+    required this.program,
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0 || progress >= 1) return;
+
+    final shader = program.fragmentShader();
+    shader.setFloat(0, progress);
+    shader.setFloat(1, size.width);
+    shader.setFloat(2, size.height);
+    shader.setFloat(3, 0.5); // center.x (normalized)
+    shader.setFloat(4, 0.35); // center.y (monster area)
+    shader.setFloat(5, color.r);
+    shader.setFloat(6, color.g);
+    shader.setFloat(7, color.b);
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..shader = shader,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ShockwavePainter oldDelegate) =>
+      progress != oldDelegate.progress;
+}
+
+/// Boss energy shield — iridescent shimmer ring
+class _BossShieldPainter extends CustomPainter {
+  final double animValue;
+  final double health;
+
+  _BossShieldPainter({required this.animValue, required this.health});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final radius = size.width * 0.45;
+
+    // Shield weakens as health drops
+    final shieldAlpha = health.clamp(0.1, 0.6);
+
+    // Rotating rainbow shimmer
+    for (int i = 0; i < 12; i++) {
+      final angle = (i / 12) * 2 * pi + animValue * pi * 3;
+      final shimmerAlpha = (sin(angle * 3 + animValue * pi * 6) * 0.5 + 0.5) * shieldAlpha;
+
+      // Iridescent color cycling
+      final hue = ((i / 12) * 360 + animValue * 360) % 360;
+      final color = HSVColor.fromAHSV(shimmerAlpha, hue, 0.7, 1.0).toColor();
+
+      final arcStart = angle - 0.3;
+      final arcSweep = 0.6;
+
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3 + sin(angle + animValue * pi * 4) * 1.5
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset(cx, cy), radius: radius),
+        arcStart,
+        arcSweep,
+        false,
+        paint,
+      );
+    }
+
+    // Outer glow ring
+    final ringPaint = Paint()
+      ..color = const Color(0xFFFFD54F).withValues(alpha: shieldAlpha * 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(Offset(cx, cy), radius, ringPaint);
+  }
+
+  @override
+  bool shouldRepaint(_BossShieldPainter oldDelegate) =>
+      animValue != oldDelegate.animValue || health != oldDelegate.health;
+}
+
+/// Weapon trail — glowing arc during hero attacks (like Fruit Ninja)
+class _WeaponTrailPainter extends CustomPainter {
+  final List<Offset> points;
+  final Color color;
+  final double heroY;
+  final double centerX;
+
+  _WeaponTrailPainter({
+    required this.points,
+    required this.color,
+    required this.heroY,
+    required this.centerX,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+
+    // Build a trail path from hero toward monster
+    final path = Path();
+    final trailStart = Offset(centerX, heroY);
+
+    path.moveTo(trailStart.dx, trailStart.dy);
+
+    // Arc upward toward monster area
+    final controlX = centerX + sin(points.length * 0.5) * 40;
+    final controlY = heroY - 80;
+    final endY = heroY - 120;
+
+    path.quadraticBezierTo(controlX, controlY, centerX, endY);
+
+    // Draw glowing trail
+    for (int i = 0; i < 3; i++) {
+      final trailPaint = Paint()
+        ..color = color.withValues(alpha: 0.6 - i * 0.15)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = (6 - i * 1.5).clamp(1.0, 6.0)
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3.0 + i * 3);
+      canvas.drawPath(path, trailPaint);
+    }
+
+    // Bright core
+    final corePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, corePaint);
+  }
+
+  @override
+  bool shouldRepaint(_WeaponTrailPainter oldDelegate) => true;
 }
