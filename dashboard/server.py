@@ -27,6 +27,25 @@ BENCHMARK_ROTATION = {
     0: "Habitica (Kids)",
 }
 
+# Workstream → category mapping. Unknown workstreams default to "Product".
+WORKSTREAM_CATEGORIES = {
+    "APP": "Product",
+    "LANDING PAGE": "Product",
+    "PRICING": "Product",
+    "MERCH": "Product",
+    "DEV CYCLE": "Ops",
+    "STRATEGY": "Ops",
+    "LLC": "Business",
+    "ACCOUNTING": "Business",
+}
+
+CATEGORY_ORDER = ["Product", "Business", "Ops"]
+CATEGORY_COLORS = {
+    "Product": "#b388ff",
+    "Business": "#00e676",
+    "Ops": "#00e5ff",
+}
+
 
 def read_file(name):
     path = PROJECT_ROOT / name
@@ -292,9 +311,8 @@ def render_html():
     git_stats = get_git_stats()
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # Build workstream cards
-    ws_cards = ""
-    for ws in workstreams:
+    # Build workstream cards grouped by category
+    def build_ws_card(ws):
         f = ws["fields"]
         status = f.get("Status", "Unknown")
         color = status_color(status)
@@ -312,7 +330,7 @@ def render_html():
         if ceo.lower() not in ("none", "n/a", "—"):
             ceo_html = f'<div class="ceo-need">CEO: {ceo}</div>'
 
-        ws_cards += f"""
+        return f"""
         <div class="card">
             <div class="card-header">
                 <span class="ws-name">{ws['name']}</span>
@@ -325,6 +343,29 @@ def render_html():
             <div class="field"><span class="label">Next up:</span> {next_up}</div>
             {ceo_html}
         </div>"""
+
+    # Group workstreams by category
+    grouped = {}
+    for ws in workstreams:
+        cat = WORKSTREAM_CATEGORIES.get(ws["name"].upper(), "Product")
+        grouped.setdefault(cat, []).append(ws)
+
+    ws_sections = ""
+    for cat in CATEGORY_ORDER:
+        items = grouped.get(cat, [])
+        if not items:
+            continue
+        cat_color = CATEGORY_COLORS.get(cat, "#b0bec5")
+        cards = "".join(build_ws_card(ws) for ws in items)
+        ws_sections += f"""
+    <div class="category-header">
+        <span class="category-dot" style="background:{cat_color}"></span>
+        <span class="category-name" style="color:{cat_color}">{cat.upper()}</span>
+        <span class="category-line" style="background:{cat_color}22"></span>
+    </div>
+    <div class="grid">
+        {cards}
+    </div>"""
 
     # Build decisions
     dec_html = ""
@@ -665,6 +706,33 @@ def render_html():
         letter-spacing: 1px;
         color: #666;
     }}
+    /* Category headers */
+    .category-header {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0 8px;
+    }}
+    .category-header:first-child {{
+        margin-top: 0;
+    }}
+    .category-dot {{
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }}
+    .category-name {{
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        white-space: nowrap;
+    }}
+    .category-line {{
+        flex: 1;
+        height: 1px;
+    }}
     /* Dev Cycle section */
     .cycle-stats {{
         display: flex;
@@ -742,9 +810,7 @@ def render_html():
 </div>
 
 <div class="section-title">Workstreams</div>
-<div class="grid">
-    {ws_cards}
-</div>
+{ws_sections}
 
 <div class="section-title">Dev Cycle</div>
 <div class="panel" style="margin-bottom:24px">
