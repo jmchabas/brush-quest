@@ -35,11 +35,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     _tabController = TabController(length: 2, vsync: this);
     _loadData();
     AnalyticsService().logShopVisit();
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) {
-        AudioService().playVoice('voice_entry_hero_shop.mp3', clearQueue: true, interrupt: true);
-      }
-    });
   }
 
   @override
@@ -83,23 +78,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     } else {
       HapticFeedback.lightImpact();
-      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
-      final needed = hero.cost - _stars;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.star, color: Colors.yellowAccent, size: 18),
-                const SizedBox(width: 6),
-                Text('Need $needed more!'),
-              ],
-            ),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      // Describe the hero, then tell them they need more stars
+      _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
+      AudioService().playVoice('voice_need_stars.mp3');
     }
   }
 
@@ -121,23 +102,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     } else {
       HapticFeedback.lightImpact();
-      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
-      final needed = weapon.cost - _stars;
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.star, color: Colors.yellowAccent, size: 18),
-                const SizedBox(width: 6),
-                Text('Need $needed more!'),
-              ],
-            ),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      // Describe the weapon, then tell them they need more stars
+      _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
+      AudioService().playVoice('voice_need_stars.mp3');
     }
   }
 

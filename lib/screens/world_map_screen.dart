@@ -21,11 +21,6 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   void initState() {
     super.initState();
     _loadData();
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) {
-        AudioService().playVoice('voice_entry_world_map.mp3', clearQueue: true, interrupt: true);
-      }
-    });
   }
 
   Future<void> _loadData() async {
@@ -206,17 +201,17 @@ class _WorldCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Always play the world description voice
+        AudioService().playVoice('voice_world_${world.id}.mp3', clearQueue: true, interrupt: true);
         if (!isUnlocked) {
-          // Locked world — play "need stars" voice
-          AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
+          // Locked world — describe world, then say needs more brushing
+          AudioService().playVoice('voice_need_stars.mp3');
           return;
         }
         if (onSetCurrent != null) {
           // Unlocked but not current — set as current world
           onSetCurrent!();
         }
-        // Always play the world voice for unlocked worlds
-        AudioService().playVoice('voice_world_${world.id}.mp3', clearQueue: true, interrupt: true);
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),

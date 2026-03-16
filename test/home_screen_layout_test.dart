@@ -51,16 +51,11 @@ void main() {
     (tester) async {
       await pumpHomeScreen(tester);
 
-      // Today count uses a brush icon (not sanitizer)
-      expect(find.byIcon(Icons.brush), findsOneWidget);
-
-      // Stats display: streak, stars, today count as plain number
+      // Stats display: streak and stars
       final streakText = tester.widget<Text>(find.text('3'));
       final starsText = tester.widget<Text>(find.text('12'));
-      final todayText = tester.widget<Text>(find.text('1'));
       expect(streakText.style?.fontSize, 24);
       expect(starsText.style?.fontSize, 24);
-      expect(todayText.style?.fontSize, 24);
 
       // Settings is an IconButton with gear icon (no text label)
       expect(

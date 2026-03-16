@@ -31,8 +31,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _greetingChecked = false;
   int _totalStars = 0;
   int _streak = 0;
-  int _todayBrushCount = 0;
-  int _bossProgress = 0;
   bool _bossReady = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
@@ -86,10 +84,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final hero = await _heroService.getSelectedHero();
     final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
-    final todayCount = await _streakService.getTodayBrushCount();
     final totalBrushes = await _streakService.getTotalBrushes();
-    final brushCycle = totalBrushes % 5;
-    final bossReady = brushCycle == 4;
+    final bossReady = (totalBrushes % 5) == 4;
 
     if (mounted) {
       setState(() {
@@ -97,9 +93,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedHero = hero;
         _selectedWeapon = weapon;
         _streak = streak;
-        _bossProgress = brushCycle;
         _bossReady = bossReady;
-        _todayBrushCount = todayCount;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -392,25 +386,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .then((_) => _loadStats());
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'GOOD MORNING';
-    if (hour < 17) return 'GOOD AFTERNOON';
-    return 'GOOD EVENING';
-  }
-
-  IconData _getTimeIcon() {
-    final hour = DateTime.now().hour;
-    if (hour >= 6 && hour < 18) return Icons.wb_sunny;
-    return Icons.nightlight_round;
-  }
-
-  Color _getTimeIconColor() {
-    final hour = DateTime.now().hour;
-    if (hour >= 6 && hour < 18) return Colors.amber;
-    return const Color(0xFF90CAF9);
-  }
-
   @override
   Widget build(BuildContext context) {
     const statIconSize = 24.0;
@@ -489,40 +464,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'HOME BASE',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.72),
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.2,
-                      fontSize: 11,
-                    ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Greeting
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _getTimeIcon(),
-                        color: _getTimeIconColor(),
-                        size: 14,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _getGreeting(),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF00E5FF).withValues(alpha: 0.7),
-                          letterSpacing: 4,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-
                   const SizedBox(height: 16),
 
                   // Stats row: streak + stars + today count
@@ -568,79 +509,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
-                      // Today count
-                      const SizedBox(width: statGroupSpacing),
-                      Icon(
-                        Icons.brush,
-                        color: const Color(0xFF69F0AE).withValues(alpha: 0.85),
-                        size: statIconSize,
-                      ),
-                      const SizedBox(width: statPairSpacing),
-                      Text(
-                        '$_todayBrushCount',
-                        style: TextStyle(
-                          color: _todayBrushCount > 0
-                              ? const Color(0xFF69F0AE)
-                              : Colors.white.withValues(alpha: 0.6),
-                          fontWeight: FontWeight.bold,
-                          fontSize: statValueSize,
-                        ),
-                      ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Boss progress: 5 skull icons
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.workspace_premium,
-                            color: Color(0xFFFFD54F),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 10),
-                          ...List.generate(5, (i) {
-                            final filled = i < _bossProgress || _bossReady;
-                            return AnimatedBuilder(
-                              animation: _bossReady ? _pulseController : const AlwaysStoppedAnimation(0),
-                              builder: (context, child) {
-                                final scale = _bossReady
-                                    ? 1.0 + _pulseController.value * 0.15
-                                    : 1.0;
-                                return Transform.scale(
-                                  scale: scale,
-                                  child: child,
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Icon(
-                                  Icons.dangerous,
-                                  color: filled
-                                      ? (_bossReady
-                                          ? const Color(0xFFFFD54F)
-                                          : const Color(0xFF00E5FF))
-                                      : Colors.white.withValues(alpha: 0.2),
-                                  size: 24,
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
                   ),
 
                   const Spacer(),

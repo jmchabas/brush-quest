@@ -450,6 +450,10 @@ class AudioService {
           await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
           final completed = await Future.any<bool>([
             _voicePlayer.onPlayerComplete.first.then((_) => true),
+            _voicePlayer.onPlayerStateChanged
+                .where((s) => s == PlayerState.stopped)
+                .first
+                .then((_) => false),
             Future.delayed(const Duration(seconds: 5), () => false),
           ]);
           if (!completed) {
