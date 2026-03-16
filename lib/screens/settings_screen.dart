@@ -814,7 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     // BRUSHING section
                     _SectionHeader(
-                      icon: Icons.brush,
+                      icon: Icons.cleaning_services,
                       label: 'BRUSHING',
                       color: const Color(0xFF00E5FF),
                     ),
@@ -876,7 +876,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
 
                     _SettingCard(
-                      icon: Icons.brush,
+                      icon: Icons.cleaning_services,
                       title: 'Total brushes',
                       child: Text(
                         '$_totalBrushes',
