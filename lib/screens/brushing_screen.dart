@@ -1836,13 +1836,43 @@ class _BrushingScreenState extends State<BrushingScreen>
                               ],
                             ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
+                      // Story-style mission briefing
+                      Text(
+                        'Cavity monsters are hiding in',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        _world.name.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: _world.themeColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       Text(
                         _world.description,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.82),
                           fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Brush your teeth to defeat them!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -2257,7 +2287,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         // Camera status indicator
-                        if (_cameraReady)
+                        if (_cameraReady) ...[
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(
@@ -2280,7 +2310,10 @@ class _BrushingScreenState extends State<BrushingScreen>
                               size: 18,
                             ),
                           ),
+                          const SizedBox(width: 6),
+                        ],
                         const MuteButton(),
+                        const SizedBox(width: 4),
                         GestureDetector(
                           onTap: _togglePause,
                           behavior: HitTestBehavior.opaque,
@@ -2334,123 +2367,78 @@ class _BrushingScreenState extends State<BrushingScreen>
             ),
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
-          child: Container(
-            key: ValueKey(
-              'mission-hud-${_phase.name}-${_monster.personality.name}',
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              gradient: LinearGradient(
-                colors: [
-                  Colors.black.withValues(alpha: 0.64),
-                  Colors.black.withValues(alpha: 0.45),
-                ],
-              ),
-              border: Border.all(
-                color: _world.themeColor.withValues(alpha: 0.5),
-                width: 1.4,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _world.themeColor.withValues(alpha: 0.25),
-                  blurRadius: 16,
-                  spreadRadius: 1,
+          child: Row(
+            key: ValueKey('mission-hud-${_phase.name}'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Mouth guide (separate from world info)
+              AnimatedBuilder(
+                animation: _mouthGuideGlowController,
+                builder: (context, _) => MouthGuide(
+                  activeQuadrant:
+                      _phaseToMouthQuadrant[_phase] ??
+                      MouthQuadrant.topLeft,
+                  glowAnim: _mouthGuideGlowController.value,
+                  highlightColor: _world.themeColor,
+                  size: 62,
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
+              ),
+              const SizedBox(width: 8),
+              // Phase name + zone label
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Phase name (TOP LEFT, BOTTOM RIGHT, etc.)
                     Container(
-                      width: 40,
-                      height: 40,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _world.themeColor.withValues(alpha: 0.75),
-                          width: 1.5,
+                          color: _world.themeColor.withValues(alpha: 0.4),
                         ),
                       ),
-                      child: ClipOval(
-                        child: Image.asset(_world.imagePath, fit: BoxFit.cover),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
                       child: Text(
-                        _world.name.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        _phaseNames[_phase] ?? '',
+                        style: TextStyle(
+                          color: _world.themeColor,
                           fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          letterSpacing: 1.2,
+                          fontSize: 13,
+                          letterSpacing: 2,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    // Monster defeated counter
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 4,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.34),
-                        borderRadius: BorderRadius.circular(11),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.whatshot,
-                            color: Colors.orangeAccent,
-                            size: 16,
+                          Icon(
+                            Icons.shield,
+                            color: _world.themeColor,
+                            size: 14,
                           ),
-                          const SizedBox(width: 3),
+                          const SizedBox(width: 4),
                           Text(
-                            '$_monstersDefeated',
-                            style: const TextStyle(
-                              color: Colors.orangeAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 7),
-                Row(
-                  children: [
-                    AnimatedBuilder(
-                      animation: _mouthGuideGlowController,
-                      builder: (context, _) => MouthGuide(
-                        activeQuadrant:
-                            _phaseToMouthQuadrant[_phase] ??
-                            MouthQuadrant.topLeft,
-                        glowAnim: _mouthGuideGlowController.value,
-                        highlightColor: _world.themeColor,
-                        size: 62,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _monster.personality.name.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            '$_monstersDefeated defeated',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.72),
+                              color: Colors.white.withValues(alpha: 0.7),
                               fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                              letterSpacing: 1.2,
+                              fontSize: 11,
                             ),
                           ),
                         ],
@@ -2458,8 +2446,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -5,6 +5,7 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
+import '../services/world_service.dart';
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
+  final _worldService = WorldService();
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
   int _totalStars = 0;
@@ -34,12 +36,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _bossReady = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
+  WorldData? _currentWorld;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
   late AnimationController _auraController;
+  late AnimationController _tapPulseController;
+  late Animation<double> _tapPulseAnimation;
   bool _buttonPressed = false;
   String? _lastPickerVoice;
 
@@ -68,6 +73,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
+
+    _tapPulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _tapPulseAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _tapPulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -76,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pulseController.dispose();
     _floatController.dispose();
     _auraController.dispose();
+    _tapPulseController.dispose();
     super.dispose();
   }
 
@@ -86,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
     final bossReady = (totalBrushes % 5) == 4;
+    final world = await _worldService.getCurrentWorld();
 
     if (mounted) {
       setState(() {
@@ -94,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedWeapon = weapon;
         _streak = streak;
         _bossReady = bossReady;
+        _currentWorld = world;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -461,34 +477,67 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 16),
 
-                  // Stats row: streak + star pill
+                  // Stats row: streak pill + star pill
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Streak — always visible
-                      Icon(
-                        Icons.local_fire_department,
-                        color: _streak > 0
-                            ? Colors.orangeAccent
-                            : Colors.white.withValues(alpha: 0.2),
-                        size: 26,
-                      ),
-                      if (_streak > 0) ...[
-                        const SizedBox(width: 4),
-                        Text(
-                          '$_streak',
-                          style: const TextStyle(
-                            color: Colors.orangeAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                          ),
+                      // Streak pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
                         ),
-                      ],
-                      const SizedBox(width: 20),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: (_streak > 0
+                                    ? Colors.orangeAccent
+                                    : Colors.white24)
+                                .withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: (_streak > 0
+                                  ? Colors.orangeAccent
+                                  : Colors.white24)
+                              .withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              color: _streak > 0
+                                  ? Colors.orangeAccent
+                                  : Colors.white.withValues(alpha: 0.3),
+                              size: 26,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_streak',
+                              style: TextStyle(
+                                color: _streak > 0
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.3),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                                shadows: _streak > 0
+                                    ? const [
+                                        Shadow(
+                                          color: Color(0x80FF9800),
+                                          blurRadius: 8,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       // Golden star pill
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                          horizontal: 14,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
@@ -505,15 +554,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             const Icon(
                               Icons.star,
                               color: Color(0xFFFFD54F),
-                              size: 28,
+                              size: 26,
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Text(
                               '$_totalStars',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 32,
+                                fontSize: 28,
                                 shadows: [
                                   Shadow(
                                     color: Color(0x80FFD54F),
@@ -673,11 +722,117 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
+                  const SizedBox(height: 8),
+
+                  // "TAP TO BRUSH!" pulsing hint
+                  AnimatedBuilder(
+                    animation: _tapPulseAnimation,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _tapPulseAnimation.value,
+                        child: child,
+                      );
+                    },
+                    child: const Text(
+                      'TAP TO BRUSH!',
+                      style: TextStyle(
+                        color: Color(0xFF00E5FF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Today's Mission teaser
+                  if (_currentWorld != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: _currentWorld!.themeColor.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: _currentWorld!.themeColor.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.public,
+                            color: _currentWorld!.themeColor,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _currentWorld!.name.toUpperCase(),
+                            style: TextStyle(
+                              color: _currentWorld!.themeColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Boss fight badge
+                  if (_bossReady) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFFFF5252).withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: const Color(0xFFFF5252).withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF5252).withValues(alpha: 0.3),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.workspace_premium,
+                            color: Color(0xFFFF5252),
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'BOSS FIGHT READY!',
+                            style: TextStyle(
+                              color: Color(0xFFFF5252),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const Spacer(),
 
                   // Secondary nav row
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
                         Expanded(
@@ -688,7 +843,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             onTap: _openWorldMap,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _SmallNavButton(
                             icon: Icons.shield,
@@ -697,7 +852,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             onTap: _openShop,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _SmallNavButton(
                             icon: Icons.style,
@@ -1064,26 +1219,32 @@ class _SmallNavButton extends StatelessWidget {
         onTap();
       },
       child: Container(
-        height: 56,
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withValues(alpha: 0.45), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.15),
+              blurRadius: 8,
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 2),
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 4),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 1.1,
+                letterSpacing: 1.5,
               ),
             ),
           ],

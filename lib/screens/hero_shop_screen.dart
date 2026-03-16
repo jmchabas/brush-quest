@@ -271,56 +271,92 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   }
 
   Widget _buildHeroGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.72,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: HeroService.allHeroes.length,
-      itemBuilder: (context, index) {
-        final hero = HeroService.allHeroes[index];
-        final isUnlocked = _unlockedHeroes.contains(hero.id);
-        final isSelected = _selectedHeroId == hero.id;
-        final canAfford = _stars >= hero.cost;
+    final selectedHero = HeroService.allHeroes.firstWhere(
+      (h) => h.id == _selectedHeroId,
+      orElse: () => HeroService.allHeroes.first,
+    );
 
-        return _HeroCard(
-          hero: hero,
-          isUnlocked: isUnlocked,
-          isSelected: isSelected,
-          canAfford: canAfford,
-          onTap: () => _onHeroTap(hero),
-        );
-      },
+    return CustomScrollView(
+      slivers: [
+        // Featured selected hero display
+        SliverToBoxAdapter(
+          child: _FeaturedHeroDisplay(hero: selectedHero),
+        ),
+        // Hero grid
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.68,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final hero = HeroService.allHeroes[index];
+                final isUnlocked = _unlockedHeroes.contains(hero.id);
+                final isSelected = _selectedHeroId == hero.id;
+                final canAfford = _stars >= hero.cost;
+
+                return _HeroCard(
+                  hero: hero,
+                  isUnlocked: isUnlocked,
+                  isSelected: isSelected,
+                  canAfford: canAfford,
+                  onTap: () => _onHeroTap(hero),
+                );
+              },
+              childCount: HeroService.allHeroes.length,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildWeaponGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.78,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: WeaponService.allWeapons.length,
-      itemBuilder: (context, index) {
-        final weapon = WeaponService.allWeapons[index];
-        final isUnlocked = _unlockedWeapons.contains(weapon.id);
-        final isSelected = _selectedWeaponId == weapon.id;
-        final canAfford = _stars >= weapon.cost;
+    final selectedWeapon = WeaponService.allWeapons.firstWhere(
+      (w) => w.id == _selectedWeaponId,
+      orElse: () => WeaponService.allWeapons.first,
+    );
 
-        return _WeaponCard(
-          weapon: weapon,
-          isUnlocked: isUnlocked,
-          isSelected: isSelected,
-          canAfford: canAfford,
-          onTap: () => _onWeaponTap(weapon),
-        );
-      },
+    return CustomScrollView(
+      slivers: [
+        // Featured selected weapon display
+        SliverToBoxAdapter(
+          child: _FeaturedWeaponDisplay(weapon: selectedWeapon),
+        ),
+        // Weapon grid
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.68,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final weapon = WeaponService.allWeapons[index];
+                final isUnlocked = _unlockedWeapons.contains(weapon.id);
+                final isSelected = _selectedWeaponId == weapon.id;
+                final canAfford = _stars >= weapon.cost;
+
+                return _WeaponCard(
+                  weapon: weapon,
+                  isUnlocked: isUnlocked,
+                  isSelected: isSelected,
+                  canAfford: canAfford,
+                  onTap: () => _onWeaponTap(weapon),
+                );
+              },
+              childCount: WeaponService.allWeapons.length,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -375,17 +411,17 @@ class _HeroCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ClipOval(
-                      child: ColorFiltered(
-                        colorFilter: isUnlocked
-                            ? const ColorFilter.mode(
-                                Colors.transparent,
-                                BlendMode.dst,
-                              )
-                            : ColorFilter.mode(
-                                Colors.black.withValues(alpha: 0.6),
-                                BlendMode.srcATop,
-                              ),
-                        child: Image.asset(hero.imagePath, fit: BoxFit.cover),
+                      child: Opacity(
+                        opacity: isUnlocked ? 1.0 : 0.85,
+                        child: ColorFiltered(
+                          colorFilter: isUnlocked
+                              ? const ColorFilter.mode(
+                                  Colors.transparent,
+                                  BlendMode.dst,
+                                )
+                              : ColorFilter.matrix(_partialDesaturationMatrix(0.3)),
+                          child: Image.asset(hero.imagePath, fit: BoxFit.cover),
+                        ),
                       ),
                     ),
                   ),
@@ -398,7 +434,7 @@ class _HeroCard extends StatelessWidget {
                           Icons.star,
                           color: canAfford
                               ? Colors.yellowAccent
-                              : Colors.white.withValues(alpha: 0.3),
+                              : Colors.white.withValues(alpha: 0.4),
                           size: 16,
                         ),
                         const SizedBox(width: 4),
@@ -407,7 +443,7 @@ class _HeroCard extends StatelessWidget {
                           style: TextStyle(
                             color: canAfford
                                 ? Colors.yellowAccent
-                                : Colors.white.withValues(alpha: 0.3),
+                                : Colors.white.withValues(alpha: 0.4),
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -421,10 +457,24 @@ class _HeroCard extends StatelessWidget {
               Positioned(
                 top: 8,
                 right: 8,
-                child: Icon(
-                  Icons.lock,
-                  color: Colors.white.withValues(alpha: 0.5),
-                  size: 20,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.lock,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    size: 24,
+                  ),
                 ),
               ),
             if (isSelected)
@@ -511,17 +561,17 @@ class _WeaponCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ClipOval(
-                      child: ColorFiltered(
-                        colorFilter: isUnlocked
-                            ? const ColorFilter.mode(
-                                Colors.transparent,
-                                BlendMode.dst,
-                              )
-                            : ColorFilter.mode(
-                                Colors.black.withValues(alpha: 0.6),
-                                BlendMode.srcATop,
-                              ),
-                        child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
+                      child: Opacity(
+                        opacity: isUnlocked ? 1.0 : 0.85,
+                        child: ColorFiltered(
+                          colorFilter: isUnlocked
+                              ? const ColorFilter.mode(
+                                  Colors.transparent,
+                                  BlendMode.dst,
+                                )
+                              : ColorFilter.matrix(_partialDesaturationMatrix(0.3)),
+                          child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
+                        ),
                       ),
                     ),
                   ),
@@ -534,7 +584,7 @@ class _WeaponCard extends StatelessWidget {
                           Icons.star,
                           color: canAfford
                               ? Colors.yellowAccent
-                              : Colors.white.withValues(alpha: 0.3),
+                              : Colors.white.withValues(alpha: 0.4),
                           size: 16,
                         ),
                         const SizedBox(width: 4),
@@ -543,7 +593,7 @@ class _WeaponCard extends StatelessWidget {
                           style: TextStyle(
                             color: canAfford
                                 ? Colors.yellowAccent
-                                : Colors.white.withValues(alpha: 0.3),
+                                : Colors.white.withValues(alpha: 0.4),
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -557,10 +607,24 @@ class _WeaponCard extends StatelessWidget {
               Positioned(
                 top: 8,
                 right: 8,
-                child: Icon(
-                  Icons.lock,
-                  color: Colors.white.withValues(alpha: 0.5),
-                  size: 20,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.lock,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    size: 24,
+                  ),
                 ),
               ),
             if (isSelected)
@@ -590,6 +654,201 @@ class _WeaponCard extends StatelessWidget {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Creates a color matrix for partial desaturation.
+/// [saturation] ranges from 0.0 (full grayscale) to 1.0 (full color).
+List<double> _partialDesaturationMatrix(double saturation) {
+  final double invSat = 1.0 - saturation;
+  // Luminance weights (ITU-R BT.601)
+  const double lumR = 0.2126;
+  const double lumG = 0.7152;
+  const double lumB = 0.0722;
+
+  return <double>[
+    lumR * invSat + saturation, lumG * invSat,               lumB * invSat,               0, 0,
+    lumR * invSat,               lumG * invSat + saturation, lumB * invSat,               0, 0,
+    lumR * invSat,               lumG * invSat,               lumB * invSat + saturation, 0, 0,
+    0,                           0,                           0,                           1, 0,
+  ];
+}
+
+class _FeaturedHeroDisplay extends StatelessWidget {
+  final HeroCharacter hero;
+
+  const _FeaturedHeroDisplay({required this.hero});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        child: Row(
+          children: [
+            // Hero image
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: hero.primaryColor.withValues(alpha: 0.6),
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: hero.primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset(hero.imagePath, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(width: 20),
+            // Hero info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hero.name,
+                    style: TextStyle(
+                      color: hero.primaryColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    hero.title,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.greenAccent.withValues(alpha: 0.8),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'SELECTED',
+                        style: TextStyle(
+                          color: Colors.greenAccent.withValues(alpha: 0.8),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeaturedWeaponDisplay extends StatelessWidget {
+  final WeaponItem weapon;
+
+  const _FeaturedWeaponDisplay({required this.weapon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        child: Row(
+          children: [
+            // Weapon image
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: weapon.primaryColor.withValues(alpha: 0.6),
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: weapon.primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(width: 20),
+            // Weapon info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    weapon.name,
+                    style: TextStyle(
+                      color: weapon.primaryColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    weapon.description,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        color: Colors.greenAccent.withValues(alpha: 0.8),
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'EQUIPPED',
+                        style: TextStyle(
+                          color: Colors.greenAccent.withValues(alpha: 0.8),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
