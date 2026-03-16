@@ -36,7 +36,7 @@ void main() {
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
     await tester.pumpWidget(
-      const MaterialApp(home: HomeScreen(skipDailyLogin: true)),
+      const MaterialApp(home: HomeScreen(skipGreeting: true)),
     );
     // Allow async _loadStats to complete and rebuild
     await tester.pump();

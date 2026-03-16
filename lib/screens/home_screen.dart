@@ -5,7 +5,7 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
-import '../services/daily_login_service.dart';
+import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
@@ -16,8 +16,8 @@ import 'card_album_screen.dart';
 import '../services/analytics_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  final bool skipDailyLogin;
-  const HomeScreen({super.key, this.skipDailyLogin = false});
+  final bool skipGreeting;
+  const HomeScreen({super.key, this.skipGreeting = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -27,9 +27,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
-  final _dailyLoginService = DailyLoginService();
-  bool _dailyLoginChecked = false;
-  bool _dailyLoginShown = false;
+  final _greetingService = GreetingService();
+  bool _greetingChecked = false;
   int _totalStars = 0;
   int _streak = 0;
   int _todayBrushCount = 0;
@@ -44,14 +43,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _floatAnimation;
   late AnimationController _auraController;
   bool _buttonPressed = false;
-  bool _welcomePlayed = false;
   String? _lastPickerVoice;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
-    _playWelcomeVoice();
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
@@ -104,38 +101,65 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _bossReady = bossReady;
         _todayBrushCount = todayCount;
       });
-      _checkDailyLogin();
+      _checkGreeting();
       // Ambient music on home screen (very low volume)
       AudioService().playMusic('battle_music_loop.mp3');
       AudioService().setMusicVolume(0.06);
     }
   }
 
-  Future<void> _checkDailyLogin() async {
-    if (_dailyLoginChecked) return;
-    _dailyLoginChecked = true;
-    // Skip daily login when returning from a brush session
-    if (widget.skipDailyLogin) return;
-    // Skip daily login on first launch — user hasn't brushed yet
-    final total = await _streakService.getTotalBrushes();
-    if (total == 0) return;
-    final reward = await _dailyLoginService.checkAndClaimDailyLogin();
-    if (reward != null && mounted) {
-      _dailyLoginShown = true;
-      AnalyticsService().logDailyLogin(streak: await _streakService.getStreak());
-      // Refresh star count if bonus star was awarded
-      if (reward.type == DailyRewardType.bonusStar) {
-        final stars = await _streakService.getTotalStars();
-        if (mounted) setState(() => _totalStars = stars);
-      }
-      _showDailyLoginPopup(reward);
+  Future<void> _checkGreeting() async {
+    if (_greetingChecked) return;
+    _greetingChecked = true;
+    // Skip greeting when returning from a brush session
+    if (widget.skipGreeting) return;
+
+    final totalBrushes = await _streakService.getTotalBrushes();
+    if (totalBrushes == 0) return;
+
+    final now = DateTime.now();
+    final todayDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final lastGreetingDate = await _greetingService.getLastGreetingDate();
+
+    final nextHero = await _heroService.getNextLockedHero();
+    final nextWeapon = await _weaponService.getNextLockedWeapon();
+
+    final result = _greetingService.checkGreeting(
+      totalBrushes: totalBrushes,
+      brushStreak: _streak,
+      totalStars: _totalStars,
+      nextHeroName: nextHero?.name,
+      nextHeroCost: nextHero?.cost,
+      nextWeaponName: nextWeapon?.name,
+      nextWeaponCost: nextWeapon?.cost,
+      todayDate: todayDate,
+      lastGreetingDate: lastGreetingDate,
+    );
+
+    if (result != null && mounted) {
+      await _greetingService.markGreetingShown(todayDate);
+      AnalyticsService().logDailyLogin(streak: _streak);
+      _showGreetingPopup(result);
+    } else if (lastGreetingDate == todayDate && mounted) {
+      // Already greeted today — play a short welcome back voice
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted) AudioService().playVoice('voice_welcome_back.mp3');
     }
   }
 
-  void _showDailyLoginPopup(DailyLoginReward reward) {
-    AudioService().playSfx('star_chime.mp3');
-    AudioService().playVoice('voice_daily_login.mp3');
+  void _showGreetingPopup(GreetingResult greeting) {
+    AudioService().playVoice(greeting.voiceFile);
     HapticFeedback.mediumImpact();
+
+    final title = switch (greeting.state) {
+      GreetingState.justStarted => 'HEY SPACE RANGER!',
+      GreetingState.streak2to4 => 'WELCOME BACK!',
+      GreetingState.streak5to9 => 'WELCOME BACK!',
+      GreetingState.streak10to19 => 'SUPER RANGER!',
+      GreetingState.streak20plus => 'LEGENDARY!',
+      GreetingState.returning => 'WELCOME BACK!',
+    };
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -157,12 +181,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: reward.color.withValues(alpha: 0.5),
+                color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: reward.color.withValues(alpha: 0.3),
+                  color: const Color(0xFF69F0AE).withValues(alpha: 0.3),
                   blurRadius: 20,
                 ),
               ],
@@ -171,35 +195,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'WELCOME BACK!',
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     color: Color(0xFF69F0AE),
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
                     letterSpacing: 3,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Icon(reward.icon, color: reward.color, size: 48),
-                const SizedBox(height: 12),
-                Text(
-                  '+${reward.amount} ${reward.label}',
-                  style: TextStyle(
-                    color: reward.color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    letterSpacing: 2,
+                if (greeting.brushStreak >= 2) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '\u{1F525} ${greeting.brushStreak} DAY STREAK!',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD54F),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: 1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Daily login reward!',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 13,
+                ],
+                if (greeting.teaseItemName != null && greeting.teaseStarsAway != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    "You're ${greeting.teaseStarsAway} stars from ${greeting.teaseItemName}!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 14,
+                    ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 20),
                 GestureDetector(
                   onTap: () => Navigator.of(dialogContext).pop(),
@@ -209,14 +236,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: reward.color.withValues(alpha: 0.2),
+                      color: const Color(0xFF69F0AE).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: reward.color.withValues(alpha: 0.5),
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
                       ),
                     ),
                     child: const Text(
-                      'COOL!',
+                      "LET'S GO!",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -236,22 +263,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
     });
-  }
-
-  Future<void> _playWelcomeVoice() async {
-    if (_welcomePlayed) return;
-    _welcomePlayed = true;
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    // Skip if daily login popup already handled the welcome
-    if (_dailyLoginShown) return;
-    final total = await _streakService.getTotalBrushes();
-    // Skip on first launch — onboarding already played voices
-    if (total == 0) return;
-    final brushCount = await _streakService.getTodayBrushCount();
-    if (brushCount == 0) {
-      AudioService().playVoice('voice_welcome_back.mp3');
-    }
   }
 
   void _startBrushing() {

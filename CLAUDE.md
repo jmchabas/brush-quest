@@ -7,7 +7,6 @@ Theme: Space Rangers vs Cavity Monsters.
 ## Status: v7 — Play Store submission prep (feature-complete)
 
 ## Cross-Session Coordination
-- **FEATURE FREEZE**: No new features until 100 real users (D-003). Only: bug fixes, Play Store requirements, analytics.
 - After significant work (commits, deploys, decisions), auto-update your workstream section in `STATUS.md`. Don't wait for Jim to ask.
 - For strategy/CEO mode, use `/ceo`. For manual status update, use `/status`.
 

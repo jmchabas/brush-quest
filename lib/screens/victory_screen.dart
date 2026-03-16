@@ -245,10 +245,20 @@ class _VictoryScreenState extends State<VictoryScreen>
     _newStars = await _streakService.getTotalStars();
     await _worldService.getWorldProgress(_world.id);
 
+    final lifetimeBrushes = await _streakService.getTotalBrushes();
+
     _newAchievements = await _achievementService.checkAndUnlock(
       streak: _newStreak,
       totalStars: _newStars,
+      totalBrushes: lifetimeBrushes,
     );
+
+    // Award bonus stars from achievements
+    final achievementBonus = _newAchievements.fold(0, (sum, a) => sum + a.bonusStars);
+    if (achievementBonus > 0) {
+      await _streakService.addBonusStars(achievementBonus);
+      _newStars = await _streakService.getTotalStars();
+    }
 
     _nextHero = await _heroService.getNextLockedHero();
     if (_nextHero != null) {
@@ -266,7 +276,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       newStreak: _newStreak,
       totalStars: _newStars,
     );
-    final lifetimeBrushes = await _streakService.getTotalBrushes();
     analytics.setUserProperties(
       lifetimeBrushes: lifetimeBrushes,
       currentStreak: _newStreak,
@@ -481,7 +490,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomeScreen(skipDailyLogin: true),
+            const HomeScreen(skipGreeting: true),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),

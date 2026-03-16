@@ -156,6 +156,14 @@ class WeaponService {
     return unlocked.contains(weaponId);
   }
 
+  Future<WeaponItem?> getNextLockedWeapon() async {
+    final unlocked = await getUnlockedWeaponIds();
+    for (final weapon in allWeapons) {
+      if (!unlocked.contains(weapon.id)) return weapon;
+    }
+    return null;
+  }
+
   static WeaponItem getWeaponById(String id) {
     return allWeapons.firstWhere((w) => w.id == id, orElse: () => allWeapons[0]);
   }

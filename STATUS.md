@@ -11,8 +11,8 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v7 shipped + COPPA compliance DONE (all P1 items complete)
-- **Last session**: 2026-03-15
+- **Status**: v7 shipped + COPPA compliance DONE + new app icon
+- **Last session**: 2026-03-16
 - **Last commit**: `bd6811e` — COPPA compliance, Firebase Analytics, business research & ops system
 - **What happened**:
   - Firebase Analytics with COPPA child-directed treatment (10 events, ad IDs disabled)
@@ -103,6 +103,21 @@
 - **Next up**: Log first expenses in QuickBooks, then Mercury bank after EIN
 - **Needs CEO decision**: None
 
+### MERCH
+- **Status**: DONE
+- **Last session**: 2026-03-16
+- **What happened**:
+  - New app icon: 3D battle scene (fox vs monster with toothbrush) replacing old 2D cartoon tooth. Installed to all Android mipmap densities + website favicon.
+  - APK rebuilt and uploaded to Google Drive
+  - Merch assets created: Shadow action (Oliver), Blaze action (Theo), Monster Squad group, 2 logo badges (circle + shield)
+  - All assets AI-upscaled 4x via Real-ESRGAN to print-ready resolution (4096px+)
+  - T-shirt layouts with "BRUSH QUEST" text integrated
+  - Shield badge die-cut with transparent background following shield contour
+  - Design decisions: no QR on shirts, black tees, character-first with small branding
+- **Assets**: `assets/images/merch/` (source) + `assets/images/merch/print-ready/` (4x upscaled)
+- **Next up**: Order on Printful (Oliver YS/YM black, Theo 4T/5T black)
+- **Needs CEO decision**: None
+
 ### STRATEGY
 - **Status**: Phase 0 plan complete, operational system built
 - **Last session**: 2026-03-14
@@ -129,9 +144,9 @@
 
 ### D-003: Feature freeze (2026-03-14)
 **Context**: App has 10 worlds, 70 monsters, 6 heroes, 6 weapons. More than enough for launch.
-**Decision**: NO new features until 100 real users. Only allowed: bug fixes that block brush completion, Play Store requirements, analytics.
+**Decision**: ~~NO new features until 100 real users.~~ **REMOVED** (2026-03-15) — the app needs to keep improving. Features, bug fixes, and improvements all welcome.
 **Affects**: APP
-**Status**: ACTIVE
+**Status**: REMOVED
 
 ---
 

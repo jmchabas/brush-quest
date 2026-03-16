@@ -34,17 +34,21 @@ Precondition: clear app data or fresh install so `onboarding_completed` is false
 
 ### 2a. Returning User (has brushed before, first open of the day)
 - [ ] Ambient music starts: `battle_music_loop.mp3` at very low volume (0.06)
-- [ ] Daily login popup appears (if eligible): `star_chime.mp3` SFX plays
-- [ ] Daily login voice: `voice_daily_login.mp3` plays ("Welcome back Space Ranger...")
-- [ ] If daily login popup shown, welcome-back voice is skipped (no double greeting)
-- [ ] If no daily login popup, `voice_welcome_back.mp3` plays after ~800ms delay (only if today brush count is 0)
+- [ ] Greeting popup appears (if not already greeted today): plays state-appropriate voice
+  - New user (1-2 brushes): `voice_greet_just_started_{1,2,3}.mp3`
+  - Streak 2-4: `voice_greet_streak_low_{1,2}.mp3`
+  - Streak 5-9: `voice_greet_streak_mid_{1,2}.mp3`
+  - Streak 10-19: `voice_greet_streak_high_{1,2}.mp3`
+  - Streak 20+: `voice_greet_streak_legend_{1,2}.mp3`
+  - Returning (broken streak): `voice_greet_returning_{1,2}.mp3`
+- [ ] If already greeted today, `voice_welcome_back.mp3` plays after ~800ms delay
 
 ### 2b. First Launch (0 total brushes)
 - [ ] No welcome-back voice plays (user hasn't brushed yet)
-- [ ] No daily login popup (total brushes == 0)
+- [ ] No greeting popup (total brushes == 0)
 
-### 2c. Returning from Victory Screen (`skipDailyLogin: true`)
-- [ ] No daily login popup plays
+### 2c. Returning from Victory Screen (`skipGreeting: true`)
+- [ ] No greeting popup plays
 - [ ] No welcome-back voice plays
 
 ### 2d. Mute Button
