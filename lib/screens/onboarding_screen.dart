@@ -73,7 +73,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
     AnalyticsService().logOnboardingComplete();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('camera_mode_configured', true);
     await prefs.setBool('onboarding_completed', true);
     if (mounted) {
       Navigator.of(context).pushReplacement(
@@ -184,10 +183,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.rocket_launch,
-                size: 80,
-                color: Colors.white,
+              child: ClipOval(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Image.asset(
+                    'assets/images/hero_blaze.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
           ),
@@ -226,8 +231,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             children: [
               // Monster
               SizedBox(
-                width: 56,
-                height: 56,
+                width: 80,
+                height: 80,
                 child: Image.asset(
                   'assets/images/monster_purple.png',
                   fit: BoxFit.contain,
@@ -235,8 +240,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
               const SizedBox(width: 8),
               SizedBox(
-                width: 56,
-                height: 56,
+                width: 80,
+                height: 80,
                 child: Image.asset(
                   'assets/images/monster_green.png',
                   fit: BoxFit.contain,
@@ -248,14 +253,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   'VS',
                   style: TextStyle(
                     color: const Color(0xFFFF4081),
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
               SizedBox(
-                width: 56,
-                height: 56,
+                width: 80,
+                height: 80,
                 child: Image.asset(
                   'assets/images/toothbrush_icon.png',
                   fit: BoxFit.contain,
@@ -285,29 +290,29 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               letterSpacing: 3,
             ),
           ),
-          const SizedBox(height: 36),
-          _OnboardingStep(
-            imagePath: 'assets/images/toothbrush_icon.png',
-            color: const Color(0xFF69F0AE),
-            title: 'BRUSH YOUR TEETH',
-            subtitle: 'Brush for 2 minutes to win!',
-            animation: _pulseController,
-          ),
-          const SizedBox(height: 20),
-          _OnboardingStep(
-            icon: Icons.videocam,
-            color: const Color(0xFF7C4DFF),
-            title: 'YOUR MOVES POWER ATTACKS',
-            subtitle: 'The faster you brush, the harder you fight the monsters!',
-            animation: _pulseController,
-          ),
-          const SizedBox(height: 20),
-          _OnboardingStep(
-            icon: Icons.star,
-            color: Colors.yellowAccent,
-            title: 'EARN STARS',
-            subtitle: 'Unlock new heroes and weapons!',
-            animation: _pulseController,
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _OnboardingPanel(
+                imagePath: 'assets/images/toothbrush_icon.png',
+                color: const Color(0xFF69F0AE),
+                label: 'BRUSH',
+                animation: _pulseController,
+              ),
+              _OnboardingPanel(
+                icon: Icons.sensors,
+                color: const Color(0xFF7C4DFF),
+                label: 'MOVE',
+                animation: _pulseController,
+              ),
+              _OnboardingPanel(
+                icon: Icons.star,
+                color: Colors.yellowAccent,
+                label: 'WIN',
+                animation: _pulseController,
+              ),
+            ],
           ),
           const Spacer(flex: 3),
         ],
@@ -466,83 +471,74 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-class _OnboardingStep extends StatelessWidget {
+class _OnboardingPanel extends StatelessWidget {
   final IconData? icon;
   final String? imagePath;
   final Color color;
-  final String title;
-  final String subtitle;
+  final String label;
   final AnimationController animation;
 
-  const _OnboardingStep({
+  const _OnboardingPanel({
     this.icon,
     this.imagePath,
     required this.color,
-    required this.title,
-    required this.subtitle,
+    required this.label,
     required this.animation,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        AnimatedBuilder(
-          animation: animation,
-          builder: (context, child) {
-            final glow = 0.3 + animation.value * 0.3;
-            return Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(alpha: 0.15),
-                border: Border.all(
-                  color: color.withValues(alpha: 0.5),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: glow),
-                    blurRadius: 12,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: imagePath != null
-                  ? ClipOval(
-                      child: Image.asset(imagePath!, width: 40, height: 40),
-                    )
-                  : Icon(icon, color: color, size: 28),
-            );
-          },
-        ),
-        const SizedBox(width: 16),
-        Expanded(
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final scale = 0.92 + animation.value * 0.08;
+        final glow = 0.3 + animation.value * 0.3;
+        return Transform.scale(
+          scale: scale,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: color.withValues(alpha: 0.6),
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: glow),
+                      blurRadius: 18,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: imagePath != null
+                    ? ClipOval(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child:
+                              Image.asset(imagePath!, width: 56, height: 56),
+                        ),
+                      )
+                    : Icon(icon, color: color, size: 42),
+              ),
+              const SizedBox(height: 10),
               Text(
-                title,
+                label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 14,
-                ),
-              ),
             ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }

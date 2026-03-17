@@ -101,7 +101,7 @@ assets/
 - Dedicated voice player with overlap prevention
 - 11 voiced encouragement lines (ElevenLabs "Jessica" voice)
 - Music: 2-min pre-concatenated loop file (battle_music_loop.mp3) for reliable Android playback
-- Music ducks (volume 0.12) while voice lines play, restores to 0.5 after
+- Music ducks (volume 0.08) while voice lines play, restores to 0.18 after
 - Fresh AudioPlayer created for each music session to avoid stuck state
 - Periodic music health check (every 5s) restarts music if player gets stuck
 - Mute state persisted in SharedPreferences

@@ -39,11 +39,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _generateMathChallenge();
     _loadSettings();
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) {
-        AudioService().playVoice('voice_entry_settings.mp3', clearQueue: true, interrupt: true);
-      }
-    });
   }
 
   @override
@@ -63,6 +58,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _parentUnlocked = true;
         _mathError = null;
+      });
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) {
+          AudioService().playVoice('voice_entry_settings.mp3', clearQueue: true, interrupt: true);
+        }
       });
     } else {
       setState(() {
@@ -353,7 +353,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _resetProgress() async {
     if (!mounted) return;
-    final confirmed = await showDialog<bool>(
+
+    // Step 1: Warning dialog
+    final wantsContinue = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A0A3E),
@@ -363,7 +365,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'This will delete all stars, heroes, weapons, streaks, achievements, and cloud data. This cannot be undone.',
+          'Are you sure? This will delete ALL progress — stars, heroes, weapons, streaks, achievements, and cloud data. This cannot be undone.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -377,7 +379,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
-              'DELETE',
+              'CONTINUE',
               style: TextStyle(
                 color: Colors.redAccent,
                 fontWeight: FontWeight.bold,
@@ -387,7 +389,141 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (wantsContinue != true || !mounted) return;
+
+    // Step 2: Math confirmation dialog (different problem from parent gate)
+    final deleteA = 3 + DateTime.now().millisecond % 6;
+    final deleteB = 3 + DateTime.now().second % 4;
+    final deleteController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        String? error;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: const Color(0xFF1A0A3E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text(
+              'Confirm Deletion',
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'To confirm deletion, solve this:',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '$deleteA × $deleteB = ?',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: deleteController,
+                    autofocus: true,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      signed: false,
+                      decimal: false,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    onSubmitted: (_) {
+                      final ans = int.tryParse(deleteController.text.trim());
+                      if (ans == (deleteA * deleteB)) {
+                        Navigator.pop(ctx, true);
+                      } else {
+                        setDialogState(() {
+                          error = 'Wrong answer!';
+                          deleteController.clear();
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: '?',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        fontSize: 24,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 2,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(
+                          color: Colors.redAccent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    error!,
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'CANCEL',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  final ans = int.tryParse(deleteController.text.trim());
+                  if (ans == (deleteA * deleteB)) {
+                    Navigator.pop(ctx, true);
+                  } else {
+                    setDialogState(() {
+                      error = 'Wrong answer!';
+                      deleteController.clear();
+                    });
+                  }
+                },
+                child: const Text(
+                  'DELETE',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    deleteController.dispose();
+    if (confirmed != true || !mounted) return;
 
     final prefs = await SharedPreferences.getInstance();
     final keysToReset = [
@@ -413,6 +549,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'session_checkpoint_phase',
       'session_checkpoint_seconds',
       'session_checkpoint_world',
+      'unlocked_cosmetics',
+      'selected_cosmetic',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);

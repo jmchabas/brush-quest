@@ -186,6 +186,22 @@ class _VictoryScreenState extends State<VictoryScreen>
   CardDropResult? _cardDrop;
   bool _showCardDrop = false;
 
+  // Victory celebration arcs: each arc is a 3-beat connected story
+  // [beat1 = celebration, beat2 = star earned, beat3 = chest prompt]
+  static const _victoryArcs = [
+    ['voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3', 'voice_victory_arc1_beat3.mp3'],
+    ['voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3', 'voice_victory_arc2_beat3.mp3'],
+    ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3'],
+    ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3'],
+  ];
+
+  // Post-chest encouragement variants (replaces single voice_keep_going)
+  static const _chestEncouragements = [
+    'voice_chest_encourage_1.mp3',
+    'voice_chest_encourage_2.mp3',
+    'voice_chest_encourage_3.mp3',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -289,14 +305,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    final hour = DateTime.now().hour;
-    final victoryVoice = (hour >= 5 && hour < 12)
-        ? 'voice_great_job_morning.mp3'
-        : (hour >= 18 || hour < 5)
-        ? 'voice_great_job_tonight.mp3'
-        : 'voice_you_did_it.mp3';
-    _audio.playVoice(victoryVoice);
-    _audio.playVoice('voice_earned_star.mp3');
+    // Pick a random victory celebration arc (connected 3-beat story)
+    final arcIndex = _random.nextInt(_victoryArcs.length);
+    final arc = _victoryArcs[arcIndex];
+    _audio.playVoice(arc[0]); // celebration
+    _audio.playVoice(arc[1]); // star earned
     _starController.forward();
     _starRotationController.repeat();
     _starGlowController.repeat(reverse: true);
@@ -308,12 +321,12 @@ class _VictoryScreenState extends State<VictoryScreen>
       });
     }
 
-    // Show chest after initial celebration
+    // Show chest after initial celebration — beat 3 of the same arc
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
       setState(() => _showChest = true);
       _chestBounceController.repeat(reverse: true);
-      _audio.playVoice('voice_open_chest.mp3');
+      _audio.playVoice(arc[2]); // chest prompt
     });
   }
 
@@ -351,7 +364,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
       // Queue encouragement about hero progress after chest reward
       if (_nextHero != null && _starsToNextHero > 0 && mounted) {
-        _audio.playVoice('voice_keep_going.mp3');
+        _audio.playVoice(
+          _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
+        );
       }
 
       if (mounted) _doneButtonController.repeat(reverse: true);
@@ -487,11 +502,20 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
+  static const _achievementVoices = [
+    'voice_wow_amazing.mp3',
+    'voice_awesome.mp3',
+    'voice_super.mp3',
+  ];
+  int _achievementVoiceIndex = 0;
+
   void _showAchievement(Achievement achievement) {
     _audio.playSfx('whoosh.mp3');
-    // Play a celebratory voice for the achievement — no per-achievement TTS
-    // files exist, so use the generic "wow amazing" line to celebrate.
-    _audio.playVoice('voice_wow_amazing.mp3');
+    // Rotate through celebratory voices so achievements don't all sound the same.
+    final voice =
+        _achievementVoices[_achievementVoiceIndex % _achievementVoices.length];
+    _achievementVoiceIndex++;
+    _audio.playVoice(voice);
     showAchievementPopup(context, achievement);
   }
 

@@ -362,26 +362,27 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
                               Image.asset(card.imagePath, fit: BoxFit.contain),
                         ),
                       )
-                    : // Uncollected: desaturated peek at 35% opacity
-                    Opacity(
-                        opacity: 0.35,
-                        child: ShaderMask(
-                          shaderCallback: (bounds) => RadialGradient(
-                            colors: [
-                              Colors.white,
-                              Colors.white.withValues(alpha: 0.0),
-                            ],
-                            radius: 0.75,
-                          ).createShader(bounds),
-                          child: ColorFiltered(
+                    : // Uncollected: solid black silhouette with "?" overlay
+                    Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          ColorFiltered(
                             colorFilter: const ColorFilter.mode(
-                              Colors.black54,
-                              BlendMode.saturation,
+                              Colors.black,
+                              BlendMode.srcIn,
                             ),
                             child: Image.asset(card.imagePath,
                                 fit: BoxFit.contain),
                           ),
-                        ),
+                          Text(
+                            '?',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
               ),
             ),

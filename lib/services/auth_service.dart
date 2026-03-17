@@ -24,12 +24,29 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     await _ensureGoogleInit();
 
-    final account = await GoogleSignIn.instance.authenticate();
-    final idToken = account.authentication.idToken;
+    try {
+      final account = await GoogleSignIn.instance.authenticate();
+      final idToken = account.authentication.idToken;
 
-    final credential = GoogleAuthProvider.credential(idToken: idToken);
-    final authResult = await _auth.signInWithCredential(credential);
-    return authResult.user;
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+      final authResult = await _auth.signInWithCredential(credential);
+      return authResult.user;
+    } catch (e) {
+      // If reauth fails (stale cached token), disconnect and retry fresh
+      if (e.toString().contains('reauth failed') ||
+          e.toString().contains('canceled')) {
+        try {
+          await GoogleSignIn.instance.disconnect();
+        } catch (_) {}
+        // Retry with a clean slate
+        final account = await GoogleSignIn.instance.authenticate();
+        final idToken = account.authentication.idToken;
+        final credential = GoogleAuthProvider.credential(idToken: idToken);
+        final authResult = await _auth.signInWithCredential(credential);
+        return authResult.user;
+      }
+      rethrow;
+    }
   }
 
   Future<void> signOut() async {

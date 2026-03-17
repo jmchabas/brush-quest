@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -295,76 +294,38 @@ void main() {
   });
 
   // ===========================================================================
-  // 4. Encouragement voice categories have no overlap
+  // 4. Encouragement arcs (connected 3-beat micro-stories)
   // ===========================================================================
-  group('encouragement voice categories', () {
-    const energizingVoices = [
-      'voice_go_go_go.mp3',
-      'voice_super.mp3',
-      'voice_unstoppable.mp3',
-      'voice_nice_combo.mp3',
+  group('encouragement arcs', () {
+    const arcFiles = [
+      ['voice_arc1_beat1.mp3', 'voice_arc1_beat2.mp3', 'voice_arc1_beat3.mp3'],
+      ['voice_arc2_beat1.mp3', 'voice_arc2_beat2.mp3', 'voice_arc2_beat3.mp3'],
+      ['voice_arc3_beat1.mp3', 'voice_arc3_beat2.mp3', 'voice_arc3_beat3.mp3'],
+      ['voice_arc4_beat1.mp3', 'voice_arc4_beat2.mp3', 'voice_arc4_beat3.mp3'],
+      ['voice_arc5_beat1.mp3', 'voice_arc5_beat2.mp3', 'voice_arc5_beat3.mp3'],
+      ['voice_arc6_beat1.mp3', 'voice_arc6_beat2.mp3', 'voice_arc6_beat3.mp3'],
     ];
 
-    const supportiveVoices = [
-      'voice_youre_doing_great.mp3',
-      'voice_keep_it_up.mp3',
-      'voice_keep_going.mp3',
-      'voice_so_strong.mp3',
-    ];
-
-    const almostThereVoices = [
-      'voice_almost_there.mp3',
-      'voice_awesome.mp3',
-      'voice_wow_amazing.mp3',
-    ];
-
-    test('source defines _energizingVoices with expected files', () {
-      for (final v in energizingVoices) {
-        expect(brushingScreenSrc.contains("'$v'"), isTrue,
-            reason: '_energizingVoices should contain $v');
+    test('source defines _encouragementArcs with all arc files', () {
+      for (final arc in arcFiles) {
+        for (final file in arc) {
+          expect(brushingScreenSrc.contains("'$file'"), isTrue,
+              reason: '_encouragementArcs should contain $file');
+        }
       }
     });
 
-    test('source defines _supportiveVoices with expected files', () {
-      for (final v in supportiveVoices) {
-        expect(brushingScreenSrc.contains("'$v'"), isTrue,
-            reason: '_supportiveVoices should contain $v');
+    test('each arc has exactly 3 beats', () {
+      for (final arc in arcFiles) {
+        expect(arc.length, 3,
+            reason: 'each arc must have 3 beats (energize, support, finish)');
       }
     });
 
-    test('source defines _almostThereVoices with expected files', () {
-      for (final v in almostThereVoices) {
-        expect(brushingScreenSrc.contains("'$v'"), isTrue,
-            reason: '_almostThereVoices should contain $v');
-      }
-    });
-
-    test('no overlap between energizing and supportive voices', () {
-      final overlap =
-          energizingVoices.toSet().intersection(supportiveVoices.toSet());
-      expect(overlap, isEmpty);
-    });
-
-    test('no overlap between energizing and almostThere voices', () {
-      final overlap =
-          energizingVoices.toSet().intersection(almostThereVoices.toSet());
-      expect(overlap, isEmpty);
-    });
-
-    test('no overlap between supportive and almostThere voices', () {
-      final overlap =
-          supportiveVoices.toSet().intersection(almostThereVoices.toSet());
-      expect(overlap, isEmpty);
-    });
-
-    test('no overlap across all three categories (union is disjoint)', () {
-      final all = <String>[
-        ...energizingVoices,
-        ...supportiveVoices,
-        ...almostThereVoices,
-      ];
+    test('no duplicate files across all arcs', () {
+      final all = arcFiles.expand((a) => a).toList();
       expect(all.toSet().length, all.length,
-          reason: 'duplicate found across categories');
+          reason: 'duplicate found across arcs');
     });
   });
 
@@ -440,89 +401,50 @@ void main() {
   });
 
   // ===========================================================================
-  // 6. Victory time-of-day voice selection
+  // 6. Victory celebration arcs
   // ===========================================================================
-  group('victory time-of-day voice selection', () {
-    // Replicate the logic from victory_screen.dart:
-    //   final hour = DateTime.now().hour;
-    //   final victoryVoice = (hour >= 5 && hour < 12)
-    //       ? 'voice_great_job_morning.mp3'
-    //       : (hour >= 18 || hour < 5)
-    //       ? 'voice_great_job_tonight.mp3'
-    //       : 'voice_you_did_it.mp3';
+  group('victory celebration arcs', () {
+    const victoryArcFiles = [
+      ['voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3', 'voice_victory_arc1_beat3.mp3'],
+      ['voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3', 'voice_victory_arc2_beat3.mp3'],
+      ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3'],
+      ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3'],
+    ];
 
-    String victoryVoiceForHour(int hour) {
-      return (hour >= 5 && hour < 12)
-          ? 'voice_great_job_morning.mp3'
-          : (hour >= 18 || hour < 5)
-              ? 'voice_great_job_tonight.mp3'
-              : 'voice_you_did_it.mp3';
-    }
-
-    test('source uses hour-based conditional for victory voice', () {
-      expect(victoryScreenSrc.contains('hour >= 5 && hour < 12'), isTrue);
-      expect(victoryScreenSrc.contains('hour >= 18 || hour < 5'), isTrue);
-    });
-
-    test('morning hours (5-11) select voice_great_job_morning.mp3', () {
-      for (int h = 5; h < 12; h++) {
-        expect(victoryVoiceForHour(h), 'voice_great_job_morning.mp3',
-            reason: 'hour $h should be morning');
+    test('source defines _victoryArcs with all arc files', () {
+      for (final arc in victoryArcFiles) {
+        for (final file in arc) {
+          expect(victoryScreenSrc.contains("'$file'"), isTrue,
+              reason: '_victoryArcs should contain $file');
+        }
       }
     });
 
-    test('evening/night hours (18-23, 0-4) select voice_great_job_tonight.mp3',
-        () {
-      for (int h = 18; h < 24; h++) {
-        expect(victoryVoiceForHour(h), 'voice_great_job_tonight.mp3',
-            reason: 'hour $h should be evening/night');
-      }
-      for (int h = 0; h < 5; h++) {
-        expect(victoryVoiceForHour(h), 'voice_great_job_tonight.mp3',
-            reason: 'hour $h should be night');
+    test('each victory arc has exactly 3 beats', () {
+      for (final arc in victoryArcFiles) {
+        expect(arc.length, 3,
+            reason: 'each arc must have 3 beats (celebrate, star, chest)');
       }
     });
 
-    test('afternoon hours (12-17) select voice_you_did_it.mp3', () {
-      for (int h = 12; h < 18; h++) {
-        expect(victoryVoiceForHour(h), 'voice_you_did_it.mp3',
-            reason: 'hour $h should be afternoon');
+    test('all victory arc files are in _allAudioFiles', () {
+      for (final arc in victoryArcFiles) {
+        for (final file in arc) {
+          expect(audioServiceSrc.contains("'$file'"), isTrue,
+              reason: '$file should be in _allAudioFiles');
+        }
       }
     });
 
-    test('boundary: hour 5 is morning, hour 4 is night', () {
-      expect(victoryVoiceForHour(5), 'voice_great_job_morning.mp3');
-      expect(victoryVoiceForHour(4), 'voice_great_job_tonight.mp3');
-    });
-
-    test('boundary: hour 12 is afternoon, hour 11 is morning', () {
-      expect(victoryVoiceForHour(12), 'voice_you_did_it.mp3');
-      expect(victoryVoiceForHour(11), 'voice_great_job_morning.mp3');
-    });
-
-    test('boundary: hour 18 is evening, hour 17 is afternoon', () {
-      expect(victoryVoiceForHour(18), 'voice_great_job_tonight.mp3');
-      expect(victoryVoiceForHour(17), 'voice_you_did_it.mp3');
-    });
-
-    test('every hour 0-23 maps to exactly one of the 3 voice files', () {
-      final validVoices = {
-        'voice_great_job_morning.mp3',
-        'voice_great_job_tonight.mp3',
-        'voice_you_did_it.mp3',
-      };
-      for (int h = 0; h < 24; h++) {
-        expect(validVoices.contains(victoryVoiceForHour(h)), isTrue,
-            reason: 'hour $h must map to a valid voice');
-      }
-    });
-
-    test('all 3 time-of-day voice files are in _allAudioFiles', () {
-      for (final f in [
-        'voice_great_job_morning.mp3',
-        'voice_great_job_tonight.mp3',
-        'voice_you_did_it.mp3',
-      ]) {
+    test('post-chest encouragement variants exist in source', () {
+      const encouragements = [
+        'voice_chest_encourage_1.mp3',
+        'voice_chest_encourage_2.mp3',
+        'voice_chest_encourage_3.mp3',
+      ];
+      for (final f in encouragements) {
+        expect(victoryScreenSrc.contains("'$f'"), isTrue,
+            reason: '$f should be in _chestEncouragements');
         expect(audioServiceSrc.contains("'$f'"), isTrue,
             reason: '$f should be in _allAudioFiles');
       }
@@ -799,16 +721,6 @@ void main() {
   // 10. _allAudioFiles completeness cross-check
   // ===========================================================================
   group('_allAudioFiles cross-references', () {
-    test('voice_open_chest.mp3 is in _allAudioFiles (used before chest reveal)',
-        () {
-      expect(audioServiceSrc.contains("'voice_open_chest.mp3'"), isTrue);
-    });
-
-    test('voice_earned_star.mp3 is in _allAudioFiles (played after victory voice)',
-        () {
-      expect(audioServiceSrc.contains("'voice_earned_star.mp3'"), isTrue);
-    });
-
     test('battle_music_loop.mp3 is in _allAudioFiles', () {
       expect(audioServiceSrc.contains("'battle_music_loop.mp3'"), isTrue);
     });

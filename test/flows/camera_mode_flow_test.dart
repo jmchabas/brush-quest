@@ -16,16 +16,17 @@ void main() {
     expect(source.contains('_showPreBrushPicker();'), isTrue);
   });
 
-  test('onboarding marks camera as configured on completion', () {
+  test('onboarding does NOT silently enable camera (COPPA)', () {
     final source = File(
       'lib/screens/onboarding_screen.dart',
     ).readAsStringSync();
 
-    // Camera setup choice was removed from onboarding; it just marks configured
+    // Camera must not be silently enabled during onboarding (COPPA compliance).
+    // Parents opt in via Settings where a consent dialog is shown.
     expect(source.contains('Camera motion mode'), isFalse);
     expect(
       source.contains("prefs.setBool('camera_mode_configured', true)"),
-      isTrue,
+      isFalse,
     );
   });
 

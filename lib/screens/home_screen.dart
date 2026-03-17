@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +8,7 @@ import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/world_service.dart';
+import '../services/cosmetic_service.dart';
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -37,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
   WorldData? _currentWorld;
+  Color? _cosmeticFrameColor;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -45,8 +49,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _auraController;
   late AnimationController _tapPulseController;
   late Animation<double> _tapPulseAnimation;
+  late AnimationController _breatheController;
+  late Animation<double> _breatheAnimation;
   bool _buttonPressed = false;
   String? _lastPickerVoice;
+
+  static const _welcomeBackVoices = [
+    'voice_welcome_back.mp3',
+    'voice_keep_it_up.mp3',
+    'voice_go_go_go.mp3',
+  ];
 
   @override
   void initState() {
@@ -81,6 +93,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _tapPulseAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(parent: _tapPulseController, curve: Curves.easeInOut),
     );
+
+    _breatheController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat(reverse: true);
+    _breatheAnimation = Tween<double>(begin: 1.0, end: 1.03).animate(
+      CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -90,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _floatController.dispose();
     _auraController.dispose();
     _tapPulseController.dispose();
+    _breatheController.dispose();
     super.dispose();
   }
 
@@ -101,6 +122,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final totalBrushes = await _streakService.getTotalBrushes();
     final bossReady = (totalBrushes % 5) == 4;
     final world = await _worldService.getCurrentWorld();
+    final cosmeticService = CosmeticService();
+    await cosmeticService.refreshCache();
+    final frameColor = cosmeticService.getSelectedColor();
 
     if (mounted) {
       setState(() {
@@ -110,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _streak = streak;
         _bossReady = bossReady;
         _currentWorld = world;
+        _cosmeticFrameColor = frameColor;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -151,9 +176,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       AnalyticsService().logDailyLogin(streak: _streak);
       _showGreetingPopup(result);
     } else if (lastGreetingDate == todayDate && mounted) {
-      // Already greeted today — play a short welcome back voice
+      // Already greeted today — play a random welcome back voice
       await Future.delayed(const Duration(milliseconds: 800));
-      if (mounted) AudioService().playVoice('voice_welcome_back.mp3');
+      if (mounted) {
+        final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
+        AudioService().playVoice(voice);
+      }
     }
   }
 
@@ -331,6 +359,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final unlocked = await _heroService.getUnlockedHeroIds();
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     if (!mounted) return;
+
+    // Skip picker for new users with only default hero + weapon
+    if (unlocked.length <= 1 && unlockedWeapons.length <= 1) {
+      AudioService().playVoice(
+        'voice_lets_fight.mp3',
+        clearQueue: true,
+        interrupt: true,
+      );
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) _launchBrushingScreen();
+      });
+      return;
+    }
 
     _lastPickerVoice = null;
     _playPickerVoice(AudioService().heroPickerVoiceFor(_selectedHero.id));
@@ -633,74 +674,76 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ],
                                     ),
                                   ),
-                                  // Hero circle + weapon badge
-                                  SizedBox(
-                                    width: 270,
-                                    height: 270,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        Container(
-                                          width: 260,
-                                          height: 260,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: _selectedHero.primaryColor,
-                                              width: 4,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: _selectedHero
-                                                    .primaryColor
-                                                    .withValues(alpha: 0.6),
-                                                blurRadius: 30,
-                                                spreadRadius: 5,
-                                              ),
-                                            ],
-                                          ),
-                                          child: ClipOval(
-                                            child: Image.asset(
-                                              _selectedHero.imagePath,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                        // Weapon badge
-                                        Positioned(
-                                          right: 6,
-                                          bottom: 6,
-                                          child: Container(
-                                            width: 52,
-                                            height: 52,
+                                  // Hero circle + weapon badge with breathing animation
+                                  ScaleTransition(
+                                    scale: _breatheAnimation,
+                                    child: SizedBox(
+                                      width: 270,
+                                      height: 270,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Container(
+                                            width: 260,
+                                            height: 260,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              color: const Color(0xFF0D0B2E),
                                               border: Border.all(
-                                                color: _selectedWeapon
-                                                    .primaryColor,
-                                                width: 3,
+                                                color: _cosmeticFrameColor ?? _selectedHero.primaryColor,
+                                                width: _cosmeticFrameColor != null ? 5 : 4,
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: _selectedWeapon
-                                                      .primaryColor
-                                                      .withValues(alpha: 0.5),
-                                                  blurRadius: 10,
+                                                  color: (_cosmeticFrameColor ?? _selectedHero.primaryColor)
+                                                      .withValues(alpha: 0.6),
+                                                  blurRadius: 30,
+                                                  spreadRadius: 5,
                                                 ),
                                               ],
                                             ),
                                             child: ClipOval(
                                               child: Image.asset(
-                                                _selectedWeapon.imagePath,
-                                                width: 46,
-                                                height: 46,
+                                                _selectedHero.imagePath,
                                                 fit: BoxFit.cover,
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                          // Weapon badge
+                                          Positioned(
+                                            right: 6,
+                                            bottom: 6,
+                                            child: Container(
+                                              width: 52,
+                                              height: 52,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: const Color(0xFF0D0B2E),
+                                                border: Border.all(
+                                                  color: _selectedWeapon
+                                                      .primaryColor,
+                                                  width: 3,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: _selectedWeapon
+                                                        .primaryColor
+                                                        .withValues(alpha: 0.5),
+                                                    blurRadius: 10,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: ClipOval(
+                                                child: Image.asset(
+                                                  _selectedWeapon.imagePath,
+                                                  width: 46,
+                                                  height: 46,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],

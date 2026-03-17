@@ -16,6 +16,7 @@ import '../widgets/mute_button.dart';
 import 'package:lottie/lottie.dart';
 import '../widgets/mouth_guide.dart';
 import '../services/analytics_service.dart';
+import '../services/cosmetic_service.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -236,6 +237,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   final _weaponService = WeaponService();
 
   HeroCharacter _hero = HeroService.allHeroes[0];
+  Color? _cosmeticFrameColor;
   WorldData _world = WorldService.allWorlds[0];
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
@@ -417,24 +419,18 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
 
-  // Encouragement voice categories
-  static const _energizingVoices = [
-    'voice_go_go_go.mp3',
-    'voice_super.mp3',
-    'voice_unstoppable.mp3',
-    'voice_nice_combo.mp3',
+  // Encouragement arcs: each arc is a 3-beat connected micro-story
+  // [beat1 = energizing @80%, beat2 = supportive @50%, beat3 = almost-there @20%]
+  static const _encouragementArcs = [
+    ['voice_arc1_beat1.mp3', 'voice_arc1_beat2.mp3', 'voice_arc1_beat3.mp3'],
+    ['voice_arc2_beat1.mp3', 'voice_arc2_beat2.mp3', 'voice_arc2_beat3.mp3'],
+    ['voice_arc3_beat1.mp3', 'voice_arc3_beat2.mp3', 'voice_arc3_beat3.mp3'],
+    ['voice_arc4_beat1.mp3', 'voice_arc4_beat2.mp3', 'voice_arc4_beat3.mp3'],
+    ['voice_arc5_beat1.mp3', 'voice_arc5_beat2.mp3', 'voice_arc5_beat3.mp3'],
+    ['voice_arc6_beat1.mp3', 'voice_arc6_beat2.mp3', 'voice_arc6_beat3.mp3'],
   ];
-  static const _supportiveVoices = [
-    'voice_youre_doing_great.mp3',
-    'voice_keep_it_up.mp3',
-    'voice_keep_going.mp3',
-    'voice_so_strong.mp3',
-  ];
-  static const _almostThereVoices = [
-    'voice_almost_there.mp3',
-    'voice_awesome.mp3',
-    'voice_wow_amazing.mp3',
-  ];
+  int _currentArcIndex = -1;
+  int _lastArcIndex = -1;
 
   @override
   void initState() {
@@ -794,9 +790,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     final totalBrushes = await StreakService().getTotalBrushes();
     final prefs = await SharedPreferences.getInstance();
     final duration = prefs.getInt('phase_duration') ?? 30;
+    final cosmeticService = CosmeticService();
+    await cosmeticService.refreshCache();
+    final frameColor = cosmeticService.getSelectedColor();
     if (mounted) {
       setState(() {
         _hero = hero;
+        _cosmeticFrameColor = frameColor;
         _world = world;
         _dailyModifier = _worldService.getDailyModifier();
         _weapon = weapon;
@@ -966,6 +966,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== BRUSHING ====================
 
   void _startBrushing({bool resumeFromCheckpoint = false}) {
+    // Ensure we always have a valid arc (covers checkpoint resume)
+    if (_currentArcIndex < 0) _pickNextArc();
     if (!resumeFromCheckpoint) {
       _totalHits = 0;
       _attackStyleIndex = 0;
@@ -997,6 +999,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _scheduleNextMicroReward();
 
     if (!resumeFromCheckpoint) {
+      _pickNextArc();
       _switchToPhase(BrushPhase.topLeft);
     }
 
@@ -1011,21 +1014,15 @@ class _BrushingScreenState extends State<BrushingScreen>
       final almostAt = (_phaseDuration * 0.20).round();
       if (_phaseSecondsLeft == energizeAt && !_playedEncouragement) {
         _playedEncouragement = true;
-        _audio.playVoice(
-          _energizingVoices[_random.nextInt(_energizingVoices.length)],
-        );
+        _audio.playVoice(_encouragementArcs[_currentArcIndex][0]);
       }
       if (_phaseSecondsLeft == supportAt && !_playedMidEncouragement) {
         _playedMidEncouragement = true;
-        _audio.playVoice(
-          _supportiveVoices[_random.nextInt(_supportiveVoices.length)],
-        );
+        _audio.playVoice(_encouragementArcs[_currentArcIndex][1]);
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
-        _audio.playVoice(
-          _almostThereVoices[_random.nextInt(_almostThereVoices.length)],
-        );
+        _audio.playVoice(_encouragementArcs[_currentArcIndex][2]);
       }
 
       if (_phaseSecondsLeft <= 0 && !_phaseTransitioning) {
@@ -1033,6 +1030,7 @@ class _BrushingScreenState extends State<BrushingScreen>
         _playedEncouragement = false;
         _playedMidEncouragement = false;
         _playedAlmostThere = false;
+        _pickNextArc();
         final currentIndex = brushPhaseOrder.indexOf(_phase);
         if (currentIndex < brushPhaseOrder.length - 1) {
           _triggerFinisher(() {
@@ -1438,6 +1436,16 @@ class _BrushingScreenState extends State<BrushingScreen>
       wobblePhase: _random.nextDouble() * 2 * pi,
       personality: _MonsterPersonality.boss(_random),
     );
+  }
+
+  void _pickNextArc() {
+    int next = _random.nextInt(_encouragementArcs.length);
+    // Avoid repeating the same arc back-to-back
+    while (next == _lastArcIndex && _encouragementArcs.length > 1) {
+      next = _random.nextInt(_encouragementArcs.length);
+    }
+    _lastArcIndex = next;
+    _currentArcIndex = next;
   }
 
   void _playNextEncouragementVoice() {
@@ -1894,7 +1902,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final monsterSize = _isBossPhase ? 200.0 : 160.0;
-    final heroSize = 120.0;
+    final heroSize = 168.0;
 
     return Scaffold(
       body: AnimatedBuilder(
@@ -3012,7 +3020,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: _hero.primaryColor.withValues(alpha: pulse),
+                        color: (_cosmeticFrameColor ?? _hero.primaryColor).withValues(alpha: pulse),
                         blurRadius: 20 + (glowBoost * 20),
                         spreadRadius: 4 + (glowBoost * 8),
                       ),
@@ -3024,7 +3032,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                   size: Size(size + 24, size + 24),
                   painter: _HeroPowerParticlePainter(
                     animValue: t,
-                    color: _hero.primaryColor,
+                    color: _cosmeticFrameColor ?? _hero.primaryColor,
                     secondaryColor: _hero.attackColor,
                     isAttacking: _heroLunging,
                   ),
@@ -3033,12 +3041,12 @@ class _BrushingScreenState extends State<BrushingScreen>
                 child!,
                 // Weapon badge
                 Positioned(
-                  right: -8,
-                  bottom: -8,
+                  right: -10,
+                  bottom: -10,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    width: _heroLunging ? 54 : 46,
-                    height: _heroLunging ? 54 : 46,
+                    width: _heroLunging ? 76 : 64,
+                    height: _heroLunging ? 76 : 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _weapon.primaryColor.withValues(
@@ -3058,8 +3066,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                     child: ClipOval(
                       child: Image.asset(
                         _weapon.imagePath,
-                        width: _heroLunging ? 28 : 24,
-                        height: _heroLunging ? 28 : 24,
+                        width: _heroLunging ? 39 : 34,
+                        height: _heroLunging ? 39 : 34,
                         fit: BoxFit.cover,
                       ),
                     ),
