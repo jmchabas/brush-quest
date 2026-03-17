@@ -40,11 +40,13 @@ void main() {
     );
   });
 
-  test('Voice pump uses Future.any with exactly two signals', () {
-    // The voice pump must use Future.any with exactly:
-    //   1. onPlayerComplete
-    //   2. Duration(seconds: 5) timeout
-    // A third signal (extra Completer, stream, etc.) causes race conditions.
+  test('Voice pump uses Future.any with three signals', () {
+    // The voice pump must use Future.any with:
+    //   1. onPlayerComplete — natural end of voice
+    //   2. onPlayerStateChanged (stopped) — interrupt from another playVoice call
+    //   3. Duration(seconds: 5) timeout — fallback safety net
+    // Without signal 2, interrupts wait for the 5s timeout before playing
+    // the next queued voice, causing multi-second delays on user taps.
 
     // Verify Future.any is used
     expect(
@@ -60,46 +62,27 @@ void main() {
       reason: 'Voice pump must listen for onPlayerComplete.',
     );
 
+    // Verify onPlayerStateChanged is used to detect interrupts
+    expect(
+      audioSource.contains('onPlayerStateChanged'),
+      isTrue,
+      reason:
+          'Voice pump must listen for PlayerState.stopped to handle interrupts '
+          'without waiting for the 5s timeout.',
+    );
+
+    // Verify PlayerState.stopped is the specific state being watched
+    expect(
+      audioSource.contains('PlayerState.stopped'),
+      isTrue,
+      reason: 'Voice pump must watch for PlayerState.stopped specifically.',
+    );
+
     // Verify 5-second timeout is one of the signals
     expect(
       RegExp(r'Duration\(seconds:\s*5\)').hasMatch(audioSource),
       isTrue,
       reason: 'Voice pump must have a 5-second timeout as fallback.',
-    );
-
-    // Verify exactly two signals in the Future.any list.
-    // Extract the Future.any([...]) block and count top-level list elements.
-    final futureAnyMatch = RegExp(
-      r'Future\.any[^(]*\(\s*\[([^\]]+)\]',
-      dotAll: true,
-    ).firstMatch(audioSource);
-    expect(
-      futureAnyMatch,
-      isNotNull,
-      reason: 'Could not find Future.any([...]) block in source.',
-    );
-
-    final listBody = futureAnyMatch!.group(1)!;
-    // Count top-level comma-separated entries by splitting on commas that
-    // are NOT inside nested parentheses/brackets.
-    int depth = 0;
-    int entryCount = 1; // start at 1, increment on each top-level comma
-    for (final ch in listBody.runes) {
-      final c = String.fromCharCode(ch);
-      if (c == '(' || c == '[' || c == '<') {
-        depth++;
-      } else if (c == ')' || c == ']' || c == '>') {
-        depth--;
-      } else if (c == ',' && depth == 0) {
-        entryCount++;
-      }
-    }
-    expect(
-      entryCount,
-      equals(2),
-      reason:
-          'Future.any must have exactly 2 signals (onPlayerComplete + timeout). '
-          'Found $entryCount. Adding a third signal causes race conditions.',
     );
   });
 

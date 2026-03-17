@@ -128,6 +128,18 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                                   color: Colors.white70,
                                 ),
                       ),
+                      if (widget.achievement.bonusStars > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '+${widget.achievement.bonusStars} ⭐',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD54F),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

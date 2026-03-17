@@ -218,6 +218,51 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               height: 1.5,
             ),
           ),
+          const SizedBox(height: 24),
+          // Visual storytelling: show monsters vs toothbrush so kid
+          // understands the concept without reading the text above.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Monster
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: Image.asset(
+                  'assets/images/monster_purple.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: Image.asset(
+                  'assets/images/monster_green.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'VS',
+                  style: TextStyle(
+                    color: const Color(0xFFFF4081),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: Image.asset(
+                  'assets/images/toothbrush_icon.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ],
+          ),
           const Spacer(flex: 3),
         ],
       ),

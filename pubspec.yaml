@@ -32,6 +32,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  shaders:
+    - assets/shaders/dissolve.frag
+    - assets/shaders/shockwave.frag
+
   assets:
     - assets/images/
     - assets/audio/

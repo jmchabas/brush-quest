@@ -406,6 +406,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'unlocked_weapons',
       'selected_weapon',
       'current_world',
+      'collected_cards',
+      'card_album_visit_count',
+      'last_greeting_date',
+      'session_checkpoint_ts',
+      'session_checkpoint_phase',
+      'session_checkpoint_seconds',
+      'session_checkpoint_world',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);
@@ -807,7 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     // BRUSHING section
                     _SectionHeader(
-                      icon: Icons.brush,
+                      icon: Icons.cleaning_services,
                       label: 'BRUSHING',
                       color: const Color(0xFF00E5FF),
                     ),
@@ -869,7 +876,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
 
                     _SettingCard(
-                      icon: Icons.brush,
+                      icon: Icons.cleaning_services,
                       title: 'Total brushes',
                       child: Text(
                         '$_totalBrushes',

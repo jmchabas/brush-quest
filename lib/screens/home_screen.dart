@@ -5,7 +5,8 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
-import '../services/daily_login_service.dart';
+import '../services/world_service.dart';
+import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
@@ -16,8 +17,8 @@ import 'card_album_screen.dart';
 import '../services/analytics_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  final bool skipDailyLogin;
-  const HomeScreen({super.key, this.skipDailyLogin = false});
+  final bool skipGreeting;
+  const HomeScreen({super.key, this.skipGreeting = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -27,31 +28,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
-  final _dailyLoginService = DailyLoginService();
-  bool _dailyLoginChecked = false;
-  bool _dailyLoginShown = false;
+  final _worldService = WorldService();
+  final _greetingService = GreetingService();
+  bool _greetingChecked = false;
   int _totalStars = 0;
   int _streak = 0;
-  int _todayBrushCount = 0;
-  int _bossProgress = 0;
   bool _bossReady = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
+  WorldData? _currentWorld;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
   late AnimationController _auraController;
+  late AnimationController _tapPulseController;
+  late Animation<double> _tapPulseAnimation;
   bool _buttonPressed = false;
-  bool _welcomePlayed = false;
   String? _lastPickerVoice;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
-    _playWelcomeVoice();
 
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
@@ -73,6 +73,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
+
+    _tapPulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _tapPulseAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _tapPulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -81,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pulseController.dispose();
     _floatController.dispose();
     _auraController.dispose();
+    _tapPulseController.dispose();
     super.dispose();
   }
 
@@ -89,10 +98,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final hero = await _heroService.getSelectedHero();
     final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
-    final todayCount = await _streakService.getTodayBrushCount();
     final totalBrushes = await _streakService.getTotalBrushes();
-    final brushCycle = totalBrushes % 5;
-    final bossReady = brushCycle == 4;
+    final bossReady = (totalBrushes % 5) == 4;
+    final world = await _worldService.getCurrentWorld();
 
     if (mounted) {
       setState(() {
@@ -100,42 +108,68 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedHero = hero;
         _selectedWeapon = weapon;
         _streak = streak;
-        _bossProgress = brushCycle;
         _bossReady = bossReady;
-        _todayBrushCount = todayCount;
+        _currentWorld = world;
       });
-      _checkDailyLogin();
+      _checkGreeting();
       // Ambient music on home screen (very low volume)
       AudioService().playMusic('battle_music_loop.mp3');
       AudioService().setMusicVolume(0.06);
     }
   }
 
-  Future<void> _checkDailyLogin() async {
-    if (_dailyLoginChecked) return;
-    _dailyLoginChecked = true;
-    // Skip daily login when returning from a brush session
-    if (widget.skipDailyLogin) return;
-    // Skip daily login on first launch — user hasn't brushed yet
-    final total = await _streakService.getTotalBrushes();
-    if (total == 0) return;
-    final reward = await _dailyLoginService.checkAndClaimDailyLogin();
-    if (reward != null && mounted) {
-      _dailyLoginShown = true;
-      AnalyticsService().logDailyLogin(streak: await _streakService.getStreak());
-      // Refresh star count if bonus star was awarded
-      if (reward.type == DailyRewardType.bonusStar) {
-        final stars = await _streakService.getTotalStars();
-        if (mounted) setState(() => _totalStars = stars);
-      }
-      _showDailyLoginPopup(reward);
+  Future<void> _checkGreeting() async {
+    if (_greetingChecked) return;
+    _greetingChecked = true;
+    // Skip greeting when returning from a brush session
+    if (widget.skipGreeting) return;
+
+    final totalBrushes = await _streakService.getTotalBrushes();
+    if (totalBrushes == 0) return;
+
+    final now = DateTime.now();
+    final todayDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final lastGreetingDate = await _greetingService.getLastGreetingDate();
+
+    final nextHero = await _heroService.getNextLockedHero();
+    final nextWeapon = await _weaponService.getNextLockedWeapon();
+
+    final result = _greetingService.checkGreeting(
+      totalBrushes: totalBrushes,
+      brushStreak: _streak,
+      totalStars: _totalStars,
+      nextHeroName: nextHero?.name,
+      nextHeroCost: nextHero?.cost,
+      nextWeaponName: nextWeapon?.name,
+      nextWeaponCost: nextWeapon?.cost,
+      todayDate: todayDate,
+      lastGreetingDate: lastGreetingDate,
+    );
+
+    if (result != null && mounted) {
+      await _greetingService.markGreetingShown(todayDate);
+      AnalyticsService().logDailyLogin(streak: _streak);
+      _showGreetingPopup(result);
+    } else if (lastGreetingDate == todayDate && mounted) {
+      // Already greeted today — play a short welcome back voice
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted) AudioService().playVoice('voice_welcome_back.mp3');
     }
   }
 
-  void _showDailyLoginPopup(DailyLoginReward reward) {
-    AudioService().playSfx('star_chime.mp3');
-    AudioService().playVoice('voice_daily_login.mp3');
+  void _showGreetingPopup(GreetingResult greeting) {
+    AudioService().playVoice(greeting.voiceFile);
     HapticFeedback.mediumImpact();
+
+    final title = switch (greeting.state) {
+      GreetingState.justStarted => 'HEY SPACE RANGER!',
+      GreetingState.streak2to4 => 'WELCOME BACK!',
+      GreetingState.streak5to9 => 'WELCOME BACK!',
+      GreetingState.streak10to19 => 'SUPER RANGER!',
+      GreetingState.streak20plus => 'LEGENDARY!',
+      GreetingState.returning => 'WELCOME BACK!',
+    };
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -157,12 +191,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: reward.color.withValues(alpha: 0.5),
+                color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: reward.color.withValues(alpha: 0.3),
+                  color: const Color(0xFF69F0AE).withValues(alpha: 0.3),
                   blurRadius: 20,
                 ),
               ],
@@ -171,35 +205,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'WELCOME BACK!',
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     color: Color(0xFF69F0AE),
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
                     letterSpacing: 3,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Icon(reward.icon, color: reward.color, size: 48),
-                const SizedBox(height: 12),
-                Text(
-                  '+${reward.amount} ${reward.label}',
-                  style: TextStyle(
-                    color: reward.color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    letterSpacing: 2,
+                if (greeting.brushStreak >= 2) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    '\u{1F525} ${greeting.brushStreak} DAY STREAK!',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD54F),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: 1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Daily login reward!',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 13,
+                ],
+                if (greeting.teaseItemName != null && greeting.teaseStarsAway != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    "You're ${greeting.teaseStarsAway} stars from ${greeting.teaseItemName}!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 14,
+                    ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 20),
                 GestureDetector(
                   onTap: () => Navigator.of(dialogContext).pop(),
@@ -209,14 +246,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: reward.color.withValues(alpha: 0.2),
+                      color: const Color(0xFF69F0AE).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: reward.color.withValues(alpha: 0.5),
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
                       ),
                     ),
                     child: const Text(
-                      'COOL!',
+                      "LET'S GO!",
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -236,22 +273,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
     });
-  }
-
-  Future<void> _playWelcomeVoice() async {
-    if (_welcomePlayed) return;
-    _welcomePlayed = true;
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    // Skip if daily login popup already handled the welcome
-    if (_dailyLoginShown) return;
-    final total = await _streakService.getTotalBrushes();
-    // Skip on first launch — onboarding already played voices
-    if (total == 0) return;
-    final brushCount = await _streakService.getTodayBrushCount();
-    if (brushCount == 0) {
-      AudioService().playVoice('voice_welcome_back.mp3');
-    }
   }
 
   void _startBrushing() {
@@ -381,32 +402,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .then((_) => _loadStats());
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'GOOD MORNING';
-    if (hour < 17) return 'GOOD AFTERNOON';
-    return 'GOOD EVENING';
-  }
-
-  IconData _getTimeIcon() {
-    final hour = DateTime.now().hour;
-    if (hour >= 6 && hour < 18) return Icons.wb_sunny;
-    return Icons.nightlight_round;
-  }
-
-  Color _getTimeIconColor() {
-    final hour = DateTime.now().hour;
-    if (hour >= 6 && hour < 18) return Colors.amber;
-    return const Color(0xFF90CAF9);
-  }
-
   @override
   Widget build(BuildContext context) {
-    const statIconSize = 24.0;
-    const statValueSize = 24.0;
-    const statPairSpacing = 5.0;
-    const statGroupSpacing = 24.0;
-
     return Scaffold(
       body: SpaceBackground(
         child: SafeArea(
@@ -442,19 +439,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 children: [
                   const SizedBox(height: 40),
 
-                  // Title
+                  // Title (36px, strokeWidth 3)
                   Stack(
                     children: [
                       Text(
                         'BRUSH QUEST',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
-                              fontSize: 48,
+                              fontSize: 36,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 3,
                               foreground: Paint()
                                 ..style = PaintingStyle.stroke
-                                ..strokeWidth = 4
+                                ..strokeWidth = 3
                                 ..color = const Color(0xFF7C4DFF),
                             ),
                       ),
@@ -462,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         'BRUSH QUEST',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
-                              fontSize: 48,
+                              fontSize: 36,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 3,
@@ -478,158 +475,106 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'HOME BASE',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.72),
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.2,
-                      fontSize: 11,
-                    ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Greeting
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _getTimeIcon(),
-                        color: _getTimeIconColor(),
-                        size: 14,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _getGreeting(),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF00E5FF).withValues(alpha: 0.7),
-                          letterSpacing: 4,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-
                   const SizedBox(height: 16),
 
-                  // Stats row: streak + stars + today count
+                  // Stats row: streak pill + star pill
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Streak
-                      if (_streak > 0) ...[
-                        const Icon(
-                          Icons.local_fire_department,
-                          color: Colors.orangeAccent,
-                          size: statIconSize,
+                      // Streak pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
                         ),
-                        const SizedBox(width: statPairSpacing),
-                        Text(
-                          '$_streak',
-                          style: const TextStyle(
-                            color: Colors.orangeAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: statValueSize,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: (_streak > 0
+                                    ? Colors.orangeAccent
+                                    : Colors.white24)
+                                .withValues(alpha: 0.6),
+                            width: 2,
                           ),
+                          color: (_streak > 0
+                                  ? Colors.orangeAccent
+                                  : Colors.white24)
+                              .withValues(alpha: 0.12),
                         ),
-                        const SizedBox(width: statGroupSpacing),
-                      ],
-                      // Stars
-                      const Icon(
-                        Icons.star,
-                        color: Colors.yellowAccent,
-                        size: statIconSize,
-                      ),
-                      const SizedBox(width: statPairSpacing),
-                      Text(
-                        '$_totalStars',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: statValueSize,
-                          shadows: [
-                            Shadow(
-                              color: Colors.yellowAccent.withValues(alpha: 0.5),
-                              blurRadius: 8,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              color: _streak > 0
+                                  ? Colors.orangeAccent
+                                  : Colors.white.withValues(alpha: 0.3),
+                              size: 26,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_streak',
+                              style: TextStyle(
+                                color: _streak > 0
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.3),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                                shadows: _streak > 0
+                                    ? const [
+                                        Shadow(
+                                          color: Color(0x80FF9800),
+                                          blurRadius: 8,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      // Today count
-                      const SizedBox(width: statGroupSpacing),
-                      Icon(
-                        Icons.brush,
-                        color: const Color(0xFF69F0AE).withValues(alpha: 0.85),
-                        size: statIconSize,
-                      ),
-                      const SizedBox(width: statPairSpacing),
-                      Text(
-                        '$_todayBrushCount',
-                        style: TextStyle(
-                          color: _todayBrushCount > 0
-                              ? const Color(0xFF69F0AE)
-                              : Colors.white.withValues(alpha: 0.6),
-                          fontWeight: FontWeight.bold,
-                          fontSize: statValueSize,
+                      const SizedBox(width: 12),
+                      // Golden star pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFD54F),
+                              size: 26,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_totalStars',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x80FFD54F),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Boss progress: 5 skull icons
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.workspace_premium,
-                            color: Color(0xFFFFD54F),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 10),
-                          ...List.generate(5, (i) {
-                            final filled = i < _bossProgress || _bossReady;
-                            return AnimatedBuilder(
-                              animation: _bossReady ? _pulseController : const AlwaysStoppedAnimation(0),
-                              builder: (context, child) {
-                                final scale = _bossReady
-                                    ? 1.0 + _pulseController.value * 0.15
-                                    : 1.0;
-                                return Transform.scale(
-                                  scale: scale,
-                                  child: child,
-                                );
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Icon(
-                                  Icons.dangerous,
-                                  color: filled
-                                      ? (_bossReady
-                                          ? const Color(0xFFFFD54F)
-                                          : const Color(0xFF00E5FF))
-                                      : Colors.white.withValues(alpha: 0.2),
-                                  size: 24,
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
                   ),
 
                   const Spacer(),
@@ -762,25 +707,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               );
                             },
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'BRUSH NOW',
-                            style: Theme.of(context).textTheme.headlineMedium
-                                ?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 28,
-                                  letterSpacing: 3,
-                                  shadows: [
-                                    Shadow(
-                                      color: _selectedHero.primaryColor
-                                          .withValues(alpha: 0.8),
-                                      blurRadius: 16,
-                                    ),
-                                  ],
-                                ),
-                          ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 10),
                           Text(
                             _selectedHero.name,
                             style: TextStyle(
@@ -790,41 +717,122 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               letterSpacing: 3,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.touch_app,
-                                color: Colors.white.withValues(
-                                  alpha: 0.5 + _auraController.value * 0.4,
-                                ),
-                                size: 14,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'TAP TO START',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(
-                                    alpha: 0.5 + _auraController.value * 0.4,
-                                  ),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.6,
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
                   ),
 
+                  const SizedBox(height: 8),
+
+                  // "TAP TO BRUSH!" pulsing hint
+                  AnimatedBuilder(
+                    animation: _tapPulseAnimation,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _tapPulseAnimation.value,
+                        child: child,
+                      );
+                    },
+                    child: const Text(
+                      'TAP TO BRUSH!',
+                      style: TextStyle(
+                        color: Color(0xFF00E5FF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Today's Mission teaser
+                  if (_currentWorld != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: _currentWorld!.themeColor.withValues(alpha: 0.1),
+                        border: Border.all(
+                          color: _currentWorld!.themeColor.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.public,
+                            color: _currentWorld!.themeColor,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _currentWorld!.name.toUpperCase(),
+                            style: TextStyle(
+                              color: _currentWorld!.themeColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Boss fight badge
+                  if (_bossReady) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFFFF5252).withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: const Color(0xFFFF5252).withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF5252).withValues(alpha: 0.3),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.workspace_premium,
+                            color: Color(0xFFFF5252),
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'BOSS FIGHT READY!',
+                            style: TextStyle(
+                              color: Color(0xFFFF5252),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const Spacer(),
 
                   // Secondary nav row
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
                         Expanded(
@@ -835,7 +843,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             onTap: _openWorldMap,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _SmallNavButton(
                             icon: Icons.shield,
@@ -844,7 +852,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             onTap: _openShop,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _SmallNavButton(
                             icon: Icons.style,
@@ -1211,26 +1219,32 @@ class _SmallNavButton extends StatelessWidget {
         onTap();
       },
       child: Container(
-        height: 56,
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withValues(alpha: 0.45), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.15),
+              blurRadius: 8,
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(height: 2),
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 4),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 1.1,
+                letterSpacing: 1.5,
               ),
             ),
           ],

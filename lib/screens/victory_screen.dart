@@ -12,6 +12,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
 import '../services/analytics_service.dart';
 import 'home_screen.dart';
+import 'card_album_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
 
@@ -245,10 +246,20 @@ class _VictoryScreenState extends State<VictoryScreen>
     _newStars = await _streakService.getTotalStars();
     await _worldService.getWorldProgress(_world.id);
 
+    final lifetimeBrushes = await _streakService.getTotalBrushes();
+
     _newAchievements = await _achievementService.checkAndUnlock(
       streak: _newStreak,
       totalStars: _newStars,
+      totalBrushes: lifetimeBrushes,
     );
+
+    // Award bonus stars from achievements
+    final achievementBonus = _newAchievements.fold(0, (sum, a) => sum + a.bonusStars);
+    if (achievementBonus > 0) {
+      await _streakService.addBonusStars(achievementBonus);
+      _newStars = await _streakService.getTotalStars();
+    }
 
     _nextHero = await _heroService.getNextLockedHero();
     if (_nextHero != null) {
@@ -266,7 +277,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       newStreak: _newStreak,
       totalStars: _newStars,
     );
-    final lifetimeBrushes = await _streakService.getTotalBrushes();
     analytics.setUserProperties(
       lifetimeBrushes: lifetimeBrushes,
       currentStreak: _newStreak,
@@ -339,6 +349,11 @@ class _VictoryScreenState extends State<VictoryScreen>
         }
       }
 
+      // Queue encouragement about hero progress after chest reward
+      if (_nextHero != null && _starsToNextHero > 0 && mounted) {
+        _audio.playVoice('voice_keep_going.mp3');
+      }
+
       if (mounted) _doneButtonController.repeat(reverse: true);
 
       // Roll for card drop
@@ -352,7 +367,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         });
         HapticFeedback.mediumImpact();
         _audio.playSfx('star_chime.mp3');
-        _audio.playVoice(drop.isNew ? 'voice_card_new.mp3' : 'voice_card_fragment.mp3');
+        _audio.playVoice('voice_card_new.mp3');
         // Queue the specific card description voice after the generic announcement
         _audio.playVoice('voice_card_${drop.card.id}.mp3');
       }
@@ -360,6 +375,12 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
   }
 
+
+  void _openCardAlbum() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CardAlbumScreen()),
+    );
+  }
 
   Widget _buildCardDropReveal() {
     final drop = _cardDrop!;
@@ -369,90 +390,97 @@ class _VictoryScreenState extends State<VictoryScreen>
       curve: Curves.elasticOut,
       builder: (context, scale, child) =>
           Transform.scale(scale: scale, child: child),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        child: GlassCard(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Card image
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: drop.card.rarityColor.withValues(alpha: 0.6),
-                    width: 2,
+      child: GestureDetector(
+        onTap: _openCardAlbum,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: GlassCard(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Card image
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: drop.card.rarityColor.withValues(alpha: 0.6),
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: drop.card.rarityColor.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: drop.card.rarityColor.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => RadialGradient(
-                      colors: [
-                        Colors.white,
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
-                      radius: 0.85,
-                    ).createShader(bounds),
-                    child: ColorFiltered(
-                      colorFilter: ColorFilter.mode(
-                        drop.card.tintColor.withValues(alpha: 0.35),
-                        BlendMode.srcATop,
-                      ),
-                      child: Image.asset(
-                        drop.card.imagePath,
-                        fit: BoxFit.contain,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => RadialGradient(
+                        colors: [
+                          Colors.white,
+                          Colors.white.withValues(alpha: 0.0),
+                        ],
+                        radius: 0.85,
+                      ).createShader(bounds),
+                      child: ColorFiltered(
+                        colorFilter: ColorFilter.mode(
+                          drop.card.tintColor.withValues(alpha: 0.35),
+                          BlendMode.srcATop,
+                        ),
+                        child: Image.asset(
+                          drop.card.imagePath,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      drop.isNew ? 'NEW CARD!' : 'CARD FRAGMENT +1',
-                      style: TextStyle(
-                        color: drop.isNew
-                            ? const Color(0xFF69F0AE)
-                            : const Color(0xFFFFD54F),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        letterSpacing: 1.5,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'NEW CARD!',
+                        style: const TextStyle(
+                          color: Color(0xFF69F0AE),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          letterSpacing: 1.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      drop.card.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                      const SizedBox(height: 2),
+                      Text(
+                        drop.card.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
-                    ),
-                    Text(
-                      drop.card.rarityLabel,
-                      style: TextStyle(
-                        color: drop.card.rarityColor,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
+                      Text(
+                        drop.card.rarityLabel,
+                        style: TextStyle(
+                          color: drop.card.rarityColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                // Chevron hint to show it's tappable
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withValues(alpha: 0.5),
+                  size: 24,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -461,6 +489,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   void _showAchievement(Achievement achievement) {
     _audio.playSfx('whoosh.mp3');
+    // Play a celebratory voice for the achievement — no per-achievement TTS
+    // files exist, so use the generic "wow amazing" line to celebrate.
+    _audio.playVoice('voice_wow_amazing.mp3');
     showAchievementPopup(context, achievement);
   }
 
@@ -481,7 +512,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomeScreen(skipDailyLogin: true),
+            const HomeScreen(skipGreeting: true),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -649,20 +680,27 @@ class _VictoryScreenState extends State<VictoryScreen>
                       Padding(
                         padding: const EdgeInsets.only(
                           top: 16,
-                          left: 48,
-                          right: 48,
+                          left: 40,
+                          right: 40,
                         ),
                         child: Row(
                           children: [
                             Container(
-                              width: 36,
-                              height: 36,
+                              width: 44,
+                              height: 44,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: _nextHero!.primaryColor,
-                                  width: 2,
+                                  width: 2.5,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _nextHero!.primaryColor.withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
                               ),
                               child: Stack(
                                 alignment: Alignment.center,
@@ -675,53 +713,72 @@ class _VictoryScreenState extends State<VictoryScreen>
                                       ),
                                       child: Image.asset(
                                         _nextHero!.imagePath,
-                                        width: 32,
-                                        height: 32,
+                                        width: 40,
+                                        height: 40,
                                         fit: BoxFit.cover,
                                       ),
                                     ),
                                   ),
                                   Icon(
                                     Icons.lock,
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                    size: 14,
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    size: 16,
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: SizedBox(
-                                  height: 8,
-                                  child: LinearProgressIndicator(
-                                    value: (_newStars / _nextHero!.cost).clamp(
-                                      0.0,
-                                      1.0,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(7),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _nextHero!.primaryColor.withValues(alpha: 0.35),
+                                      blurRadius: 10,
+                                      spreadRadius: 1,
                                     ),
-                                    backgroundColor: Colors.white.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    valueColor: AlwaysStoppedAnimation(
-                                      _nextHero!.primaryColor,
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(7),
+                                  child: SizedBox(
+                                    height: 14,
+                                    child: LinearProgressIndicator(
+                                      value: (_newStars / _nextHero!.cost).clamp(
+                                        0.0,
+                                        1.0,
+                                      ),
+                                      backgroundColor: Colors.white.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      valueColor: AlwaysStoppedAnimation(
+                                        _nextHero!.primaryColor,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 8),
                             const Icon(
                               Icons.star,
                               color: Colors.yellowAccent,
-                              size: 14,
+                              size: 18,
                             ),
+                            const SizedBox(width: 2),
                             Text(
                               '$_starsToNextHero',
                               style: TextStyle(
-                                color: _nextHero!.primaryColor,
+                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: 16,
+                                shadows: [
+                                  Shadow(
+                                    color: _nextHero!.primaryColor.withValues(alpha: 0.8),
+                                    blurRadius: 6,
+                                  ),
+                                ],
                               ),
                             ),
                           ],

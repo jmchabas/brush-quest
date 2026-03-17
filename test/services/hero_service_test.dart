@@ -16,8 +16,8 @@ void main() {
       expect(HeroService.allHeroes.length, 6);
     });
 
-    test('hero costs match expected progression (0/4/7/10/14/20)', () {
-      final expectedCosts = [0, 4, 7, 10, 14, 20];
+    test('hero costs match expected progression (0/4/7/10/14/18)', () {
+      final expectedCosts = [0, 4, 7, 10, 14, 18];
       for (int i = 0; i < HeroService.allHeroes.length; i++) {
         expect(HeroService.allHeroes[i].cost, expectedCosts[i],
             reason: 'Hero ${HeroService.allHeroes[i].id} should cost ${expectedCosts[i]}');

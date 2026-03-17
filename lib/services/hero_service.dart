@@ -84,7 +84,7 @@ class HeroService {
       name: 'NOVA',
       title: 'Cosmic Phoenix',
       description: 'The legendary phoenix who unleashes cosmic star bursts of pure light!',
-      cost: 20,
+      cost: 18,
       imagePath: 'assets/images/hero_nova.png',
       primaryColor: Color(0xFFFFD54F),
       attackColor: Color(0xFFFFE082),

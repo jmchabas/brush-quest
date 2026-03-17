@@ -32,9 +32,7 @@ class SyncService {
     'muted',
     'onboarding_completed',
     'collected_cards',
-    'card_fragments',
-    'daily_login_date',
-    'daily_login_streak',
+    'last_greeting_date',
   ];
   static const _prefixSyncKeys = ['world_progress_', 'achievement_'];
 

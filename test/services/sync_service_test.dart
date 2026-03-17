@@ -33,7 +33,6 @@ const _syncKeys = [
   'muted',
   'onboarding_completed',
   'collected_cards',
-  'card_fragments',
   'daily_login_date',
   'daily_login_streak',
 ];
@@ -342,7 +341,6 @@ void main() {
         'total_brushes': 20,
         'current_streak': 5,
         'best_streak': 7,
-        'card_fragments': 3,
       });
       final prefs = await SharedPreferences.getInstance();
       final data = buildLocalData(prefs);
@@ -356,7 +354,6 @@ void main() {
       expect(prefs2.getInt('total_brushes'), 20);
       expect(prefs2.getInt('current_streak'), 5);
       expect(prefs2.getInt('best_streak'), 7);
-      expect(prefs2.getInt('card_fragments'), 3);
     });
 
     test('round-trip preserves string values', () async {
@@ -460,7 +457,6 @@ void main() {
         'muted': false,
         'onboarding_completed': true,
         'collected_cards': ['cc_01', 'cc_02', 'ss_01'],
-        'card_fragments': 5,
         'daily_login_date': '2026-03-14',
         'daily_login_streak': 3,
         'achievement_first_brush': true,
@@ -485,7 +481,6 @@ void main() {
       expect(prefs2.getString('selected_hero'), 'pirate');
       expect(prefs2.getStringList('unlocked_heroes'), ['ranger', 'ninja', 'pirate']);
       expect(prefs2.getStringList('collected_cards'), ['cc_01', 'cc_02', 'ss_01']);
-      expect(prefs2.getInt('card_fragments'), 5);
       expect(prefs2.getBool('achievement_first_brush'), true);
       expect(prefs2.getInt('world_progress_candy_crater'), 7);
       expect(prefs2.getStringList('brush_history'), ['{"date":"2026-03-13"}', '{"date":"2026-03-14"}']);
