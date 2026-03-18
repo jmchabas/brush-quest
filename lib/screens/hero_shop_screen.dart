@@ -81,7 +81,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.lightImpact();
       // Describe the hero, then tell them they need more stars
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-      AudioService().playVoice('voice_need_stars.mp3');
+      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true);
     }
   }
 
@@ -106,7 +106,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.lightImpact();
       // Describe the weapon, then tell them they need more stars
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
-      AudioService().playVoice('voice_need_stars.mp3');
+      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true);
     }
   }
 

@@ -41,7 +41,7 @@ void main() {
     });
 
     test('playVoice records call when not muted', () async {
-      await fake.playVoice('voice_welcome.mp3');
+      await fake.playVoice('voice_welcome_back.mp3');
       expect(fake.callsFor('playVoice').length, 1);
     });
 
@@ -58,7 +58,7 @@ void main() {
       fake.clearCalls();
 
       await fake.playSfx('zap.mp3');
-      await fake.playVoice('voice_welcome.mp3');
+      await fake.playVoice('voice_welcome_back.mp3');
       await fake.playMusic('battle_music_loop.mp3');
 
       // Calls are still recorded (so we can verify they were attempted),
@@ -111,7 +111,7 @@ void main() {
     });
 
     test('playVoice without interrupt does not record interrupt', () async {
-      await fake.playVoice('voice_welcome.mp3');
+      await fake.playVoice('voice_welcome_back.mp3');
 
       final voiceCall = fake.callsFor('playVoice').first;
       expect(voiceCall.args['interrupt'], isFalse);
@@ -169,7 +169,7 @@ void main() {
       fake.clearCalls();
 
       // Play a voice line — should duck and restore.
-      await fake.playVoice('voice_welcome.mp3');
+      await fake.playVoice('voice_welcome_back.mp3');
 
       final duckEvents = fake.callsFor('_musicDucked');
       final restoreEvents = fake.callsFor('_musicRestored');
@@ -188,7 +188,7 @@ void main() {
       // No music started.
       expect(fake.isMusicPlaying, isFalse);
 
-      await fake.playVoice('voice_welcome.mp3');
+      await fake.playVoice('voice_welcome_back.mp3');
 
       expect(fake.callsFor('_musicDucked'), isEmpty);
       expect(fake.callsFor('_musicRestored'), isEmpty);
@@ -223,7 +223,7 @@ void main() {
       await fake.stopMusic();
       fake.clearCalls();
 
-      await fake.playVoice('voice_welcome.mp3');
+      await fake.playVoice('voice_welcome_back.mp3');
 
       expect(fake.callsFor('_musicDucked'), isEmpty);
     });
@@ -295,7 +295,7 @@ void main() {
       // Simulates victory_screen.dart flow.
       await fake.playSfx('victory.mp3');
       await fake.playSfx('star_chime.mp3');
-      await fake.playVoice('voice_great_job.mp3');
+      await fake.playVoice('voice_awesome.mp3');
 
       final methods = fake.calls
           .where((c) => !c.method.startsWith('_'))
@@ -306,7 +306,7 @@ void main() {
       expect(fake.callsFor('playSfx')[0].args['fileName'], 'victory.mp3');
       expect(fake.callsFor('playSfx')[1].args['fileName'], 'star_chime.mp3');
       expect(
-          fake.callsFor('playVoice').first.args['fileName'], 'voice_great_job.mp3');
+          fake.callsFor('playVoice').first.args['fileName'], 'voice_awesome.mp3');
     });
   });
 

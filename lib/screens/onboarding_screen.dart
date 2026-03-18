@@ -248,14 +248,34 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'VS',
-                  style: TextStyle(
-                    color: const Color(0xFFFF4081),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: AnimatedBuilder(
+                  animation: _glowController,
+                  builder: (context, _) {
+                    final scale = 0.9 + _glowController.value * 0.2;
+                    final glowAlpha = 0.3 + _glowController.value * 0.5;
+                    return Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFD740)
+                                  .withValues(alpha: glowAlpha),
+                              blurRadius: 16,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.bolt,
+                          color: Color(0xFFFFD740),
+                          size: 48,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               SizedBox(
