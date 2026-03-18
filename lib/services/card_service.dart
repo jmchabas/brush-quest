@@ -65,6 +65,8 @@ class CardDropResult {
 
 class CardService {
   static const _collectedKey = 'collected_cards';
+  static const _dupCountPrefix = 'card_dup_count_';
+  static const _dupBonusThresholdKey = 'card_dup_bonus_threshold';
 
   // Legacy drop chance — kept for test compatibility but no longer used.
   // Every brush session now guarantees exactly 1 card.
@@ -180,6 +182,60 @@ class CardService {
     }
   }
 
+  /// Record a duplicate card drop and return the new duplicate count.
+  Future<int> recordDuplicate(String cardId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_dupCountPrefix$cardId';
+    final count = (prefs.getInt(key) ?? 0) + 1;
+    await prefs.setInt(key, count);
+    return count;
+  }
+
+  /// Get the duplicate count for a specific card.
+  Future<int> getDuplicateCount(String cardId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('$_dupCountPrefix$cardId') ?? 0;
+  }
+
+  /// Get all duplicate counts as a map of cardId -> count.
+  Future<Map<String, int>> getAllDuplicateCounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final result = <String, int>{};
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith(_dupCountPrefix)) {
+        final cardId = key.substring(_dupCountPrefix.length);
+        final count = prefs.getInt(key) ?? 0;
+        if (count > 0) result[cardId] = count;
+      }
+    }
+    return result;
+  }
+
+  /// Check if a bonus star should be awarded for duplicates.
+  /// Awards 1 bonus star every 5 total duplicates collected.
+  /// Returns the number of bonus stars earned (0 or 1).
+  Future<int> checkDuplicateBonus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final totalDups = await _totalDuplicates();
+    final threshold = prefs.getInt(_dupBonusThresholdKey) ?? 5;
+    if (totalDups >= threshold) {
+      await prefs.setInt(_dupBonusThresholdKey, threshold + 5);
+      return 1;
+    }
+    return 0;
+  }
+
+  Future<int> _totalDuplicates() async {
+    final prefs = await SharedPreferences.getInstance();
+    int total = 0;
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith(_dupCountPrefix)) {
+        total += prefs.getInt(key) ?? 0;
+      }
+    }
+    return total;
+  }
+
   static const _worldOrder = [
     'candy_crater', 'slime_swamp', 'sugar_volcano',
     'shadow_nebula', 'cavity_fortress',
@@ -229,9 +285,10 @@ class CardService {
       }
     }
 
-    // ALL 70 cards collected — drop a random duplicate
+    // ALL 70 cards collected — drop a random duplicate and track it
     if (targetWorldId == null) {
       final card = allCards[rng.nextInt(allCards.length)];
+      await recordDuplicate(card.id);
       final worldCards = cardsForWorld(card.worldId);
       final worldCollectedCount = worldCards.where((c) => collected.contains(c.id)).length;
       return CardDropResult(

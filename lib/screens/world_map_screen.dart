@@ -489,36 +489,45 @@ class _PlanetNodeState extends State<_PlanetNode>
 
             const SizedBox(height: 4),
 
-            // Progress indicator (e.g., "3/5")
+            // Progress indicator: filled/empty star icons
             if (widget.isUnlocked)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: widget.isCompleted
-                      ? const Color(0xFF69F0AE).withValues(alpha: 0.2)
-                      : widget.world.themeColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: widget.isCompleted
-                        ? const Color(0xFF69F0AE).withValues(alpha: 0.4)
-                        : widget.world.themeColor.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  widget.isCompleted
-                      ? 'COMPLETE'
-                      : '${widget.progress}/${widget.world.missionsRequired}',
-                  style: TextStyle(
-                    color: widget.isCompleted
-                        ? const Color(0xFF69F0AE)
-                        : widget.world.themeColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
+              widget.isCompleted
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFF69F0AE).withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Text(
+                        'COMPLETE',
+                        style: TextStyle(
+                          color: Color(0xFF69F0AE),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(widget.world.missionsRequired, (i) {
+                        final filled = i < widget.progress;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
+                          child: Icon(
+                            filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: filled
+                                ? const Color(0xFFFFD54F)
+                                : Colors.white.withValues(alpha: 0.3),
+                            size: 14,
+                          ),
+                        );
+                      }),
+                    ),
           ],
         ),
       ),

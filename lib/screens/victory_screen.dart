@@ -200,6 +200,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   late AnimationController _newBadgeController;
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
+  int _collectedCardCount = 0;
 
   // Victory celebration arcs: each arc is a 3-beat connected story
   // [beat1 = celebration, beat2 = star earned, beat3 = chest prompt]
@@ -309,6 +310,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     final nextHero = await _heroService.getNextLockedHero();
     final nextWeapon = await _weaponService.getNextLockedWeapon();
     _computeNextUnlock(nextHero, nextWeapon);
+    _collectedCardCount = await _cardService.getCollectedCount();
 
     // Analytics: log completion + update user properties
     final analytics = AnalyticsService();
@@ -449,6 +451,16 @@ class _VictoryScreenState extends State<VictoryScreen>
       if (drop.isNew) {
         _newBadgeController.forward();
         _audio.playVoice('voice_card_new.mp3');
+      } else {
+        // Duplicate card — show POWER UP badge and check for bonus star
+        _newBadgeController.forward();
+        final bonusStars = await _cardService.checkDuplicateBonus();
+        if (bonusStars > 0) {
+          await _streakService.addBonusStars(bonusStars);
+          _newStars = await _streakService.getTotalStars();
+          _starsEarnedThisSession += bonusStars;
+          if (mounted) setState(() {});
+        }
       }
       // Play the specific card description voice
       await _audio.playVoice('voice_card_${drop.card.id}.mp3');
@@ -627,49 +639,52 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   ],
                                 ),
                               ),
-                              // "NEW!" badge (animated)
-                              if (drop.isNew)
-                                Positioned(
-                                  top: -2,
-                                  right: -2,
-                                  child: AnimatedBuilder(
-                                    animation: _newBadgeController,
-                                    builder: (context, child) {
-                                      final badgeScale = Curves.elasticOut
-                                          .transform(_newBadgeController.value);
-                                      return Transform.scale(
-                                        scale: badgeScale,
-                                        child: child,
-                                      );
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF69F0AE),
-                                        borderRadius: BorderRadius.circular(8),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: const Color(0xFF69F0AE)
-                                                .withValues(alpha: 0.6),
-                                            blurRadius: 8,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Text(
-                                        'NEW!',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 11,
-                                          letterSpacing: 1,
+                              // "NEW!" or "POWER UP!" badge (animated)
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: AnimatedBuilder(
+                                  animation: _newBadgeController,
+                                  builder: (context, child) {
+                                    final badgeScale = Curves.elasticOut
+                                        .transform(_newBadgeController.value);
+                                    return Transform.scale(
+                                      scale: badgeScale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: drop.isNew
+                                          ? const Color(0xFF69F0AE)
+                                          : const Color(0xFFFFD54F),
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: (drop.isNew
+                                                  ? const Color(0xFF69F0AE)
+                                                  : const Color(0xFFFFD54F))
+                                              .withValues(alpha: 0.6),
+                                          blurRadius: 8,
                                         ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      drop.isNew ? 'NEW!' : 'POWER UP!',
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                        letterSpacing: 1,
                                       ),
                                     ),
                                   ),
                                 ),
+                              ),
                               // Epic scale bounce effect
                               if (drop.card.rarity == CardRarity.epic &&
                                   glowPulse > 0)
@@ -1086,6 +1101,53 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ],
                         ),
                       ),
+                    // Card collection progress (shown when all heroes/weapons unlocked)
+                    if (_chestOpened &&
+                        _nextUnlockName == null &&
+                        _collectedCardCount < CardService.allCards.length)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: 16, left: 40, right: 40,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.style,
+                              color: Color(0xFF00E5FF),
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(7),
+                                child: SizedBox(
+                                  height: 14,
+                                  child: LinearProgressIndicator(
+                                    value: (_collectedCardCount /
+                                            CardService.allCards.length)
+                                        .clamp(0.0, 1.0),
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.15),
+                                    valueColor: const AlwaysStoppedAnimation(
+                                      Color(0xFF00E5FF),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '$_collectedCardCount/${CardService.allCards.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                     // Card drop reveal
                     if (_showCardDrop && _cardDrop != null)
                       _buildCardDropReveal(),

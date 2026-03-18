@@ -734,29 +734,41 @@ class _HowToPlayStep extends StatelessWidget {
       height: 150,
       child: Row(
         children: [
-          // Blaze guide character on the left, only on the first step
+          // Step number circle + Blaze on step 1
           if (stepIndex == 0)
             Padding(
               padding: const EdgeInsets.only(right: 4),
-              child: AnimatedBuilder(
-                animation: floatAnim,
-                builder: (context, child) {
-                  final y = sin(floatAnim.value * pi) * 5;
-                  return Transform.translate(
-                    offset: Offset(0, y),
-                    child: child,
-                  );
-                },
-                child: Image.asset(
-                  'assets/images/hero_blaze.png',
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.contain,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _StepNumberCircle(number: stepIndex + 1),
+                  const SizedBox(height: 6),
+                  AnimatedBuilder(
+                    animation: floatAnim,
+                    builder: (context, child) {
+                      final y = sin(floatAnim.value * pi) * 5;
+                      return Transform.translate(
+                        offset: Offset(0, y),
+                        child: child,
+                      );
+                    },
+                    child: Image.asset(
+                      'assets/images/hero_blaze.png',
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ],
               ),
             )
           else
-            const SizedBox(width: 60),
+            SizedBox(
+              width: 60,
+              child: Center(
+                child: _StepNumberCircle(number: stepIndex + 1),
+              ),
+            ),
           // Main step visual
           Expanded(
             child: Center(child: child),
@@ -764,6 +776,41 @@ class _HowToPlayStep extends StatelessWidget {
           // Balance the layout
           const SizedBox(width: 60),
         ],
+      ),
+    );
+  }
+}
+
+/// Cyan circle with step number for onboarding P2.
+class _StepNumberCircle extends StatelessWidget {
+  final int number;
+  const _StepNumberCircle({required this.number});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF00E5FF),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x5500E5FF),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          '$number',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
       ),
     );
   }

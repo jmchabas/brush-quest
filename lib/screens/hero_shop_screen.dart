@@ -1015,25 +1015,11 @@ class _LockedProgressIndicator extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Star count text: "X/Y"
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.star,
-              color: progressColor,
-              size: 14,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              '$currentStars/$threshold',
-              style: TextStyle(
-                color: progressColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ],
+        // Star icon only (no numeric fraction)
+        Icon(
+          Icons.star,
+          color: progressColor,
+          size: 14,
         ),
         const SizedBox(height: 4),
         // Mini progress bar

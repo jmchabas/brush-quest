@@ -72,6 +72,11 @@ class FakeAudioService extends AudioService {
   }
 
   @override
+  Future<void> setVoiceStyle(String style) async {
+    calls.add(AudioCall('setVoiceStyle', {'style': style}));
+  }
+
+  @override
   Future<void> toggleMute() async {
     _muted = !_muted;
     calls.add(AudioCall('toggleMute', {'newState': _muted}));

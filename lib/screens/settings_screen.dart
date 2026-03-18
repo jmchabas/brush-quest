@@ -549,12 +549,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'session_checkpoint_phase',
       'session_checkpoint_seconds',
       'session_checkpoint_world',
+      'card_dup_bonus_threshold',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);
     }
     for (final key in prefs.getKeys()) {
-      if (key.startsWith('world_progress_') || key.startsWith('achievement_')) {
+      if (key.startsWith('world_progress_') ||
+          key.startsWith('achievement_') ||
+          key.startsWith('card_dup_count_')) {
         await prefs.remove(key);
       }
     }
@@ -1021,6 +1024,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           final style = selected.first;
                           await AudioService().setVoiceStyle(style);
                           setState(() => _voiceStyle = style);
+                          // Preview: play a sample voice line after switching
+                          await Future.delayed(const Duration(milliseconds: 200));
+                          AudioService().playVoice('voice_lets_fight.mp3',
+                              interrupt: true, clearQueue: true);
                         },
                         style: ButtonStyle(
                           backgroundColor: WidgetStateProperty.resolveWith<Color>(

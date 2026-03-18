@@ -33,8 +33,9 @@ class SyncService {
     'onboarding_completed',
     'collected_cards',
     'last_greeting_date',
+    'voice_style',
   ];
-  static const _prefixSyncKeys = ['world_progress_', 'achievement_'];
+  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'card_dup_count_'];
 
   DocumentReference? get _userDoc {
     final user = AuthService().currentUser;
