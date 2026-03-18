@@ -1206,7 +1206,7 @@
       fill: #4CAF50;
     }
 
-    /* Hero email form (hidden by default, shown by JS for iOS/desktop) */
+    /* Hero email form (hidden by default, shown by JS for iOS) */
     .hero-email {
       display: none;
       text-align: center;
@@ -1223,6 +1223,48 @@
 
     .hero-email .email-form {
       margin-bottom: 8px;
+    }
+
+    /* Hero QR code (hidden by default, shown by JS for desktop) */
+    .hero-qr {
+      display: none;
+      text-align: center;
+      order: 6;
+      margin-bottom: 24px;
+    }
+
+    .hero-qr-box {
+      display: inline-block;
+      background: #FFFFFF;
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 4px 30px rgba(124, 77, 255, 0.3);
+      margin-bottom: 12px;
+    }
+
+    .hero-qr-box img {
+      width: 180px;
+      height: 180px;
+      display: block;
+    }
+
+    .hero-qr-label {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 6px;
+    }
+
+    .hero-qr-sub {
+      font-size: 0.9rem;
+      color: var(--white-dim);
+      margin-bottom: 16px;
+    }
+
+    .hero-qr-divider {
+      font-size: 0.85rem;
+      color: var(--white-dim);
+      margin: 16px 0 12px;
     }
 
     /* Dedicated email section */
@@ -1340,6 +1382,7 @@
     /* Responsive email forms */
     @media (max-width: 768px) {
       .hero-email { order: 3; }
+      .hero-qr { order: 3; }
     }
 
     @media (max-width: 480px) {
@@ -1398,6 +1441,20 @@
         <p class="hero-email-heading"></p>
         <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
           <input type="hidden" class="email-tag" name="tag" value="">
+          <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
+          <button type="submit" class="email-submit">Notify Me</button>
+        </form>
+        <p class="email-disclaimer">No spam, unsubscribe anytime.</p>
+      </div>
+      <div class="hero-qr" id="heroQr">
+        <p class="hero-qr-label">Open this page on your phone to download</p>
+        <p class="hero-qr-sub">Point your camera at the QR code</p>
+        <div class="hero-qr-box">
+          <img src="qr-brushquest.png" alt="QR code linking to brushquest.app" width="180" height="180">
+        </div>
+        <p class="hero-qr-divider">No Android? Get notified for iOS.</p>
+        <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
+          <input type="hidden" class="email-tag" name="tag" value="desktop">
           <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
           <button type="submit" class="email-submit">Notify Me</button>
         </form>
@@ -1704,31 +1761,37 @@
 
     // Platform-specific CTA swaps for iOS and desktop
     if (isIOS || isDesktop) {
-      // Hero: hide download button, show email form
+      // Hero: hide download button
       var heroCta = document.querySelector('.hero-cta');
-      var heroEmail = document.getElementById('heroEmail');
       if (heroCta) heroCta.style.display = 'none';
-      if (heroEmail) {
-        heroEmail.style.display = 'block';
-        var heading = heroEmail.querySelector('.hero-email-heading');
-        if (heading) {
-          heading.innerHTML = isIOS
-            ? 'Brush Quest is coming to iPhone.<br>Get notified when it launches.'
-            : 'Brush Quest is a free Android app (iOS coming soon).<br>Get notified when we launch on new platforms.';
+
+      if (isIOS) {
+        // iOS: show email form
+        var heroEmail = document.getElementById('heroEmail');
+        if (heroEmail) {
+          heroEmail.style.display = 'block';
+          var heading = heroEmail.querySelector('.hero-email-heading');
+          if (heading) {
+            heading.innerHTML = 'Brush Quest is coming to iPhone.<br>Get notified when it launches.';
+          }
         }
+      } else {
+        // Desktop: show QR code + secondary email form
+        var heroQr = document.getElementById('heroQr');
+        if (heroQr) heroQr.style.display = 'block';
       }
 
       // Mid-CTA: hide download link (not useful for non-Android)
       var midCta = document.querySelector('.mid-cta');
       if (midCta) midCta.style.display = 'none';
 
-      // Sticky bar: hide download link, show email form
+      // Sticky bar: swap for non-Android
       var stickyLink = document.getElementById('stickyCtaLink');
       var stickyText = document.querySelector('.sticky-cta-text');
       var stickyEmail = document.getElementById('stickyEmail');
       if (stickyLink) stickyLink.style.display = 'none';
-      if (stickyText) stickyText.style.display = 'none';
       if (stickyEmail) stickyEmail.style.display = 'block';
+      if (stickyText) stickyText.textContent = isIOS ? 'Coming to iPhone' : 'Open on your phone to download';
 
       // Download section: hide download stuff, show email form
       var downloadBtn = document.querySelector('.download-btn');
@@ -1743,7 +1806,7 @@
       if (downloadSub) {
         downloadSub.textContent = isIOS
           ? 'Android only for now \u2014 we\'re working on iOS.'
-          : 'Download it on your Android phone, or get notified about new platforms.';
+          : 'Open brushquest.app on your Android phone to download.';
       }
     }
 
