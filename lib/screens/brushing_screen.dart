@@ -417,6 +417,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
 
+  // Track last arc beat timestamp for companion voice collision avoidance
+  int _lastArcBeatTime = 0;
+
   // Encouragement arcs: each arc is a 3-beat connected micro-story
   // [beat1 = energizing @80%, beat2 = supportive @50%, beat3 = almost-there @20%]
   static const _encouragementArcs = [
@@ -888,6 +891,16 @@ class _BrushingScreenState extends State<BrushingScreen>
     _startCountdown();
   }
 
+  void _exitWorldIntro() {
+    _worldIntroTimer?.cancel();
+    _audio.stopMusic();
+    if (!mounted) return;
+    setState(() => _isQuitting = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
   void _playWorldMissionBriefing() {
     final voiceFile = _isBossSession
         ? 'voice_unstoppable.mp3'
@@ -1008,14 +1021,17 @@ class _BrushingScreenState extends State<BrushingScreen>
       final almostAt = (_phaseDuration * 0.20).round();
       if (_phaseSecondsLeft == energizeAt && !_playedEncouragement) {
         _playedEncouragement = true;
+        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
         _audio.playVoice(_encouragementArcs[_currentArcIndex][0]);
       }
       if (_phaseSecondsLeft == supportAt && !_playedMidEncouragement) {
         _playedMidEncouragement = true;
+        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
         _audio.playVoice(_encouragementArcs[_currentArcIndex][1]);
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
+        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
         _audio.playVoice(_encouragementArcs[_currentArcIndex][2]);
       }
 
@@ -1372,6 +1388,23 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
+  /// Check if an arc beat recently played or is about to play (within 3s window).
+  /// Used to suppress companion voice when it would collide with arc beats.
+  bool _isArcBeatNearby() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Check if an arc beat played within the last 3 seconds
+    if (now - _lastArcBeatTime < 3000) return true;
+    // Check if an arc beat is scheduled within the next 3 seconds
+    final energizeAt = (_phaseDuration * 0.80).round();
+    final supportAt = (_phaseDuration * 0.50).round();
+    final almostAt = (_phaseDuration * 0.20).round();
+    for (final target in [energizeAt, supportAt, almostAt]) {
+      final secondsUntilBeat = _phaseSecondsLeft - target;
+      if (secondsUntilBeat >= 0 && secondsUntilBeat <= 3) return true;
+    }
+    return false;
+  }
+
   void _showNextCompanionMessage() {
     if (!mounted || _isPaused || _phase == BrushPhase.done) return;
     final icon = _companionIcons[_random.nextInt(_companionIcons.length)];
@@ -1380,7 +1413,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showCompanionBubble = true;
     });
 
-    _playNextEncouragementVoice();
+    // Suppress companion voice when an arc beat is nearby to avoid voice pileup
+    if (!_isArcBeatNearby()) {
+      _playNextEncouragementVoice();
+    }
 
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) setState(() => _showCompanionBubble = false);
@@ -1795,6 +1831,20 @@ class _BrushingScreenState extends State<BrushingScreen>
                 child: Opacity(
                   opacity: 0.22,
                   child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                ),
+              ),
+              // Back/close button — lets kid exit without starting a brush session
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 8,
+                child: IconButton(
+                  onPressed: _exitWorldIntro,
+                  iconSize: 32,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.4),
+                    shape: const CircleBorder(),
+                  ),
+                  icon: const Icon(Icons.close, color: Colors.white),
                 ),
               ),
               Center(

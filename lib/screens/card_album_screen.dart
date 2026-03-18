@@ -66,7 +66,26 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
     final visitCount = prefs.getInt('card_album_visit_count') ?? 0;
     await prefs.setInt('card_album_visit_count', visitCount + 1);
 
-    // Play intro voice on every visit — "Collect them all by brushing your teeth!"
+    // Track last visit date for staleness check
+    final now = DateTime.now();
+    final lastVisitStr = prefs.getString('last_card_album_visit');
+    await prefs.setString('last_card_album_visit', now.toIso8601String());
+
+    // Play intro voice only if:
+    // 1. First 4 visits (visitCount is 0-based before increment, so 0-3), OR
+    // 2. Haven't visited in more than 7 days
+    bool shouldPlay = visitCount < 4;
+    if (!shouldPlay && lastVisitStr != null) {
+      final lastVisit = DateTime.tryParse(lastVisitStr);
+      if (lastVisit != null &&
+          now.difference(lastVisit).inDays > 7) {
+        shouldPlay = true;
+      }
+    }
+    // Also play on very first visit when lastVisitStr is null (covered by visitCount < 4)
+
+    if (!shouldPlay) return;
+
     await Future.delayed(const Duration(milliseconds: 400));
     if (mounted) {
       AudioService().playVoice('voice_card_album_intro.mp3',
@@ -125,30 +144,34 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
                       ),
               ),
 
-              // Page dots + arrows
+              // Page dots + arrows — large touch targets for kids
               if (unlockedWorlds.length > 1)
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Left arrow
+                      // Left arrow with 48px minimum touch target
                       GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: _currentPage > 0
                             ? () => _pageController.previousPage(
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeInOut)
                             : null,
-                        child: Icon(
-                          Icons.chevron_left,
-                          color: _currentPage > 0
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.2),
-                          size: 32,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.chevron_left,
+                            color: _currentPage > 0
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.2),
+                            size: 36,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       // Dots
                       for (int i = 0; i < unlockedWorlds.length; i++)
                         Container(
@@ -162,20 +185,24 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
                                 : Colors.white.withValues(alpha: 0.3),
                           ),
                         ),
-                      const SizedBox(width: 8),
-                      // Right arrow
+                      const SizedBox(width: 4),
+                      // Right arrow with 48px minimum touch target
                       GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: _currentPage < unlockedWorlds.length - 1
                             ? () => _pageController.nextPage(
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeInOut)
                             : null,
-                        child: Icon(
-                          Icons.chevron_right,
-                          color: _currentPage < unlockedWorlds.length - 1
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.2),
-                          size: 32,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.chevron_right,
+                            color: _currentPage < unlockedWorlds.length - 1
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.2),
+                            size: 36,
+                          ),
                         ),
                       ),
                     ],
@@ -275,14 +302,14 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          // Card grid
+          // Card grid — 2 columns for kid-friendly touch targets
           Wrap(
-            spacing: 12,
-            runSpacing: 12,
+            spacing: 14,
+            runSpacing: 14,
             children: visibleCards.map((card) {
               final isCollected = _collectedIds.contains(card.id);
               return SizedBox(
-                width: (MediaQuery.of(context).size.width - 40 - 24) / 3,
+                width: (MediaQuery.of(context).size.width - 40 - 14) / 2,
                 child: AspectRatio(
                   aspectRatio: 0.75,
                   child: _buildCardTile(card, isCollected),

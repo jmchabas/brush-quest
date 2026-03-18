@@ -6,7 +6,7 @@ class HeroCharacter {
   final String name;
   final String title;
   final String description;
-  final int cost;
+  final int unlockAt;
   final String imagePath;
   final Color primaryColor;
   final Color attackColor;
@@ -16,7 +16,7 @@ class HeroCharacter {
     required this.name,
     required this.title,
     required this.description,
-    required this.cost,
+    required this.unlockAt,
     required this.imagePath,
     required this.primaryColor,
     required this.attackColor,
@@ -28,13 +28,15 @@ class HeroService {
   static const _selectedKey = 'selected_hero';
   static bool _purchasing = false;
 
+  // Cumulative star thresholds — the star counter never drops.
+  // Interleaved with weapons for a new unlock every 3-5 days at 2x/day.
   static const List<HeroCharacter> allHeroes = [
     HeroCharacter(
       id: 'blaze',
       name: 'BLAZE',
       title: 'Fire Dragon',
       description: 'A fierce little dragon who burns cavity monsters with blazing fire breath!',
-      cost: 0,
+      unlockAt: 0,
       imagePath: 'assets/images/hero_blaze.png',
       primaryColor: Color(0xFFFF6D00),
       attackColor: Color(0xFFFF9100),
@@ -44,7 +46,7 @@ class HeroService {
       name: 'FROST',
       title: 'Ice Wolf',
       description: 'A brave wolf knight who freezes monsters solid with icy howls!',
-      cost: 4,
+      unlockAt: 14,
       imagePath: 'assets/images/hero_frost.png',
       primaryColor: Color(0xFF40C4FF),
       attackColor: Color(0xFF80D8FF),
@@ -54,7 +56,7 @@ class HeroService {
       name: 'BOLT',
       title: 'Lightning Robot',
       description: 'A super-charged robot who zaps monsters with electric bolts!',
-      cost: 7,
+      unlockAt: 30,
       imagePath: 'assets/images/hero_bolt.png',
       primaryColor: Color(0xFFFFD600),
       attackColor: Color(0xFFFFFF00),
@@ -64,7 +66,7 @@ class HeroService {
       name: 'SHADOW',
       title: 'Ninja Cat',
       description: 'A sneaky ninja cat who strikes from the shadows with dark energy!',
-      cost: 10,
+      unlockAt: 50,
       imagePath: 'assets/images/hero_shadow.png',
       primaryColor: Color(0xFFAA00FF),
       attackColor: Color(0xFFD500F9),
@@ -74,7 +76,7 @@ class HeroService {
       name: 'LEAF',
       title: 'Nature Guardian',
       description: 'A mighty tree guardian who smashes monsters with vine whip attacks!',
-      cost: 14,
+      unlockAt: 74,
       imagePath: 'assets/images/hero_leaf.png',
       primaryColor: Color(0xFF00E676),
       attackColor: Color(0xFF69F0AE),
@@ -84,7 +86,7 @@ class HeroService {
       name: 'NOVA',
       title: 'Cosmic Phoenix',
       description: 'The legendary phoenix who unleashes cosmic star bursts of pure light!',
-      cost: 18,
+      unlockAt: 98,
       imagePath: 'assets/images/hero_nova.png',
       primaryColor: Color(0xFFFFD54F),
       attackColor: Color(0xFFFFE082),
@@ -123,9 +125,9 @@ class HeroService {
       if (unlocked.contains(heroId)) return true;
 
       final stars = prefs.getInt('total_stars') ?? 0;
-      if (stars < hero.cost) return false;
+      if (stars < hero.unlockAt) return false;
 
-      await prefs.setInt('total_stars', stars - hero.cost);
+      // Cumulative economy: stars are never deducted.
       unlocked.add(heroId);
       await prefs.setStringList(_unlockedKey, unlocked);
       return true;

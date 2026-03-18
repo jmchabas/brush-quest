@@ -66,12 +66,12 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
       await _loadData();
-    } else if (_stars >= hero.cost) {
+    } else if (_stars >= hero.unlockAt) {
       final success = await _heroService.unlockHero(hero.id);
       if (success) {
         await _heroService.selectHero(hero.id);
         HapticFeedback.heavyImpact();
-        AnalyticsService().logHeroUnlock(heroId: hero.id, starsSpent: hero.cost);
+        AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _stars);
         // Finding #8: Don't play voice here — the unlock dialog's initState
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showHeroUnlockAnimation(hero);
@@ -91,12 +91,12 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       await _loadData();
-    } else if (_stars >= weapon.cost) {
+    } else if (_stars >= weapon.unlockAt) {
       final success = await _weaponService.unlockWeapon(weapon.id);
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         HapticFeedback.heavyImpact();
-        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsSpent: weapon.cost);
+        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsAtUnlock: _stars);
         // Finding #8: Don't play voice here — the unlock dialog's initState
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showWeaponUnlockAnimation(weapon);
@@ -299,13 +299,13 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 final hero = HeroService.allHeroes[index];
                 final isUnlocked = _unlockedHeroes.contains(hero.id);
                 final isSelected = _selectedHeroId == hero.id;
-                final canAfford = _stars >= hero.cost;
+                final canUnlock = _stars >= hero.unlockAt;
 
                 return _HeroCard(
                   hero: hero,
                   isUnlocked: isUnlocked,
                   isSelected: isSelected,
-                  canAfford: canAfford,
+                  canAfford: canUnlock,
                   currentStars: _stars,
                   onTap: () => _onHeroTap(hero),
                 );
@@ -345,13 +345,13 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 final weapon = WeaponService.allWeapons[index];
                 final isUnlocked = _unlockedWeapons.contains(weapon.id);
                 final isSelected = _selectedWeaponId == weapon.id;
-                final canAfford = _stars >= weapon.cost;
+                final canUnlock = _stars >= weapon.unlockAt;
 
                 return _WeaponCard(
                   weapon: weapon,
                   isUnlocked: isUnlocked,
                   isSelected: isSelected,
-                  canAfford: canAfford,
+                  canAfford: canUnlock,
                   currentStars: _stars,
                   onTap: () => _onWeaponTap(weapon),
                 );
@@ -433,10 +433,10 @@ class _HeroCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (!isUnlocked && hero.cost > 0)
+                  if (!isUnlocked && hero.unlockAt > 0)
                     _LockedProgressIndicator(
                       currentStars: currentStars,
-                      cost: hero.cost,
+                      threshold: hero.unlockAt,
                       canAfford: canAfford,
                     ),
                 ],
@@ -567,10 +567,10 @@ class _WeaponCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (!isUnlocked && weapon.cost > 0)
+                  if (!isUnlocked && weapon.unlockAt > 0)
                     _LockedProgressIndicator(
                       currentStars: currentStars,
-                      cost: weapon.cost,
+                      threshold: weapon.unlockAt,
                       canAfford: canAfford,
                     ),
                 ],
@@ -993,22 +993,22 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
   }
 }
 
-/// Finding #13: Progress indicator for locked items showing "X/Y" stars
-/// and a mini linear progress bar.
+/// Progress indicator for locked items showing "X/Y" stars toward threshold
+/// and a mini linear progress bar. The bar only ever fills up — never resets.
 class _LockedProgressIndicator extends StatelessWidget {
   final int currentStars;
-  final int cost;
+  final int threshold;
   final bool canAfford;
 
   const _LockedProgressIndicator({
     required this.currentStars,
-    required this.cost,
+    required this.threshold,
     required this.canAfford,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = (currentStars / cost).clamp(0.0, 1.0);
+    final progress = (currentStars / threshold).clamp(0.0, 1.0);
     final progressColor =
         canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.5);
 
@@ -1026,7 +1026,7 @@ class _LockedProgressIndicator extends StatelessWidget {
             ),
             const SizedBox(width: 3),
             Text(
-              '$currentStars/$cost',
+              '$currentStars/$threshold',
               style: TextStyle(
                 color: progressColor,
                 fontWeight: FontWeight.bold,

@@ -88,35 +88,6 @@ void main() {
       expect(stars, 10);
     });
 
-    // ── Spending stars ────────────────────────────────────────────
-
-    test('spendStars succeeds when enough stars are available', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 10});
-      final service = StreakService();
-      final success = await service.spendStars(4);
-      expect(success, true);
-      final remaining = await service.getTotalStars();
-      expect(remaining, 6);
-    });
-
-    test('spendStars fails when not enough stars', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 3});
-      final service = StreakService();
-      final success = await service.spendStars(5);
-      expect(success, false);
-      final remaining = await service.getTotalStars();
-      expect(remaining, 3);
-    });
-
-    test('spendStars with exact balance succeeds and leaves 0', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 7});
-      final service = StreakService();
-      final success = await service.spendStars(7);
-      expect(success, true);
-      final remaining = await service.getTotalStars();
-      expect(remaining, 0);
-    });
-
     // ── Bonus stars ───────────────────────────────────────────────
 
     test('addBonusStars adds to existing balance', () async {

@@ -28,7 +28,7 @@ Before shipping any screen or flow, do a first-person walkthrough as the end use
 - **Audio**: ElevenLabs TTS for voice prompts and encouragements. 3-player SFX pool. Music uses pre-looped 2-min file with periodic health check. SFX suppressed during voice playback.
 - **Art**: DALL-E generated monster illustrations (4 base images, tinted/varied procedurally)
 - **Persistence**: Local via shared_preferences + cloud sync via Firestore (when signed in)
-- **Economy**: 1 star per completed brush. No mid-brush star collection. Hero costs: 0/4/7/10/14/20. Weapon costs: 0/2/5/8/12/16. Full unlock ~49 days at 2x/day.
+- **Economy**: Cumulative stars — the counter NEVER drops. 1 star per completed brush (+ bonus from chests/achievements). Heroes unlock at thresholds: 0/14/30/50/74/98. Weapons: 0/6/22/40/62/88. Interleaved for a new unlock every 3-5 days. Full unlock ~49 days at 2x/day.
 - **Auth**: Firebase Auth with Google Sign-In. Auto-uploads progress after each brush. Manual save/restore in settings.
 
 ## Architecture

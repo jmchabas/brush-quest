@@ -14,7 +14,7 @@ class WeaponItem {
   final String id;
   final String name;
   final String description;
-  final int cost;
+  final int unlockAt;
   final AttackEffectType effectType;
   final Color primaryColor;
   final Color secondaryColor;
@@ -25,7 +25,7 @@ class WeaponItem {
     required this.id,
     required this.name,
     required this.description,
-    required this.cost,
+    required this.unlockAt,
     required this.effectType,
     required this.primaryColor,
     required this.secondaryColor,
@@ -39,12 +39,13 @@ class WeaponService {
   static const _selectedKey = 'selected_weapon';
   static bool _purchasing = false;
 
+  // Cumulative star thresholds — interleaved with heroes.
   static const List<WeaponItem> allWeapons = [
     WeaponItem(
       id: 'star_blaster',
       name: 'STAR BLASTER',
       description: 'The classic beam weapon. Reliable and strong!',
-      cost: 0,
+      unlockAt: 0,
       effectType: AttackEffectType.defaultBeam,
       primaryColor: Color(0xFF7C4DFF),
       secondaryColor: Color(0xFFB388FF),
@@ -55,7 +56,7 @@ class WeaponService {
       id: 'flame_sword',
       name: 'FLAME SWORD',
       description: 'Fiery slashes that burn through cavity monsters!',
-      cost: 2,
+      unlockAt: 6,
       effectType: AttackEffectType.flameSword,
       primaryColor: Color(0xFFFF6D00),
       secondaryColor: Color(0xFFFFAB40),
@@ -66,7 +67,7 @@ class WeaponService {
       id: 'ice_hammer',
       name: 'ICE HAMMER',
       description: 'Freezing shockwaves that shatter monsters!',
-      cost: 5,
+      unlockAt: 22,
       effectType: AttackEffectType.iceHammer,
       primaryColor: Color(0xFF40C4FF),
       secondaryColor: Color(0xFF80D8FF),
@@ -77,7 +78,7 @@ class WeaponService {
       id: 'lightning_wand',
       name: 'LIGHTNING WAND',
       description: 'Electric bolts that zap monsters from afar!',
-      cost: 8,
+      unlockAt: 40,
       effectType: AttackEffectType.lightningWand,
       primaryColor: Color(0xFFFFD600),
       secondaryColor: Color(0xFFFFFF00),
@@ -88,7 +89,7 @@ class WeaponService {
       id: 'vine_whip',
       name: 'VINE WHIP',
       description: 'Nature strikes that tangle and crush!',
-      cost: 12,
+      unlockAt: 62,
       effectType: AttackEffectType.vineWhip,
       primaryColor: Color(0xFF00E676),
       secondaryColor: Color(0xFF69F0AE),
@@ -99,7 +100,7 @@ class WeaponService {
       id: 'cosmic_burst',
       name: 'COSMIC BURST',
       description: 'The ultimate weapon! Rainbow star explosions!',
-      cost: 16,
+      unlockAt: 88,
       effectType: AttackEffectType.cosmicBurst,
       primaryColor: Color(0xFFFF4081),
       secondaryColor: Color(0xFFFFD54F),
@@ -140,9 +141,9 @@ class WeaponService {
       if (unlocked.contains(weaponId)) return true;
 
       final stars = prefs.getInt('total_stars') ?? 0;
-      if (stars < weapon.cost) return false;
+      if (stars < weapon.unlockAt) return false;
 
-      await prefs.setInt('total_stars', stars - weapon.cost);
+      // Cumulative economy: stars are never deducted.
       unlocked.add(weaponId);
       await prefs.setStringList(_unlockedKey, unlocked);
       return true;

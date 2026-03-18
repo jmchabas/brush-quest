@@ -276,45 +276,267 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Widget _buildHowToPlayPage() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Spacer(flex: 2),
-          Text(
-            'HOW TO PLAY',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF00E5FF),
-              letterSpacing: 3,
+          const Spacer(flex: 1),
+          // Step 1: BRUSH — large toothbrush with sparkle animation
+          _HowToPlayStep(
+            pulseAnim: _pulseController,
+            floatAnim: _floatController,
+            stepIndex: 0,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Glow ring behind
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    final glow = 0.2 + _pulseController.value * 0.4;
+                    return Container(
+                      width: 130,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF69F0AE)
+                                .withValues(alpha: glow),
+                            blurRadius: 30,
+                            spreadRadius: 8,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // Toothbrush image
+                AnimatedBuilder(
+                  animation: _floatController,
+                  builder: (context, child) {
+                    final angle =
+                        sin(_floatController.value * pi * 2) * 0.08;
+                    return Transform.rotate(angle: angle, child: child);
+                  },
+                  child: Image.asset(
+                    'assets/images/toothbrush_icon.png',
+                    width: 110,
+                    height: 110,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                // Sparkle particles
+                ...List.generate(4, (i) {
+                  final angle = (i / 4) * pi * 2;
+                  return AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, _) {
+                      final radius = 55.0 + _pulseController.value * 18;
+                      final opacity = 0.3 + _pulseController.value * 0.7;
+                      final sparkleSize =
+                          6.0 + _pulseController.value * 6;
+                      return Transform.translate(
+                        offset: Offset(
+                          cos(angle + _pulseController.value * 0.5) *
+                              radius,
+                          sin(angle + _pulseController.value * 0.5) *
+                              radius,
+                        ),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          color: const Color(0xFF69F0AE)
+                              .withValues(alpha: opacity),
+                          size: sparkleSize,
+                        ),
+                      );
+                    },
+                  );
+                }),
+              ],
             ),
           ),
-          const SizedBox(height: 28),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _OnboardingPanel(
-                imagePath: 'assets/images/toothbrush_icon.png',
-                color: const Color(0xFF69F0AE),
-                label: 'BRUSH',
-                animation: _pulseController,
-              ),
-              _OnboardingPanel(
-                icon: Icons.sensors,
-                color: const Color(0xFF7C4DFF),
-                label: 'MOVE',
-                animation: _pulseController,
-              ),
-              _OnboardingPanel(
-                icon: Icons.star,
-                color: Colors.yellowAccent,
-                label: 'WIN',
-                animation: _pulseController,
-              ),
-            ],
+          const SizedBox(height: 8),
+          // Arrow connector
+          _StepArrow(animation: _pulseController, color: const Color(0xFF7C4DFF)),
+          const SizedBox(height: 8),
+          // Step 2: FIGHT — monster being attacked with zap
+          _HowToPlayStep(
+            pulseAnim: _pulseController,
+            floatAnim: _floatController,
+            stepIndex: 1,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Glow behind
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    final glow = 0.15 + _pulseController.value * 0.35;
+                    return Container(
+                      width: 140,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF7C4DFF)
+                                .withValues(alpha: glow),
+                            blurRadius: 25,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // Monster shaking on "hit"
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final shake =
+                        sin(_pulseController.value * pi * 4) * 3;
+                    return Transform.translate(
+                      offset: Offset(shake, 0),
+                      child: child,
+                    );
+                  },
+                  child: Image.asset(
+                    'assets/images/monster_purple.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                // Zap / hit effect
+                Positioned(
+                  top: 0,
+                  right: 10,
+                  child: AnimatedBuilder(
+                    animation: _glowController,
+                    builder: (context, _) {
+                      final scale =
+                          0.7 + _glowController.value * 0.5;
+                      final opacity =
+                          0.4 + _glowController.value * 0.6;
+                      return Transform.scale(
+                        scale: scale,
+                        child: Icon(
+                          Icons.flash_on,
+                          color: const Color(0xFFFFD740)
+                              .withValues(alpha: opacity),
+                          size: 44,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Weapon overlay
+                Positioned(
+                  bottom: 0,
+                  left: 10,
+                  child: AnimatedBuilder(
+                    animation: _glowController,
+                    builder: (context, child) {
+                      final angle =
+                          -0.2 + sin(_glowController.value * pi) * 0.3;
+                      return Transform.rotate(
+                          angle: angle, child: child);
+                    },
+                    child: Image.asset(
+                      'assets/images/weapon_flame_sword.png',
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const Spacer(flex: 3),
+          const SizedBox(height: 8),
+          // Arrow connector
+          _StepArrow(animation: _pulseController, color: const Color(0xFFFFD740)),
+          const SizedBox(height: 8),
+          // Step 3: WIN — large star with radiating glow
+          _HowToPlayStep(
+            pulseAnim: _pulseController,
+            floatAnim: _floatController,
+            stepIndex: 2,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Radiating glow rings
+                ...List.generate(3, (i) {
+                  return AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, _) {
+                      final delay = i * 0.2;
+                      final t =
+                          ((_pulseController.value + delay) % 1.0);
+                      final ringSize = 60.0 + t * 50;
+                      final opacity = (1.0 - t) * 0.3;
+                      return Container(
+                        width: ringSize,
+                        height: ringSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFFFD740)
+                                .withValues(alpha: opacity),
+                            width: 2,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+                // Star glow
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    final glow = 0.3 + _pulseController.value * 0.5;
+                    return Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD740)
+                                .withValues(alpha: glow),
+                            blurRadius: 35,
+                            spreadRadius: 10,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // Star icon with bounce
+                AnimatedBuilder(
+                  animation: _floatController,
+                  builder: (context, _) {
+                    final bounce =
+                        sin(_floatController.value * pi) * 6;
+                    final scale =
+                        0.95 + _pulseController.value * 0.1;
+                    return Transform.translate(
+                      offset: Offset(0, -bounce),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: const Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFFFFD740),
+                          size: 90,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Spacer(flex: 1),
         ],
       ),
     );
@@ -471,71 +693,85 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-class _OnboardingPanel extends StatelessWidget {
-  final IconData? icon;
-  final String? imagePath;
-  final Color color;
-  final String label;
-  final AnimationController animation;
+/// A single step in the How-to-Play tutorial.
+/// Wraps each visual in a glass-like pill with Blaze as a guide character.
+class _HowToPlayStep extends StatelessWidget {
+  final AnimationController pulseAnim;
+  final AnimationController floatAnim;
+  final int stepIndex;
+  final Widget child;
 
-  const _OnboardingPanel({
-    this.icon,
-    this.imagePath,
-    required this.color,
-    required this.label,
+  const _HowToPlayStep({
+    required this.pulseAnim,
+    required this.floatAnim,
+    required this.stepIndex,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 150,
+      child: Row(
+        children: [
+          // Blaze guide character on the left, only on the first step
+          if (stepIndex == 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: AnimatedBuilder(
+                animation: floatAnim,
+                builder: (context, child) {
+                  final y = sin(floatAnim.value * pi) * 5;
+                  return Transform.translate(
+                    offset: Offset(0, y),
+                    child: child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/images/hero_blaze.png',
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 60),
+          // Main step visual
+          Expanded(
+            child: Center(child: child),
+          ),
+          // Balance the layout
+          const SizedBox(width: 60),
+        ],
+      ),
+    );
+  }
+}
+
+/// Animated arrow connecting the how-to-play steps.
+class _StepArrow extends StatelessWidget {
+  final AnimationController animation;
+  final Color color;
+
+  const _StepArrow({
     required this.animation,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (context, child) {
-        final scale = 0.92 + animation.value * 0.08;
-        final glow = 0.3 + animation.value * 0.3;
-        return Transform.scale(
-          scale: scale,
-          child: Column(
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withValues(alpha: 0.15),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.6),
-                    width: 2.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: glow),
-                      blurRadius: 18,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: imagePath != null
-                    ? ClipOval(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child:
-                              Image.asset(imagePath!, width: 56, height: 56),
-                        ),
-                      )
-                    : Icon(icon, color: color, size: 42),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                ),
-              ),
-            ],
+      builder: (context, _) {
+        final offset = animation.value * 4;
+        final opacity = 0.4 + animation.value * 0.4;
+        return Transform.translate(
+          offset: Offset(0, offset),
+          child: Icon(
+            Icons.keyboard_double_arrow_down_rounded,
+            color: color.withValues(alpha: opacity),
+            size: 32,
           ),
         );
       },

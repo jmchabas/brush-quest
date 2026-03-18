@@ -163,15 +163,6 @@ class StreakService {
     return prefs.getInt(_keyTotalStars) ?? 0;
   }
 
-  Future<bool> spendStars(int amount) async {
-    final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getInt(_keyTotalStars) ?? 0;
-    if (current < amount) return false;
-    final newBalance = (current - amount).clamp(0, 999999);
-    await prefs.setInt(_keyTotalStars, newBalance);
-    return true;
-  }
-
   Future<void> addBonusStars(int amount) async {
     if (amount <= 0) return;
     final prefs = await SharedPreferences.getInstance();

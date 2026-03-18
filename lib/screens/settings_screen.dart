@@ -17,7 +17,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   int _phaseDuration = 30;
-  bool _cameraEnabled = true;
+  bool _cameraEnabled = false;
   int _totalBrushes = 0;
   int _bestStreak = 0;
   bool _signingIn = false;
@@ -218,12 +218,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
+      debugPrint('Sign-in failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Sign-in failed: $e',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            content: const Text(
+              'Sign-in didn\'t work. Please check your internet connection and try again.',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
@@ -540,6 +541,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'current_world',
       'collected_cards',
       'card_album_visit_count',
+      'last_card_album_visit',
       'last_greeting_date',
       'session_checkpoint_ts',
       'session_checkpoint_phase',
@@ -972,7 +974,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 8),
 
                     _SettingCard(
-                      icon: Icons.videocam,
+                      icon: Icons.sensors,
                       title: 'Motion camera',
                       child: Switch(
                         value: _cameraEnabled,

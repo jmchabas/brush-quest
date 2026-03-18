@@ -125,26 +125,26 @@ class AnalyticsService {
 
   Future<void> logHeroUnlock({
     required String heroId,
-    required int starsSpent,
+    required int starsAtUnlock,
   }) async {
     await _analytics.logEvent(
       name: 'hero_unlock',
       parameters: {
         'hero_id': heroId,
-        'stars_spent': starsSpent,
+        'stars_at_unlock': starsAtUnlock,
       },
     );
   }
 
   Future<void> logWeaponUnlock({
     required String weaponId,
-    required int starsSpent,
+    required int starsAtUnlock,
   }) async {
     await _analytics.logEvent(
       name: 'weapon_unlock',
       parameters: {
         'weapon_id': weaponId,
-        'stars_spent': starsSpent,
+        'stars_at_unlock': starsAtUnlock,
       },
     );
   }

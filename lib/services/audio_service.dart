@@ -157,6 +157,7 @@ class AudioService {
     'voice_intro_weapon_lightning_wand.mp3',
     'voice_intro_weapon_vine_whip.mp3',
     'voice_intro_weapon_cosmic_burst.mp3',
+    'voice_great_choice.mp3',
     'whoosh.mp3',
     'zap.mp3',
     'star_chime.mp3',

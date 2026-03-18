@@ -49,6 +49,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _tapPulseAnimation;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
+  late AnimationController _tapBounceController;
+  late Animation<double> _tapBounceAnimation;
   bool _buttonPressed = false;
   String? _lastPickerVoice;
 
@@ -96,8 +98,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
-    _breatheAnimation = Tween<double>(begin: 1.0, end: 1.03).animate(
+    _breatheAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
+    );
+
+    _tapBounceController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
+    _tapBounceAnimation = Tween<double>(begin: 0, end: -10).animate(
+      CurvedAnimation(parent: _tapBounceController, curve: Curves.easeInOut),
     );
   }
 
@@ -109,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _auraController.dispose();
     _tapPulseController.dispose();
     _breatheController.dispose();
+    _tapBounceController.dispose();
     super.dispose();
   }
 
@@ -144,7 +155,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (widget.skipGreeting) return;
 
     final totalBrushes = await _streakService.getTotalBrushes();
-    if (totalBrushes == 0) return;
+    if (totalBrushes == 0) {
+      // First-launch: kid just finished onboarding, guide them to tap the hero
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        AudioService().playVoice('voice_lets_fight.mp3');
+      }
+      return;
+    }
 
     final now = DateTime.now();
     final todayDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -158,9 +176,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       brushStreak: _streak,
       totalStars: _totalStars,
       nextHeroName: nextHero?.name,
-      nextHeroCost: nextHero?.cost,
+      nextHeroUnlockAt: nextHero?.unlockAt,
       nextWeaponName: nextWeapon?.name,
-      nextWeaponCost: nextWeapon?.cost,
+      nextWeaponUnlockAt: nextWeapon?.unlockAt,
       todayDate: todayDate,
       lastGreetingDate: lastGreetingDate,
     );
@@ -761,24 +779,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   const SizedBox(height: 8),
 
-                  // "TAP TO BRUSH!" pulsing hint
+                  // Bouncing tap indicator + "TAP TO BRUSH!" hint
                   AnimatedBuilder(
-                    animation: _tapPulseAnimation,
+                    animation: Listenable.merge([
+                      _tapPulseAnimation,
+                      _tapBounceAnimation,
+                    ]),
                     builder: (context, child) {
                       return Opacity(
                         opacity: _tapPulseAnimation.value,
-                        child: child,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Transform.translate(
+                              offset: Offset(0, _tapBounceAnimation.value),
+                              child: const Icon(
+                                Icons.touch_app,
+                                color: Color(0xFF00E5FF),
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'TAP TO BRUSH!',
+                              style: TextStyle(
+                                color: Color(0xFF00E5FF),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                          ],
+                        ),
                       );
                     },
-                    child: const Text(
-                      'TAP TO BRUSH!',
-                      style: TextStyle(
-                        color: Color(0xFF00E5FF),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 3,
-                      ),
-                    ),
                   ),
 
                   const SizedBox(height: 10),
