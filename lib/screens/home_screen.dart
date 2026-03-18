@@ -151,8 +151,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _checkGreeting() async {
     if (_greetingChecked) return;
     _greetingChecked = true;
-    // Skip greeting when returning from a brush session
-    if (widget.skipGreeting) return;
+    // Skip full greeting when returning from a brush session,
+    // but play a brief closure voice so the transition isn't silent.
+    if (widget.skipGreeting) {
+      if (!AudioService().isMuted) {
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) {
+          final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
+          AudioService().playVoice(voice);
+        }
+      }
+      return;
+    }
 
     final totalBrushes = await _streakService.getTotalBrushes();
     if (totalBrushes == 0) {

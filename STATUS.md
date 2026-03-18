@@ -11,29 +11,26 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v7 shipped + COPPA done + Cycle 2 complete (19 findings implemented)
-- **Last session**: 2026-03-16
-- **Last commit**: `7da3ca6` — Cycle 2: 19 UX/audio/economy fixes, cosmetic frames system, COPPA camera fix
+- **Status**: v7 shipped + COPPA done + Cycle 3 complete (12 findings + benchmark card reveal)
+- **Last session**: 2026-03-17
+- **Last commit**: `3794296` — Cycle 3: 12 UX/audio fixes, guaranteed card drops, dramatic victory reveal
 - **What happened**:
-  - Cycle 2 full audit: 4 parallel analysis agents + synthesizer, benchmark vs Brusheez
-  - Onboarding: visual panels, motion icon, COPPA camera fix (no longer silently enabled), hero art
-  - Card album: mystery silhouettes for uncollected cards
-  - World map: adventure path with zigzag layout and curved connectors
-  - Home: skip picker for new users, hero breathing animation, welcome-back voice rotation
-  - Battle: hero 40% larger, cosmetic frame glow
-  - Shop: new FRAMES tab (7 cosmetic frames 3-17★), unlock voice stutter fix, progress indicators
-  - Settings: voice after parent gate, 2-step delete with math confirmation
-  - Victory: achievement voice rotation (3 variants)
-  - Audio: removed 19 orphaned preloads, committed voice arc system (33 files)
-  - Economy: hero frames fill dead zones between major unlocks
-  - 588 tests passing, APK 86.4MB
+  - Cycle 3 full audit: 4 agents + synthesizer, benchmark vs Disney Magic Timer
+  - First-launch: welcome voice + bouncing tap hand affordance for all users
+  - Brushing: arc/companion collision suppression, back button on world intro
+  - Onboarding P2: animated 3-step visual tutorial (replaced text labels)
+  - Card album: smart intro voice (first 4 visits or 7-day gap), 2-column larger cards
+  - Settings: camera icon sensors, friendly sign-in error, camera init fix
+  - Victory: spaced reward timing, dramatic card reveal with rarity glow, guaranteed 1 card/brush
+  - Economy: aligned with cumulative model (cost→unlockAt, no star deduction)
+  - 591 tests passing, APK 86.6MB
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [ ] P2.1: Google Play Console families policy config
   - [ ] P2.2: Physical mailing address -> LLC workstream (see `/llc`)
 - **Blocked on**: Google Play developer account suspended (appeal pending)
-- **Next up**: Kid testing with Cycle 2 changes, Play Store submission
+- **Next up**: Kid testing with Cycle 3 changes, visual emulator test of card reveal, Play Store submission
 - **Needs CEO decision**: None
 
 ### LANDING PAGE

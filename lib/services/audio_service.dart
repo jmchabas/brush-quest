@@ -164,8 +164,6 @@ class AudioService {
     'battle_music_loop.mp3',
     'voice_card_new.mp3',
     'voice_card_album_intro.mp3',
-    'voice_card_album_tutorial_1.mp3',
-    'voice_card_album_tutorial_2.mp3',
     'voice_world_map_intro.mp3',
     'voice_greet_just_started_1.mp3',
     'voice_greet_just_started_2.mp3',
@@ -183,7 +181,6 @@ class AudioService {
     'voice_onboarding_1.mp3',
     'voice_onboarding_2.mp3',
     'voice_onboarding_3.mp3',
-    'voice_entry_settings.mp3',
     'voice_need_stars.mp3',
     'voice_card_mystery.mp3',
     // Per-world description voices

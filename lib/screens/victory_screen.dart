@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/hero_service.dart';
+import '../services/weapon_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
 import '../services/card_service.dart';
@@ -150,6 +151,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _audio = AudioService();
   final _streakService = StreakService();
   final _heroService = HeroService();
+  final _weaponService = WeaponService();
   final _achievementService = AchievementService();
   final _worldService = WorldService();
   final _random = Random();
@@ -167,8 +169,13 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _newStars = 0;
   int _starsEarnedThisSession = 0;
   List<Achievement> _newAchievements = [];
-  HeroCharacter? _nextHero;
-  int _starsToNextHero = 0;
+  // Next unlock: whichever of hero/weapon is closer
+  String? _nextUnlockName;
+  String? _nextUnlockImagePath;
+  Color _nextUnlockColor = Colors.white;
+  int _nextUnlockAt = 0;
+  int _starsToNextUnlock = 0;
+  bool _nextUnlockIsHero = true;
   WorldData _world = WorldService.allWorlds[0];
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
@@ -298,11 +305,10 @@ class _VictoryScreenState extends State<VictoryScreen>
       _newStars = await _streakService.getTotalStars();
     }
 
-    _nextHero = await _heroService.getNextLockedHero();
-    if (_nextHero != null) {
-      _starsToNextHero = _nextHero!.unlockAt - _newStars;
-      if (_starsToNextHero < 0) _starsToNextHero = 0;
-    }
+    // Pick whichever of next hero / next weapon unlocks sooner
+    final nextHero = await _heroService.getNextLockedHero();
+    final nextWeapon = await _weaponService.getNextLockedWeapon();
+    _computeNextUnlock(nextHero, nextWeapon);
 
     // Analytics: log completion + update user properties
     final analytics = AnalyticsService();
@@ -352,6 +358,39 @@ class _VictoryScreenState extends State<VictoryScreen>
     // not concurrently. See _openChest for the scheduling.
   }
 
+  /// Compare next locked hero and weapon; pick whichever unlocks sooner.
+  void _computeNextUnlock(HeroCharacter? nextHero, WeaponItem? nextWeapon) {
+    if (nextHero == null && nextWeapon == null) {
+      // Everything unlocked — no progress bar.
+      _nextUnlockName = null;
+      return;
+    }
+
+    final bool pickHero;
+    if (nextHero != null && nextWeapon != null) {
+      // Pick whichever has the lower (closer) unlockAt threshold.
+      pickHero = nextHero.unlockAt <= nextWeapon.unlockAt;
+    } else {
+      pickHero = nextHero != null;
+    }
+
+    if (pickHero) {
+      _nextUnlockName = nextHero!.name;
+      _nextUnlockImagePath = nextHero.imagePath;
+      _nextUnlockColor = nextHero.primaryColor;
+      _nextUnlockAt = nextHero.unlockAt;
+      _nextUnlockIsHero = true;
+    } else {
+      _nextUnlockName = nextWeapon!.name;
+      _nextUnlockImagePath = nextWeapon.imagePath;
+      _nextUnlockColor = nextWeapon.primaryColor;
+      _nextUnlockAt = nextWeapon.unlockAt;
+      _nextUnlockIsHero = false;
+    }
+    _starsToNextUnlock = _nextUnlockAt - _newStars;
+    if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
+  }
+
   void _openChest() {
     if (_chestOpened) return;
     setState(() => _chestOpened = true);
@@ -376,9 +415,9 @@ class _VictoryScreenState extends State<VictoryScreen>
         _newStars = updated;
         if (mounted) {
           setState(() {
-            if (_nextHero != null) {
-              _starsToNextHero = _nextHero!.unlockAt - _newStars;
-              if (_starsToNextHero < 0) _starsToNextHero = 0;
+            if (_nextUnlockName != null) {
+              _starsToNextUnlock = _nextUnlockAt - _newStars;
+              if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
             }
           });
         }
@@ -445,8 +484,8 @@ class _VictoryScreenState extends State<VictoryScreen>
         await Future.delayed(const Duration(milliseconds: 1000));
       }
 
-      // Queue encouragement about hero progress
-      if (_nextHero != null && _starsToNextHero > 0 && mounted) {
+      // Queue encouragement about next unlock progress
+      if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
         _audio.playVoice(
           _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
         );
@@ -928,10 +967,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                     // TREASURE CHEST
                     if (_showChest) _buildChest(),
 
-                    // Next hero progress (only after chest is opened)
+                    // Next unlock progress — hero or weapon, whichever is closer
                     if (_chestOpened &&
-                        _nextHero != null &&
-                        _starsToNextHero > 0)
+                        _nextUnlockName != null &&
+                        _starsToNextUnlock > 0)
                       Padding(
                         padding: const EdgeInsets.only(
                           top: 16,
@@ -944,14 +983,19 @@ class _VictoryScreenState extends State<VictoryScreen>
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle,
+                                shape: _nextUnlockIsHero
+                                    ? BoxShape.circle
+                                    : BoxShape.rectangle,
+                                borderRadius: _nextUnlockIsHero
+                                    ? null
+                                    : BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: _nextHero!.primaryColor,
+                                  color: _nextUnlockColor,
                                   width: 2.5,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: _nextHero!.primaryColor.withValues(alpha: 0.4),
+                                    color: _nextUnlockColor.withValues(alpha: 0.4),
                                     blurRadius: 8,
                                     spreadRadius: 1,
                                   ),
@@ -960,14 +1004,17 @@ class _VictoryScreenState extends State<VictoryScreen>
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  ClipOval(
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(
+                                      _nextUnlockIsHero ? 20 : 8,
+                                    ),
                                     child: ColorFiltered(
                                       colorFilter: const ColorFilter.mode(
                                         Colors.black54,
                                         BlendMode.saturation,
                                       ),
                                       child: Image.asset(
-                                        _nextHero!.imagePath,
+                                        _nextUnlockImagePath!,
                                         width: 40,
                                         height: 40,
                                         fit: BoxFit.cover,
@@ -989,7 +1036,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   borderRadius: BorderRadius.circular(7),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: _nextHero!.primaryColor.withValues(alpha: 0.35),
+                                      color: _nextUnlockColor.withValues(alpha: 0.35),
                                       blurRadius: 10,
                                       spreadRadius: 1,
                                     ),
@@ -1000,7 +1047,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   child: SizedBox(
                                     height: 14,
                                     child: LinearProgressIndicator(
-                                      value: (_newStars / _nextHero!.unlockAt).clamp(
+                                      value: (_newStars / _nextUnlockAt).clamp(
                                         0.0,
                                         1.0,
                                       ),
@@ -1008,7 +1055,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                         alpha: 0.15,
                                       ),
                                       valueColor: AlwaysStoppedAnimation(
-                                        _nextHero!.primaryColor,
+                                        _nextUnlockColor,
                                       ),
                                     ),
                                   ),
@@ -1023,14 +1070,14 @@ class _VictoryScreenState extends State<VictoryScreen>
                             ),
                             const SizedBox(width: 2),
                             Text(
-                              '$_starsToNextHero',
+                              '$_starsToNextUnlock',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                                 shadows: [
                                   Shadow(
-                                    color: _nextHero!.primaryColor.withValues(alpha: 0.8),
+                                    color: _nextUnlockColor.withValues(alpha: 0.8),
                                     blurRadius: 6,
                                   ),
                                 ],
