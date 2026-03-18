@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080">
+  <title>Brush Quest - Share Card</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 1080px;
+      height: 1350px;
+      overflow: hidden;
+      font-family: 'Fredoka', sans-serif;
+      background: #0D0B2E;
+    }
+
+    .card {
+      width: 1080px;
+      height: 1350px;
+      background: linear-gradient(170deg, #0D0B2E 0%, #1A1245 30%, #2D1B69 60%, #0D0B2E 100%);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* Stars background */
+    .stars {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .star {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.6;
+    }
+
+    .star.bright {
+      width: 4px;
+      height: 4px;
+      opacity: 0.9;
+      box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.4);
+    }
+
+    .sparkle {
+      position: absolute;
+      font-size: 24px;
+      opacity: 0.3;
+      color: #B8A9FF;
+    }
+
+    .sparkle.large {
+      font-size: 36px;
+      opacity: 0.2;
+    }
+
+    /* App icon */
+    .icon-wrap {
+      margin-top: 60px;
+      width: 140px;
+      height: 140px;
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(138, 43, 226, 0.5), 0 0 60px rgba(138, 43, 226, 0.2);
+      position: relative;
+      z-index: 2;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .icon-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Title */
+    .title {
+      margin-top: 28px;
+      font-size: 72px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: 4px;
+      text-shadow: 0 0 40px rgba(138, 43, 226, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Tagline */
+    .tagline {
+      margin-top: 8px;
+      font-size: 32px;
+      font-weight: 400;
+      color: #B8A9FF;
+      letter-spacing: 1px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Screenshot frame */
+    .screenshot-wrap {
+      margin-top: 36px;
+      width: 380px;
+      height: 680px;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), 0 0 80px rgba(138, 43, 226, 0.25);
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      z-index: 2;
+      background: #1A1245;
+    }
+
+    .screenshot-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Bottom section */
+    .bottom {
+      margin-top: auto;
+      margin-bottom: 50px;
+      display: flex;
+      align-items: center;
+      gap: 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .bottom-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #7C3AED, #A855F7);
+      padding: 10px 28px;
+      border-radius: 50px;
+      font-size: 22px;
+      font-weight: 600;
+      color: white;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+    }
+
+    /* QR code */
+    .qr-wrap {
+      width: 160px;
+      height: 160px;
+      background: white;
+      border-radius: 16px;
+      padding: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .qr-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* URL */
+    .url {
+      margin-top: 14px;
+      font-size: 24px;
+      font-weight: 600;
+      color: #E0D4FF;
+      letter-spacing: 1px;
+    }
+
+    /* Decorative glow orbs */
+    .glow-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+    }
+
+    .glow-orb.purple {
+      width: 300px;
+      height: 300px;
+      background: rgba(138, 43, 226, 0.15);
+      top: 200px;
+      right: -50px;
+    }
+
+    .glow-orb.cyan {
+      width: 250px;
+      height: 250px;
+      background: rgba(0, 200, 255, 0.08);
+      bottom: 300px;
+      left: -30px;
+    }
+
+    .glow-orb.pink {
+      width: 200px;
+      height: 200px;
+      background: rgba(236, 72, 153, 0.08);
+      top: 500px;
+      left: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Decorative glow orbs -->
+    <div class="glow-orb purple"></div>
+    <div class="glow-orb cyan"></div>
+    <div class="glow-orb pink"></div>
+
+    <!-- Star field -->
+    <div class="stars">
+      <div class="star" style="top:5%;left:8%"></div>
+      <div class="star bright" style="top:3%;left:25%"></div>
+      <div class="star" style="top:8%;left:45%"></div>
+      <div class="star" style="top:2%;left:62%"></div>
+      <div class="star bright" style="top:6%;left:78%"></div>
+      <div class="star" style="top:12%;left:92%"></div>
+      <div class="star" style="top:15%;left:15%"></div>
+      <div class="star bright" style="top:18%;left:55%"></div>
+      <div class="star" style="top:22%;left:88%"></div>
+      <div class="star" style="top:28%;left:5%"></div>
+      <div class="star bright" style="top:35%;left:95%"></div>
+      <div class="star" style="top:40%;left:10%"></div>
+      <div class="star" style="top:45%;left:92%"></div>
+      <div class="star bright" style="top:52%;left:3%"></div>
+      <div class="star" style="top:58%;left:96%"></div>
+      <div class="star" style="top:65%;left:7%"></div>
+      <div class="star bright" style="top:70%;left:90%"></div>
+      <div class="star" style="top:75%;left:12%"></div>
+      <div class="star" style="top:80%;left:85%"></div>
+      <div class="star bright" style="top:85%;left:20%"></div>
+      <div class="star" style="top:90%;left:70%"></div>
+      <div class="star" style="top:92%;left:40%"></div>
+      <div class="star bright" style="top:95%;left:88%"></div>
+      <div class="star" style="top:30%;left:35%"></div>
+      <div class="star" style="top:55%;left:70%"></div>
+      <div class="star" style="top:68%;left:50%"></div>
+      <div class="star bright" style="top:78%;left:65%"></div>
+      <div class="star" style="top:48%;left:20%"></div>
+      <div class="star" style="top:62%;left:82%"></div>
+      <div class="star bright" style="top:38%;left:72%"></div>
+
+      <!-- Sparkle decorations -->
+      <div class="sparkle" style="top:10%;left:85%">&#10022;</div>
+      <div class="sparkle large" style="top:25%;left:3%">&#10022;</div>
+      <div class="sparkle" style="top:55%;left:90%">&#10022;</div>
+      <div class="sparkle large" style="top:75%;left:5%">&#10022;</div>
+      <div class="sparkle" style="top:88%;left:75%">&#10022;</div>
+      <div class="sparkle" style="top:42%;left:8%">&#10022;</div>
+    </div>
+
+    <!-- App icon -->
+    <div class="icon-wrap">
+      <img src="../favicon.png" alt="Brush Quest" width="140" height="140">
+    </div>
+
+    <!-- Title -->
+    <div class="title">BRUSH QUEST</div>
+
+    <!-- Tagline -->
+    <div class="tagline">Turn brushing into a space battle!</div>
+
+    <!-- Screenshot -->
+    <div class="screenshot-wrap">
+      <img src="../screenshot_battle.jpg" alt="Brush Quest gameplay" width="380" height="680">
+    </div>
+
+    <!-- Bottom section: badge + QR -->
+    <div class="bottom">
+      <div class="bottom-text">
+        <div class="badge">
+          Free <span class="badge-dot"></span> Android
+        </div>
+        <div class="url">brushquest.app/get</div>
+      </div>
+      <div class="qr-wrap">
+        <img src="../qr-code.png" alt="QR code to download" width="144" height="144">
+      </div>
+    </div>
+  </div>
+</body>
+</html>

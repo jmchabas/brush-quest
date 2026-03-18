@@ -572,7 +572,7 @@
       </a>
       <h1>Build Log</h1>
       <p class="subtitle">From prototype to real business in 6 days. One dad, one AI, zero excuses.</p>
-      <span class="date-range">March 10 &ndash; 16, 2026</span>
+      <span class="date-range">March 10 &ndash; 18, 2026</span>
     </header>
 
     <!-- Stats bar -->
@@ -586,7 +586,7 @@
         <span class="stat-label">Commits</span>
       </div>
       <div class="stat-pill">
-        <span class="stat-number">618</span>
+        <span class="stat-number">588</span>
         <span class="stat-label">Tests</span>
       </div>
       <div class="stat-pill">
@@ -759,6 +759,29 @@
               <span class="tag business">accounting</span>
               <span class="tag infra">tooling</span>
               <span class="tag">ux</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Day 7: Mar 18 -->
+        <div class="timeline-entry">
+          <div class="timeline-dot"></div>
+          <span class="timeline-date">March 18</span>
+          <div class="timeline-card">
+            <h3>Dual Narrator: Kid Voice System</h3>
+            <p>What if the app talked to kids like a friend, not an adult? Designed a custom voice from scratch, wrote 193 scripts in 6-year-old language, and shipped a parent-facing toggle to switch narrators.</p>
+            <ul>
+              <li>5 rounds of ElevenLabs Voice Design (~20 previews) to find the right "excited best friend" voice</li>
+              <li>193 voice scripts rewritten for 6yo: "oh my gosh", "look look", "yay" &mdash; pure wonder, zero cool-kid attitude</li>
+              <li>Two voice profiles: high-energy for battle, warmer for descriptions</li>
+              <li>Batch generation script with 5 concurrent workers, auto-retry on rate limits</li>
+              <li>Parent settings toggle: "Classic" (adult narrator) vs "Buddy" (kid friend)</li>
+              <li>Architecture: <code>assets/audio/voices/{classic,buddy}/</code> with AudioService routing</li>
+            </ul>
+            <div class="tag-row">
+              <span class="tag">audio</span>
+              <span class="tag">ux</span>
+              <span class="tag infra">tooling</span>
             </div>
           </div>
         </div>

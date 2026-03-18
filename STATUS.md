@@ -11,23 +11,25 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v7 shipped + COPPA done + Cycle 4 complete (5 fixes + orphan cleanup)
+- **Status**: v7 shipped + COPPA done + dual narrator voice system + 588 tests passing
 - **Last session**: 2026-03-18
-- **Last commit**: `8668fab` — Cycle 4: orphan cleanup, smart progress bar, post-victory voice, VS icon
+- **Last commit**: (uncommitted) — Dual narrator voice system: "Classic" (Jessica) + "Buddy" (kid voice)
 - **What happened**:
-  - Cycle 4 full audit: 4 agents, benchmark vs Chomper Chums
-  - Deleted 21 orphaned audio files (~972KB), removed 3 dead preloads
-  - Victory progress bar shows closest unlock (hero or weapon, not just hero)
-  - Post-victory closure voice on home return (random from pool, mute-aware)
-  - Onboarding P1: "VS" text → animated lightning bolt icon
-  - 588 tests passing, APK 85.7MB (-1.0%)
+  - **Narrator voice selection**: Parent-facing toggle in Settings → Brushing to switch between "Classic" and "Buddy" voices
+  - **"BQ Buddy" voice**: Designed via ElevenLabs Voice Design, iterated through 5 rounds (~20 previews), selected "Paw Patrol leader" style — bright, heroic, plucky, pre-puberty
+  - **193 voice files generated** for buddy voice: all arcs, encouragements, card descriptions, hero/weapon intros, greetings, onboarding, world descriptions
+  - **All scripts rewritten for 6yo language**: "oh my gosh", "look look", "yay", "so cool" — pure wonder, no cool-kid attitude
+  - **Two voice profiles**: battle settings (stability 0.35, style 0.25, speed 1.0) and descriptive settings (stability 0.45, style 0.15, speed 0.95)
+  - **Architecture**: voice files moved to `assets/audio/voices/{classic,buddy}/`, AudioService routes via `_voiceAssetPath()`, SFX/music unchanged
+  - APK 116MB (up from 85.7MB due to 193 new voice files), uploaded to Google Drive
+  - 588 tests passing, dart analyze clean
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [ ] P2.1: Google Play Console families policy config
   - [ ] P2.2: Physical mailing address -> LLC workstream (see `/llc`)
 - **Blocked on**: Google Play developer account suspended (appeal pending)
-- **Next up**: Kid testing with Cycle 3+4 changes, hero energy system decision, Play Store submission
+- **Next up**: Kid testing buddy voice with Oliver & Theo, Play Store submission
 - **Needs CEO decision**: None
 
 ### LANDING PAGE
