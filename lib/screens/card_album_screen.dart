@@ -66,20 +66,11 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
     final visitCount = prefs.getInt('card_album_visit_count') ?? 0;
     await prefs.setInt('card_album_visit_count', visitCount + 1);
 
-    if (visitCount == 0) {
-      // First visit
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (mounted) {
-        AudioService().playVoice('voice_card_album_tutorial_1.mp3',
-            clearQueue: true, interrupt: true);
-      }
-    } else if (visitCount == 1 && _collectedIds.length <= 1) {
-      // Second visit with <=1 card
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (mounted) {
-        AudioService().playVoice('voice_card_album_tutorial_2.mp3',
-            clearQueue: true, interrupt: true);
-      }
+    // Play intro voice on every visit — "Collect them all by brushing your teeth!"
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) {
+      AudioService().playVoice('voice_card_album_intro.mp3',
+          clearQueue: true, interrupt: true);
     }
   }
 

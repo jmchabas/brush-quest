@@ -59,11 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _parentUnlocked = true;
         _mathError = null;
       });
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) {
-          AudioService().playVoice('voice_entry_settings.mp3', clearQueue: true, interrupt: true);
-        }
-      });
+      // No entry voice — the parent gate already established this is a grown-up area
     } else {
       setState(() {
         _mathError = 'Try again!';

@@ -39,8 +39,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         _progress.addAll(progress);
         _unlocked.addAll(unlocked);
       });
-      // Auto-play voice describing the current world on screen open
-      AudioService().playVoice('voice_world_$currentId.mp3', clearQueue: true, interrupt: true);
+      // Play intro voice first, then world description
+      AudioService().playVoice('voice_world_map_intro.mp3', clearQueue: true, interrupt: true);
+      AudioService().playVoice('voice_world_$currentId.mp3');
     }
   }
 
