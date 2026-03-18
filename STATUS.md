@@ -11,26 +11,30 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v7 shipped + COPPA compliance DONE + Cycle 1 complete
+- **Status**: v7 shipped + COPPA done + Cycle 2 complete (19 findings implemented)
 - **Last session**: 2026-03-16
-- **Last commit**: `35227d9` — Cycle 1: fix broken card images, COPPA data deletion, onboarding visuals, UX polish
+- **Last commit**: `7da3ca6` — Cycle 2: 19 UX/audio/economy fixes, cosmetic frames system, COPPA camera fix
 - **What happened**:
-  - Firebase Analytics with COPPA child-directed treatment (10 events, ad IDs disabled)
-  - COPPA compliance: camera defaults OFF, consent dialogs for Sign-In + camera, privacy policy link in Settings, "Delete child's data" relabeled, privacy policy rewritten (operator info, retention table, parental rights, consent mechanisms, internal ops exception)
-  - `url_launcher` added for in-app privacy policy link
-  - Business research stored in `research/` (6 files: competitors, pricing, monetization, B2B, COPPA, parent features)
+  - Cycle 2 full audit: 4 parallel analysis agents + synthesizer, benchmark vs Brusheez
+  - Onboarding: visual panels, motion icon, COPPA camera fix (no longer silently enabled), hero art
+  - Card album: mystery silhouettes for uncollected cards
+  - World map: adventure path with zigzag layout and curved connectors
+  - Home: skip picker for new users, hero breathing animation, welcome-back voice rotation
+  - Battle: hero 40% larger, cosmetic frame glow
+  - Shop: new FRAMES tab (7 cosmetic frames 3-17★), unlock voice stutter fix, progress indicators
+  - Settings: voice after parent gate, 2-step delete with math confirmation
+  - Victory: achievement voice rotation (3 variants)
+  - Audio: removed 19 orphaned preloads, committed voice arc system (33 files)
+  - Economy: hero frames fill dead zones between major unlocks
+  - 588 tests passing, APK 86.4MB
 - **COPPA Compliance Tracker**:
-  - [x] P1.1: Camera default → OFF
-  - [x] P1.2: Consent dialog before Google Sign-In
-  - [x] P1.3: Consent notice before camera enable
-  - [x] P1.4: Privacy policy link in Settings
-  - [x] P1.5: Privacy policy updated (COPPA 312.4 requirements)
-  - [x] P1.6: Firebase Console — data retention 2 months, Google Signals OFF, granular location OFF, ads personalization OFF, reporting identity Device-based (done 2026-03-15)
+  - [x] P1.1-P1.6: All code + Firebase Console done
+  - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [ ] P2.1: Google Play Console families policy config
-  - [ ] P2.2: Physical mailing address → LLC workstream (see `/llc`) — AnemosGP LLC filed, waiting on approval
+  - [ ] P2.2: Physical mailing address -> LLC workstream (see `/llc`)
 - **Blocked on**: Google Play developer account suspended (appeal pending)
-- **Next up**: Run Cycle 2 after kid testing, update privacy policy with LLC address once approved, Play Store submission
-- **Needs CEO decision**: None — COPPA code complete, LLC in progress via `/llc` workstream
+- **Next up**: Kid testing with Cycle 2 changes, Play Store submission
+- **Needs CEO decision**: None
 
 ### LANDING PAGE
 - **Status**: Live at jmchabas.github.io/brush-quest

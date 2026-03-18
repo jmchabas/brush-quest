@@ -64,9 +64,9 @@ class GreetingService {
     required int brushStreak,
     required int totalStars,
     required String? nextHeroName,
-    required int? nextHeroCost,
+    required int? nextHeroUnlockAt,
     required String? nextWeaponName,
-    required int? nextWeaponCost,
+    required int? nextWeaponUnlockAt,
     required String todayDate,
     required String? lastGreetingDate,
   }) {
@@ -83,8 +83,8 @@ class GreetingService {
     // Tease: show whichever unlock is closer
     String? teaseItemName;
     int? teaseStarsAway;
-    final heroDistance = (nextHeroCost != null) ? nextHeroCost - totalStars : null;
-    final weaponDistance = (nextWeaponCost != null) ? nextWeaponCost - totalStars : null;
+    final heroDistance = (nextHeroUnlockAt != null) ? nextHeroUnlockAt - totalStars : null;
+    final weaponDistance = (nextWeaponUnlockAt != null) ? nextWeaponUnlockAt - totalStars : null;
 
     if (heroDistance != null && heroDistance > 0 && weaponDistance != null && weaponDistance > 0) {
       if (weaponDistance <= heroDistance) {

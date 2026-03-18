@@ -16,11 +16,11 @@ void main() {
       expect(WeaponService.allWeapons.length, 6);
     });
 
-    test('weapon costs match expected progression (0/2/5/8/12/16)', () {
-      final expectedCosts = [0, 2, 5, 8, 12, 16];
+    test('weapon thresholds match expected progression (0/6/22/40/62/88)', () {
+      final expectedThresholds = [0, 6, 22, 40, 62, 88];
       for (int i = 0; i < WeaponService.allWeapons.length; i++) {
-        expect(WeaponService.allWeapons[i].cost, expectedCosts[i],
-            reason: 'Weapon ${WeaponService.allWeapons[i].id} should cost ${expectedCosts[i]}');
+        expect(WeaponService.allWeapons[i].unlockAt, expectedThresholds[i],
+            reason: 'Weapon ${WeaponService.allWeapons[i].id} should unlock at ${expectedThresholds[i]}');
       }
     });
 
@@ -43,7 +43,7 @@ void main() {
 
     // ── Default state ─────────────────────────────────────────────
 
-    test('default weapon is star_blaster (cost 0)', () async {
+    test('default weapon is star_blaster (unlockAt 0)', () async {
       final service = WeaponService();
       final selected = await service.getSelectedWeaponId();
       expect(selected, 'star_blaster');
@@ -67,7 +67,7 @@ void main() {
     test('getWeaponById returns correct weapon', () {
       final weapon = WeaponService.getWeaponById('flame_sword');
       expect(weapon.name, 'FLAME SWORD');
-      expect(weapon.cost, 2);
+      expect(weapon.unlockAt, 6);
     });
 
     test('getWeaponById returns star_blaster for unknown id', () {
@@ -103,45 +103,46 @@ void main() {
 
     // ── Unlock logic ──────────────────────────────────────────────
 
-    test('unlock succeeds when enough stars are available', () async {
+    test('unlock succeeds when stars meet threshold', () async {
       SharedPreferences.setMockInitialValues({'total_stars': 10});
       final service = WeaponService();
-      final result = await service.unlockWeapon('flame_sword'); // costs 2
+      final result = await service.unlockWeapon('flame_sword'); // unlockAt 6
       expect(result, true);
 
       final unlocked = await service.getUnlockedWeaponIds();
       expect(unlocked, contains('flame_sword'));
 
-      // Stars should be deducted
+      // Cumulative economy: stars are never deducted
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 8);
+      expect(prefs.getInt('total_stars'), 10);
     });
 
-    test('unlock fails when not enough stars', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 1});
+    test('unlock fails when stars below threshold', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 3});
       final service = WeaponService();
-      final result = await service.unlockWeapon('flame_sword'); // costs 2
+      final result = await service.unlockWeapon('flame_sword'); // unlockAt 6
       expect(result, false);
 
       final unlocked = await service.getUnlockedWeaponIds();
       expect(unlocked, isNot(contains('flame_sword')));
 
-      // Stars should not be deducted
+      // Stars unchanged
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 1);
+      expect(prefs.getInt('total_stars'), 3);
     });
 
-    test('unlock with exact star balance succeeds', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 5});
+    test('unlock with exact threshold succeeds', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 22});
       final service = WeaponService();
-      final result = await service.unlockWeapon('ice_hammer'); // costs 5
+      final result = await service.unlockWeapon('ice_hammer'); // unlockAt 22
       expect(result, true);
 
+      // Cumulative economy: stars unchanged
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 0);
+      expect(prefs.getInt('total_stars'), 22);
     });
 
-    test('unlocking already-unlocked weapon returns true and does not deduct stars', () async {
+    test('unlocking already-unlocked weapon returns true without change', () async {
       SharedPreferences.setMockInitialValues({
         'total_stars': 10,
         'unlocked_weapons': ['star_blaster', 'flame_sword'],
@@ -150,20 +151,19 @@ void main() {
       final result = await service.unlockWeapon('flame_sword');
       expect(result, true);
 
-      // Stars not deducted
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getInt('total_stars'), 10);
     });
 
-    test('unlock deducts correct amount for expensive weapon', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 50});
+    test('unlock does not deduct stars (cumulative economy)', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 100});
       final service = WeaponService();
-      await service.unlockWeapon('cosmic_burst'); // costs 16
+      await service.unlockWeapon('cosmic_burst'); // unlockAt 88
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 34);
+      expect(prefs.getInt('total_stars'), 100);
     });
 
-    test('unlocking with invalid weaponId returns false (no deduction)', () async {
+    test('unlocking with invalid weaponId returns false', () async {
       SharedPreferences.setMockInitialValues({'total_stars': 50});
       final service = WeaponService();
       final result = await service.unlockWeapon('fake_weapon_id');
@@ -197,16 +197,17 @@ void main() {
 
     // ── Multiple unlocks ──────────────────────────────────────────
 
-    test('unlocking multiple weapons deducts stars cumulatively', () async {
+    test('unlocking multiple weapons does not deduct stars', () async {
       SharedPreferences.setMockInitialValues({'total_stars': 50});
       final service = WeaponService();
 
-      await service.unlockWeapon('flame_sword'); // -2 = 48
-      await service.unlockWeapon('ice_hammer'); // -5 = 43
-      await service.unlockWeapon('lightning_wand'); // -8 = 35
+      await service.unlockWeapon('flame_sword'); // unlockAt 6
+      await service.unlockWeapon('ice_hammer'); // unlockAt 22
+      await service.unlockWeapon('lightning_wand'); // unlockAt 40
 
+      // Cumulative economy: stars stay at 50
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 35);
+      expect(prefs.getInt('total_stars'), 50);
 
       final unlocked = await service.getUnlockedWeaponIds();
       expect(unlocked, containsAll(['star_blaster', 'flame_sword', 'ice_hammer', 'lightning_wand']));

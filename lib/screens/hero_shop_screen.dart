@@ -66,13 +66,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
       await _loadData();
-    } else if (_stars >= hero.cost) {
+    } else if (_stars >= hero.unlockAt) {
       final success = await _heroService.unlockHero(hero.id);
       if (success) {
         await _heroService.selectHero(hero.id);
         HapticFeedback.heavyImpact();
-        AnalyticsService().logHeroUnlock(heroId: hero.id, starsSpent: hero.cost);
-        _playSelectionVoice(AudioService().heroIntroVoiceFor(hero.id));
+        AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _stars);
+        // Finding #8: Don't play voice here — the unlock dialog's initState
+        // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showHeroUnlockAnimation(hero);
         await _loadData();
       }
@@ -90,13 +91,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       await _loadData();
-    } else if (_stars >= weapon.cost) {
+    } else if (_stars >= weapon.unlockAt) {
       final success = await _weaponService.unlockWeapon(weapon.id);
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         HapticFeedback.heavyImpact();
-        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsSpent: weapon.cost);
-        _playSelectionVoice(AudioService().weaponIntroVoiceFor(weapon.id));
+        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsAtUnlock: _stars);
+        // Finding #8: Don't play voice here — the unlock dialog's initState
+        // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showWeaponUnlockAnimation(weapon);
         await _loadData();
       }
@@ -297,13 +299,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 final hero = HeroService.allHeroes[index];
                 final isUnlocked = _unlockedHeroes.contains(hero.id);
                 final isSelected = _selectedHeroId == hero.id;
-                final canAfford = _stars >= hero.cost;
+                final canUnlock = _stars >= hero.unlockAt;
 
                 return _HeroCard(
                   hero: hero,
                   isUnlocked: isUnlocked,
                   isSelected: isSelected,
-                  canAfford: canAfford,
+                  canAfford: canUnlock,
+                  currentStars: _stars,
                   onTap: () => _onHeroTap(hero),
                 );
               },
@@ -342,13 +345,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 final weapon = WeaponService.allWeapons[index];
                 final isUnlocked = _unlockedWeapons.contains(weapon.id);
                 final isSelected = _selectedWeaponId == weapon.id;
-                final canAfford = _stars >= weapon.cost;
+                final canUnlock = _stars >= weapon.unlockAt;
 
                 return _WeaponCard(
                   weapon: weapon,
                   isUnlocked: isUnlocked,
                   isSelected: isSelected,
-                  canAfford: canAfford,
+                  canAfford: canUnlock,
+                  currentStars: _stars,
                   onTap: () => _onWeaponTap(weapon),
                 );
               },
@@ -359,6 +363,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       ],
     );
   }
+
 }
 
 class _HeroCard extends StatelessWidget {
@@ -366,6 +371,7 @@ class _HeroCard extends StatelessWidget {
   final bool isUnlocked;
   final bool isSelected;
   final bool canAfford;
+  final int currentStars;
   final VoidCallback onTap;
 
   const _HeroCard({
@@ -373,6 +379,7 @@ class _HeroCard extends StatelessWidget {
     required this.isUnlocked,
     required this.isSelected,
     required this.canAfford,
+    required this.currentStars,
     required this.onTap,
   });
 
@@ -426,29 +433,11 @@ class _HeroCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (!isUnlocked)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.star,
-                          color: canAfford
-                              ? Colors.yellowAccent
-                              : Colors.white.withValues(alpha: 0.4),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${hero.cost}',
-                          style: TextStyle(
-                            color: canAfford
-                                ? Colors.yellowAccent
-                                : Colors.white.withValues(alpha: 0.4),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                  if (!isUnlocked && hero.unlockAt > 0)
+                    _LockedProgressIndicator(
+                      currentStars: currentStars,
+                      threshold: hero.unlockAt,
+                      canAfford: canAfford,
                     ),
                 ],
               ),
@@ -516,6 +505,7 @@ class _WeaponCard extends StatelessWidget {
   final bool isUnlocked;
   final bool isSelected;
   final bool canAfford;
+  final int currentStars;
   final VoidCallback onTap;
 
   const _WeaponCard({
@@ -523,6 +513,7 @@ class _WeaponCard extends StatelessWidget {
     required this.isUnlocked,
     required this.isSelected,
     required this.canAfford,
+    required this.currentStars,
     required this.onTap,
   });
 
@@ -576,29 +567,11 @@ class _WeaponCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (!isUnlocked)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.star,
-                          color: canAfford
-                              ? Colors.yellowAccent
-                              : Colors.white.withValues(alpha: 0.4),
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${weapon.cost}',
-                          style: TextStyle(
-                            color: canAfford
-                                ? Colors.yellowAccent
-                                : Colors.white.withValues(alpha: 0.4),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                  if (!isUnlocked && weapon.unlockAt > 0)
+                    _LockedProgressIndicator(
+                      currentStars: currentStars,
+                      threshold: weapon.unlockAt,
+                      canAfford: canAfford,
                     ),
                 ],
               ),
@@ -1019,3 +992,69 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
     );
   }
 }
+
+/// Progress indicator for locked items showing "X/Y" stars toward threshold
+/// and a mini linear progress bar. The bar only ever fills up — never resets.
+class _LockedProgressIndicator extends StatelessWidget {
+  final int currentStars;
+  final int threshold;
+  final bool canAfford;
+
+  const _LockedProgressIndicator({
+    required this.currentStars,
+    required this.threshold,
+    required this.canAfford,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (currentStars / threshold).clamp(0.0, 1.0);
+    final progressColor =
+        canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.5);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Star count text: "X/Y"
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.star,
+              color: progressColor,
+              size: 14,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              '$currentStars/$threshold',
+              style: TextStyle(
+                color: progressColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        // Mini progress bar
+        SizedBox(
+          width: 80,
+          height: 4,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                canAfford
+                    ? Colors.yellowAccent
+                    : Colors.white.withValues(alpha: 0.3),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

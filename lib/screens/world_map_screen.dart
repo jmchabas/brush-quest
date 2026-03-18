@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
 import '../services/world_service.dart';
@@ -38,8 +39,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         _progress.addAll(progress);
         _unlocked.addAll(unlocked);
       });
-      // Auto-play voice describing the current world on screen open
-      AudioService().playVoice('voice_world_$currentId.mp3', clearQueue: true, interrupt: true);
+      // Play intro voice first, then world description
+      AudioService().playVoice('voice_world_map_intro.mp3', clearQueue: true, interrupt: true);
+      AudioService().playVoice('voice_world_$currentId.mp3');
     }
   }
 
@@ -94,50 +96,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 ),
               ),
 
-              // World list — scrollable vertical path
+              // World path — scrollable adventure trail
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  itemCount: WorldService.allWorlds.length,
-                  itemBuilder: (context, index) {
-                    final world = WorldService.allWorlds[index];
-                    final isUnlocked = _unlocked[world.id] ?? false;
-                    final isCurrent = world.id == _currentWorldId;
-                    final progress = _progress[world.id] ?? 0;
-                    final isCompleted = progress >= world.missionsRequired;
-
-                    return Column(
-                      children: [
-                        if (index > 0)
-                          // Path connector between planets
-                          _PathConnector(isActive: isUnlocked),
-
-                        _WorldCard(
-                          world: world,
-                          isUnlocked: isUnlocked,
-                          isCurrent: isCurrent,
-                          isCompleted: isCompleted,
-                          progress: progress,
-                          onSetCurrent: (isUnlocked && !isCurrent && !isCompleted)
-                              ? () async {
-                                  final messenger = ScaffoldMessenger.of(context);
-                                  await _worldService.setCurrentWorld(world.id);
-                                  await _loadData();
-                                  if (mounted) {
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text('${world.name} is now your world!'),
-                                        backgroundColor: world.themeColor,
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  }
-                                }
-                              : null,
-                        ),
-                      ],
-                    );
-                  },
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 40, top: 8),
+                  child: _buildAdventurePath(context),
                 ),
               ),
             ],
@@ -146,64 +109,199 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       ),
     );
   }
-}
 
-class _PathConnector extends StatelessWidget {
-  final bool isActive;
+  Widget _buildAdventurePath(BuildContext context) {
+    final worlds = WorldService.allWorlds;
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Horizontal offset for zigzag: planets alternate left/right
+    final zigzagOffset = screenWidth * 0.15;
 
-  const _PathConnector({required this.isActive});
+    final children = <Widget>[];
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 40,
-      child: Center(
-        child: Container(
-          width: 3,
-          height: 40,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isActive
-                  ? [
-                      Colors.white.withValues(alpha: 0.5),
-                      Colors.white.withValues(alpha: 0.3),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.1),
-                      Colors.white.withValues(alpha: 0.05),
-                    ],
+    for (int i = 0; i < worlds.length; i++) {
+      final world = worlds[i];
+      final isUnlocked = _unlocked[world.id] ?? false;
+      final isCurrent = world.id == _currentWorldId;
+      final progress = _progress[world.id] ?? 0;
+      final isCompleted = progress >= world.missionsRequired;
+
+      // Determine horizontal alignment: even = left, odd = right
+      final isRight = i.isOdd;
+      final horizontalPadding = EdgeInsets.only(
+        left: isRight ? zigzagOffset * 2 : 24,
+        right: isRight ? 24 : zigzagOffset * 2,
+      );
+
+      // Draw curved dashed connector line between planets
+      if (i > 0) {
+        final prevUnlocked = _unlocked[worlds[i - 1].id] ?? false;
+        final prevRight = (i - 1).isOdd;
+        children.add(
+          SizedBox(
+            height: 60,
+            child: CustomPaint(
+              size: Size(screenWidth, 60),
+              painter: _CurvedDashPainter(
+                fromRight: prevRight,
+                toRight: isRight,
+                zigzagOffset: zigzagOffset,
+                screenWidth: screenWidth,
+                isActive: prevUnlocked && isUnlocked,
+                color: isUnlocked
+                    ? world.themeColor.withValues(alpha: 0.6)
+                    : Colors.white.withValues(alpha: 0.12),
+              ),
             ),
           ),
+        );
+      }
+
+      // Planet node
+      children.add(
+        Padding(
+          padding: horizontalPadding,
+          child: _PlanetNode(
+            world: world,
+            isUnlocked: isUnlocked,
+            isCurrent: isCurrent,
+            isCompleted: isCompleted,
+            progress: progress,
+            onTap: () {
+              // Always play the world description voice
+              AudioService().playVoice('voice_world_${world.id}.mp3', clearQueue: true, interrupt: true);
+              if (!isUnlocked) {
+                // Locked world — describe world, then say needs more brushing
+                AudioService().playVoice('voice_need_stars.mp3');
+                return;
+              }
+              if (!isCurrent && !isCompleted) {
+                // Unlocked but not current — set as current world
+                _setCurrentWorld(world);
+              }
+            },
+          ),
         ),
-      ),
-    );
+      );
+    }
+
+    return Column(children: children);
+  }
+
+  Future<void> _setCurrentWorld(WorldData world) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await _worldService.setCurrentWorld(world.id);
+    await _loadData();
+    if (mounted) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('${world.name} is now your world!'),
+          backgroundColor: world.themeColor,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
 
-class _WorldCard extends StatefulWidget {
+/// Draws a curved dashed line between two planet nodes.
+class _CurvedDashPainter extends CustomPainter {
+  final bool fromRight;
+  final bool toRight;
+  final double zigzagOffset;
+  final double screenWidth;
+  final bool isActive;
+  final Color color;
+
+  _CurvedDashPainter({
+    required this.fromRight,
+    required this.toRight,
+    required this.zigzagOffset,
+    required this.screenWidth,
+    required this.isActive,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Calculate center x positions of from/to planets
+    // Planet nodes are centered within their padded containers
+    // Even (left-aligned): center is at ~(24 + planetSize/2) from left
+    // Odd (right-aligned): center is at ~(screenWidth - 24 - planetSize/2) from left
+    const planetSize = 100.0;
+    final leftCenter = 24.0 + planetSize / 2;
+    final rightCenter = screenWidth - 24.0 - zigzagOffset * 2 + planetSize / 2;
+
+    // Adjust for actual available width
+    final fromX = fromRight ? rightCenter : leftCenter;
+    final toX = toRight ? rightCenter : leftCenter;
+
+    final startPoint = Offset(fromX, 0);
+    final endPoint = Offset(toX, size.height);
+
+    // Create a smooth curve between the two points
+    final path = Path();
+    path.moveTo(startPoint.dx, startPoint.dy);
+    // Use a cubic bezier with control points that create a nice S-curve
+    final midY = size.height / 2;
+    path.cubicTo(
+      fromX, midY,
+      toX, midY,
+      endPoint.dx, endPoint.dy,
+    );
+
+    // Draw as dashed line
+    _drawDashedPath(canvas, path, paint, dashLength: 6, gapLength: 5);
+  }
+
+  void _drawDashedPath(Canvas canvas, Path path, Paint paint,
+      {double dashLength = 6, double gapLength = 5}) {
+    final metrics = path.computeMetrics();
+    for (final metric in metrics) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final end = min(distance + dashLength, metric.length);
+        final extractPath = metric.extractPath(distance, end);
+        canvas.drawPath(extractPath, paint);
+        distance += dashLength + gapLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _CurvedDashPainter oldDelegate) {
+    return oldDelegate.isActive != isActive || oldDelegate.color != color;
+  }
+}
+
+/// A single planet node on the adventure path.
+class _PlanetNode extends StatefulWidget {
   final WorldData world;
   final bool isUnlocked;
   final bool isCurrent;
   final bool isCompleted;
   final int progress;
-  final VoidCallback? onSetCurrent;
+  final VoidCallback onTap;
 
-  const _WorldCard({
+  const _PlanetNode({
     required this.world,
     required this.isUnlocked,
     required this.isCurrent,
     required this.isCompleted,
     required this.progress,
-    this.onSetCurrent,
+    required this.onTap,
   });
 
   @override
-  State<_WorldCard> createState() => _WorldCardState();
+  State<_PlanetNode> createState() => _PlanetNodeState();
 }
 
-class _WorldCardState extends State<_WorldCard>
+class _PlanetNodeState extends State<_PlanetNode>
     with SingleTickerProviderStateMixin {
   late final AnimationController _glowController;
 
@@ -220,7 +318,7 @@ class _WorldCardState extends State<_WorldCard>
   }
 
   @override
-  void didUpdateWidget(covariant _WorldCard oldWidget) {
+  void didUpdateWidget(covariant _PlanetNode oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isCurrent && !oldWidget.isCurrent) {
       _glowController.repeat(reverse: true);
@@ -238,123 +336,190 @@ class _WorldCardState extends State<_WorldCard>
 
   @override
   Widget build(BuildContext context) {
+    final planetSize = widget.isCurrent ? 120.0 : 100.0;
+    final opacity = widget.isUnlocked ? 1.0 : 0.5;
+
     return GestureDetector(
-      onTap: () {
-        // Always play the world description voice
-        AudioService().playVoice('voice_world_${widget.world.id}.mp3', clearQueue: true, interrupt: true);
-        if (!widget.isUnlocked) {
-          // Locked world — describe world, then say needs more brushing
-          AudioService().playVoice('voice_need_stars.mp3');
-          return;
-        }
-        if (widget.onSetCurrent != null) {
-          // Unlocked but not current — set as current world
-          widget.onSetCurrent!();
-        }
-      },
-      child: AnimatedBuilder(
-        animation: _glowController,
-        builder: (context, child) {
-          final glowAlpha = widget.isCurrent
-              ? 0.2 + 0.4 * _glowController.value
-              : 0.0;
-          final glowBlur = widget.isCurrent
-              ? 12.0 + 16.0 * _glowController.value
-              : 0.0;
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: widget.isCurrent
-                    ? widget.world.themeColor
-                    : widget.isCompleted
-                    ? const Color(0xFF69F0AE).withValues(alpha: 0.5)
-                    : Colors.white.withValues(alpha: 0.1),
-                width: widget.isCurrent ? 2 : 1,
-              ),
-              boxShadow: widget.isCurrent
-                  ? [
-                      BoxShadow(
-                        color: widget.world.themeColor.withValues(alpha: glowAlpha),
-                        blurRadius: glowBlur,
-                        spreadRadius: 2,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: child,
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Planet image
-              SizedBox(
-                width: 100,
-                height: 100,
-                child: ColorFiltered(
-                  colorFilter: widget.isUnlocked
-                      ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
-                      : ColorFilter.mode(
-                          Colors.black.withValues(alpha: 0.7),
-                          BlendMode.srcATop,
-                        ),
-                  child: ClipOval(
-                    child: Image.asset(widget.world.imagePath, fit: BoxFit.cover),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      onTap: widget.onTap,
+      child: Opacity(
+        opacity: opacity,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // "YOU ARE HERE" indicator for current world
+            if (widget.isCurrent)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Icon(
+                      Icons.rocket_launch,
+                      color: widget.world.themeColor,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
                     Text(
-                      widget.world.name.toUpperCase(),
+                      'YOU ARE HERE',
                       style: TextStyle(
-                        color: widget.isUnlocked
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.4),
+                        color: widget.world.themeColor,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        letterSpacing: 1,
+                        letterSpacing: 2,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    // Progress bar
-                    if (widget.isUnlocked) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: SizedBox(
-                          height: 8,
-                          child: LinearProgressIndicator(
-                            value: widget.progress / widget.world.missionsRequired,
-                            backgroundColor: Colors.white.withValues(alpha: 0.1),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              widget.isCompleted
-                                  ? const Color(0xFF69F0AE)
-                                  : widget.world.themeColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else
-                      Icon(
-                        Icons.lock,
-                        color: Colors.white.withValues(alpha: 0.3),
-                        size: 18,
-                      ),
                   ],
                 ),
               ),
-              // Status icon — only for completed worlds
-              if (widget.isCompleted)
-                const Icon(Icons.check_circle, color: Color(0xFF69F0AE), size: 28),
-            ],
-          ),
+
+            // Planet image with glow and overlays
+            AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, child) {
+                final glowAlpha = widget.isCurrent
+                    ? 0.3 + 0.5 * _glowController.value
+                    : 0.0;
+                final glowBlur = widget.isCurrent
+                    ? 16.0 + 20.0 * _glowController.value
+                    : 0.0;
+                return Container(
+                  width: planetSize + 16,
+                  height: planetSize + 16,
+                  decoration: widget.isCurrent
+                      ? BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: widget.world.themeColor.withValues(alpha: glowAlpha),
+                              blurRadius: glowBlur,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        )
+                      : null,
+                  child: child,
+                );
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Planet image
+                  SizedBox(
+                    width: planetSize,
+                    height: planetSize,
+                    child: ColorFiltered(
+                      colorFilter: widget.isUnlocked
+                          ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                          : ColorFilter.mode(
+                              Colors.black.withValues(alpha: 0.6),
+                              BlendMode.srcATop,
+                            ),
+                      child: ClipOval(
+                        child: Image.asset(widget.world.imagePath, fit: BoxFit.cover),
+                      ),
+                    ),
+                  ),
+
+                  // Completed checkmark overlay
+                  if (widget.isCompleted)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF69F0AE),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.check, color: Colors.white, size: 18),
+                      ),
+                    ),
+
+                  // Lock icon overlay for locked worlds
+                  if (!widget.isUnlocked)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.lock,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 6),
+
+            // World name
+            Text(
+              widget.world.name.toUpperCase(),
+              style: TextStyle(
+                color: widget.isCurrent
+                    ? Colors.white
+                    : widget.isUnlocked
+                        ? Colors.white.withValues(alpha: 0.85)
+                        : Colors.white.withValues(alpha: 0.4),
+                fontWeight: FontWeight.bold,
+                fontSize: widget.isCurrent ? 15 : 13,
+                letterSpacing: 1.5,
+              ),
+            ),
+
+            const SizedBox(height: 4),
+
+            // Progress indicator (e.g., "3/5")
+            if (widget.isUnlocked)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: widget.isCompleted
+                      ? const Color(0xFF69F0AE).withValues(alpha: 0.2)
+                      : widget.world.themeColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: widget.isCompleted
+                        ? const Color(0xFF69F0AE).withValues(alpha: 0.4)
+                        : widget.world.themeColor.withValues(alpha: 0.4),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  widget.isCompleted
+                      ? 'COMPLETE'
+                      : '${widget.progress}/${widget.world.missionsRequired}',
+                  style: TextStyle(
+                    color: widget.isCompleted
+                        ? const Color(0xFF69F0AE)
+                        : widget.world.themeColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -49,14 +49,25 @@ class MonsterCard {
 
 class CardDropResult {
   final MonsterCard card;
+  final bool isNew;
+  final int worldCollected;
+  final int worldTotal;
+  final String worldName;
 
-  const CardDropResult({required this.card});
+  const CardDropResult({
+    required this.card,
+    this.isNew = true,
+    this.worldCollected = 0,
+    this.worldTotal = 7,
+    this.worldName = '',
+  });
 }
 
 class CardService {
   static const _collectedKey = 'collected_cards';
 
-  // ~40% base drop chance, boosted by streak
+  // Legacy drop chance — kept for test compatibility but no longer used.
+  // Every brush session now guarantees exactly 1 card.
   static double dropChance(int streak) => (0.40 + streak * 0.02).clamp(0.0, 0.70);
 
   // 70 cards: 7 per world (4 common, 2 rare, 1 epic) x 10 worlds
@@ -169,27 +180,74 @@ class CardService {
     }
   }
 
-  /// Roll for a card drop after brushing. Returns null if no drop.
-  Future<CardDropResult?> rollCardDrop(String currentWorldId, int streak) async {
-    final rng = Random();
-    if (rng.nextDouble() > dropChance(streak)) return null;
+  static const _worldOrder = [
+    'candy_crater', 'slime_swamp', 'sugar_volcano',
+    'shadow_nebula', 'cavity_fortress',
+    'frozen_tundra', 'toxic_jungle', 'crystal_cave',
+    'storm_citadel', 'dark_dimension',
+  ];
 
+  /// Guaranteed card drop after every brush session.
+  /// - Drops from current world first, prioritising uncollected cards.
+  /// - If current world is complete, moves to the next incomplete world.
+  /// - If ALL 70 cards are collected, drops a random duplicate (isNew = false).
+  Future<CardDropResult> guaranteedCardDrop(String currentWorldId) async {
+    final rng = Random();
     final collected = await getCollectedCardIds();
 
-    // Pool: current world + all previous worlds
-    final worldOrder = [
-      'candy_crater', 'slime_swamp', 'sugar_volcano',
-      'shadow_nebula', 'cavity_fortress',
-      'frozen_tundra', 'toxic_jungle', 'crystal_cave',
-      'storm_citadel', 'dark_dimension',
-    ];
-    final currentIdx = worldOrder.indexOf(currentWorldId);
-    if (currentIdx < 0) return null;
-    final eligibleWorlds = worldOrder.sublist(0, currentIdx + 1);
-    final pool = allCards.where((c) => eligibleWorlds.contains(c.worldId)).toList();
-    if (pool.isEmpty) return null;
+    // Find the target world: current world if it has uncollected cards,
+    // otherwise the next world with uncollected cards.
+    String? targetWorldId;
+    final currentIdx = _worldOrder.indexOf(currentWorldId);
+    if (currentIdx < 0) {
+      targetWorldId = _worldOrder.first;
+    } else {
+      // Check current world first
+      final currentWorldCards = cardsForWorld(currentWorldId);
+      final hasUncollected = currentWorldCards.any((c) => !collected.contains(c.id));
+      if (hasUncollected) {
+        targetWorldId = currentWorldId;
+      } else {
+        // Search subsequent worlds for uncollected cards
+        for (int i = currentIdx + 1; i < _worldOrder.length; i++) {
+          final wCards = cardsForWorld(_worldOrder[i]);
+          if (wCards.any((c) => !collected.contains(c.id))) {
+            targetWorldId = _worldOrder[i];
+            break;
+          }
+        }
+        // If nothing after, search earlier worlds
+        if (targetWorldId == null) {
+          for (int i = 0; i < currentIdx; i++) {
+            final wCards = cardsForWorld(_worldOrder[i]);
+            if (wCards.any((c) => !collected.contains(c.id))) {
+              targetWorldId = _worldOrder[i];
+              break;
+            }
+          }
+        }
+      }
+    }
 
-    // Weighted rarity selection
+    // ALL 70 cards collected — drop a random duplicate
+    if (targetWorldId == null) {
+      final card = allCards[rng.nextInt(allCards.length)];
+      final worldCards = cardsForWorld(card.worldId);
+      final worldCollectedCount = worldCards.where((c) => collected.contains(c.id)).length;
+      return CardDropResult(
+        card: card,
+        isNew: false,
+        worldCollected: worldCollectedCount,
+        worldTotal: worldCards.length,
+        worldName: _worldNameForId(card.worldId),
+      );
+    }
+
+    // Pick from uncollected cards in the target world
+    final targetCards = cardsForWorld(targetWorldId);
+    final uncollected = targetCards.where((c) => !collected.contains(c.id)).toList();
+
+    // Weighted rarity selection among uncollected
     final rarityRoll = rng.nextDouble();
     CardRarity targetRarity;
     if (rarityRoll < 0.10) {
@@ -200,17 +258,46 @@ class CardService {
       targetRarity = CardRarity.common;
     }
 
-    // Filter pool by rarity, fall back to any rarity
-    var candidates = pool.where((c) => c.rarity == targetRarity).toList();
-    if (candidates.isEmpty) candidates = pool;
+    var candidates = uncollected.where((c) => c.rarity == targetRarity).toList();
+    if (candidates.isEmpty) candidates = uncollected;
 
-    // Prefer uncollected cards — if all collected, no drop
-    final uncollected = candidates.where((c) => !collected.contains(c.id)).toList();
-    if (uncollected.isEmpty) return null;
-
-    final card = uncollected[rng.nextInt(uncollected.length)];
+    final card = candidates[rng.nextInt(candidates.length)];
     await collectCard(card.id);
-    return CardDropResult(card: card);
+
+    // Calculate world progress after collecting
+    final worldCollectedCount = targetCards.where(
+      (c) => collected.contains(c.id) || c.id == card.id,
+    ).length;
+
+    return CardDropResult(
+      card: card,
+      isNew: true,
+      worldCollected: worldCollectedCount,
+      worldTotal: targetCards.length,
+      worldName: _worldNameForId(targetWorldId),
+    );
+  }
+
+  /// Legacy method kept for backward compatibility.
+  /// Delegates to [guaranteedCardDrop] — always returns a card.
+  Future<CardDropResult?> rollCardDrop(String currentWorldId, int streak) async {
+    return guaranteedCardDrop(currentWorldId);
+  }
+
+  static String _worldNameForId(String worldId) {
+    const names = {
+      'candy_crater': 'Candy Crater',
+      'slime_swamp': 'Slime Swamp',
+      'sugar_volcano': 'Sugar Volcano',
+      'shadow_nebula': 'Shadow Nebula',
+      'cavity_fortress': 'Cavity Fortress',
+      'frozen_tundra': 'Frozen Tundra',
+      'toxic_jungle': 'Toxic Jungle',
+      'crystal_cave': 'Crystal Cave',
+      'storm_citadel': 'Storm Citadel',
+      'dark_dimension': 'Dark Dimension',
+    };
+    return names[worldId] ?? 'Unknown World';
   }
 
   /// Progressive card reveal: commons always visible (4),

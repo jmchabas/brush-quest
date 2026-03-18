@@ -119,18 +119,46 @@ void main() {
       expect(CardService.dropChance(20), closeTo(0.70, 0.001));
     });
 
-    // ── rollCardDrop returns null when all collected ──
+    // ── guaranteedCardDrop behaviour ──
 
-    test('rollCardDrop returns null when all eligible cards collected', () async {
+    test('guaranteedCardDrop always returns a card', () async {
+      final result = await service.guaranteedCardDrop('candy_crater');
+      expect(result.card, isNotNull);
+      expect(result.isNew, isTrue);
+    });
+
+    test('guaranteedCardDrop moves to next world when current is complete', () async {
       // Collect all candy_crater cards
       for (final c in CardService.cardsForWorld('candy_crater')) {
         await service.collectCard(c.id);
       }
-      // Run many trials — should always be null
-      for (int i = 0; i < 20; i++) {
-        final result = await service.rollCardDrop('candy_crater', 15);
-        expect(result, isNull);
+      final result = await service.guaranteedCardDrop('candy_crater');
+      // Should drop from slime_swamp (the next world)
+      expect(result.isNew, isTrue);
+      expect(result.card.worldId, 'slime_swamp');
+    });
+
+    test('guaranteedCardDrop returns duplicate when all 70 cards collected', () async {
+      // Collect every single card
+      for (final c in CardService.allCards) {
+        await service.collectCard(c.id);
       }
+      final result = await service.guaranteedCardDrop('candy_crater');
+      expect(result.isNew, isFalse);
+      expect(result.card, isNotNull);
+    });
+
+    test('guaranteedCardDrop includes world progress info', () async {
+      final result = await service.guaranteedCardDrop('candy_crater');
+      expect(result.worldCollected, greaterThan(0));
+      expect(result.worldTotal, 7);
+      expect(result.worldName, isNotEmpty);
+    });
+
+    test('rollCardDrop delegates to guaranteedCardDrop (never null)', () async {
+      final result = await service.rollCardDrop('candy_crater', 0);
+      expect(result, isNotNull);
+      expect(result!.card, isNotNull);
     });
 
     // ── Progressive card visibility ──

@@ -417,24 +417,21 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
 
-  // Encouragement voice categories
-  static const _energizingVoices = [
-    'voice_go_go_go.mp3',
-    'voice_super.mp3',
-    'voice_unstoppable.mp3',
-    'voice_nice_combo.mp3',
+  // Track last arc beat timestamp for companion voice collision avoidance
+  int _lastArcBeatTime = 0;
+
+  // Encouragement arcs: each arc is a 3-beat connected micro-story
+  // [beat1 = energizing @80%, beat2 = supportive @50%, beat3 = almost-there @20%]
+  static const _encouragementArcs = [
+    ['voice_arc1_beat1.mp3', 'voice_arc1_beat2.mp3', 'voice_arc1_beat3.mp3'],
+    ['voice_arc2_beat1.mp3', 'voice_arc2_beat2.mp3', 'voice_arc2_beat3.mp3'],
+    ['voice_arc3_beat1.mp3', 'voice_arc3_beat2.mp3', 'voice_arc3_beat3.mp3'],
+    ['voice_arc4_beat1.mp3', 'voice_arc4_beat2.mp3', 'voice_arc4_beat3.mp3'],
+    ['voice_arc5_beat1.mp3', 'voice_arc5_beat2.mp3', 'voice_arc5_beat3.mp3'],
+    ['voice_arc6_beat1.mp3', 'voice_arc6_beat2.mp3', 'voice_arc6_beat3.mp3'],
   ];
-  static const _supportiveVoices = [
-    'voice_youre_doing_great.mp3',
-    'voice_keep_it_up.mp3',
-    'voice_keep_going.mp3',
-    'voice_so_strong.mp3',
-  ];
-  static const _almostThereVoices = [
-    'voice_almost_there.mp3',
-    'voice_awesome.mp3',
-    'voice_wow_amazing.mp3',
-  ];
+  int _currentArcIndex = -1;
+  int _lastArcIndex = -1;
 
   @override
   void initState() {
@@ -894,6 +891,16 @@ class _BrushingScreenState extends State<BrushingScreen>
     _startCountdown();
   }
 
+  void _exitWorldIntro() {
+    _worldIntroTimer?.cancel();
+    _audio.stopMusic();
+    if (!mounted) return;
+    setState(() => _isQuitting = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
   void _playWorldMissionBriefing() {
     final voiceFile = _isBossSession
         ? 'voice_unstoppable.mp3'
@@ -966,6 +973,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== BRUSHING ====================
 
   void _startBrushing({bool resumeFromCheckpoint = false}) {
+    // Ensure we always have a valid arc (covers checkpoint resume)
+    if (_currentArcIndex < 0) _pickNextArc();
     if (!resumeFromCheckpoint) {
       _totalHits = 0;
       _attackStyleIndex = 0;
@@ -997,6 +1006,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _scheduleNextMicroReward();
 
     if (!resumeFromCheckpoint) {
+      _pickNextArc();
       _switchToPhase(BrushPhase.topLeft);
     }
 
@@ -1011,21 +1021,18 @@ class _BrushingScreenState extends State<BrushingScreen>
       final almostAt = (_phaseDuration * 0.20).round();
       if (_phaseSecondsLeft == energizeAt && !_playedEncouragement) {
         _playedEncouragement = true;
-        _audio.playVoice(
-          _energizingVoices[_random.nextInt(_energizingVoices.length)],
-        );
+        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
+        _audio.playVoice(_encouragementArcs[_currentArcIndex][0]);
       }
       if (_phaseSecondsLeft == supportAt && !_playedMidEncouragement) {
         _playedMidEncouragement = true;
-        _audio.playVoice(
-          _supportiveVoices[_random.nextInt(_supportiveVoices.length)],
-        );
+        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
+        _audio.playVoice(_encouragementArcs[_currentArcIndex][1]);
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
-        _audio.playVoice(
-          _almostThereVoices[_random.nextInt(_almostThereVoices.length)],
-        );
+        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
+        _audio.playVoice(_encouragementArcs[_currentArcIndex][2]);
       }
 
       if (_phaseSecondsLeft <= 0 && !_phaseTransitioning) {
@@ -1033,6 +1040,7 @@ class _BrushingScreenState extends State<BrushingScreen>
         _playedEncouragement = false;
         _playedMidEncouragement = false;
         _playedAlmostThere = false;
+        _pickNextArc();
         final currentIndex = brushPhaseOrder.indexOf(_phase);
         if (currentIndex < brushPhaseOrder.length - 1) {
           _triggerFinisher(() {
@@ -1380,6 +1388,23 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
+  /// Check if an arc beat recently played or is about to play (within 3s window).
+  /// Used to suppress companion voice when it would collide with arc beats.
+  bool _isArcBeatNearby() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Check if an arc beat played within the last 3 seconds
+    if (now - _lastArcBeatTime < 3000) return true;
+    // Check if an arc beat is scheduled within the next 3 seconds
+    final energizeAt = (_phaseDuration * 0.80).round();
+    final supportAt = (_phaseDuration * 0.50).round();
+    final almostAt = (_phaseDuration * 0.20).round();
+    for (final target in [energizeAt, supportAt, almostAt]) {
+      final secondsUntilBeat = _phaseSecondsLeft - target;
+      if (secondsUntilBeat >= 0 && secondsUntilBeat <= 3) return true;
+    }
+    return false;
+  }
+
   void _showNextCompanionMessage() {
     if (!mounted || _isPaused || _phase == BrushPhase.done) return;
     final icon = _companionIcons[_random.nextInt(_companionIcons.length)];
@@ -1388,7 +1413,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showCompanionBubble = true;
     });
 
-    _playNextEncouragementVoice();
+    // Suppress companion voice when an arc beat is nearby to avoid voice pileup
+    if (!_isArcBeatNearby()) {
+      _playNextEncouragementVoice();
+    }
 
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) setState(() => _showCompanionBubble = false);
@@ -1438,6 +1466,16 @@ class _BrushingScreenState extends State<BrushingScreen>
       wobblePhase: _random.nextDouble() * 2 * pi,
       personality: _MonsterPersonality.boss(_random),
     );
+  }
+
+  void _pickNextArc() {
+    int next = _random.nextInt(_encouragementArcs.length);
+    // Avoid repeating the same arc back-to-back
+    while (next == _lastArcIndex && _encouragementArcs.length > 1) {
+      next = _random.nextInt(_encouragementArcs.length);
+    }
+    _lastArcIndex = next;
+    _currentArcIndex = next;
   }
 
   void _playNextEncouragementVoice() {
@@ -1795,6 +1833,20 @@ class _BrushingScreenState extends State<BrushingScreen>
                   child: Image.asset(_world.imagePath, fit: BoxFit.cover),
                 ),
               ),
+              // Back/close button — lets kid exit without starting a brush session
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 8,
+                child: IconButton(
+                  onPressed: _exitWorldIntro,
+                  iconSize: 32,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.4),
+                    shape: const CircleBorder(),
+                  ),
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1894,7 +1946,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     final monsterSize = _isBossPhase ? 200.0 : 160.0;
-    final heroSize = 120.0;
+    final heroSize = 168.0;
 
     return Scaffold(
       body: AnimatedBuilder(
@@ -3033,12 +3085,12 @@ class _BrushingScreenState extends State<BrushingScreen>
                 child!,
                 // Weapon badge
                 Positioned(
-                  right: -8,
-                  bottom: -8,
+                  right: -10,
+                  bottom: -10,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    width: _heroLunging ? 54 : 46,
-                    height: _heroLunging ? 54 : 46,
+                    width: _heroLunging ? 76 : 64,
+                    height: _heroLunging ? 76 : 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _weapon.primaryColor.withValues(
@@ -3058,8 +3110,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                     child: ClipOval(
                       child: Image.asset(
                         _weapon.imagePath,
-                        width: _heroLunging ? 28 : 24,
-                        height: _heroLunging ? 28 : 24,
+                        width: _heroLunging ? 39 : 34,
+                        height: _heroLunging ? 39 : 34,
                         fit: BoxFit.cover,
                       ),
                     ),

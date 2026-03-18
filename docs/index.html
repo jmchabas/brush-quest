@@ -11,7 +11,7 @@
   <link rel="canonical" href="https://brushquest.app/">
 
 <!-- Security -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self'; media-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self'; media-src 'self'; connect-src 'self' https://buttondown.com;">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
@@ -47,7 +47,7 @@
       "@type": "Person",
       "name": "Jim Chabas"
     },
-    "downloadUrl": "https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R",
+    "downloadUrl": "https://github.com/jmchabas/brush-quest/releases/download/v1.0.0/app-release.apk",
     "offers": {
       "@type": "Offer",
       "price": "0",
@@ -1135,6 +1135,240 @@
         overflow-x: visible;
       }
     }
+
+    /* === Email Forms === */
+    .email-form {
+      display: flex;
+      gap: 8px;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .email-input {
+      flex: 1;
+      padding: 14px 20px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(124, 77, 255, 0.3);
+      border-radius: 50px;
+      color: var(--white);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    .email-input:focus {
+      border-color: var(--cyan);
+    }
+
+    .email-input::placeholder {
+      color: var(--white-dim);
+    }
+
+    .email-submit {
+      padding: 14px 28px;
+      background: var(--gradient-purple);
+      color: var(--white);
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(124, 77, 255, 0.4);
+    }
+
+    .email-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(124, 77, 255, 0.6);
+    }
+
+    .email-disclaimer {
+      font-size: 0.8rem;
+      color: var(--white-dim);
+      margin-top: 8px;
+    }
+
+    .email-success {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #4CAF50;
+      font-weight: 600;
+      font-size: 1rem;
+      padding: 14px 0;
+    }
+
+    .email-success svg {
+      width: 20px;
+      height: 20px;
+      fill: #4CAF50;
+    }
+
+    /* Hero email form (hidden by default, shown by JS for iOS/desktop) */
+    .hero-email {
+      display: none;
+      text-align: center;
+      order: 6;
+      margin-bottom: 24px;
+    }
+
+    .hero-email-heading {
+      font-size: clamp(1rem, 2.5vw, 1.15rem);
+      color: var(--white-soft);
+      margin-bottom: 16px;
+      max-width: 480px;
+    }
+
+    .hero-email .email-form {
+      margin-bottom: 8px;
+    }
+
+    /* Dedicated email section */
+    .email-section {
+      text-align: center;
+      padding: 0 24px 60px;
+    }
+
+    .email-card {
+      background: linear-gradient(135deg, rgba(124, 77, 255, 0.12), rgba(0, 229, 255, 0.06));
+      border: 1px solid rgba(124, 77, 255, 0.3);
+      border-radius: 28px;
+      padding: 48px 40px;
+      max-width: 600px;
+      margin: 0 auto;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .email-card h2 {
+      font-size: clamp(1.5rem, 3.5vw, 2rem);
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--white), var(--purple-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .email-card-sub {
+      color: var(--white-soft);
+      font-size: 1rem;
+      margin-bottom: 24px;
+      line-height: 1.6;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .email-interest {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin: 16px 0 8px;
+    }
+
+    .email-interest label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: var(--white-soft);
+      cursor: pointer;
+    }
+
+    .email-interest input[type="radio"] {
+      accent-color: var(--purple);
+    }
+
+    /* FAQ inline email forms */
+    .faq-email {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .faq-email-prompt {
+      font-size: 0.9rem;
+      color: var(--white-soft);
+      margin-bottom: 10px;
+    }
+
+    .faq-email .email-form {
+      max-width: 360px;
+      margin: 0;
+    }
+
+    .faq-email .email-input {
+      padding: 10px 16px;
+      font-size: 0.9rem;
+    }
+
+    .faq-email .email-submit {
+      padding: 10px 20px;
+      font-size: 0.85rem;
+    }
+
+    /* Sticky bar email form */
+    .sticky-email {
+      display: none;
+    }
+
+    .sticky-email .email-form {
+      max-width: none;
+      margin: 0;
+    }
+
+    .sticky-email .email-input {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      min-width: 180px;
+    }
+
+    .sticky-email .email-submit {
+      padding: 8px 20px;
+      font-size: 0.85rem;
+    }
+
+    /* Download section email form */
+    .download-email .email-form {
+      margin-bottom: 8px;
+    }
+
+    /* Responsive email forms */
+    @media (max-width: 768px) {
+      .hero-email { order: 3; }
+    }
+
+    @media (max-width: 480px) {
+      .email-form {
+        flex-direction: column;
+      }
+
+      .email-submit {
+        width: 100%;
+      }
+
+      .email-card {
+        padding: 36px 24px;
+      }
+
+      .email-interest {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .sticky-email .email-form {
+        flex-direction: row;
+      }
+
+      .sticky-email .email-input {
+        min-width: 120px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1156,10 +1390,19 @@
       <p class="hero-pivot">What if they started asking: "Is it time to brush yet?"</p>
       <h1>Brush Quest</h1>
       <p class="tagline">Brushing teeth is now the best part of bedtime.</p>
-      <a href="https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" class="hero-cta" rel="noopener noreferrer">
+      <a href="https://github.com/jmchabas/brush-quest/releases/download/v1.0.0/app-release.apk" class="hero-cta" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
         Download for Android
       </a>
+      <div class="hero-email" id="heroEmail">
+        <p class="hero-email-heading"></p>
+        <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
+          <input type="hidden" class="email-tag" name="tag" value="">
+          <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
+          <button type="submit" class="email-submit">Notify Me</button>
+        </form>
+        <p class="email-disclaimer">No spam, unsubscribe anytime.</p>
+      </div>
       <div class="trust-badges">
         <span class="trust-badge">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
@@ -1213,9 +1456,28 @@
       </div>
     </section>
 
+    <!-- ========== EMAIL SIGNUP ========== -->
+    <section class="email-section">
+      <div class="email-card">
+        <h2>Coming to iOS &amp; Google Play</h2>
+        <p class="email-card-sub">We're a dad-built app growing fast. Drop your email to hear when we hit your platform &mdash; and get occasional updates on what we're building.</p>
+        <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
+          <input type="hidden" class="email-tag" name="tag" value="">
+          <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
+          <button type="submit" class="email-submit">Keep Me Posted</button>
+        </form>
+        <div class="email-interest">
+          <label><input type="radio" name="interest" value="iphone"> iPhone</label>
+          <label><input type="radio" name="interest" value="playstore"> Android / Play Store</label>
+          <label><input type="radio" name="interest" value="curious"> Just curious</label>
+        </div>
+        <p class="email-disclaimer">No spam. Unsubscribe anytime.</p>
+      </div>
+    </section>
+
     <!-- ========== MID-PAGE CTA ========== -->
     <div class="mid-cta">
-      <a href="https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" rel="noopener noreferrer">
+      <a href="https://github.com/jmchabas/brush-quest/releases/download/v1.0.0/app-release.apk" rel="noopener noreferrer">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
         Get Brush Quest for Android
       </a>
@@ -1306,7 +1568,16 @@
           </details>
           <details>
             <summary>Why isn't it on the Play Store?</summary>
-            <div class="faq-answer">We're working on it! In the meantime, you can download the APK directly. It's the same app &mdash; just tap Download, open the file, and tap Install. Takes about 30 seconds.</div>
+            <div class="faq-answer">We're working on it! In the meantime, you can download the APK directly. It's the same app &mdash; just tap Download, open the file, and tap Install. Takes about 30 seconds.
+              <div class="faq-email">
+                <p class="faq-email-prompt"><strong>Want us to let you know when we're live?</strong></p>
+                <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
+                  <input type="hidden" class="email-tag" name="tag" value="android">
+                  <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
+                  <button type="submit" class="email-submit">Notify Me</button>
+                </form>
+              </div>
+            </div>
           </details>
           <details>
             <summary>What age is it for?</summary>
@@ -1318,7 +1589,15 @@
           </details>
           <details>
             <summary>What about iPhone?</summary>
-            <div class="faq-answer">Android only for now. We're working on an iOS version &mdash; stay tuned!</div>
+            <div class="faq-answer">Android only for now. We're working on an iOS version &mdash; <strong>want us to let you know?</strong>
+              <div class="faq-email">
+                <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
+                  <input type="hidden" class="email-tag" name="tag" value="ios">
+                  <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
+                  <button type="submit" class="email-submit">Notify Me</button>
+                </form>
+              </div>
+            </div>
           </details>
           <details>
             <summary>Is this just more screen time?</summary>
@@ -1337,16 +1616,24 @@
       <div class="download-box">
         <h2>Ready to End the Brushing Battle?</h2>
         <p class="download-sub">Tonight could be the last toothbrushing argument.</p>
-        <a href="https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" class="download-btn" rel="noopener noreferrer">
+        <a href="https://github.com/jmchabas/brush-quest/releases/download/v1.0.0/app-release.apk" class="download-btn" rel="noopener noreferrer">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
           Download APK
         </a>
-        <p class="download-size">84 MB &mdash; installs in about a minute</p>
+        <p class="download-size">87 MB &mdash; installs in about a minute</p>
         <ol class="install-steps">
           <li><strong>Tap Download</strong> on your Android phone</li>
           <li><strong>Open</strong> the downloaded file</li>
           <li><strong>Tap Install</strong> &mdash; done!</li>
         </ol>
+        <div class="download-email" id="downloadEmail" style="display:none;">
+          <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
+            <input type="hidden" class="email-tag" name="tag" value="">
+            <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
+            <button type="submit" class="email-submit">Stay in the Loop</button>
+          </form>
+          <p class="email-disclaimer">No spam, unsubscribe anytime.</p>
+        </div>
         <div class="download-trust">
           <span class="trust-badge">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
@@ -1385,13 +1672,81 @@
   <!-- Sticky CTA bar -->
   <div class="sticky-cta" id="stickyCta">
     <span class="sticky-cta-text">Toothbrushing app for kids</span>
-    <a href="https://drive.google.com/uc?export=download&id=16lFngFzb5AP0ltEK9Uq20Pp-pP04Sc2R" rel="noopener noreferrer">
+    <a href="https://github.com/jmchabas/brush-quest/releases/download/v1.0.0/app-release.apk" rel="noopener noreferrer" id="stickyCtaLink">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zm7-18v12.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L12 14.17V2z"/></svg>
       Download Now
     </a>
+    <div class="sticky-email" id="stickyEmail">
+      <form class="email-form" onsubmit="event.preventDefault(); submitEmailForm(this);">
+        <input type="hidden" class="email-tag" name="tag" value="">
+        <input type="email" class="email-input" name="email" placeholder="your@email.com" required>
+        <button type="submit" class="email-submit">Notify Me</button>
+      </form>
+    </div>
   </div>
 
   <script>
+    // Platform detection
+    var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    var isAndroidMobile = /Android/.test(navigator.userAgent);
+    var isDesktop = !isIOS && !isAndroidMobile;
+    var platform = isIOS ? 'ios' : (isDesktop ? 'desktop' : 'android');
+
+    // Set platform tags on all hidden tag inputs (ones without a preset value)
+    document.querySelectorAll('.email-tag').forEach(function(el) {
+      if (!el.value) el.value = platform;
+    });
+
+    // Auto-select interest radio based on platform
+    var autoRadio = document.querySelector('input[name="interest"][value="' +
+      (isIOS ? 'iphone' : (isDesktop ? 'curious' : 'playstore')) + '"]');
+    if (autoRadio) autoRadio.checked = true;
+
+    // Platform-specific CTA swaps for iOS and desktop
+    if (isIOS || isDesktop) {
+      // Hero: hide download button, show email form
+      var heroCta = document.querySelector('.hero-cta');
+      var heroEmail = document.getElementById('heroEmail');
+      if (heroCta) heroCta.style.display = 'none';
+      if (heroEmail) {
+        heroEmail.style.display = 'block';
+        var heading = heroEmail.querySelector('.hero-email-heading');
+        if (heading) {
+          heading.innerHTML = isIOS
+            ? 'Brush Quest is coming to iPhone.<br>Get notified when it launches.'
+            : 'Brush Quest is a free Android app (iOS coming soon).<br>Get notified when we launch on new platforms.';
+        }
+      }
+
+      // Mid-CTA: hide download link (not useful for non-Android)
+      var midCta = document.querySelector('.mid-cta');
+      if (midCta) midCta.style.display = 'none';
+
+      // Sticky bar: hide download link, show email form
+      var stickyLink = document.getElementById('stickyCtaLink');
+      var stickyText = document.querySelector('.sticky-cta-text');
+      var stickyEmail = document.getElementById('stickyEmail');
+      if (stickyLink) stickyLink.style.display = 'none';
+      if (stickyText) stickyText.style.display = 'none';
+      if (stickyEmail) stickyEmail.style.display = 'block';
+
+      // Download section: hide download stuff, show email form
+      var downloadBtn = document.querySelector('.download-btn');
+      var downloadSize = document.querySelector('.download-size');
+      var installSteps = document.querySelector('.install-steps');
+      var downloadEmail = document.getElementById('downloadEmail');
+      var downloadSub = document.querySelector('.download-sub');
+      if (downloadBtn) downloadBtn.style.display = 'none';
+      if (downloadSize) downloadSize.style.display = 'none';
+      if (installSteps) installSteps.style.display = 'none';
+      if (downloadEmail) downloadEmail.style.display = 'block';
+      if (downloadSub) {
+        downloadSub.textContent = isIOS
+          ? 'Android only for now \u2014 we\'re working on iOS.'
+          : 'Download it on your Android phone, or get notified about new platforms.';
+      }
+    }
+
     // Sticky CTA: show when hero scrolls out of view
     (function() {
       var hero = document.getElementById('hero');
@@ -1406,7 +1761,7 @@
 
     // Lazy video: only load and play when scrolled into view
     (function() {
-      var video = document.querySelector('.video-phone video');
+      var video = document.querySelector('.phone-bezel video');
       if (video && window.IntersectionObserver) {
         var vObs = new IntersectionObserver(function(entries) {
           if (entries[0].isIntersecting) {
@@ -1418,30 +1773,62 @@
       }
     })();
 
-    // iOS detection: show gentle message instead of dead-end download
-    (function() {
-      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
-        var btns = document.querySelectorAll('.hero-cta, .download-btn, .sticky-cta a, .mid-cta a');
-        btns.forEach(function(btn) {
-          btn.removeAttribute('href');
-          btn.style.cursor = 'default';
-          btn.innerHTML = btn.innerHTML.replace(/Download[^<]*|Get[^<]*/, 'Coming Soon to iOS');
-        });
-        var sub = document.querySelector('.download-sub');
-        if (sub) sub.textContent = 'Android only for now — share this with an Android friend!';
-        var steps = document.querySelector('.install-steps');
-        if (steps) steps.style.display = 'none';
+    // Email form submission via Buttondown
+    function submitEmailForm(form) {
+      var emailInput = form.querySelector('.email-input');
+      var email = emailInput.value.trim();
+      if (!email || !email.includes('@')) {
+        emailInput.style.borderColor = '#FF6B6B';
+        emailInput.addEventListener('input', function() {
+          emailInput.style.borderColor = '';
+        }, { once: true });
+        return;
       }
-    })();
 
+      var submitBtn = form.querySelector('.email-submit');
+      submitBtn.textContent = 'Sending...';
+      submitBtn.disabled = true;
+
+      var tag = form.querySelector('.email-tag');
+      var tagValue = tag ? tag.value : platform;
+
+      var interest = '';
+      var checkedRadio = form.querySelector('input[name="interest"]:checked');
+      if (checkedRadio) interest = checkedRadio.value;
+
+      var body = new URLSearchParams();
+      body.append('email', email);
+      body.append('tag', tagValue);
+      if (interest) body.append('metadata__interest', interest);
+
+      fetch('https://buttondown.com/api/emails/embed-subscribe/brushquest', {
+        method: 'POST',
+        body: body,
+        mode: 'no-cors'
+      }).then(function() {
+        showEmailSuccess(form);
+      }).catch(function() {
+        showEmailSuccess(form);
+      });
+    }
+
+    function showEmailSuccess(form) {
+      var parent = form.parentElement;
+      var successDiv = document.createElement('div');
+      successDiv.className = 'email-success';
+      successDiv.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> You\'re in! We\'ll be in touch.';
+      form.replaceWith(successDiv);
+      var disclaimer = parent.querySelector('.email-disclaimer');
+      if (disclaimer) disclaimer.style.display = 'none';
+      var interestDiv = parent.querySelector('.email-interest');
+      if (interestDiv) interestDiv.style.display = 'none';
+    }
+
+    // Share functionality
     function shareApp() {
       var url = 'https://brushquest.app/';
       var text = 'My kid actually asks to brush their teeth now. This free app turns brushing into a space battle game.';
-      var shareData = {
-        title: 'Brush Quest',
-        text: text,
-        url: url
-      };
+      var shareData = { title: 'Brush Quest', text: text, url: url };
 
       if (navigator.share) {
         navigator.share(shareData).catch(function() {});

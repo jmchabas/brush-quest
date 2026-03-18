@@ -73,7 +73,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
     AnalyticsService().logOnboardingComplete();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('camera_mode_configured', true);
     await prefs.setBool('onboarding_completed', true);
     if (mounted) {
       Navigator.of(context).pushReplacement(
@@ -184,10 +183,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.rocket_launch,
-                size: 80,
-                color: Colors.white,
+              child: ClipOval(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Image.asset(
+                    'assets/images/hero_blaze.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
           ),
@@ -226,8 +231,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             children: [
               // Monster
               SizedBox(
-                width: 56,
-                height: 56,
+                width: 80,
+                height: 80,
                 child: Image.asset(
                   'assets/images/monster_purple.png',
                   fit: BoxFit.contain,
@@ -235,8 +240,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
               const SizedBox(width: 8),
               SizedBox(
-                width: 56,
-                height: 56,
+                width: 80,
+                height: 80,
                 child: Image.asset(
                   'assets/images/monster_green.png',
                   fit: BoxFit.contain,
@@ -248,14 +253,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   'VS',
                   style: TextStyle(
                     color: const Color(0xFFFF4081),
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
               SizedBox(
-                width: 56,
-                height: 56,
+                width: 80,
+                height: 80,
                 child: Image.asset(
                   'assets/images/toothbrush_icon.png',
                   fit: BoxFit.contain,
@@ -271,45 +276,267 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Widget _buildHowToPlayPage() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Spacer(flex: 2),
-          Text(
-            'HOW TO PLAY',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF00E5FF),
-              letterSpacing: 3,
+          const Spacer(flex: 1),
+          // Step 1: BRUSH — large toothbrush with sparkle animation
+          _HowToPlayStep(
+            pulseAnim: _pulseController,
+            floatAnim: _floatController,
+            stepIndex: 0,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Glow ring behind
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    final glow = 0.2 + _pulseController.value * 0.4;
+                    return Container(
+                      width: 130,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF69F0AE)
+                                .withValues(alpha: glow),
+                            blurRadius: 30,
+                            spreadRadius: 8,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // Toothbrush image
+                AnimatedBuilder(
+                  animation: _floatController,
+                  builder: (context, child) {
+                    final angle =
+                        sin(_floatController.value * pi * 2) * 0.08;
+                    return Transform.rotate(angle: angle, child: child);
+                  },
+                  child: Image.asset(
+                    'assets/images/toothbrush_icon.png',
+                    width: 110,
+                    height: 110,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                // Sparkle particles
+                ...List.generate(4, (i) {
+                  final angle = (i / 4) * pi * 2;
+                  return AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, _) {
+                      final radius = 55.0 + _pulseController.value * 18;
+                      final opacity = 0.3 + _pulseController.value * 0.7;
+                      final sparkleSize =
+                          6.0 + _pulseController.value * 6;
+                      return Transform.translate(
+                        offset: Offset(
+                          cos(angle + _pulseController.value * 0.5) *
+                              radius,
+                          sin(angle + _pulseController.value * 0.5) *
+                              radius,
+                        ),
+                        child: Icon(
+                          Icons.auto_awesome,
+                          color: const Color(0xFF69F0AE)
+                              .withValues(alpha: opacity),
+                          size: sparkleSize,
+                        ),
+                      );
+                    },
+                  );
+                }),
+              ],
             ),
           ),
-          const SizedBox(height: 36),
-          _OnboardingStep(
-            imagePath: 'assets/images/toothbrush_icon.png',
-            color: const Color(0xFF69F0AE),
-            title: 'BRUSH YOUR TEETH',
-            subtitle: 'Brush for 2 minutes to win!',
-            animation: _pulseController,
+          const SizedBox(height: 8),
+          // Arrow connector
+          _StepArrow(animation: _pulseController, color: const Color(0xFF7C4DFF)),
+          const SizedBox(height: 8),
+          // Step 2: FIGHT — monster being attacked with zap
+          _HowToPlayStep(
+            pulseAnim: _pulseController,
+            floatAnim: _floatController,
+            stepIndex: 1,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Glow behind
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    final glow = 0.15 + _pulseController.value * 0.35;
+                    return Container(
+                      width: 140,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF7C4DFF)
+                                .withValues(alpha: glow),
+                            blurRadius: 25,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // Monster shaking on "hit"
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final shake =
+                        sin(_pulseController.value * pi * 4) * 3;
+                    return Transform.translate(
+                      offset: Offset(shake, 0),
+                      child: child,
+                    );
+                  },
+                  child: Image.asset(
+                    'assets/images/monster_purple.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                // Zap / hit effect
+                Positioned(
+                  top: 0,
+                  right: 10,
+                  child: AnimatedBuilder(
+                    animation: _glowController,
+                    builder: (context, _) {
+                      final scale =
+                          0.7 + _glowController.value * 0.5;
+                      final opacity =
+                          0.4 + _glowController.value * 0.6;
+                      return Transform.scale(
+                        scale: scale,
+                        child: Icon(
+                          Icons.flash_on,
+                          color: const Color(0xFFFFD740)
+                              .withValues(alpha: opacity),
+                          size: 44,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Weapon overlay
+                Positioned(
+                  bottom: 0,
+                  left: 10,
+                  child: AnimatedBuilder(
+                    animation: _glowController,
+                    builder: (context, child) {
+                      final angle =
+                          -0.2 + sin(_glowController.value * pi) * 0.3;
+                      return Transform.rotate(
+                          angle: angle, child: child);
+                    },
+                    child: Image.asset(
+                      'assets/images/weapon_flame_sword.png',
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          _OnboardingStep(
-            icon: Icons.videocam,
-            color: const Color(0xFF7C4DFF),
-            title: 'YOUR MOVES POWER ATTACKS',
-            subtitle: 'The faster you brush, the harder you fight the monsters!',
-            animation: _pulseController,
+          const SizedBox(height: 8),
+          // Arrow connector
+          _StepArrow(animation: _pulseController, color: const Color(0xFFFFD740)),
+          const SizedBox(height: 8),
+          // Step 3: WIN — large star with radiating glow
+          _HowToPlayStep(
+            pulseAnim: _pulseController,
+            floatAnim: _floatController,
+            stepIndex: 2,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Radiating glow rings
+                ...List.generate(3, (i) {
+                  return AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, _) {
+                      final delay = i * 0.2;
+                      final t =
+                          ((_pulseController.value + delay) % 1.0);
+                      final ringSize = 60.0 + t * 50;
+                      final opacity = (1.0 - t) * 0.3;
+                      return Container(
+                        width: ringSize,
+                        height: ringSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFFFFD740)
+                                .withValues(alpha: opacity),
+                            width: 2,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+                // Star glow
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) {
+                    final glow = 0.3 + _pulseController.value * 0.5;
+                    return Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD740)
+                                .withValues(alpha: glow),
+                            blurRadius: 35,
+                            spreadRadius: 10,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                // Star icon with bounce
+                AnimatedBuilder(
+                  animation: _floatController,
+                  builder: (context, _) {
+                    final bounce =
+                        sin(_floatController.value * pi) * 6;
+                    final scale =
+                        0.95 + _pulseController.value * 0.1;
+                    return Transform.translate(
+                      offset: Offset(0, -bounce),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: const Icon(
+                          Icons.star_rounded,
+                          color: Color(0xFFFFD740),
+                          size: 90,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
-          _OnboardingStep(
-            icon: Icons.star,
-            color: Colors.yellowAccent,
-            title: 'EARN STARS',
-            subtitle: 'Unlock new heroes and weapons!',
-            animation: _pulseController,
-          ),
-          const Spacer(flex: 3),
+          const Spacer(flex: 1),
         ],
       ),
     );
@@ -466,83 +693,88 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-class _OnboardingStep extends StatelessWidget {
-  final IconData? icon;
-  final String? imagePath;
-  final Color color;
-  final String title;
-  final String subtitle;
-  final AnimationController animation;
+/// A single step in the How-to-Play tutorial.
+/// Wraps each visual in a glass-like pill with Blaze as a guide character.
+class _HowToPlayStep extends StatelessWidget {
+  final AnimationController pulseAnim;
+  final AnimationController floatAnim;
+  final int stepIndex;
+  final Widget child;
 
-  const _OnboardingStep({
-    this.icon,
-    this.imagePath,
-    required this.color,
-    required this.title,
-    required this.subtitle,
-    required this.animation,
+  const _HowToPlayStep({
+    required this.pulseAnim,
+    required this.floatAnim,
+    required this.stepIndex,
+    required this.child,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        AnimatedBuilder(
-          animation: animation,
-          builder: (context, child) {
-            final glow = 0.3 + animation.value * 0.3;
-            return Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(alpha: 0.15),
-                border: Border.all(
-                  color: color.withValues(alpha: 0.5),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: glow),
-                    blurRadius: 12,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: imagePath != null
-                  ? ClipOval(
-                      child: Image.asset(imagePath!, width: 40, height: 40),
-                    )
-                  : Icon(icon, color: color, size: 28),
-            );
-          },
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
+    return SizedBox(
+      height: 150,
+      child: Row(
+        children: [
+          // Blaze guide character on the left, only on the first step
+          if (stepIndex == 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: AnimatedBuilder(
+                animation: floatAnim,
+                builder: (context, child) {
+                  final y = sin(floatAnim.value * pi) * 5;
+                  return Transform.translate(
+                    offset: Offset(0, y),
+                    child: child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/images/hero_blaze.png',
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 14,
-                ),
-              ),
-            ],
+            )
+          else
+            const SizedBox(width: 60),
+          // Main step visual
+          Expanded(
+            child: Center(child: child),
           ),
-        ),
-      ],
+          // Balance the layout
+          const SizedBox(width: 60),
+        ],
+      ),
+    );
+  }
+}
+
+/// Animated arrow connecting the how-to-play steps.
+class _StepArrow extends StatelessWidget {
+  final AnimationController animation;
+  final Color color;
+
+  const _StepArrow({
+    required this.animation,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final offset = animation.value * 4;
+        final opacity = 0.4 + animation.value * 0.4;
+        return Transform.translate(
+          offset: Offset(0, offset),
+          child: Icon(
+            Icons.keyboard_double_arrow_down_rounded,
+            color: color.withValues(alpha: opacity),
+            size: 32,
+          ),
+        );
+      },
     );
   }
 }

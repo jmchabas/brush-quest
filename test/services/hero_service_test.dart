@@ -16,11 +16,11 @@ void main() {
       expect(HeroService.allHeroes.length, 6);
     });
 
-    test('hero costs match expected progression (0/4/7/10/14/18)', () {
-      final expectedCosts = [0, 4, 7, 10, 14, 18];
+    test('hero thresholds match expected progression (0/14/30/50/74/98)', () {
+      final expectedThresholds = [0, 14, 30, 50, 74, 98];
       for (int i = 0; i < HeroService.allHeroes.length; i++) {
-        expect(HeroService.allHeroes[i].cost, expectedCosts[i],
-            reason: 'Hero ${HeroService.allHeroes[i].id} should cost ${expectedCosts[i]}');
+        expect(HeroService.allHeroes[i].unlockAt, expectedThresholds[i],
+            reason: 'Hero ${HeroService.allHeroes[i].id} should unlock at ${expectedThresholds[i]}');
       }
     });
 
@@ -36,7 +36,7 @@ void main() {
 
     // ── Default state ─────────────────────────────────────────────
 
-    test('default hero is blaze (cost 0)', () async {
+    test('default hero is blaze (unlockAt 0)', () async {
       final service = HeroService();
       final selected = await service.getSelectedHeroId();
       expect(selected, 'blaze');
@@ -60,7 +60,7 @@ void main() {
     test('getHeroById returns correct hero', () {
       final hero = HeroService.getHeroById('frost');
       expect(hero.name, 'FROST');
-      expect(hero.cost, 4);
+      expect(hero.unlockAt, 14);
     });
 
     test('getHeroById returns blaze for unknown id', () {
@@ -96,45 +96,46 @@ void main() {
 
     // ── Unlock logic ──────────────────────────────────────────────
 
-    test('unlock succeeds when enough stars are available', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 10});
+    test('unlock succeeds when stars meet threshold', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 20});
       final service = HeroService();
-      final result = await service.unlockHero('frost'); // costs 4
+      final result = await service.unlockHero('frost'); // unlockAt 14
       expect(result, true);
 
       final unlocked = await service.getUnlockedHeroIds();
       expect(unlocked, contains('frost'));
 
-      // Stars should be deducted
+      // Cumulative economy: stars are never deducted
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 6);
+      expect(prefs.getInt('total_stars'), 20);
     });
 
-    test('unlock fails when not enough stars', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 3});
+    test('unlock fails when stars below threshold', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 10});
       final service = HeroService();
-      final result = await service.unlockHero('frost'); // costs 4
+      final result = await service.unlockHero('frost'); // unlockAt 14
       expect(result, false);
 
       final unlocked = await service.getUnlockedHeroIds();
       expect(unlocked, isNot(contains('frost')));
 
-      // Stars should not be deducted
+      // Stars unchanged
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 3);
+      expect(prefs.getInt('total_stars'), 10);
     });
 
-    test('unlock with exact star balance succeeds', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 4});
+    test('unlock with exact threshold succeeds', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 14});
       final service = HeroService();
-      final result = await service.unlockHero('frost'); // costs 4
+      final result = await service.unlockHero('frost'); // unlockAt 14
       expect(result, true);
 
+      // Cumulative economy: stars unchanged
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 0);
+      expect(prefs.getInt('total_stars'), 14);
     });
 
-    test('unlocking already-unlocked hero returns true and does not deduct stars', () async {
+    test('unlocking already-unlocked hero returns true without change', () async {
       SharedPreferences.setMockInitialValues({
         'total_stars': 10,
         'unlocked_heroes': ['blaze', 'frost'],
@@ -143,23 +144,19 @@ void main() {
       final result = await service.unlockHero('frost');
       expect(result, true);
 
-      // Stars not deducted
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getInt('total_stars'), 10);
     });
 
-    test('unlock deducts correct amount for each hero', () async {
-      // Unlock bolt (cost 7)
+    test('unlock does not deduct stars (cumulative economy)', () async {
       SharedPreferences.setMockInitialValues({'total_stars': 50});
       final service = HeroService();
-      await service.unlockHero('bolt');
+      await service.unlockHero('bolt'); // unlockAt 30
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('total_stars'), 43);
+      expect(prefs.getInt('total_stars'), 50);
     });
 
-    test('unlocking with invalid heroId returns blaze fallback (no deduction)', () async {
-      // getHeroById('fake') returns blaze (id='blaze'), but hero.id != 'fake'
-      // so the method returns false
+    test('unlocking with invalid heroId returns false', () async {
       SharedPreferences.setMockInitialValues({'total_stars': 50});
       final service = HeroService();
       final result = await service.unlockHero('fake_hero_id');
