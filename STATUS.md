@@ -11,35 +11,40 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v7 shipped + COPPA done + Cycle 3 complete (12 findings + benchmark card reveal)
-- **Last session**: 2026-03-17
-- **Last commit**: `3794296` — Cycle 3: 12 UX/audio fixes, guaranteed card drops, dramatic victory reveal
+- **Status**: v7 shipped + COPPA done + Cycle 4 complete (5 fixes + orphan cleanup)
+- **Last session**: 2026-03-18
+- **Last commit**: `8668fab` — Cycle 4: orphan cleanup, smart progress bar, post-victory voice, VS icon
 - **What happened**:
-  - Cycle 3 full audit: 4 agents + synthesizer, benchmark vs Disney Magic Timer
-  - First-launch: welcome voice + bouncing tap hand affordance for all users
-  - Brushing: arc/companion collision suppression, back button on world intro
-  - Onboarding P2: animated 3-step visual tutorial (replaced text labels)
-  - Card album: smart intro voice (first 4 visits or 7-day gap), 2-column larger cards
-  - Settings: camera icon sensors, friendly sign-in error, camera init fix
-  - Victory: spaced reward timing, dramatic card reveal with rarity glow, guaranteed 1 card/brush
-  - Economy: aligned with cumulative model (cost→unlockAt, no star deduction)
-  - 591 tests passing, APK 86.6MB
+  - Cycle 4 full audit: 4 agents, benchmark vs Chomper Chums
+  - Deleted 21 orphaned audio files (~972KB), removed 3 dead preloads
+  - Victory progress bar shows closest unlock (hero or weapon, not just hero)
+  - Post-victory closure voice on home return (random from pool, mute-aware)
+  - Onboarding P1: "VS" text → animated lightning bolt icon
+  - 588 tests passing, APK 85.7MB (-1.0%)
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [ ] P2.1: Google Play Console families policy config
   - [ ] P2.2: Physical mailing address -> LLC workstream (see `/llc`)
 - **Blocked on**: Google Play developer account suspended (appeal pending)
-- **Next up**: Kid testing with Cycle 3 changes, visual emulator test of card reveal, Play Store submission
+- **Next up**: Kid testing with Cycle 3+4 changes, hero energy system decision, Play Store submission
 - **Needs CEO decision**: None
 
 ### LANDING PAGE
-- **Status**: Live at jmchabas.github.io/brush-quest
-- **Last session**: 2026-03-14
-- **Last commit**: `e35f87d` — Landing page audit fixes: SEO, performance, conversion, security
-- **What happened**: Copy rewritten to sell outcomes. SEO/OG tags added. Security headers.
+- **Status**: Live at brushquest.app — email capture LIVE via Buttondown
+- **Last session**: 2026-03-18
+- **Last commit**: `9354055` — Desktop hero: QR code to open on phone, email form secondary
+- **What happened**:
+  - Platform-aware email capture (6 forms across the page)
+  - Android mobile: download button + email section below screenshots
+  - iOS mobile: email form in hero + sticky bar ("Coming to iPhone")
+  - Desktop: QR code in hero (scan to open on phone) + secondary email form
+  - FAQ inline forms for "What about iPhone?" and "Why not on Play Store?"
+  - Buttondown account created (handle: `brushquest`, free tier, 100 subs)
+  - Privacy policy updated with Buttondown disclosure + data retention
+  - Tags for segmentation: ios/desktop/android + interest metadata
 - **Blocked on**: No Play Store link yet (developer account appeal pending)
-- **Next up**: Email capture form, Play Store badge once approved
+- **Next up**: Play Store badge once approved, monitor first signups
 - **Needs CEO decision**: None
 
 ### PRICING
@@ -175,4 +180,4 @@
 | Google Play developer account suspended | Jim | 2026-03-14 | Blocks ALL user acquisition | APPEAL PENDING — verification failed, appeal submitted |
 | No Firebase Analytics events | APP | 2026-03-14 | Flying blind on retention | DONE — COPPA-compliant, 10 events instrumented |
 | No privacy policy page | LANDING | 2026-03-14 | Blocks Play Store | DONE — COPPA-compliant, in-app link added |
-| No email capture on landing page | LANDING | 2026-03-14 | Losing potential early adopters | TODO |
+| No email capture on landing page | LANDING | 2026-03-14 | Losing potential early adopters | DONE — Buttondown, platform-aware forms, QR code for desktop |
