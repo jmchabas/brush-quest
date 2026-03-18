@@ -11,18 +11,17 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v7 shipped + COPPA done + dual narrator voice system + 588 tests passing
+- **Status**: Cycle 5 shipped — voice preload, card duplicates, visual progress, audio compression + 593 tests
 - **Last session**: 2026-03-18
-- **Last commit**: (uncommitted) — Dual narrator voice system: "Classic" (Jessica) + "Buddy" (kid voice)
+- **Last commit**: `35ccca1` — Cycle 5 implementation (11 findings, 7 streams)
 - **What happened**:
-  - **Narrator voice selection**: Parent-facing toggle in Settings → Brushing to switch between "Classic" and "Buddy" voices
-  - **"BQ Buddy" voice**: Designed via ElevenLabs Voice Design, iterated through 5 rounds (~20 previews), selected "Paw Patrol leader" style — bright, heroic, plucky, pre-puberty
-  - **193 voice files generated** for buddy voice: all arcs, encouragements, card descriptions, hero/weapon intros, greetings, onboarding, world descriptions
-  - **All scripts rewritten for 6yo language**: "oh my gosh", "look look", "yay", "so cool" — pure wonder, no cool-kid attitude
-  - **Two voice profiles**: battle settings (stability 0.35, style 0.25, speed 1.0) and descriptive settings (stability 0.45, style 0.15, speed 0.95)
-  - **Architecture**: voice files moved to `assets/audio/voices/{classic,buddy}/`, AudioService routes via `_voiceAssetPath()`, SFX/music unchanged
-  - APK 116MB (up from 85.7MB due to 193 new voice files), uploaded to Google Drive
-  - 588 tests passing, dart analyze clean
+  - **Voice system**: preload on narrator switch (instant playback), voice preview on toggle, sync voice_style to cloud, deleted 12 orphaned buddy files
+  - **Card duplicates**: tracking system (card_dup_count_ keys), bonus star every 5 dupes, POWER UP badge on victory, x2/x3 badges in album, card progress bar (X/70) when all heroes/weapons unlocked
+  - **Visual progress**: star icons on world map (replaces "3/5" text), step numbers on onboarding P2, removed numeric fractions from hero shop + card album
+  - **Audio compression**: 360+ voice MP3s re-encoded to 64kbps mono 22050Hz (25MB → 13MB saved)
+  - **Widget tests**: 5 new tests (settings parent gate, camera default, victory screen, brushing world intro)
+  - APK **98MB** (down from 116MB), uploaded to Google Drive
+  - 593 tests passing, dart analyze clean, emulator verified
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
