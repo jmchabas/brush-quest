@@ -487,6 +487,8 @@ def render_html():
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brush Quest Dashboard</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
 <meta http-equiv="refresh" content="30">
 <style>
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -864,6 +866,17 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(data, indent=2).encode())
+        elif self.path in ("/favicon.png", "/favicon-32.png"):
+            favicon_path = PROJECT_ROOT / "docs" / self.path.lstrip("/")
+            if favicon_path.exists():
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.end_headers()
+                self.wfile.write(favicon_path.read_bytes())
+            else:
+                self.send_response(404)
+                self.end_headers()
         else:
             self.send_response(404)
             self.end_headers()
