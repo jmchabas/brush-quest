@@ -228,7 +228,206 @@
       letter-spacing: 0.05em;
     }
 
+    /* === Victory Categories === */
+    .victory-section {
+      margin-bottom: 56px;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .category-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .category-product .category-icon {
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid rgba(0, 229, 255, 0.3);
+    }
+    .category-business .category-icon {
+      background: rgba(255, 213, 79, 0.15);
+      border: 1px solid rgba(255, 213, 79, 0.3);
+    }
+    .category-ops .category-icon {
+      background: rgba(179, 136, 255, 0.15);
+      border: 1px solid rgba(179, 136, 255, 0.3);
+    }
+
+    .category-header h2 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .category-product .category-header h2 { color: var(--cyan); }
+    .category-business .category-header h2 { color: var(--gold); }
+    .category-ops .category-header h2 { color: var(--purple-light); }
+
+    .victory-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    /* === Victory Card === */
+    .victory-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(124, 77, 255, 0.15);
+      border-radius: 20px;
+      padding: 28px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+
+    .victory-card:hover {
+      border-color: rgba(0, 229, 255, 0.25);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .category-business .victory-card:hover {
+      border-color: rgba(255, 213, 79, 0.3);
+    }
+
+    .category-ops .victory-card:hover {
+      border-color: rgba(179, 136, 255, 0.3);
+    }
+
+    .victory-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .victory-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .category-product .victory-badge {
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid rgba(0, 229, 255, 0.2);
+    }
+    .category-business .victory-badge {
+      background: rgba(255, 213, 79, 0.1);
+      border: 1px solid rgba(255, 213, 79, 0.2);
+    }
+    .category-ops .victory-badge {
+      background: rgba(179, 136, 255, 0.1);
+      border: 1px solid rgba(179, 136, 255, 0.2);
+    }
+
+    .victory-card-header h3 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .category-product .victory-card-header h3 { color: var(--cyan); }
+    .category-business .victory-card-header h3 { color: var(--gold); }
+    .category-ops .victory-card-header h3 { color: var(--purple-light); }
+
+    .milestone-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.35;
+    }
+
+    .milestone-detail {
+      font-size: 0.9rem;
+      color: var(--white-soft);
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+
+    .milestone-detail ul {
+      list-style: none;
+      margin: 8px 0 0;
+    }
+
+    .milestone-detail li {
+      padding: 4px 0 4px 20px;
+      position: relative;
+      font-size: 0.85rem;
+      color: var(--white-dim);
+      line-height: 1.5;
+    }
+
+    .milestone-detail li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 11px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .category-product .milestone-detail li::before {
+      background: var(--cyan);
+      box-shadow: 0 0 4px var(--cyan-glow);
+    }
+    .category-business .milestone-detail li::before {
+      background: var(--gold);
+      box-shadow: 0 0 4px var(--gold-glow);
+    }
+    .category-ops .milestone-detail li::before {
+      background: var(--purple-light);
+      box-shadow: 0 0 4px rgba(179, 136, 255, 0.3);
+    }
+
     /* === Timeline === */
+    .timeline-section {
+      padding-top: 20px;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .timeline-section-title {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .timeline-section-title h2 {
+      font-size: clamp(1.6rem, 4vw, 2.2rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--gold), var(--white));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .timeline-section-title p {
+      color: var(--white-dim);
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+
     .timeline {
       position: relative;
       padding: 0 0 40px;
@@ -419,61 +618,6 @@
 
     .mega-day .sub-section:nth-child(odd) h4 { color: var(--purple-light); }
 
-    /* === Scorecard === */
-    .scorecard-section {
-      padding: 60px 0 40px;
-    }
-
-    .scorecard-title {
-      text-align: center;
-      margin-bottom: 36px;
-    }
-
-    .scorecard-title h2 {
-      font-size: clamp(1.6rem, 4vw, 2.2rem);
-      font-weight: 800;
-      background: linear-gradient(135deg, var(--gold), var(--white));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .scorecard-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-    }
-
-    .scorecard-card {
-      background: var(--bg-card);
-      border: 1px solid rgba(124, 77, 255, 0.15);
-      border-radius: 16px;
-      padding: 22px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-    }
-
-    .scorecard-card:hover {
-      border-color: rgba(0, 229, 255, 0.25);
-      transform: translateY(-2px);
-    }
-
-    .scorecard-card h4 {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--cyan);
-      margin-bottom: 8px;
-    }
-
-    .scorecard-card p {
-      font-size: 0.9rem;
-      color: var(--white-soft);
-      line-height: 1.55;
-    }
-
     /* === Colophon === */
     .colophon {
       text-align: center;
@@ -535,14 +679,16 @@
       .stat-pill { padding: 8px 14px; }
       .stat-number { font-size: 1rem; }
 
+      .victory-card { padding: 22px; }
+      .victory-card-header { gap: 12px; }
+      .victory-badge { width: 38px; height: 38px; font-size: 1.2rem; }
+
       .timeline::before { left: 16px; }
       .timeline-entry { padding-left: 48px; margin-bottom: 36px; }
       .timeline-dot { left: 7px; width: 20px; height: 20px; }
       .mega-day .timeline-dot { left: 4px; }
 
       .timeline-card { padding: 20px; }
-
-      .scorecard-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 480px) {
@@ -570,9 +716,9 @@
         <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
         Back to Brush Quest
       </a>
-      <h1>Build Log</h1>
+      <h1>Victories</h1>
       <p class="subtitle">From prototype to real business in 6 days. One dad, one AI, zero excuses.</p>
-      <span class="date-range">March 10 &ndash; 16, 2026</span>
+      <span class="date-range">March 10 &ndash; 18, 2026</span>
     </header>
 
     <!-- Stats bar -->
@@ -599,211 +745,457 @@
       </div>
     </div>
 
-    <!-- Timeline -->
     <div class="container">
-      <div class="timeline">
 
-        <!-- Day 1: Mar 10 -->
-        <div class="timeline-entry">
-          <div class="timeline-dot"></div>
-          <span class="timeline-date">March 10</span>
-          <div class="timeline-card">
-            <h3>v6 Engagement Features + Shop Voices</h3>
-            <p>Two major drops in one day: the engagement system that keeps kids coming back, and the voice-overs that make every unlock feel special.</p>
-            <ul>
-              <li>Monster card collection system: 70 cards across 10 worlds with rarity tiers</li>
-              <li>Daily login rewards and card album</li>
-              <li>12 ElevenLabs voice-overs for hero and weapon shop unlocks</li>
-              <li>Kid feedback round: richer voices, cleaner battle UI, scrollable victory screen</li>
-            </ul>
-            <div class="tag-row">
-              <span class="tag">game design</span>
-              <span class="tag">audio</span>
-              <span class="tag">kid testing</span>
-            </div>
-          </div>
+      <!-- ==================== PRODUCT ==================== -->
+      <div class="victory-section category-product">
+        <div class="category-header">
+          <div class="category-icon">&#127922;</div>
+          <h2>Product</h2>
         </div>
+        <div class="victory-grid">
 
-        <!-- Day 2: Mar 12 -->
-        <div class="timeline-entry">
-          <div class="timeline-dot"></div>
-          <span class="timeline-date">March 12</span>
-          <div class="timeline-card">
-            <h3>v6.5: Doubled the Content + Production Hardening</h3>
-            <p>Five new worlds, 35 new monsters, weapon art, 70 voiced card descriptions, and production hardening to make it Play Store-ready.</p>
-            <ul>
-              <li>5 new worlds: Frozen Tundra, Toxic Jungle, Crystal Cave, Storm Citadel, Dark Dimension</li>
-              <li>35 new monster cards with battle backgrounds and planet art</li>
-              <li>6 weapon art images (gpt-image-1, replaced Flutter icons)</li>
-              <li>70 monster card voice descriptions (ElevenLabs TTS)</li>
-              <li>Removed morning/evening 2-brush-per-day restriction</li>
-              <li>Production hardening: error handling, edge cases, Play Store prep</li>
-            </ul>
-            <div class="tag-row">
-              <span class="tag">content</span>
-              <span class="tag">audio</span>
-              <span class="tag">art</span>
+          <!-- App -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128640;</div>
+              <div>
+                <h3>App</h3>
+                <div class="milestone-title">v7 shipped &mdash; feature-complete and kid-tested</div>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Day 3: Mar 14 -->
-        <div class="timeline-entry">
-          <div class="timeline-dot"></div>
-          <span class="timeline-date">March 14</span>
-          <div class="timeline-card">
-            <h3>v7: The Non-Reader Overhaul + Landing Page Launch</h3>
-            <p>The biggest UX overhaul yet. Rewrote every screen for a 7-year-old who can't read. Then built a full marketing site from nothing and shipped it.</p>
-            <ul>
-              <li><strong>v7 (30-point UX overhaul):</strong> Icons instead of text, voice guidance everywhere, simplified flows, no-text companion bubbles, mouth guide improvements</li>
-              <li><strong>Landing page live at brushquest.app:</strong> 5 iterations in one day. Outcome-driven copy, fresh screenshots, video carousel, family photo</li>
-              <li><strong>Custom domain:</strong> Bought brushquest.app, configured DNS, GitHub Pages, HTTPS</li>
-              <li><strong>COPPA compliance (all P1 done):</strong> Camera default OFF, consent dialogs, privacy policy rewrite, "Delete child's data" relabel</li>
-            </ul>
-            <div class="tag-row">
-              <span class="tag">ux</span>
-              <span class="tag">marketing</span>
-              <span class="tag business">compliance</span>
-              <span class="tag infra">infra</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Day 4: Mar 15 -->
-        <div class="timeline-entry">
-          <div class="timeline-dot"></div>
-          <span class="timeline-date">March 15</span>
-          <div class="timeline-card">
-            <h3>Business Foundations: Research, LLC, Pricing, CI</h3>
-            <p>Went from "indie dev project" to "real company with a strategy" in a single day.</p>
-            <ul>
-              <li><strong>Business research (6 reports, ~25K words):</strong> Every competitor analyzed, monetization models evaluated, pricing benchmarked</li>
-              <li><strong>Pricing approved:</strong> Space Ranger Pass at $4.99/mo or $39.99/yr</li>
-              <li><strong>AnemosGP LLC filed:</strong> California LLC, Articles of Organization (Doc# B20260127451), registered agent hired</li>
-              <li><strong>Dev Cycle framework:</strong> New repo, <code>/cycle</code> command, 3 analysis agents, 3 personas, benchmark rotation</li>
-              <li><strong>GitHub Actions CI:</strong> <code>dart analyze</code> + <code>flutter test</code> on every push and PR</li>
-              <li>Key finding: camera motion detection cannot verify brushing &mdash; killed the feature to stay honest</li>
-            </ul>
-            <div class="tag-row">
-              <span class="tag business">business</span>
-              <span class="tag business">legal</span>
-              <span class="tag business">strategy</span>
-              <span class="tag infra">ci/cd</span>
-              <span class="tag infra">tooling</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Day 5-6: Mar 16 (Mega Day) -->
-        <div class="timeline-entry mega-day">
-          <div class="timeline-dot"></div>
-          <span class="timeline-date">March 16 &mdash; The Mega Day</span>
-          <div class="timeline-card">
-            <h3>Five Workstreams in One Day</h3>
-            <p>The biggest single day of the project. Test bench, graphics, merch, accounting, and a dashboard &mdash; all from scratch.</p>
-
-            <div class="sub-section">
-              <h4>618 Tests from Zero</h4>
+            <div class="milestone-detail">
+              Three major versions in six days. Rewrote every screen so a 7-year-old who can't read can play independently. 10 worlds, 70 monsters, 6 heroes, 6 weapons, cumulative star economy.
               <ul>
-                <li>Core services: 107 tests (streak, hero, weapon, world)</li>
-                <li>Supporting services: 98 tests (card, achievement, sync)</li>
-                <li>Audio: 370 tests (logic, asset verification for 164 files, regression guards, integration)</li>
-                <li>Security scanning (semgrep) + secret detection (gitleaks)</li>
-                <li>Global playbook created: structured decision-making, automatic quality gates</li>
+                <li>30-point UX overhaul: icons replaced text, voice guides every action</li>
+                <li>Dual narrator system: "Classic" adult voice + "BQ Buddy" kid-friend voice with parent toggle</li>
+                <li>193 voice scripts rewritten in 6-year-old language, 2 voice profiles (battle vs. descriptive)</li>
+                <li>COPPA P1 complete: camera off by default, consent dialogs, privacy policy rewrite</li>
               </ul>
             </div>
+          </div>
 
-            <div class="sub-section">
-              <h4>Graphics Overhaul</h4>
+          <!-- Landing Page -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#127760;</div>
+              <div>
+                <h3>Landing Page</h3>
+                <div class="milestone-title">brushquest.app is live &mdash; domain, site, and email capture in one day</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Bought the domain, built the site, iterated 5 times, and shipped &mdash; all on March 14. Platform-aware forms detect Android, iOS, and desktop visitors with tailored CTAs. QR code lets desktop visitors open the page on their phone.
               <ul>
-                <li>Transparent hero and monster PNGs</li>
-                <li>Hit juice, combos, Lottie effects</li>
-                <li>Fragment shaders: dissolve, shockwave, slow-motion, boss shield, weapon trail</li>
-                <li>Learned: don't stack too many effects &mdash; characters disappear</li>
+                <li>Buttondown email capture with iOS interest tags and segmentation</li>
+                <li>Outcome-driven copy, fresh screenshots, video carousel</li>
+                <li>GitHub Pages deployment with custom domain and HTTPS</li>
               </ul>
             </div>
+          </div>
 
-            <div class="sub-section">
-              <h4>App Icon + Merch Assets</h4>
+          <!-- Voice & Audio -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#127908;</div>
+              <div>
+                <h3>Voice &amp; Audio</h3>
+                <div class="milestone-title">193 voiced scripts &mdash; the app talks to kids like a friend</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Voice <em>is</em> the UI for non-readers. Designed "BQ Buddy" from scratch with 5 rounds of ElevenLabs Voice Design (~20 previews) to nail the "excited best friend" tone. Replaced disconnected random clips with connected 3-beat story arcs so encouragements feel like a real narrator.
               <ul>
-                <li>New 3D battle scene app icon (gpt-image-1), all Android densities</li>
-                <li>Merch: Shadow &amp; Blaze action poses, Monster Squad group, logo badges</li>
-                <li>T-shirt layouts, die-cut stickers, all upscaled 4x via Real-ESRGAN</li>
+                <li>70 monster card descriptions, 12 shop unlock intros, 18 brushing arcs, 12 victory arcs</li>
+                <li>Batch generation script: 5 concurrent workers with auto-retry on rate limits</li>
+                <li>Music health-check every 5s recovers stuck AudioPlayer on Android</li>
               </ul>
             </div>
+          </div>
 
-            <div class="sub-section">
-              <h4>Accounting: Zero to Clean Books</h4>
+          <!-- Graphics -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#127912;</div>
+              <div>
+                <h3>Graphics</h3>
+                <div class="milestone-title">Shaders, hit juice, and a brand-new 3D app icon</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Transparent hero and monster PNGs, fragment shaders (dissolve, shockwave), hit juice combos, slow-motion boss kills. New 3D battle scene app icon generated with gpt-image-1, installed to all Android densities + website favicon.
               <ul>
-                <li>Gmail scan: 69 transactions identified ($5,702, Sep 2025 &ndash; Mar 2026)</li>
+                <li>Effect rebalancing: learned not to stack too many effects (characters disappear)</li>
+                <li>Rive animation brief written for post-launch polish</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Merch -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128085;</div>
+              <div>
+                <h3>Merch</h3>
+                <div class="milestone-title">Print-ready assets &mdash; t-shirts and stickers designed for Oliver &amp; Theo</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Shadow action pose (Oliver's hero), Blaze action pose (Theo's hero), Monster Squad group, and logo badges. All 4x upscaled via Real-ESRGAN to print-ready 4096px+. T-shirt layouts on black tees, shield die-cut stickers with transparent backgrounds.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== BUSINESS ==================== -->
+      <div class="victory-section category-business">
+        <div class="category-header">
+          <div class="category-icon">&#128188;</div>
+          <h2>Business</h2>
+        </div>
+        <div class="victory-grid">
+
+          <!-- LLC -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128220;</div>
+              <div>
+                <h3>LLC</h3>
+                <div class="milestone-title">AnemosGP LLC filed in California &mdash; a real company now</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              From "indie dev hobby" to "legal entity with a registered agent." Articles of Organization filed (Doc# B20260127451), Northwest Registered Agent hired. Business address secured. Next: EIN &rarr; D-U-N-S &rarr; bank account &rarr; Google Play organization account.
+              <ul>
+                <li>Chose California (cheapest since the $800/yr franchise tax applies regardless of state)</li>
+                <li>COPPA requires a physical address in the privacy policy &mdash; LLC solves that</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Pricing -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128176;</div>
+              <div>
+                <h3>Pricing</h3>
+                <div class="milestone-title">Space Ranger Pass approved &mdash; $4.99/mo or $39.99/yr</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Six research reports (~25K words) covering every competitor, monetization model, and pricing benchmark in the kids' health app space. Parent subscription rejected. Content-led freemium approved: free Worlds 1-2, premium unlocks all 10 worlds + heroes + weapons.
+              <ul>
+                <li>"$2.99 signals cheap and doesn't reflect the health value" &mdash; raised to $4.99</li>
+                <li>Free parent activity log + weekly email as conversion funnel</li>
+                <li>Monster card collection gap (21/70 free) as kid-driven conversion engine</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Accounting -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128218;</div>
+              <div>
+                <h3>Accounting</h3>
+                <div class="milestone-title">Books clean from day one &mdash; 69 transactions logged, all receipts filed</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Scanned Gmail for every transaction since September 2025. 69 transactions ($5,702) imported to QuickBooks, 82 Stripe receipt PDFs downloaded and filed. Identified ~$320/mo recurring burn across 14 SaaS subscriptions. Tax calendar set for franchise tax (July 15) and annual return (April 2027).
+              <ul>
+                <li>Stack: Mercury (bank) + QuickBooks Simple Start ($15/mo)</li>
                 <li>Built <code>/accounting</code> command: 4-step pipeline (scan, review, import, close)</li>
-                <li>70 transactions imported to QuickBooks, 82 Stripe receipt PDFs downloaded</li>
-                <li>~$320/mo recurring burn identified across 14 SaaS subscriptions</li>
               </ul>
             </div>
+          </div>
 
-            <div class="sub-section">
-              <h4>Dev Cycle v2 + Dashboard</h4>
+          <!-- COPPA / Compliance -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128737;</div>
+              <div>
+                <h3>Compliance</h3>
+                <div class="milestone-title">COPPA-complete &mdash; camera off, consent dialogs, honest privacy policy</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Full COPPA audit. Camera defaults to OFF. Parental consent dialogs added. Privacy policy rewritten in parent-friendly language. Killed the "brushing verification" feature because camera motion detection cannot prove a child is actually brushing &mdash; staying honest matters more than a bullet point.
+            </div>
+          </div>
+
+          <!-- Strategy -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#127919;</div>
+              <div>
+                <h3>Strategy</h3>
+                <div class="milestone-title">5-phase master plan &mdash; from pre-launch to scale</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Built a full operational system: STRATEGY.md (5-phase plan), STATUS.md (live status board), PLAYBOOK.md (weekly rhythm). Cross-session coordination so every Claude Code session reads and updates the same status board. CEO mode (<code>/ceo</code>) for strategic decisions.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== OPS ==================== -->
+      <div class="victory-section category-ops">
+        <div class="category-header">
+          <div class="category-icon">&#9881;</div>
+          <h2>Ops</h2>
+        </div>
+        <div class="victory-grid">
+
+          <!-- Testing -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#129514;</div>
+              <div>
+                <h3>Testing</h3>
+                <div class="milestone-title">618 tests from zero &mdash; every service covered, CI on every push</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Wrote 618 tests in a single day covering every core service, audio system, and UI flow. GitHub Actions CI runs <code>dart analyze</code> + <code>flutter test</code> on every push and PR. Security scanning (semgrep) and secret detection (gitleaks) added. 122-item manual audio checklist for pre-upload verification.
               <ul>
-                <li>4-agent analysis: UX Critic, Code Health, Voice Experience, Kid + Parent Trust</li>
-                <li>New modes: <code>/cycle quick</code> and <code>/cycle resume</code></li>
-                <li>21 UX fixes from real playtest feedback</li>
-                <li>Operational dashboard: STATUS.md parser, workstreams by category, metrics</li>
+                <li>Audio alone: 370 tests (logic, asset verification for 164 files, regression, integration)</li>
+                <li>Core services: streak, hero, weapon, world, card, achievement, sync</li>
               </ul>
             </div>
+          </div>
 
-            <div class="tag-row">
-              <span class="tag infra">testing</span>
-              <span class="tag">graphics</span>
-              <span class="tag">art</span>
-              <span class="tag business">accounting</span>
-              <span class="tag infra">tooling</span>
-              <span class="tag">ux</span>
+          <!-- Dev Cycle -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128260;</div>
+              <div>
+                <h3>Dev Cycle</h3>
+                <div class="milestone-title">4-agent QA framework &mdash; automated audit before every release</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              Built a structured dev loop: CONTEXT &rarr; ANALYZE &rarr; PLAN &rarr; APPROVE &rarr; IMPLEMENT &rarr; VERIFY &rarr; SHIP &rarr; LEARN. Four parallel analysis agents: UX Design Critic, Code Health, Voice &amp; Audio Experience, Kid Experience + Parent Trust. Synthesizer de-duplicates and ranks findings.
+              <ul>
+                <li>Modes: <code>/cycle</code> (full audit), <code>/cycle ship</code> (verify+ship), <code>/cycle quick</code></li>
+                <li>Operational dashboard: STATUS.md parser with workstreams by category and metrics trends</li>
+              </ul>
             </div>
           </div>
+
+          <!-- Tooling -->
+          <div class="victory-card">
+            <div class="victory-card-header">
+              <div class="victory-badge">&#128736;</div>
+              <div>
+                <h3>Tooling</h3>
+                <div class="milestone-title">7 slash commands &mdash; a custom operating system for solo development</div>
+              </div>
+            </div>
+            <div class="milestone-detail">
+              <code>/cycle</code>, <code>/ceo</code>, <code>/llc</code>, <code>/accounting</code>, <code>/status</code>, <code>/weekly</code>, <code>/retro</code>. Global playbook with structured decision-making (3+1 agents), task-matched context loading, and automatic quality gates. Claude Code hooks auto-run <code>dart analyze</code> on every file edit.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== TIMELINE ==================== -->
+      <section class="timeline-section">
+        <div class="timeline-section-title">
+          <h2>The Timeline</h2>
+          <p>Day by day, how it all came together</p>
         </div>
 
-      </div><!-- /timeline -->
+        <div class="timeline">
 
-      <!-- Scorecard -->
-      <section class="scorecard-section">
-        <div class="scorecard-title">
-          <h2>The Scorecard</h2>
-        </div>
-        <div class="scorecard-grid">
-          <div class="scorecard-card">
-            <h4>App</h4>
-            <p>3 major versions (v5 &rarr; v7), 30-point UX overhaul, 5 new worlds, 70 card voices, graphics overhaul, shaders, new app icon</p>
+          <!-- Day 1: Mar 10 -->
+          <div class="timeline-entry">
+            <div class="timeline-dot"></div>
+            <span class="timeline-date">March 10</span>
+            <div class="timeline-card">
+              <h3>v6 Engagement Features + Shop Voices</h3>
+              <p>Two major drops in one day: the engagement system that keeps kids coming back, and the voice-overs that make every unlock feel special.</p>
+              <ul>
+                <li>Monster card collection system: 70 cards across 10 worlds with rarity tiers</li>
+                <li>Daily login rewards and card album</li>
+                <li>12 ElevenLabs voice-overs for hero and weapon shop unlocks</li>
+                <li>Kid feedback round: richer voices, cleaner battle UI, scrollable victory screen</li>
+              </ul>
+              <div class="tag-row">
+                <span class="tag">game design</span>
+                <span class="tag">audio</span>
+                <span class="tag">kid testing</span>
+              </div>
+            </div>
           </div>
-          <div class="scorecard-card">
-            <h4>Testing</h4>
-            <p>618 tests from zero, CI pipeline, security scanning, 122-item manual audio checklist</p>
+
+          <!-- Day 2: Mar 12 -->
+          <div class="timeline-entry">
+            <div class="timeline-dot"></div>
+            <span class="timeline-date">March 12</span>
+            <div class="timeline-card">
+              <h3>v6.5: Doubled the Content + Production Hardening</h3>
+              <p>Five new worlds, 35 new monsters, weapon art, 70 voiced card descriptions, and production hardening to make it Play Store-ready.</p>
+              <ul>
+                <li>5 new worlds: Frozen Tundra, Toxic Jungle, Crystal Cave, Storm Citadel, Dark Dimension</li>
+                <li>35 new monster cards with battle backgrounds and planet art</li>
+                <li>6 weapon art images (gpt-image-1, replaced Flutter icons)</li>
+                <li>70 monster card voice descriptions (ElevenLabs TTS)</li>
+                <li>Removed morning/evening 2-brush-per-day restriction</li>
+                <li>Production hardening: error handling, edge cases, Play Store prep</li>
+              </ul>
+              <div class="tag-row">
+                <span class="tag">content</span>
+                <span class="tag">audio</span>
+                <span class="tag">art</span>
+              </div>
+            </div>
           </div>
-          <div class="scorecard-card">
-            <h4>Business</h4>
-            <p>AnemosGP LLC formed, 6 research reports, pricing approved, COPPA compliance done</p>
+
+          <!-- Day 3: Mar 14 -->
+          <div class="timeline-entry">
+            <div class="timeline-dot"></div>
+            <span class="timeline-date">March 14</span>
+            <div class="timeline-card">
+              <h3>v7: The Non-Reader Overhaul + Landing Page Launch</h3>
+              <p>The biggest UX overhaul yet. Rewrote every screen for a 7-year-old who can't read. Then built a full marketing site from nothing and shipped it.</p>
+              <ul>
+                <li><strong>v7 (30-point UX overhaul):</strong> Icons instead of text, voice guidance everywhere, simplified flows, no-text companion bubbles, mouth guide improvements</li>
+                <li><strong>Landing page live at brushquest.app:</strong> 5 iterations in one day. Outcome-driven copy, fresh screenshots, video carousel, family photo</li>
+                <li><strong>Custom domain:</strong> Bought brushquest.app, configured DNS, GitHub Pages, HTTPS</li>
+                <li><strong>COPPA compliance (all P1 done):</strong> Camera default OFF, consent dialogs, privacy policy rewrite, "Delete child's data" relabel</li>
+              </ul>
+              <div class="tag-row">
+                <span class="tag">ux</span>
+                <span class="tag">marketing</span>
+                <span class="tag business">compliance</span>
+                <span class="tag infra">infra</span>
+              </div>
+            </div>
           </div>
-          <div class="scorecard-card">
-            <h4>Accounting</h4>
-            <p>69 transactions logged, QuickBooks imported, 82 receipts downloaded, recurring burn tracked</p>
+
+          <!-- Day 4: Mar 15 -->
+          <div class="timeline-entry">
+            <div class="timeline-dot"></div>
+            <span class="timeline-date">March 15</span>
+            <div class="timeline-card">
+              <h3>Business Foundations: Research, LLC, Pricing, CI</h3>
+              <p>Went from "indie dev project" to "real company with a strategy" in a single day.</p>
+              <ul>
+                <li><strong>Business research (6 reports, ~25K words):</strong> Every competitor analyzed, monetization models evaluated, pricing benchmarked</li>
+                <li><strong>Pricing approved:</strong> Space Ranger Pass at $4.99/mo or $39.99/yr</li>
+                <li><strong>AnemosGP LLC filed:</strong> California LLC, Articles of Organization (Doc# B20260127451), registered agent hired</li>
+                <li><strong>Dev Cycle framework:</strong> New repo, <code>/cycle</code> command, 3 analysis agents, 3 personas, benchmark rotation</li>
+                <li><strong>GitHub Actions CI:</strong> <code>dart analyze</code> + <code>flutter test</code> on every push and PR</li>
+                <li>Key finding: camera motion detection cannot verify brushing &mdash; killed the feature to stay honest</li>
+              </ul>
+              <div class="tag-row">
+                <span class="tag business">business</span>
+                <span class="tag business">legal</span>
+                <span class="tag business">strategy</span>
+                <span class="tag infra">ci/cd</span>
+                <span class="tag infra">tooling</span>
+              </div>
+            </div>
           </div>
-          <div class="scorecard-card">
-            <h4>Marketing</h4>
-            <p>Landing page live at brushquest.app (5 iterations), custom domain, video, fresh screenshots</p>
+
+          <!-- Day 5-6: Mar 16 (Mega Day) -->
+          <div class="timeline-entry mega-day">
+            <div class="timeline-dot"></div>
+            <span class="timeline-date">March 16 &mdash; The Mega Day</span>
+            <div class="timeline-card">
+              <h3>Five Workstreams in One Day</h3>
+              <p>The biggest single day of the project. Test bench, graphics, merch, accounting, and a dashboard &mdash; all from scratch.</p>
+
+              <div class="sub-section">
+                <h4>618 Tests from Zero</h4>
+                <ul>
+                  <li>Core services: 107 tests (streak, hero, weapon, world)</li>
+                  <li>Supporting services: 98 tests (card, achievement, sync)</li>
+                  <li>Audio: 370 tests (logic, asset verification for 164 files, regression guards, integration)</li>
+                  <li>Security scanning (semgrep) + secret detection (gitleaks)</li>
+                  <li>Global playbook created: structured decision-making, automatic quality gates</li>
+                </ul>
+              </div>
+
+              <div class="sub-section">
+                <h4>Graphics Overhaul</h4>
+                <ul>
+                  <li>Transparent hero and monster PNGs</li>
+                  <li>Hit juice, combos, Lottie effects</li>
+                  <li>Fragment shaders: dissolve, shockwave, slow-motion, boss shield, weapon trail</li>
+                  <li>Learned: don't stack too many effects &mdash; characters disappear</li>
+                </ul>
+              </div>
+
+              <div class="sub-section">
+                <h4>App Icon + Merch Assets</h4>
+                <ul>
+                  <li>New 3D battle scene app icon (gpt-image-1), all Android densities</li>
+                  <li>Merch: Shadow &amp; Blaze action poses, Monster Squad group, logo badges</li>
+                  <li>T-shirt layouts, die-cut stickers, all upscaled 4x via Real-ESRGAN</li>
+                </ul>
+              </div>
+
+              <div class="sub-section">
+                <h4>Accounting: Zero to Clean Books</h4>
+                <ul>
+                  <li>Gmail scan: 69 transactions identified ($5,702, Sep 2025 &ndash; Mar 2026)</li>
+                  <li>Built <code>/accounting</code> command: 4-step pipeline (scan, review, import, close)</li>
+                  <li>70 transactions imported to QuickBooks, 82 Stripe receipt PDFs downloaded</li>
+                  <li>~$320/mo recurring burn identified across 14 SaaS subscriptions</li>
+                </ul>
+              </div>
+
+              <div class="sub-section">
+                <h4>Dev Cycle v2 + Dashboard</h4>
+                <ul>
+                  <li>4-agent analysis: UX Critic, Code Health, Voice Experience, Kid + Parent Trust</li>
+                  <li>New modes: <code>/cycle quick</code> and <code>/cycle resume</code></li>
+                  <li>21 UX fixes from real playtest feedback</li>
+                  <li>Operational dashboard: STATUS.md parser, workstreams by category, metrics</li>
+                </ul>
+              </div>
+
+              <div class="tag-row">
+                <span class="tag infra">testing</span>
+                <span class="tag">graphics</span>
+                <span class="tag">art</span>
+                <span class="tag business">accounting</span>
+                <span class="tag infra">tooling</span>
+                <span class="tag">ux</span>
+              </div>
+            </div>
           </div>
-          <div class="scorecard-card">
-            <h4>Merch</h4>
-            <p>6 merch assets, print-ready 4K upscales, t-shirt + sticker designs, Printful-ready</p>
+
+          <!-- Day 7: Mar 18 -->
+          <div class="timeline-entry">
+            <div class="timeline-dot"></div>
+            <span class="timeline-date">March 18</span>
+            <div class="timeline-card">
+              <h3>Dual Narrator: Kid Voice System</h3>
+              <p>What if the app talked to kids like a friend, not an adult? Designed a custom voice from scratch, wrote 193 scripts in 6-year-old language, and shipped a parent-facing toggle to switch narrators.</p>
+              <ul>
+                <li>5 rounds of ElevenLabs Voice Design (~20 previews) to find the right "excited best friend" voice</li>
+                <li>193 voice scripts rewritten for 6yo: "oh my gosh", "look look", "yay" &mdash; pure wonder, zero cool-kid attitude</li>
+                <li>Two voice profiles: high-energy for battle, warmer for descriptions</li>
+                <li>Batch generation script with 5 concurrent workers, auto-retry on rate limits</li>
+                <li>Parent settings toggle: "Classic" (adult narrator) vs "Buddy" (kid friend)</li>
+                <li>Architecture: <code>assets/audio/voices/{classic,buddy}/</code> with AudioService routing</li>
+              </ul>
+              <div class="tag-row">
+                <span class="tag">audio</span>
+                <span class="tag">ux</span>
+                <span class="tag infra">tooling</span>
+              </div>
+            </div>
           </div>
-          <div class="scorecard-card">
-            <h4>Tooling</h4>
-            <p>Dev Cycle framework (2 versions), 5 slash commands, operational dashboard, global playbook</p>
-          </div>
-          <div class="scorecard-card">
-            <h4>Commits</h4>
-            <p>30+ commits in 6 days across app code, infrastructure, business ops, and marketing</p>
-          </div>
-        </div>
+
+        </div><!-- /timeline -->
       </section>
 
     </div><!-- /container -->

@@ -23,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _signingIn = false;
   bool _syncing = false;
   bool _parentUnlocked = false;
+  String _voiceStyle = 'classic';
 
   final _auth = AuthService();
   final _sync = SyncService();
@@ -77,6 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _cameraEnabled = prefs.getBool('camera_enabled') ?? false;
         _totalBrushes = prefs.getInt('total_brushes') ?? 0;
         _bestStreak = prefs.getInt('best_streak') ?? 0;
+        _voiceStyle = AudioService().voiceStyle;
       });
     }
   }
@@ -996,6 +998,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           setState(() {});
                         },
                         activeThumbColor: const Color(0xFF00E5FF),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    _SettingCard(
+                      icon: Icons.record_voice_over,
+                      title: 'Narrator voice',
+                      child: SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment<String>(
+                            value: 'classic',
+                            label: Text('Classic'),
+                          ),
+                          ButtonSegment<String>(
+                            value: 'buddy',
+                            label: Text('Buddy'),
+                          ),
+                        ],
+                        selected: {_voiceStyle},
+                        onSelectionChanged: (selected) async {
+                          final style = selected.first;
+                          await AudioService().setVoiceStyle(style);
+                          setState(() => _voiceStyle = style);
+                        },
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                            (states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return const Color(0xFF00E5FF).withValues(alpha: 0.3);
+                              }
+                              return Colors.white.withValues(alpha: 0.06);
+                            },
+                          ),
+                          foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                            (states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return const Color(0xFF00E5FF);
+                              }
+                              return Colors.white54;
+                            },
+                          ),
+                          side: WidgetStateProperty.all(
+                            BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                          ),
+                          textStyle: WidgetStateProperty.all(
+                            const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
                       ),
                     ),
 

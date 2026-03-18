@@ -44,6 +44,7 @@ class AudioService {
   bool _musicPlaying = false;
   bool _musicTransitioning = false;
   String? _currentMusicFile;
+  String _voiceStyle = 'classic';
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
   final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
     false,
@@ -55,6 +56,26 @@ class AudioService {
   bool get isMuted => _muted;
   bool get isVoicePlaying => _voicePlaying;
   bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
+
+  /// Current voice narrator style ('classic' or 'buddy').
+  String get voiceStyle => _voiceStyle;
+
+  /// Base path for voice files under assets/audio/.
+  String get voiceBasePath => 'voices/$_voiceStyle';
+
+  /// Set the voice narrator style and persist to SharedPreferences.
+  Future<void> setVoiceStyle(String style) async {
+    _voiceStyle = style;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('voice_style', style);
+  }
+
+  /// Returns the asset path for a voice file, routing through the active
+  /// voice style subdirectory.  Non-voice files (SFX, music) should NOT
+  /// use this — they live directly under audio/.
+  String _voiceAssetPath(String fileName) {
+    return 'audio/voices/$_voiceStyle/$fileName';
+  }
 
   static const _hitSounds = ['zap.mp3', 'whoosh.mp3'];
 
@@ -345,13 +366,16 @@ class AudioService {
 
     final prefs = await SharedPreferences.getInstance();
     _muted = prefs.getBool('muted') ?? false;
+    _voiceStyle = prefs.getString('voice_style') ?? 'classic';
     int failures = 0;
 
     for (final file in _allAudioFiles) {
       final player = AudioPlayer();
+      final isVoice = file.startsWith('voice_');
+      final assetPath = isVoice ? _voiceAssetPath(file) : 'audio/$file';
       try {
         await player
-            .setSource(AssetSource('audio/$file'))
+            .setSource(AssetSource(assetPath))
             .timeout(const Duration(milliseconds: 350));
       } catch (_) {
         failures++;
@@ -466,7 +490,7 @@ class AudioService {
         try {
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
-          await _voicePlayer.play(AssetSource('audio/${request.fileName}'));
+          await _voicePlayer.play(AssetSource(_voiceAssetPath(request.fileName)));
           final completed = await Future.any<bool>([
             _voicePlayer.onPlayerComplete.first.then((_) => true),
             _voicePlayer.onPlayerStateChanged

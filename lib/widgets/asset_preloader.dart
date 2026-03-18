@@ -142,7 +142,16 @@ class _AssetPreloaderState extends State<AssetPreloader>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Spacer(flex: 3),
+                  const Spacer(flex: 2),
+
+                  // App icon (matches native splash for seamless transition)
+                  Image.asset(
+                    'assets/images/app_icon.png',
+                    width: 120,
+                    height: 120,
+                  ),
+
+                  const SizedBox(height: 24),
 
                   // Pulsing title
                   AnimatedBuilder(

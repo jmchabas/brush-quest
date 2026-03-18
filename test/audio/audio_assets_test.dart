@@ -196,6 +196,15 @@ String _projectRoot() {
   throw StateError('Could not locate project root with assets/audio/');
 }
 
+/// Returns the expected on-disk path for a file in the preload list.
+/// Voice files (voice_*) live under voices/classic/; SFX/music stay at root.
+String _audioFilePath(String audioDir, String fileName) {
+  if (fileName.startsWith('voice_')) {
+    return '$audioDir/voices/classic/$fileName';
+  }
+  return '$audioDir/$fileName';
+}
+
 void main() {
   late String root;
   late String audioDir;
@@ -211,7 +220,7 @@ void main() {
   group('Preload list files exist on disk', () {
     for (final file in _allAudioFiles) {
       test('$file exists', () {
-        final path = '$audioDir/$file';
+        final path = _audioFilePath(audioDir, file);
         expect(
           File(path).existsSync(),
           isTrue,
@@ -229,10 +238,11 @@ void main() {
       for (final cardId in _allCardIds) {
         final fileName = 'voice_card_$cardId.mp3';
         test(fileName, () {
+          final path = _audioFilePath(audioDir, fileName);
           expect(
-            File('$audioDir/$fileName').existsSync(),
+            File(path).existsSync(),
             isTrue,
-            reason: 'Missing card voice: $fileName',
+            reason: 'Missing card voice: $path',
           );
         });
       }
@@ -242,10 +252,11 @@ void main() {
       for (final heroId in _allHeroIds) {
         final fileName = 'voice_intro_hero_$heroId.mp3';
         test(fileName, () {
+          final path = _audioFilePath(audioDir, fileName);
           expect(
-            File('$audioDir/$fileName').existsSync(),
+            File(path).existsSync(),
             isTrue,
-            reason: 'Missing hero intro voice: $fileName',
+            reason: 'Missing hero intro voice: $path',
           );
         });
       }
@@ -255,10 +266,11 @@ void main() {
       for (final heroId in _allHeroIds) {
         final fileName = 'voice_picker_hero_$heroId.mp3';
         test(fileName, () {
+          final path = _audioFilePath(audioDir, fileName);
           expect(
-            File('$audioDir/$fileName').existsSync(),
+            File(path).existsSync(),
             isTrue,
-            reason: 'Missing hero picker voice: $fileName',
+            reason: 'Missing hero picker voice: $path',
           );
         });
       }
@@ -268,10 +280,11 @@ void main() {
       for (final weaponId in _allWeaponIds) {
         final fileName = 'voice_intro_weapon_$weaponId.mp3';
         test(fileName, () {
+          final path = _audioFilePath(audioDir, fileName);
           expect(
-            File('$audioDir/$fileName').existsSync(),
+            File(path).existsSync(),
             isTrue,
-            reason: 'Missing weapon intro voice: $fileName',
+            reason: 'Missing weapon intro voice: $path',
           );
         });
       }
@@ -281,10 +294,11 @@ void main() {
       for (final weaponId in _allWeaponIds) {
         final fileName = 'voice_picker_weapon_$weaponId.mp3';
         test(fileName, () {
+          final path = _audioFilePath(audioDir, fileName);
           expect(
-            File('$audioDir/$fileName').existsSync(),
+            File(path).existsSync(),
             isTrue,
-            reason: 'Missing weapon picker voice: $fileName',
+            reason: 'Missing weapon picker voice: $path',
           );
         });
       }
@@ -294,10 +308,11 @@ void main() {
       for (final worldId in _allWorldIds) {
         final fileName = 'voice_world_$worldId.mp3';
         test(fileName, () {
+          final path = _audioFilePath(audioDir, fileName);
           expect(
-            File('$audioDir/$fileName').existsSync(),
+            File(path).existsSync(),
             isTrue,
-            reason: 'Missing world voice: $fileName',
+            reason: 'Missing world voice: $path',
           );
         });
       }
@@ -328,15 +343,22 @@ void main() {
   // -----------------------------------------------------------------------
   group('All .mp3 files in assets/audio/ are > 1024 bytes', () {
     test('no tiny or empty audio files', () {
-      final dir = Directory(audioDir);
+      // Check SFX/music in audio root and voice files in voices/classic/
+      final dirsToCheck = [
+        Directory(audioDir),
+        Directory('$audioDir/voices/classic'),
+      ];
       final tooSmall = <String>[];
-      for (final entity in dir.listSync()) {
-        if (entity is File && entity.path.endsWith('.mp3')) {
-          final size = entity.lengthSync();
-          if (size <= 1024) {
-            tooSmall.add(
-              '${entity.uri.pathSegments.last} (${size}B)',
-            );
+      for (final dir in dirsToCheck) {
+        if (!dir.existsSync()) continue;
+        for (final entity in dir.listSync()) {
+          if (entity is File && entity.path.endsWith('.mp3')) {
+            final size = entity.lengthSync();
+            if (size <= 1024) {
+              tooSmall.add(
+                '${entity.uri.pathSegments.last} (${size}B)',
+              );
+            }
           }
         }
       }
@@ -354,14 +376,27 @@ void main() {
   //    (e.g. legacy files, wav variants, alternate music tracks).
   // -----------------------------------------------------------------------
   test('Report orphaned audio files (informational, does not fail)', () {
-    final dir = Directory(audioDir);
     final preloadSet = _allAudioFiles.toSet();
     final orphans = <String>[];
-    for (final entity in dir.listSync()) {
+    // Check SFX/music root for non-voice orphans
+    final rootDir = Directory(audioDir);
+    for (final entity in rootDir.listSync()) {
       if (entity is File) {
         final name = entity.uri.pathSegments.last;
         if (!preloadSet.contains(name)) {
           orphans.add(name);
+        }
+      }
+    }
+    // Check voices/classic/ for voice orphans
+    final voiceDir = Directory('$audioDir/voices/classic');
+    if (voiceDir.existsSync()) {
+      for (final entity in voiceDir.listSync()) {
+        if (entity is File) {
+          final name = entity.uri.pathSegments.last;
+          if (!preloadSet.contains(name)) {
+            orphans.add('voices/classic/$name');
+          }
         }
       }
     }
