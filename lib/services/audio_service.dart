@@ -64,12 +64,13 @@ class AudioService {
   String get voiceBasePath => 'voices/$_voiceStyle';
 
   /// Set the voice narrator style, persist to SharedPreferences, and
-  /// re-preload all voice assets for the new style so playback is instant.
+  /// re-preload all voice assets for the new style in the background.
   Future<void> setVoiceStyle(String style) async {
     _voiceStyle = style;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('voice_style', style);
-    await preloadAll();
+    // Fire-and-forget: preload in background so the UI stays responsive.
+    unawaited(preloadAll());
   }
 
   /// Returns the asset path for a voice file, routing through the active

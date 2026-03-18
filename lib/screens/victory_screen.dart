@@ -12,6 +12,8 @@ import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
 import '../services/analytics_service.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
 import 'home_screen.dart';
 import 'card_album_screen.dart';
 
@@ -329,6 +331,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
 
     if (mounted) setState(() {});
+
+    // Auto-sync progress to cloud if signed in (fire-and-forget)
+    if (AuthService().currentUser != null) {
+      SyncService().uploadProgress().catchError((_) {});
+    }
 
     // ── NEW TIMING SEQUENCE ──
     // t=0       Victory SFX + confetti

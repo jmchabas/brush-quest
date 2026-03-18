@@ -81,7 +81,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.lightImpact();
       // Describe the hero, then tell them they need more stars
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true);
+      AudioService().playVoice('voice_need_stars.mp3');
     }
   }
 
@@ -106,7 +106,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.lightImpact();
       // Describe the weapon, then tell them they need more stars
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
-      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true);
+      AudioService().playVoice('voice_need_stars.mp3');
     }
   }
 
@@ -551,7 +551,8 @@ class _WeaponCard extends StatelessWidget {
               child: Column(
                 children: [
                   Expanded(
-                    child: ClipOval(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
                       child: Opacity(
                         opacity: isUnlocked ? 1.0 : 0.85,
                         child: ColorFiltered(
@@ -757,7 +758,7 @@ class _FeaturedWeaponDisplay extends StatelessWidget {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: weapon.primaryColor.withValues(alpha: 0.6),
                   width: 3,
@@ -770,7 +771,8 @@ class _FeaturedWeaponDisplay extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipOval(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(17),
                 child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
               ),
             ),
@@ -957,11 +959,13 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: ClipOval(
-                    child: Image.asset(widget.weapon.imagePath, fit: BoxFit.cover),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    widget.weapon.imagePath,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(height: 16),

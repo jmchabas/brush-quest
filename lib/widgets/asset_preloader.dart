@@ -144,14 +144,29 @@ class _AssetPreloaderState extends State<AssetPreloader>
                 children: [
                   const Spacer(flex: 2),
 
-                  // App icon (matches native splash for seamless transition)
-                  Image.asset(
-                    'assets/images/app_icon.png',
-                    width: 120,
-                    height: 120,
+                  // App icon — large and prominent
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
+                          blurRadius: 40,
+                          spreadRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(32),
+                      child: Image.asset(
+                        'assets/images/app_icon.png',
+                        width: 200,
+                        height: 200,
+                      ),
+                    ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Pulsing title
                   AnimatedBuilder(
