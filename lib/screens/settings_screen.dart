@@ -545,8 +545,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'session_checkpoint_phase',
       'session_checkpoint_seconds',
       'session_checkpoint_world',
-      'unlocked_cosmetics',
-      'selected_cosmetic',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);

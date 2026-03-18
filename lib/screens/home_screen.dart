@@ -8,7 +8,6 @@ import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/world_service.dart';
-import '../services/cosmetic_service.dart';
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -40,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
   WorldData? _currentWorld;
-  Color? _cosmeticFrameColor;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -122,9 +120,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final totalBrushes = await _streakService.getTotalBrushes();
     final bossReady = (totalBrushes % 5) == 4;
     final world = await _worldService.getCurrentWorld();
-    final cosmeticService = CosmeticService();
-    await cosmeticService.refreshCache();
-    final frameColor = cosmeticService.getSelectedColor();
 
     if (mounted) {
       setState(() {
@@ -134,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _streak = streak;
         _bossReady = bossReady;
         _currentWorld = world;
-        _cosmeticFrameColor = frameColor;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -689,12 +683,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: _cosmeticFrameColor ?? _selectedHero.primaryColor,
-                                                width: _cosmeticFrameColor != null ? 5 : 4,
+                                                color: _selectedHero.primaryColor,
+                                                width: 4,
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: (_cosmeticFrameColor ?? _selectedHero.primaryColor)
+                                                  color: _selectedHero.primaryColor
                                                       .withValues(alpha: 0.6),
                                                   blurRadius: 30,
                                                   spreadRadius: 5,

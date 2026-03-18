@@ -16,7 +16,6 @@ import '../widgets/mute_button.dart';
 import 'package:lottie/lottie.dart';
 import '../widgets/mouth_guide.dart';
 import '../services/analytics_service.dart';
-import '../services/cosmetic_service.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -237,7 +236,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   final _weaponService = WeaponService();
 
   HeroCharacter _hero = HeroService.allHeroes[0];
-  Color? _cosmeticFrameColor;
   WorldData _world = WorldService.allWorlds[0];
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
@@ -790,13 +788,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     final totalBrushes = await StreakService().getTotalBrushes();
     final prefs = await SharedPreferences.getInstance();
     final duration = prefs.getInt('phase_duration') ?? 30;
-    final cosmeticService = CosmeticService();
-    await cosmeticService.refreshCache();
-    final frameColor = cosmeticService.getSelectedColor();
     if (mounted) {
       setState(() {
         _hero = hero;
-        _cosmeticFrameColor = frameColor;
         _world = world;
         _dailyModifier = _worldService.getDailyModifier();
         _weapon = weapon;
@@ -3020,7 +3014,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: (_cosmeticFrameColor ?? _hero.primaryColor).withValues(alpha: pulse),
+                        color: _hero.primaryColor.withValues(alpha: pulse),
                         blurRadius: 20 + (glowBoost * 20),
                         spreadRadius: 4 + (glowBoost * 8),
                       ),
@@ -3032,7 +3026,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                   size: Size(size + 24, size + 24),
                   painter: _HeroPowerParticlePainter(
                     animValue: t,
-                    color: _cosmeticFrameColor ?? _hero.primaryColor,
+                    color: _hero.primaryColor,
                     secondaryColor: _hero.attackColor,
                     isAttacking: _heroLunging,
                   ),

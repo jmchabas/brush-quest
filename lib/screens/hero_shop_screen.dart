@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
-import '../services/cosmetic_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/streak_service.dart';
@@ -20,15 +19,12 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     with SingleTickerProviderStateMixin {
   final _heroService = HeroService();
   final _weaponService = WeaponService();
-  final _cosmeticService = CosmeticService();
   final _streakService = StreakService();
 
   List<String> _unlockedHeroes = ['blaze'];
   String _selectedHeroId = 'blaze';
   List<String> _unlockedWeapons = ['star_blaster'];
   String _selectedWeaponId = 'star_blaster';
-  List<String> _unlockedCosmetics = [];
-  String? _selectedCosmeticId;
   int _stars = 0;
 
   late TabController _tabController;
@@ -36,7 +32,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _loadData();
     AnalyticsService().logShopVisit();
   }
@@ -52,8 +48,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     final selectedHero = await _heroService.getSelectedHeroId();
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     final selectedWeapon = await _weaponService.getSelectedWeaponId();
-    final unlockedCosmetics = await _cosmeticService.getUnlockedCosmeticIds();
-    final selectedCosmetic = await _cosmeticService.getSelectedCosmeticId();
     final stars = await _streakService.getTotalStars();
     if (mounted) {
       setState(() {
@@ -61,8 +55,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         _selectedHeroId = selectedHero;
         _unlockedWeapons = unlockedWeapons;
         _selectedWeaponId = selectedWeapon;
-        _unlockedCosmetics = unlockedCosmetics;
-        _selectedCosmeticId = selectedCosmetic;
         _stars = stars;
       });
     }
@@ -115,31 +107,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       // Describe the weapon, then tell them they need more stars
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       AudioService().playVoice('voice_need_stars.mp3');
-    }
-  }
-
-  Future<void> _onCosmeticTap(CosmeticItem cosmetic) async {
-    if (_unlockedCosmetics.contains(cosmetic.id)) {
-      // Already owned — toggle selection (tap again to deselect)
-      if (_selectedCosmeticId == cosmetic.id) {
-        await _cosmeticService.deselect();
-      } else {
-        await _cosmeticService.select(cosmetic.id);
-      }
-      HapticFeedback.mediumImpact();
-      _playSelectionVoice('voice_great_choice.mp3');
-      await _loadData();
-    } else if (_stars >= cosmetic.cost) {
-      final success = await _cosmeticService.unlock(cosmetic.id);
-      if (success) {
-        await _cosmeticService.select(cosmetic.id);
-        HapticFeedback.heavyImpact();
-        _playSelectionVoice('voice_great_choice.mp3');
-        await _loadData();
-      }
-    } else {
-      HapticFeedback.lightImpact();
-      _playSelectionVoice('voice_need_stars.mp3');
     }
   }
 
@@ -265,7 +232,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.shield, size: 20),
-                          SizedBox(width: 6),
+                          SizedBox(width: 8),
                           Text('HEROES'),
                         ],
                       ),
@@ -275,18 +242,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.bolt, size: 20),
-                          SizedBox(width: 6),
+                          SizedBox(width: 8),
                           Text('WEAPONS'),
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.auto_awesome, size: 20),
-                          SizedBox(width: 6),
-                          Text('FRAMES'),
                         ],
                       ),
                     ),
@@ -305,8 +262,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                     _buildHeroGrid(),
                     // Weapons tab
                     _buildWeaponGrid(),
-                    // Frames tab
-                    _buildCosmeticGrid(),
                   ],
                 ),
               ),
@@ -409,94 +364,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     );
   }
 
-  Widget _buildCosmeticGrid() {
-    // Find the selected cosmetic for featured display
-    final selectedCosmetic = _selectedCosmeticId != null
-        ? CosmeticService.getCosmeticById(_selectedCosmeticId!)
-        : null;
-
-    return CustomScrollView(
-      slivers: [
-        // Featured selected cosmetic display (or hint if none selected)
-        SliverToBoxAdapter(
-          child: selectedCosmetic != null
-              ? _FeaturedCosmeticDisplay(cosmetic: selectedCosmetic)
-              : Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: GlassCard(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 20,
-                      horizontal: 20,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              width: 3,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.auto_awesome,
-                            color: Colors.white.withValues(alpha: 0.4),
-                            size: 36,
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Text(
-                            'NO FRAME SELECTED',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-        ),
-        // Cosmetic grid
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.85,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final cosmetic = CosmeticService.allCosmetics[index];
-                final isUnlocked =
-                    _unlockedCosmetics.contains(cosmetic.id);
-                final isSelected = _selectedCosmeticId == cosmetic.id;
-                final canAfford = _stars >= cosmetic.cost;
-
-                return _CosmeticCard(
-                  cosmetic: cosmetic,
-                  isUnlocked: isUnlocked,
-                  isSelected: isSelected,
-                  canAfford: canAfford,
-                  currentStars: _stars,
-                  onTap: () => _onCosmeticTap(cosmetic),
-                );
-              },
-              childCount: CosmeticService.allCosmetics.length,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _HeroCard extends StatelessWidget {
@@ -1191,258 +1058,3 @@ class _LockedProgressIndicator extends StatelessWidget {
   }
 }
 
-/// Finding #7: Cosmetic frame card for the FRAMES tab.
-class _CosmeticCard extends StatelessWidget {
-  final CosmeticItem cosmetic;
-  final bool isUnlocked;
-  final bool isSelected;
-  final bool canAfford;
-  final int currentStars;
-  final VoidCallback onTap;
-
-  const _CosmeticCard({
-    required this.cosmetic,
-    required this.isUnlocked,
-    required this.isSelected,
-    required this.canAfford,
-    required this.currentStars,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? cosmetic.color
-                : isUnlocked
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.1),
-            width: isSelected ? 3 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: cosmetic.color.withValues(alpha: 0.4),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : null,
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Frame preview: colored ring
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isUnlocked
-                            ? cosmetic.color
-                            : cosmetic.color.withValues(alpha: 0.4),
-                        width: cosmetic.isAnimated ? 5 : 4,
-                      ),
-                      boxShadow: isUnlocked
-                          ? [
-                              BoxShadow(
-                                color: cosmetic.color.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.auto_awesome,
-                        color: isUnlocked
-                            ? cosmetic.color.withValues(alpha: 0.6)
-                            : Colors.white.withValues(alpha: 0.15),
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Frame name
-                  Text(
-                    cosmetic.name,
-                    style: TextStyle(
-                      color: isUnlocked
-                          ? cosmetic.color
-                          : Colors.white.withValues(alpha: 0.6),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  // Cost / progress if locked
-                  if (!isUnlocked)
-                    _LockedProgressIndicator(
-                      currentStars: currentStars,
-                      cost: cosmetic.cost,
-                      canAfford: canAfford,
-                    ),
-                ],
-              ),
-            ),
-            // Lock icon
-            if (!isUnlocked)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        blurRadius: 6,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.lock,
-                    color: Colors.white.withValues(alpha: 0.8),
-                    size: 18,
-                  ),
-                ),
-              ),
-            // Selected checkmark
-            if (isSelected)
-              Positioned(
-                bottom: 6,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withValues(alpha: 0.6),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Featured display for the selected cosmetic frame.
-class _FeaturedCosmeticDisplay extends StatelessWidget {
-  final CosmeticItem cosmetic;
-
-  const _FeaturedCosmeticDisplay({required this.cosmetic});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        child: Row(
-          children: [
-            // Frame preview ring
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: cosmetic.color,
-                  width: cosmetic.isAnimated ? 5 : 4,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: cosmetic.color.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: cosmetic.color.withValues(alpha: 0.6),
-                  size: 32,
-                ),
-              ),
-            ),
-            const SizedBox(width: 20),
-            // Frame info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    cosmetic.name,
-                    style: TextStyle(
-                      color: cosmetic.color,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.greenAccent.withValues(alpha: 0.8),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'SELECTED',
-                        style: TextStyle(
-                          color: Colors.greenAccent.withValues(alpha: 0.8),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
