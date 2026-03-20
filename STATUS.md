@@ -11,17 +11,20 @@
 ## Workstream Status
 
 ### APP
-- **Status**: Cycle 5 shipped — voice preload, card duplicates, visual progress, audio compression + 593 tests
-- **Last session**: 2026-03-18
-- **Last commit**: `35ccca1` — Cycle 5 implementation (11 findings, 7 streams)
+- **Status**: Cycle 6 shipped — 30 findings across 9 streams, onboarding overhaul, victory flow, home UX, 4 new voice arcs + 651 tests
+- **Last session**: 2026-03-20
+- **Last commit**: `e9cb7d5` — Cycle 6 implementation (30 findings, 9 streams)
 - **What happened**:
-  - **Voice system**: preload on narrator switch (instant playback), voice preview on toggle, sync voice_style to cloud, deleted 12 orphaned buddy files
-  - **Card duplicates**: tracking system (card_dup_count_ keys), bonus star every 5 dupes, POWER UP badge on victory, x2/x3 badges in album, card progress bar (X/70) when all heroes/weapons unlocked
-  - **Visual progress**: star icons on world map (replaces "3/5" text), step numbers on onboarding P2, removed numeric fractions from hero shop + card album
-  - **Audio compression**: 360+ voice MP3s re-encoded to 64kbps mono 22050Hz (25MB → 13MB saved)
-  - **Widget tests**: 5 new tests (settings parent gate, camera default, victory screen, brushing world intro)
-  - APK **98MB** (down from 116MB), uploaded to Google Drive
-  - 593 tests passing, dart analyze clean, emulator verified
+  - **Onboarding**: comic-strip how-to-play (no step numbers), animated quadrant cycling on mouth guide
+  - **Victory screen**: PopScope blocks exit, voice-chained chest sequence, power-up voice on dups, milestone voices at 70/80/90 stars, legendary ranger badge
+  - **Home screen**: nav hidden until first brush, voice_tap_hero for new users, 15% bigger hero, "NEW!" streak badge, voice-driven greeting dismiss
+  - **Settings**: narrator subtitles (Jessica/George), distinctive preview voice, direct tutorial replay, full navigator reset after progress wipe
+  - **Voice system**: 4 new encouragement arcs (7-10, total 10), 5s companion suppression near arc beats, world intro trimmed
+  - **Quick fixes**: friendly sync/restore errors, auth retry safety, reset keys for camera/voice_style, deleted orphan voice file
+  - **World map**: pulsing rocket beacon replaces "YOU ARE HERE" text, locked worlds more visible
+  - **Tests**: 30 greeting service tests + 7 home screen widget tests (651 total)
+  - APK **99MB**, uploaded to Google Drive
+  - 651 tests passing, dart analyze clean
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
@@ -126,20 +129,13 @@
 - **Needs CEO decision**: None
 
 ### DEV CYCLE
-- **Status**: Framework built, command installed, ready for first cycle
-- **Last session**: 2026-03-16
+- **Status**: Cycle 6 complete — 30 findings shipped
+- **Last session**: 2026-03-20
 - **Command**: `/cycle` (full audit), `/cycle ship` (verify+ship), `/cycle visual` (emulator screenshots)
 - **Repo**: `~/Projects/dev-cycle` (GitHub: jmchabas/dev-cycle, private)
-- **What happened**:
-  - Built structured dev loop framework: CONTEXT → ANALYZE → PLAN → APPROVE → IMPLEMENT → VERIFY → SHIP → LEARN → FEEDBACK
-  - 3 parallel analysis agents: visual walkthrough (emulator), code health, kid experience + freshness
-  - 4th synthesizer agent de-duplicates and ranks findings
-  - Config with 3 personas, 12 audit lenses, economy model, emulator setup
-  - Cycle history (append-only) + kid feedback file (Jim writes after real-world testing)
-  - Symlinked command: `brush-quest/.claude/commands/cycle.md` → `dev-cycle/commands/cycle.md`
-  - `settings.local.json` updated with permissions for flutter, adb, emulator, rclone
-- **Blocked on**: Nothing — ready to run first cycle
-- **Next up**: Run `/cycle` for first full audit
+- **Cycles completed**: 1, 5, 6 (Cycle 2 analysis done but framework overhauled before implementation)
+- **Blocked on**: Nothing
+- **Next up**: Run next cycle when ready
 - **Needs CEO decision**: None
 
 ### STRATEGY
