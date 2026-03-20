@@ -241,12 +241,13 @@
     <header>
       <h1><span>Brush Quest</span></h1>
       <p class="subtitle">Privacy Policy</p>
-      <p class="effective-date">Effective Date: March 18, 2026</p>
+      <p class="effective-date">Effective Date: March 20, 2026</p>
     </header>
 
     <div class="highlight-box">
       <p><strong>Operator:</strong> AnemosGP LLC, doing business as Brush Quest<br>
       <strong>Address:</strong> 2108 N St, Ste N, Sacramento, CA 95816<br>
+      <strong>Phone:</strong> (510) 214-6383<br>
       <strong>Email:</strong> <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a></p>
     </div>
 
@@ -254,7 +255,7 @@
     <div class="tldr">
       <h2>The short version (for busy parents)</h2>
       <ul>
-        <li><strong>No ads.</strong> Not now, not ever.</li>
+        <li><strong>No ads.</strong> We don't use advertising SDKs or show ads of any kind.</li>
         <li><strong>No data selling.</strong> We don't sell, share, or trade your child's data with anyone.</li>
         <li><strong>No tracking.</strong> No advertising IDs, no behavioral profiling, no location tracking.</li>
         <li><strong>No account required.</strong> The app works fully offline. Cloud save is optional and parent-controlled.</li>
@@ -265,7 +266,7 @@
 
     <p>Brush Quest is a toothbrushing game for kids aged 5 and up, built by a dad for his own kids and shared with other families. We designed it to be the kind of app we'd want on our own children's devices. This policy explains what data we handle, how we protect it, and your rights as a parent.</p>
 
-    <p>This policy complies with the Children's Online Privacy Protection Act (COPPA), including the 2025 amendments.</p>
+    <p>This policy complies with the Children's Online Privacy Protection Act (COPPA), including the 2025 amendments, and the California Consumer Privacy Act (CCPA/CPRA).</p>
 
     <!-- Section 1 -->
     <h2><span class="section-number">1.</span> What We Collect</h2>
@@ -299,13 +300,14 @@
     <p>We collect anonymous crash reports via Firebase Crashlytics to fix bugs. These include device model, OS version, and technical error details. No personal information is included.</p>
 
     <h3>Usage Analytics (anonymous)</h3>
-    <p>We collect anonymous usage data via Firebase Analytics, configured for <strong>child-directed treatment</strong> under COPPA:</p>
+    <p>We collect anonymous usage data via Firebase Analytics, configured for <strong>child-directed treatment</strong> under COPPA. This data is sent to Google's servers as a <strong>service provider</strong> acting on our behalf &mdash; not as an independent third party. Google is contractually prohibited from using this data for its own purposes.</p>
     <ul>
       <li>Events like brush completion, onboarding progress, and shop visits</li>
       <li><strong>No advertising IDs</strong> are collected (explicitly disabled)</li>
       <li><strong>No ad personalization, remarketing, or profiling</strong></li>
       <li>Data is anonymous and aggregated &mdash; it cannot identify any individual child</li>
       <li>Firebase uses installation IDs solely for <strong>internal operations</strong> as permitted under COPPA (16 CFR 312.5(c)(7)) &mdash; not for contacting individuals or building profiles</li>
+      <li>We do <strong>not</strong> share children's data with third parties for commercial, advertising, or AI training purposes</li>
     </ul>
 
     <h3>Website Email List (optional)</h3>
@@ -372,6 +374,15 @@
       </tbody>
     </table>
 
+    <h3>Data Security Program</h3>
+    <p>In compliance with COPPA (16 CFR 312.8), we maintain a written children's personal information security program that includes:</p>
+    <ul>
+      <li>Designated personnel responsible for data protection</li>
+      <li>Risk assessments for internal and external threats to children's data</li>
+      <li>Safeguards appropriate to the sensitivity of the data (encryption, access controls, Firestore security rules)</li>
+      <li>Annual review and updates to the security program</li>
+    </ul>
+
     <!-- Section 4 -->
     <h2><span class="section-number">4.</span> Third-Party Services</h2>
 
@@ -414,6 +425,8 @@
       </tbody>
     </table>
 
+    <p>All Firebase services act as <strong>service providers</strong> under our direction &mdash; they process data on our behalf and are contractually prohibited from using it for independent purposes. No children's personal information is shared with third parties for commercial gain, advertising, or profiling.</p>
+
     <p>Google's privacy policy: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a><br>
     Buttondown's privacy policy: <a href="https://buttondown.com/legal/privacy" target="_blank" rel="noopener">buttondown.com/legal/privacy</a></p>
 
@@ -437,6 +450,7 @@
       <li><strong>Parental gate:</strong> Settings (including cloud save and camera) are behind a math verification problem that deters unsupervised access by children</li>
       <li><strong>Consent dialog:</strong> Before enabling cloud save, a dialog explains what data will be stored and links to this privacy policy. You must tap "I Consent" to proceed</li>
       <li><strong>Camera notice:</strong> Before enabling the motion camera, a notice explains its function and confirms no images are stored</li>
+      <li><strong>Separate consent for third-party sharing:</strong> Under COPPA (16 CFR 312.5(a)(2)), you may consent to our collection and use of data without consenting to disclosure to third parties. Since we only share data with service providers acting on our behalf (not independent third parties), this consent is bundled with the cloud save consent. If you do not enable cloud save, no data leaves the device (except anonymous crash reports and analytics, which qualify as internal operations under 16 CFR 312.5(c)(7))</li>
     </ul>
 
     <h3>Your rights as a parent</h3>
@@ -451,7 +465,28 @@
     <p>We respond to all parental requests within <strong>30 days</strong>.</p>
 
     <!-- Section 6 -->
-    <h2><span class="section-number">6.</span> How Long We Keep Data</h2>
+    <h2><span class="section-number">6.</span> California Privacy Rights (CCPA/CPRA)</h2>
+
+    <p>AnemosGP LLC is a California company. While we may not currently meet the CCPA revenue thresholds, we provide these disclosures in the spirit of transparency.</p>
+
+    <h3>Categories of personal information collected in the past 12 months</h3>
+    <ul>
+      <li><strong>Identifiers:</strong> Parent email address and display name (cloud save only, with consent)</li>
+      <li><strong>Internet/electronic activity:</strong> Anonymous app usage events, crash reports</li>
+    </ul>
+    <p>We do <strong>not</strong> collect: real names or ages of children, geolocation, financial information, biometric data, browsing history outside the app, or protected classifications.</p>
+
+    <h3>Your California rights</h3>
+    <ul>
+      <li><strong>Right to know</strong> &mdash; You can request what personal information we've collected about you</li>
+      <li><strong>Right to delete</strong> &mdash; You can request deletion of your personal information (in-app via Settings, or by email)</li>
+      <li><strong>Right to opt-out of sale/sharing</strong> &mdash; We do <strong>not sell or share</strong> personal information as defined by the CCPA. There is nothing to opt out of</li>
+      <li><strong>Right to non-discrimination</strong> &mdash; We will not treat you differently for exercising your privacy rights</li>
+    </ul>
+    <p>To exercise any of these rights, email <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a>. We will verify your identity and respond within 45 days.</p>
+
+    <!-- Section 7 -->
+    <h2><span class="section-number">7.</span> How Long We Keep Data</h2>
 
     <table>
       <thead>
@@ -488,21 +523,35 @@
       </tbody>
     </table>
 
-    <p>You can delete cloud data at any time using "Delete child's data" in Settings or by emailing <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a>.</p>
+    <p>You can delete cloud data at any time using "Delete child's data" in Settings or by emailing <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a>. We will process email deletion requests within 30 days.</p>
 
-    <!-- Section 7 -->
-    <h2><span class="section-number">7.</span> Changes to This Policy</h2>
-
-    <p>If we make material changes to this policy, we will update the effective date at the top and note what changed. We encourage parents to review this policy periodically.</p>
+    <p>We retain children's personal information only as long as reasonably necessary to fulfill the purpose for which it was collected, as required by COPPA (16 CFR 312.10).</p>
 
     <!-- Section 8 -->
-    <h2><span class="section-number">8.</span> Contact Us</h2>
+    <h2><span class="section-number">8.</span> Changes to This Policy</h2>
+
+    <p>If we make material changes to this policy, we will:</p>
+    <ul>
+      <li>Update the effective date at the top of this page</li>
+      <li>Describe what changed in a summary below the date</li>
+      <li>Notify parents through the app's update notes on the app store</li>
+    </ul>
+    <p>If a change affects how we handle children's personal information, we will obtain new parental consent before applying the change. We encourage parents to review this policy periodically.</p>
+
+    <!-- Section 9 -->
+    <h2><span class="section-number">9.</span> Governing Law</h2>
+
+    <p>This policy is governed by the laws of the State of California and applicable federal law, including COPPA (16 CFR Part 312). Any disputes arising from this policy will be subject to the jurisdiction of the courts in Sacramento County, California.</p>
+
+    <!-- Section 10 -->
+    <h2><span class="section-number">10.</span> Contact Us</h2>
 
     <p>Questions about this policy? Want to review or delete your data? We're happy to help.</p>
 
     <div class="highlight-box">
       <p><strong>AnemosGP LLC</strong> (Brush Quest)<br>
       2108 N St, Ste N, Sacramento, CA 95816<br>
+      Phone: <!-- TODO: Replace with your Google Voice number --> (XXX) XXX-XXXX<br>
       <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a></p>
     </div>
 
@@ -510,7 +559,7 @@
 
     <footer>
       <p>&copy; 2026 AnemosGP LLC. All rights reserved.</p>
-      <p style="margin-top: 8px;">Last updated: March 18, 2026</p>
+      <p style="margin-top: 8px;">Last updated: March 20, 2026</p>
     </footer>
   </div>
 </body>
