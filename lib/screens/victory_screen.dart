@@ -169,6 +169,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   late AnimationController _rewardRevealController;
   int _newStreak = 0;
   int _newStars = 0;
+  int _previousStars = 0;
   int _starsEarnedThisSession = 0;
   List<Achievement> _newAchievements = [];
   // Next unlock: whichever of hero/weapon is closer
@@ -281,6 +282,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     final hero = await _heroService.getSelectedHero();
     _world = await _worldService.getCurrentWorld();
     _dailyModifier = _worldService.getDailyModifier();
+    _previousStars = await _streakService.getTotalStars();
     final outcome = await _streakService.recordBrush(
       heroId: hero.id,
       worldId: _world.id,
@@ -334,7 +336,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     // Auto-sync progress to cloud if signed in (fire-and-forget)
     if (AuthService().currentUser != null) {
-      SyncService().uploadProgress().catchError((_) {});
+      SyncService().uploadProgress().catchError((e) {
+        debugPrint('Cloud sync failed: $e');
+      });
     }
 
     // ── NEW TIMING SEQUENCE ──
@@ -350,19 +354,17 @@ class _VictoryScreenState extends State<VictoryScreen>
     final arc = _victoryArcs[arcIndex];
     _audio.playVoice(arc[0]); // celebration
 
-    // t=~2.5s   Arc beat 2 (star earned) — queued via voice pipeline
-    _audio.playVoice(arc[1]); // "+1 star!"
+    // Arc beat 2 (star earned) — queued via voice pipeline
+    await _audio.playVoice(arc[1]); // "+1 star!"
     _starController.forward();
     _starRotationController.repeat();
     _starGlowController.repeat(reverse: true);
 
-    // t=~4s     Chest drops in with bounce + arc beat 3 (chest prompt)
-    Future.delayed(const Duration(milliseconds: 4000), () {
-      if (!mounted) return;
-      setState(() => _showChest = true);
-      _chestBounceController.repeat(reverse: true);
-      _audio.playVoice(arc[2]); // chest prompt
-    });
+    // Chest drops after voice completes
+    if (!mounted) return;
+    setState(() => _showChest = true);
+    _chestBounceController.repeat(reverse: true);
+    _audio.playVoice(arc[2]); // chest prompt
     // NOTE: Achievements are now shown AFTER the chest/card sequence,
     // not concurrently. See _openChest for the scheduling.
   }
@@ -459,8 +461,9 @@ class _VictoryScreenState extends State<VictoryScreen>
         _newBadgeController.forward();
         _audio.playVoice('voice_card_new.mp3');
       } else {
-        // Duplicate card — show POWER UP badge and check for bonus star
+        // Duplicate card — show POWER UP badge with voice and check for bonus star
         _newBadgeController.forward();
+        _audio.playVoice('voice_card_power_up.mp3');
         final bonusStars = await _cardService.checkDuplicateBonus();
         if (bonusStars > 0) {
           await _streakService.addBonusStars(bonusStars);
@@ -489,6 +492,18 @@ class _VictoryScreenState extends State<VictoryScreen>
       await Future.delayed(const Duration(milliseconds: 1500));
       if (!mounted) return;
 
+      // ── Milestone celebration (70/80/90 stars) ──
+      for (final milestone in [70, 80, 90]) {
+        if (_newStars >= milestone && _previousStars < milestone) {
+          final voiceFile = 'voice_milestone_$milestone.mp3';
+          await _audio.playVoice(voiceFile);
+          _confettiController.repeat();
+          await Future.delayed(const Duration(milliseconds: 500));
+          break; // Only play one milestone per session
+        }
+      }
+      if (!mounted) return;
+
       // ── Achievements (AFTER card reveal) ──
       for (int i = 0; i < _newAchievements.length; i++) {
         if (!mounted) break;
@@ -503,8 +518,10 @@ class _VictoryScreenState extends State<VictoryScreen>
         await Future.delayed(const Duration(milliseconds: 1000));
       }
 
-      // Queue encouragement about next unlock progress
-      if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
+      // Legendary ranger voice or next-unlock encouragement
+      if (_nextUnlockName == null && _collectedCardCount >= 70 && mounted) {
+        await _audio.playVoice('voice_legend.mp3');
+      } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
         _audio.playVoice(
           _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
         );
@@ -838,7 +855,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: _showDoneButton,
+      child: Scaffold(
       body: SpaceBackground(
         child: SafeArea(
           child: Stack(
@@ -1108,6 +1127,47 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ],
                         ),
                       ),
+                    // LEGENDARY RANGER badge (all heroes/weapons/70+ cards)
+                    if (_chestOpened &&
+                        _nextUnlockName == null &&
+                        _collectedCardCount >= 70)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'LEGENDARY RANGER',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     // Card collection progress (shown when all heroes/weapons unlocked)
                     if (_chestOpened &&
                         _nextUnlockName == null &&
@@ -1221,6 +1281,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           ),
         ),
       ),
+    ),
     );
   }
 

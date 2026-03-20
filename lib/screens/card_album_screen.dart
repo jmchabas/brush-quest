@@ -134,7 +134,9 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
               // World pages
               Expanded(
                 child: unlockedWorlds.isEmpty
-                    ? const SizedBox.shrink()
+                    ? const Center(child: CircularProgressIndicator(
+                        color: Color(0xFF00E5FF),
+                      ))
                     : PageView.builder(
                         controller: _pageController,
                         itemCount: unlockedWorlds.length,

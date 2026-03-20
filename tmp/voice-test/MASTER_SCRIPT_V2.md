@@ -313,3 +313,35 @@ voice_card_dd_04 | "Null Newt, the Zero Crawler. Erases its own footprints as it
 voice_card_dd_05 | "Entropy Eagle, the Chaos Flyer. Its wings scatter reality like dust."
 voice_card_dd_06 | "Abyss Anaconda, the Deep Dark Coiler. Wraps around entire planets."
 voice_card_dd_07 | "Dimension Devourer, the Reality Breaker. Eats entire dimensions for lunch."
+
+---
+
+## CYCLE 6 NEW VOICES
+
+### Arc 7: Confidence
+voice_arc7_beat1 | "You've done this before. You know what to do."
+voice_arc7_beat2 | "Right on target. Steady and strong."
+voice_arc7_beat3 | "Perfect. Just like a pro."
+
+### Arc 8: Discovery
+voice_arc8_beat1 | "Hey, look at this one. Let's see what he's got."
+voice_arc8_beat2 | "Found him. He was trying to hide."
+voice_arc8_beat3 | "Got him. Nothing gets past you."
+
+### Arc 9: Momentum
+voice_arc9_beat1 | "Here we go. Build up the power."
+voice_arc9_beat2 | "More and more. Keep that rhythm."
+voice_arc9_beat3 | "All that power. Feel it building."
+
+### Arc 10: Final push
+voice_arc10_beat1 | "This one's tough. But so are you."
+voice_arc10_beat2 | "He's weakening. Stay with it."
+voice_arc10_beat3 | "One last push. You've got this, ranger."
+
+### Milestones & Special
+voice_tap_hero | "Tap your Space Ranger to start brushing!"
+voice_card_power_up | "Power up! That monster just got stronger."
+voice_milestone_70 | "Seventy stars. You're becoming a legend, ranger."
+voice_milestone_80 | "Eighty stars. The monsters don't stand a chance."
+voice_milestone_90 | "Ninety stars. Almost there. The galaxy is watching."
+voice_legend | "You've done it. Every hero, every weapon, every monster. You are a true Space Ranger Legend."

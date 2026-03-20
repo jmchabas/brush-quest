@@ -429,6 +429,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     ['voice_arc4_beat1.mp3', 'voice_arc4_beat2.mp3', 'voice_arc4_beat3.mp3'],
     ['voice_arc5_beat1.mp3', 'voice_arc5_beat2.mp3', 'voice_arc5_beat3.mp3'],
     ['voice_arc6_beat1.mp3', 'voice_arc6_beat2.mp3', 'voice_arc6_beat3.mp3'],
+    ['voice_arc7_beat1.mp3', 'voice_arc7_beat2.mp3', 'voice_arc7_beat3.mp3'],
+    ['voice_arc8_beat1.mp3', 'voice_arc8_beat2.mp3', 'voice_arc8_beat3.mp3'],
+    ['voice_arc9_beat1.mp3', 'voice_arc9_beat2.mp3', 'voice_arc9_beat3.mp3'],
+    ['voice_arc10_beat1.mp3', 'voice_arc10_beat2.mp3', 'voice_arc10_beat3.mp3'],
   ];
   int _currentArcIndex = -1;
   int _lastArcIndex = -1;
@@ -1392,8 +1396,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   /// Used to suppress companion voice when it would collide with arc beats.
   bool _isArcBeatNearby() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    // Check if an arc beat played within the last 3 seconds
-    if (now - _lastArcBeatTime < 3000) return true;
+    // Check if an arc beat played within the last 5 seconds
+    if (now - _lastArcBeatTime < 5000) return true;
     // Check if an arc beat is scheduled within the next 3 seconds
     final energizeAt = (_phaseDuration * 0.80).round();
     final supportAt = (_phaseDuration * 0.50).round();
@@ -1887,45 +1891,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 ),
                               ],
                             ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Story-style mission briefing
-                      Text(
-                        'Cavity monsters are hiding in',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        _world.name.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _world.themeColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _world.description,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Brush your teeth to defeat them!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 14,
-                          fontStyle: FontStyle.italic,
-                        ),
                       ),
                       const SizedBox(height: 24),
                       _PulsingTapToFight(themeColor: _world.themeColor),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
@@ -33,6 +34,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Show star count immediately before async load refines it
+    SharedPreferences.getInstance().then((p) {
+      if (mounted) setState(() => _stars = p.getInt('total_stars') ?? 0);
+    });
     _loadData();
     AnalyticsService().logShopVisit();
   }

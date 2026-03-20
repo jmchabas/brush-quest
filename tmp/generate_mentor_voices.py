@@ -48,6 +48,7 @@ BATTLE_PREFIXES = [
     "voice_chest_bonus_star", "voice_chest_double", "voice_chest_jackpot",
     "voice_chest_encourage", "voice_need_stars", "voice_welcome_back",
     "voice_top_left", "voice_top_right", "voice_bottom_left", "voice_bottom_right",
+    "voice_tap_hero", "voice_card_power_up", "voice_milestone_", "voice_legend",
 ]
 
 # Victory arc full takes — will be split into beats after generation

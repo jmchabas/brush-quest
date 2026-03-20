@@ -35,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _greetingChecked = false;
   int _totalStars = 0;
   int _streak = 0;
+  int _totalBrushes = 0;
   bool _bossReady = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
@@ -138,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedHero = hero;
         _selectedWeapon = weapon;
         _streak = streak;
+        _totalBrushes = totalBrushes;
         _bossReady = bossReady;
         _currentWorld = world;
       });
@@ -167,9 +169,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final totalBrushes = await _streakService.getTotalBrushes();
     if (totalBrushes == 0) {
       // First-launch: kid just finished onboarding, guide them to tap the hero
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
-        AudioService().playVoice('voice_lets_fight.mp3');
+        AudioService().playVoice('voice_tap_hero.mp3');
       }
       return;
     }
@@ -319,10 +321,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
-    // Auto-dismiss after 4 seconds
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
-    });
+    // Auto-dismiss when voice finishes + 0.5s (minimum 3s)
+    final showTime = DateTime.now();
+    void dismissWhenReady() {
+      if (!mounted) return;
+      final elapsed = DateTime.now().difference(showTime);
+      if (elapsed < const Duration(seconds: 3)) {
+        // Ensure minimum display time
+        Future.delayed(const Duration(seconds: 3) - elapsed, () {
+          if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
+        });
+      } else {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
+        });
+      }
+    }
+    void listener() {
+      if (!AudioService().voicePipelineActiveNotifier.value) {
+        AudioService().voicePipelineActiveNotifier.removeListener(listener);
+        dismissWhenReady();
+      }
+    }
+    // If voice is already done, dismiss with minimum delay
+    if (!AudioService().voicePipelineActiveNotifier.value) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
+      });
+    } else {
+      AudioService().voicePipelineActiveNotifier.addListener(listener);
+    }
   }
 
   void _startBrushing() {
@@ -555,44 +583,66 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           border: Border.all(
                             color: (_streak > 0
                                     ? Colors.orangeAccent
-                                    : Colors.white24)
+                                    : _totalBrushes > 0
+                                        ? const Color(0xFF00E5FF)
+                                        : Colors.white24)
                                 .withValues(alpha: 0.6),
                             width: 2,
                           ),
                           color: (_streak > 0
                                   ? Colors.orangeAccent
-                                  : Colors.white24)
+                                  : _totalBrushes > 0
+                                      ? const Color(0xFF00E5FF)
+                                      : Colors.white24)
                               .withValues(alpha: 0.12),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.local_fire_department,
-                              color: _streak > 0
-                                  ? Colors.orangeAccent
-                                  : Colors.white.withValues(alpha: 0.3),
-                              size: 26,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_streak',
-                              style: TextStyle(
-                                color: _streak > 0
-                                    ? Colors.white
-                                    : Colors.white.withValues(alpha: 0.3),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 28,
-                                shadows: _streak > 0
-                                    ? const [
-                                        Shadow(
-                                          color: Color(0x80FF9800),
-                                          blurRadius: 8,
-                                        ),
-                                      ]
-                                    : null,
+                            if (_streak == 0 && _totalBrushes > 0) ...[
+                              const Icon(
+                                Icons.rocket_launch,
+                                color: Color(0xFF00E5FF),
+                                size: 22,
                               ),
-                            ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'NEW!',
+                                style: TextStyle(
+                                  color: Color(0xFF00E5FF),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ] else ...[
+                              Icon(
+                                Icons.local_fire_department,
+                                color: _streak > 0
+                                    ? Colors.orangeAccent
+                                    : Colors.white.withValues(alpha: 0.3),
+                                size: 26,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$_streak',
+                                style: TextStyle(
+                                  color: _streak > 0
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.3),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 28,
+                                  shadows: _streak > 0
+                                      ? const [
+                                          Shadow(
+                                            color: Color(0x80FF9800),
+                                            blurRadius: 8,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -672,7 +722,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           AnimatedBuilder(
                             animation: _auraController,
                             builder: (context, child) {
-                              final auraSize = 270 + _auraController.value * 16;
+                              final auraSize = 310 + _auraController.value * 16;
                               return Stack(
                                 alignment: Alignment.center,
                                 children: [
@@ -700,14 +750,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ScaleTransition(
                                     scale: _breatheAnimation,
                                     child: SizedBox(
-                                      width: 270,
-                                      height: 270,
+                                      width: 300,
+                                      height: 300,
                                       child: Stack(
                                         alignment: Alignment.center,
                                         children: [
                                           Container(
-                                            width: 260,
-                                            height: 260,
+                                            width: 290,
+                                            height: 290,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               border: Border.all(
@@ -911,40 +961,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   const Spacer(),
 
-                  // Secondary nav row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _SmallNavButton(
-                            icon: Icons.rocket_launch,
-                            label: 'MAP',
-                            color: const Color(0xFF00E5FF),
-                            onTap: _openWorldMap,
+                  // Secondary nav row — hidden until first brush
+                  if (_totalBrushes > 0)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _SmallNavButton(
+                              icon: Icons.rocket_launch,
+                              label: 'MAP',
+                              color: const Color(0xFF00E5FF),
+                              onTap: _openWorldMap,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _SmallNavButton(
-                            icon: Icons.shield,
-                            label: 'HEROES',
-                            color: const Color(0xFF7C4DFF),
-                            onTap: _openShop,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _SmallNavButton(
+                              icon: Icons.shield,
+                              label: 'HEROES',
+                              color: const Color(0xFF7C4DFF),
+                              onTap: _openShop,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _SmallNavButton(
-                            icon: Icons.style,
-                            label: 'CARDS',
-                            color: const Color(0xFFFFD54F),
-                            onTap: _openCards,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _SmallNavButton(
+                              icon: Icons.style,
+                              label: 'CARDS',
+                              color: const Color(0xFFFFD54F),
+                              onTap: _openCards,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 24),
                 ],
               ),

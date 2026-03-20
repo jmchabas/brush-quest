@@ -7,6 +7,8 @@ import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import '../services/analytics_service.dart';
 import '../widgets/space_background.dart';
+import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -266,12 +268,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } catch (e) {
+      debugPrint('Cloud sync failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Sync failed: $e',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            content: const Text(
+              'Save didn\'t work. Please check your connection.',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
@@ -338,6 +341,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             backgroundColor: restored
                 ? const Color(0xFF00E676)
                 : Colors.orangeAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Cloud restore failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Restore didn\'t work. Please check your connection.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -550,6 +570,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'session_checkpoint_seconds',
       'session_checkpoint_world',
       'card_dup_bonus_threshold',
+      'camera_mode_configured',
+      'voice_style',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);
@@ -565,19 +587,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await SyncService().deleteCloudData();
 
     if (mounted) {
-      _loadSettings();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Progress reset!',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (_) => false,
       );
     }
   }
@@ -589,24 +601,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _resetOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', false);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            'Tutorial will show on next launch',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          backgroundColor: const Color(0xFF7C4DFF),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    }
+  void _resetOnboarding() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+    );
   }
 
   Widget _buildParentGate() {
@@ -1008,6 +1006,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _SettingCard(
                       icon: Icons.record_voice_over,
                       title: 'Narrator voice',
+                      subtitle: _voiceStyle == 'classic'
+                          ? 'Jessica — warm & clear'
+                          : 'George — friendly guide',
                       child: SegmentedButton<String>(
                         segments: const [
                           ButtonSegment<String>(
@@ -1024,9 +1025,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           final style = selected.first;
                           await AudioService().setVoiceStyle(style);
                           setState(() => _voiceStyle = style);
-                          // Preview: play a sample voice line after switching
+                          // Preview: play a distinctive greeting sample
                           await Future.delayed(const Duration(milliseconds: 200));
-                          AudioService().playVoice('voice_lets_fight.mp3',
+                          AudioService().playVoice('voice_greet_just_started_1.mp3',
                               interrupt: true, clearQueue: true);
                         },
                         style: ButtonStyle(
@@ -1204,11 +1205,13 @@ class _SectionHeader extends StatelessWidget {
 class _SettingCard extends StatelessWidget {
   final IconData icon;
   final String title;
+  final String? subtitle;
   final Widget child;
 
   const _SettingCard({
     required this.icon,
     required this.title,
+    this.subtitle,
     required this.child,
   });
 
@@ -1226,13 +1229,29 @@ class _SettingCard extends StatelessWidget {
           Icon(icon, color: Colors.white54, size: 22),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      subtitle!,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           child,

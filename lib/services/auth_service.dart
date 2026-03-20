@@ -38,12 +38,16 @@ class AuthService {
         try {
           await GoogleSignIn.instance.disconnect();
         } catch (_) {}
-        // Retry with a clean slate
-        final account = await GoogleSignIn.instance.authenticate();
-        final idToken = account.authentication.idToken;
-        final credential = GoogleAuthProvider.credential(idToken: idToken);
-        final authResult = await _auth.signInWithCredential(credential);
-        return authResult.user;
+        try {
+          // Retry with a clean slate
+          final account = await GoogleSignIn.instance.authenticate();
+          final idToken = account.authentication.idToken;
+          final credential = GoogleAuthProvider.credential(idToken: idToken);
+          final authResult = await _auth.signInWithCredential(credential);
+          return authResult.user;
+        } catch (_) {
+          return null;
+        }
       }
       rethrow;
     }

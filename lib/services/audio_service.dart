@@ -334,6 +334,26 @@ class AudioService {
     'voice_chest_encourage_1.mp3',
     'voice_chest_encourage_2.mp3',
     'voice_chest_encourage_3.mp3',
+    // Encouragement arcs 7-10 (Cycle 6)
+    'voice_arc7_beat1.mp3',
+    'voice_arc7_beat2.mp3',
+    'voice_arc7_beat3.mp3',
+    'voice_arc8_beat1.mp3',
+    'voice_arc8_beat2.mp3',
+    'voice_arc8_beat3.mp3',
+    'voice_arc9_beat1.mp3',
+    'voice_arc9_beat2.mp3',
+    'voice_arc9_beat3.mp3',
+    'voice_arc10_beat1.mp3',
+    'voice_arc10_beat2.mp3',
+    'voice_arc10_beat3.mp3',
+    // Milestones and special voices (Cycle 6)
+    'voice_tap_hero.mp3',
+    'voice_card_power_up.mp3',
+    'voice_milestone_70.mp3',
+    'voice_milestone_80.mp3',
+    'voice_milestone_90.mp3',
+    'voice_legend.mp3',
   ];
 
   List<String> get encouragementVoices =>
