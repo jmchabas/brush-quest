@@ -896,6 +896,13 @@ class _BrushingScreenState extends State<BrushingScreen>
       _sessionStage = SessionStage.worldIntro;
     });
     _playWorldMissionBriefing();
+
+    // Auto-advance after 10 seconds; tap anywhere skips immediately
+    _worldIntroTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted && _showWorldIntro) {
+        _dismissWorldIntro();
+      }
+    });
   }
 
   void _dismissWorldIntro() {
@@ -1884,22 +1891,46 @@ class _BrushingScreenState extends State<BrushingScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _world.themeColor, width: 4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _world.themeColor.withValues(alpha: 0.55),
-                              blurRadius: 28,
-                              spreadRadius: 3,
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 1.0, end: 0.0),
+                        duration: const Duration(seconds: 10),
+                        builder: (context, value, child) {
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox(
+                                width: 156,
+                                height: 156,
+                                child: CircularProgressIndicator(
+                                  value: value,
+                                  strokeWidth: 3,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    _world.themeColor.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ),
+                              child!,
+                            ],
+                          );
+                        },
+                        child: Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: _world.themeColor, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _world.themeColor.withValues(alpha: 0.55),
+                                blurRadius: 28,
+                                spreadRadius: 3,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
