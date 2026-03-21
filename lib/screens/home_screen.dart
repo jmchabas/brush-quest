@@ -50,11 +50,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _tapPulseAnimation;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
-  late AnimationController _tapBounceController;
-  late Animation<double> _tapBounceAnimation;
   bool _buttonPressed = false;
-  String? _lastPickerVoice;
-
   static const _welcomeBackVoices = [
     'voice_welcome_back.mp3',
     'voice_keep_it_up.mp3',
@@ -103,13 +99,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
     );
 
-    _tapBounceController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    )..repeat(reverse: true);
-    _tapBounceAnimation = Tween<double>(begin: 0, end: -10).animate(
-      CurvedAnimation(parent: _tapBounceController, curve: Curves.easeInOut),
-    );
   }
 
   @override
@@ -120,7 +109,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _auraController.dispose();
     _tapPulseController.dispose();
     _breatheController.dispose();
-    _tapBounceController.dispose();
     super.dispose();
   }
 
@@ -369,7 +357,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await prefs.setBool('camera_mode_configured', true);
     }
 
-    _showPreBrushPicker();
+    AudioService().playVoice(
+      'voice_lets_fight.mp3',
+      clearQueue: true,
+      interrupt: true,
+    );
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _launchBrushingScreen();
+    });
   }
 
   void _launchBrushingScreen() {
@@ -403,70 +398,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         )
         .then((_) => _loadStats());
-  }
-
-  void _showPreBrushPicker() async {
-    final unlocked = await _heroService.getUnlockedHeroIds();
-    final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
-    if (!mounted) return;
-
-    // Skip picker for new users with only default hero + weapon
-    if (unlocked.length <= 1 && unlockedWeapons.length <= 1) {
-      AudioService().playVoice(
-        'voice_lets_fight.mp3',
-        clearQueue: true,
-        interrupt: true,
-      );
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (mounted) _launchBrushingScreen();
-      });
-      return;
-    }
-
-    _lastPickerVoice = null;
-    _playPickerVoice(AudioService().heroPickerVoiceFor(_selectedHero.id));
-
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _PreBrushLoadoutScreen(
-          child: _PreBrushPicker(
-            heroes: HeroService.allHeroes,
-            weapons: WeaponService.allWeapons,
-            unlockedHeroIds: unlocked,
-            unlockedWeaponIds: unlockedWeapons,
-            selectedHero: _selectedHero,
-            selectedWeapon: _selectedWeapon,
-            onHeroSelected: (hero) async {
-              await _heroService.selectHero(hero.id);
-              setState(() => _selectedHero = hero);
-              _playPickerVoice(AudioService().heroPickerVoiceFor(hero.id));
-            },
-            onWeaponSelected: (weapon) async {
-              await _weaponService.selectWeapon(weapon.id);
-              setState(() => _selectedWeapon = weapon);
-              _playPickerVoice(AudioService().weaponPickerVoiceFor(weapon.id));
-            },
-            onGo: () {
-              Navigator.of(context).pop();
-              AudioService().playVoice(
-                'voice_lets_fight.mp3',
-                clearQueue: true,
-                interrupt: true,
-              );
-              Future.delayed(const Duration(milliseconds: 600), () {
-                if (mounted) _launchBrushingScreen();
-              });
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _playPickerVoice(String fileName) {
-    if (_lastPickerVoice == fileName) return;
-    _lastPickerVoice = fileName;
-    AudioService().playVoice(fileName, clearQueue: true, interrupt: true);
   }
 
   void _openShop() {
@@ -712,7 +643,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       onTapDown: (_) => setState(() => _buttonPressed = true),
                       onTapUp: (_) {
                         setState(() => _buttonPressed = false);
-                        _startBrushing();
+                        _openShop();
                       },
                       onTapCancel: () => setState(() => _buttonPressed = false),
                       child: Column(
@@ -837,42 +768,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
 
-                  // Bouncing tap indicator + "TAP TO BRUSH!" hint
-                  AnimatedBuilder(
-                    animation: Listenable.merge([
-                      _tapPulseAnimation,
-                      _tapBounceAnimation,
-                    ]),
-                    builder: (context, child) {
-                      return Opacity(
-                        opacity: _tapPulseAnimation.value,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Transform.translate(
-                              offset: Offset(0, _tapBounceAnimation.value),
-                              child: const Icon(
-                                Icons.touch_app,
-                                color: Color(0xFF00E5FF),
-                                size: 28,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'TAP TO BRUSH!',
-                              style: TextStyle(
-                                color: Color(0xFF00E5FF),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 3,
-                              ),
+                  // BRUSH button
+                  GestureDetector(
+                    onTap: _startBrushing,
+                    child: AnimatedBuilder(
+                      animation: _tapPulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: 1.0 + _tapPulseAnimation.value * 0.03,
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              _selectedHero.primaryColor,
+                              _selectedHero.primaryColor.withValues(alpha: 0.7),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _selectedHero.primaryColor.withValues(alpha: 0.5),
+                              blurRadius: 20,
+                              spreadRadius: 2,
                             ),
                           ],
                         ),
-                      );
-                    },
+                        child: const Text(
+                          'BRUSH!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 4,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 10),
@@ -1002,329 +939,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PreBrushPicker extends StatefulWidget {
-  final List<HeroCharacter> heroes;
-  final List<WeaponItem> weapons;
-  final List<String> unlockedHeroIds;
-  final List<String> unlockedWeaponIds;
-  final HeroCharacter selectedHero;
-  final WeaponItem selectedWeapon;
-  final ValueChanged<HeroCharacter> onHeroSelected;
-  final ValueChanged<WeaponItem> onWeaponSelected;
-  final VoidCallback onGo;
-
-  const _PreBrushPicker({
-    required this.heroes,
-    required this.weapons,
-    required this.unlockedHeroIds,
-    required this.unlockedWeaponIds,
-    required this.selectedHero,
-    required this.selectedWeapon,
-    required this.onHeroSelected,
-    required this.onWeaponSelected,
-    required this.onGo,
-  });
-
-  @override
-  State<_PreBrushPicker> createState() => _PreBrushPickerState();
-}
-
-class _PreBrushLoadoutScreen extends StatelessWidget {
-  final Widget child;
-  const _PreBrushLoadoutScreen({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SpaceBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'CHOOSE HERO + WEAPON',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2.2,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SingleChildScrollView(child: child),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PreBrushPickerState extends State<_PreBrushPicker> {
-  late HeroCharacter _hero;
-  late WeaponItem _weapon;
-
-  @override
-  void initState() {
-    super.initState();
-    _hero = widget.selectedHero;
-    _weapon = widget.selectedWeapon;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Hero + weapon display
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _hero.primaryColor, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _hero.primaryColor.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: Image.asset(_hero.imagePath, fit: BoxFit.cover),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF1A0A3E),
-                  border: Border.all(color: _weapon.primaryColor, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _weapon.primaryColor.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    _weapon.imagePath,
-                    width: 28,
-                    height: 28,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Hero row
-          SizedBox(
-            height: 72,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: widget.heroes.length,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              itemBuilder: (ctx, i) {
-                final h = widget.heroes[i];
-                final unlocked = widget.unlockedHeroIds.contains(h.id);
-                final selected = h.id == _hero.id;
-                return GestureDetector(
-                  onTap: unlocked
-                      ? () {
-                          setState(() => _hero = h);
-                          widget.onHeroSelected(h);
-                        }
-                      : () {
-                          HapticFeedback.mediumImpact();
-                          AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
-                        },
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected
-                            ? h.primaryColor
-                            : (unlocked ? Colors.white24 : Colors.white10),
-                        width: selected ? 3 : 1,
-                      ),
-                      boxShadow: selected
-                          ? [
-                              BoxShadow(
-                                color: h.primaryColor.withValues(alpha: 0.4),
-                                blurRadius: 10,
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: ClipOval(
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          ColorFiltered(
-                            colorFilter: unlocked
-                                ? const ColorFilter.mode(
-                                    Colors.transparent,
-                                    BlendMode.dst,
-                                  )
-                                : const ColorFilter.mode(
-                                    Colors.black54,
-                                    BlendMode.saturation,
-                                  ),
-                            child: Image.asset(h.imagePath, fit: BoxFit.cover),
-                          ),
-                          if (!unlocked)
-                            Center(
-                              child: Icon(
-                                Icons.lock,
-                                color: Colors.white.withValues(alpha: 0.6),
-                                size: 20,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Weapon row
-          SizedBox(
-            height: 56,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: widget.weapons.length,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              itemBuilder: (ctx, i) {
-                final w = widget.weapons[i];
-                final unlocked = widget.unlockedWeaponIds.contains(w.id);
-                final selected = w.id == _weapon.id;
-                return GestureDetector(
-                  onTap: unlocked
-                      ? () {
-                          setState(() => _weapon = w);
-                          widget.onWeaponSelected(w);
-                        }
-                      : () {
-                          HapticFeedback.mediumImpact();
-                          AudioService().playVoice('voice_need_stars.mp3', clearQueue: true, interrupt: true);
-                        },
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: selected
-                          ? w.primaryColor.withValues(alpha: 0.2)
-                          : Colors.white.withValues(alpha: 0.05),
-                      border: Border.all(
-                        color: selected
-                            ? w.primaryColor
-                            : (unlocked ? Colors.white24 : Colors.white10),
-                        width: selected ? 2 : 1,
-                      ),
-                    ),
-                    child: unlocked
-                        ? ClipOval(
-                            child: Image.asset(
-                              w.imagePath,
-                              width: 22,
-                              height: 22,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.lock,
-                            color: Colors.white24,
-                            size: 22,
-                          ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // GO button
-          GestureDetector(
-            onTap: widget.onGo,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    _hero.primaryColor,
-                    _hero.primaryColor.withValues(alpha: 0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: _hero.primaryColor.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-              child: const Text(
-                'GO!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 6,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

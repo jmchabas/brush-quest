@@ -117,10 +117,10 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('TAP TO BRUSH hint is visible', (tester) async {
+  testWidgets('BRUSH button is visible', (tester) async {
     await pumpHome(tester);
 
-    expect(find.text('TAP TO BRUSH!'), findsOneWidget);
+    expect(find.text('BRUSH!'), findsOneWidget);
 
     await tester.binding.setSurfaceSize(null);
   });
@@ -129,14 +129,6 @@ void main() {
     await pumpHome(tester);
 
     expect(find.byIcon(Icons.volume_up), findsOneWidget);
-
-    await tester.binding.setSurfaceSize(null);
-  });
-
-  testWidgets('touch app icon is present for tap hint', (tester) async {
-    await pumpHome(tester);
-
-    expect(find.byIcon(Icons.touch_app), findsOneWidget);
 
     await tester.binding.setSurfaceSize(null);
   });
