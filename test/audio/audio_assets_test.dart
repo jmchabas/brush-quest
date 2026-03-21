@@ -96,6 +96,17 @@ const _allAudioFiles = [
   'voice_world_crystal_cave.mp3',
   'voice_world_storm_citadel.mp3',
   'voice_world_dark_dimension.mp3',
+  // Unlock encouragement voices (heroes + weapons)
+  'voice_unlock_next_frost.mp3',
+  'voice_unlock_next_bolt.mp3',
+  'voice_unlock_next_shadow.mp3',
+  'voice_unlock_next_leaf.mp3',
+  'voice_unlock_next_nova.mp3',
+  'voice_unlock_next_flame_sword.mp3',
+  'voice_unlock_next_ice_hammer.mp3',
+  'voice_unlock_next_lightning_wand.mp3',
+  'voice_unlock_next_vine_whip.mp3',
+  'voice_unlock_next_cosmic_shield.mp3',
   // Monster card voice-overs (World 1-10)
   'voice_card_cc_01.mp3', 'voice_card_cc_02.mp3', 'voice_card_cc_03.mp3',
   'voice_card_cc_04.mp3', 'voice_card_cc_05.mp3', 'voice_card_cc_06.mp3',
