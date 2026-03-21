@@ -349,6 +349,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   ui.FragmentProgram? _shockwaveProgram;
   // Tier 3: Slow-motion on finisher kill
   bool _slowMotion = false;
+  int _slowMotionFrame = 0;
 
   // Tier 3: Shockwave overlay
   double _shockwaveProgress = -1.0; // -1 = inactive
@@ -413,6 +414,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     'POWER UP!',
   ];
 
+  static const _encouragementTextPools = {
+    'attack': ['BRUSH TO ATTACK!', 'FIGHT THAT MONSTER!', 'KEEP GOING!', 'ATTACK!'],
+    'mid': ['KEEP BRUSHING!', "DON'T STOP!", "YOU'VE GOT THIS!", 'POWER UP!'],
+    'almost': ['ALMOST THERE!', 'NEARLY DONE!', 'SO CLOSE!', 'FINAL PUSH!'],
+    'finish': ['FINISH IT OFF!', 'ONE MORE HIT!', 'TAKE IT DOWN!', 'LAST STRIKE!'],
+  };
+
+  int _encouragementTextVariant = 0;
   bool _playedEncouragement = false;
   bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
@@ -606,7 +615,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _initParticles() {
     _particles.clear();
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 20; i++) {
       _particles.add(_createParticle());
     }
   }
@@ -634,7 +643,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       return;
     }
     // Slow-motion: skip every other frame for cinematic finisher
-    if (_slowMotion && _random.nextBool()) return;
+    if (_slowMotion) {
+      _slowMotionFrame++;
+      if (_slowMotionFrame % 2 == 0) return;
+    }
     for (int i = 0; i < _particles.length; i++) {
       final p = _particles[i];
       p.x += p.vx;
@@ -1132,15 +1144,19 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
     _attackStyleIndex = 4;
     _attackSequenceController.forward(from: 0);
-    _screenShakeController.forward(from: 0);
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) _screenShakeController.forward(from: 0);
+    });
     _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     HapticFeedback.heavyImpact();
     _audio.playSfx('zap.mp3');
 
-    // Tier 3: Shockwave on finisher
-    _shockwaveController.forward(from: 0);
+    // Tier 3: Shockwave on finisher (staggered for visual impact)
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) _shockwaveController.forward(from: 0);
+    });
 
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 18; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 4.0 + _random.nextDouble() * 8;
       _hitSparks.add(
@@ -1169,6 +1185,9 @@ class _BrushingScreenState extends State<BrushingScreen>
           scale: 2.0,
         ),
       );
+      while (_damagePopups.length > 15) {
+        _damagePopups.removeAt(0);
+      }
     });
 
     Future.delayed(const Duration(milliseconds: 800), () {
@@ -1203,7 +1222,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _spawnDefeatSparks() {
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 12; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 3.0 + _random.nextDouble() * 6;
       _hitSparks.add(
@@ -1458,6 +1477,9 @@ class _BrushingScreenState extends State<BrushingScreen>
           scale: 1.35,
         ),
       );
+      while (_damagePopups.length > 15) {
+        _damagePopups.removeAt(0);
+      }
     });
     // Keep micro-reward as visual-only to avoid competing with guidance voices.
   }
@@ -1480,6 +1502,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     }
     _lastArcIndex = next;
     _currentArcIndex = next;
+    _encouragementTextVariant = _random.nextInt(4);
   }
 
   void _playNextEncouragementVoice() {
@@ -1542,11 +1565,14 @@ class _BrushingScreenState extends State<BrushingScreen>
           ),
         );
       }
+      while (_damagePopups.length > 15) {
+        _damagePopups.removeAt(0);
+      }
     });
   }
 
   void _spawnHitSparks() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 5; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 2.0 + _random.nextDouble() * 5;
       _hitSparks.add(
@@ -1653,12 +1679,13 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   String _getEncouragementText() {
+    final v = _encouragementTextVariant;
     if (_phaseSecondsLeft > 20) {
-      return _cameraReady ? 'BRUSH TO ATTACK!' : 'FIGHT THAT MONSTER!';
+      return _encouragementTextPools['attack']![v];
     }
-    if (_phaseSecondsLeft > 10) return 'KEEP BRUSHING!';
-    if (_phaseSecondsLeft > 5) return 'ALMOST THERE!';
-    return 'FINISH IT OFF!';
+    if (_phaseSecondsLeft > 10) return _encouragementTextPools['mid']![v];
+    if (_phaseSecondsLeft > 5) return _encouragementTextPools['almost']![v];
+    return _encouragementTextPools['finish']![v];
   }
 
   @override
@@ -3333,7 +3360,8 @@ class _WorldParticlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WorldParticlePainter oldDelegate) => true;
+  bool shouldRepaint(_WorldParticlePainter oldDelegate) =>
+      particles.length != oldDelegate.particles.length;
 }
 
 class _HitSparkPainter extends CustomPainter {
@@ -3347,15 +3375,11 @@ class _HitSparkPainter extends CustomPainter {
       if (s.life <= 0) continue;
       final paint = Paint()
         ..color = s.color.withValues(alpha: s.life.clamp(0, 1))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-      final glowPaint = Paint()
-        ..color = s.color.withValues(alpha: s.life.clamp(0, 1) * 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
       final px = cx + s.x;
       final py = cy + s.y;
       final r = s.size * s.life;
 
-      // Tier 2: Draw 4-pointed star shape instead of circle
       final path = Path();
       for (int i = 0; i < 4; i++) {
         final outerAngle = i * pi / 2;
@@ -3368,14 +3392,13 @@ class _HitSparkPainter extends CustomPainter {
         path.lineTo(px + cos(innerAngle) * r * 0.4, py + sin(innerAngle) * r * 0.4);
       }
       path.close();
-
-      canvas.drawPath(path, glowPaint);
       canvas.drawPath(path, paint);
     }
   }
 
   @override
-  bool shouldRepaint(_HitSparkPainter oldDelegate) => true;
+  bool shouldRepaint(_HitSparkPainter oldDelegate) =>
+      sparks.length != oldDelegate.sparks.length || sparks.isNotEmpty;
 }
 
 /// Energy ring particles orbiting the monster
