@@ -7,13 +7,15 @@ import '../services/audio_service.dart';
 import '../widgets/space_background.dart';
 
 class CardAlbumScreen extends StatefulWidget {
-  const CardAlbumScreen({super.key});
+  final String? highlightCardId;
+  const CardAlbumScreen({super.key, this.highlightCardId});
 
   @override
   State<CardAlbumScreen> createState() => _CardAlbumScreenState();
 }
 
-class _CardAlbumScreenState extends State<CardAlbumScreen> {
+class _CardAlbumScreenState extends State<CardAlbumScreen>
+    with TickerProviderStateMixin {
   final _cardService = CardService();
   final _worldService = WorldService();
 
@@ -22,17 +24,35 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
   Map<String, int> _duplicateCounts = {};
   late PageController _pageController;
   int _currentPage = 0;
+  String? _highlightCardId;
+  late AnimationController _highlightController;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _highlightCardId = widget.highlightCardId;
+    _highlightController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    if (widget.highlightCardId != null) {
+      _highlightController.repeat(reverse: true);
+      // Clear highlight after 3 seconds
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          _highlightController.stop();
+          setState(() => _highlightCardId = null);
+        }
+      });
+    }
     _loadData();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _highlightController.dispose();
     super.dispose();
   }
 
@@ -59,6 +79,20 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
       if (idx > 0) {
         _pageController.jumpToPage(idx);
         _currentPage = idx;
+      }
+      // If a specific card should be highlighted, jump to its world page
+      if (widget.highlightCardId != null) {
+        final card = CardService.allCards.cast<MonsterCard?>().firstWhere(
+          (c) => c!.id == widget.highlightCardId,
+          orElse: () => null,
+        );
+        if (card != null) {
+          final worldIdx = unlocked.indexOf(card.worldId);
+          if (worldIdx >= 0) {
+            _pageController.jumpToPage(worldIdx);
+            _currentPage = worldIdx;
+          }
+        }
       }
       _maybePlayTutorial();
     }
@@ -318,7 +352,9 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
   }
 
   Widget _buildCardTile(MonsterCard card, bool isCollected) {
-    return GestureDetector(
+    final isHighlighted = card.id == _highlightCardId;
+
+    Widget tile = GestureDetector(
       onTap: isCollected
           ? () {
               HapticFeedback.lightImpact();
@@ -329,27 +365,38 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
               AudioService().playVoice('voice_card_mystery.mp3',
                   clearQueue: true, interrupt: true);
             },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isCollected
-              ? Colors.black.withValues(alpha: 0.4)
-              : Colors.black.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isCollected
-                ? card.rarityColor.withValues(alpha: 0.7)
-                : Colors.white.withValues(alpha: 0.08),
-            width: isCollected ? 2 : 1,
-          ),
-          boxShadow: isCollected
-              ? [
+      child: AnimatedBuilder(
+        animation: _highlightController,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              color: isCollected
+                  ? Colors.black.withValues(alpha: 0.4)
+                  : Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isCollected
+                    ? card.rarityColor.withValues(alpha: 0.7)
+                    : Colors.white.withValues(alpha: 0.08),
+                width: isCollected ? 2 : 1,
+              ),
+              boxShadow: [
+                if (isCollected)
                   BoxShadow(
                     color: card.rarityColor.withValues(alpha: 0.3),
                     blurRadius: 8,
                   ),
-                ]
-              : null,
-        ),
+                if (isHighlighted)
+                  BoxShadow(
+                    color: card.rarityColor.withValues(alpha: 0.5 + _highlightController.value * 0.5),
+                    blurRadius: 12 + _highlightController.value * 8,
+                    spreadRadius: 3,
+                  ),
+              ],
+            ),
+            child: child,
+          );
+        },
         child: Stack(
           children: [
             // Monster image
@@ -447,6 +494,8 @@ class _CardAlbumScreenState extends State<CardAlbumScreen> {
         ),
       ),
     );
+
+    return tile;
   }
 }
 
