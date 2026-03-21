@@ -63,11 +63,14 @@ class AudioService {
   /// Base path for voice files under assets/audio/.
   String get voiceBasePath => 'voices/$_voiceStyle';
 
-  /// Set the voice narrator style and persist to SharedPreferences.
+  /// Set the voice narrator style, persist to SharedPreferences, and
+  /// re-preload all voice assets for the new style in the background.
   Future<void> setVoiceStyle(String style) async {
     _voiceStyle = style;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('voice_style', style);
+    // Fire-and-forget: preload in background so the UI stays responsive.
+    unawaited(preloadAll());
   }
 
   /// Returns the asset path for a voice file, routing through the active
@@ -331,6 +334,26 @@ class AudioService {
     'voice_chest_encourage_1.mp3',
     'voice_chest_encourage_2.mp3',
     'voice_chest_encourage_3.mp3',
+    // Encouragement arcs 7-10 (Cycle 6)
+    'voice_arc7_beat1.mp3',
+    'voice_arc7_beat2.mp3',
+    'voice_arc7_beat3.mp3',
+    'voice_arc8_beat1.mp3',
+    'voice_arc8_beat2.mp3',
+    'voice_arc8_beat3.mp3',
+    'voice_arc9_beat1.mp3',
+    'voice_arc9_beat2.mp3',
+    'voice_arc9_beat3.mp3',
+    'voice_arc10_beat1.mp3',
+    'voice_arc10_beat2.mp3',
+    'voice_arc10_beat3.mp3',
+    // Milestones and special voices (Cycle 6)
+    'voice_tap_hero.mp3',
+    'voice_card_power_up.mp3',
+    'voice_milestone_70.mp3',
+    'voice_milestone_80.mp3',
+    'voice_milestone_90.mp3',
+    'voice_legend.mp3',
   ];
 
   List<String> get encouragementVoices =>

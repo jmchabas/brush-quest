@@ -337,7 +337,7 @@ class _PlanetNodeState extends State<_PlanetNode>
   @override
   Widget build(BuildContext context) {
     final planetSize = widget.isCurrent ? 120.0 : 100.0;
-    final opacity = widget.isUnlocked ? 1.0 : 0.5;
+    final opacity = widget.isUnlocked ? 1.0 : 0.65;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -346,29 +346,43 @@ class _PlanetNodeState extends State<_PlanetNode>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // "YOU ARE HERE" indicator for current world
+            // Animated pulsing beacon for current world
             if (widget.isCurrent)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.rocket_launch,
-                      color: widget.world.themeColor,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'YOU ARE HERE',
-                      style: TextStyle(
-                        color: widget.world.themeColor,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ],
+                child: AnimatedBuilder(
+                  animation: _glowController,
+                  builder: (context, _) {
+                    final ringScale = 1.0 + _glowController.value * 0.4;
+                    final ringOpacity = 0.6 - _glowController.value * 0.4;
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Expanding ring
+                        Transform.scale(
+                          scale: ringScale,
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: widget.world.themeColor
+                                    .withValues(alpha: ringOpacity),
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Rocket icon
+                        Icon(
+                          Icons.rocket_launch,
+                          color: widget.world.themeColor,
+                          size: 18,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
 
@@ -411,7 +425,7 @@ class _PlanetNodeState extends State<_PlanetNode>
                       colorFilter: widget.isUnlocked
                           ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
                           : ColorFilter.mode(
-                              Colors.black.withValues(alpha: 0.6),
+                              Colors.black.withValues(alpha: 0.35),
                               BlendMode.srcATop,
                             ),
                       child: ClipOval(
@@ -489,36 +503,45 @@ class _PlanetNodeState extends State<_PlanetNode>
 
             const SizedBox(height: 4),
 
-            // Progress indicator (e.g., "3/5")
+            // Progress indicator: filled/empty star icons
             if (widget.isUnlocked)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: widget.isCompleted
-                      ? const Color(0xFF69F0AE).withValues(alpha: 0.2)
-                      : widget.world.themeColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: widget.isCompleted
-                        ? const Color(0xFF69F0AE).withValues(alpha: 0.4)
-                        : widget.world.themeColor.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  widget.isCompleted
-                      ? 'COMPLETE'
-                      : '${widget.progress}/${widget.world.missionsRequired}',
-                  style: TextStyle(
-                    color: widget.isCompleted
-                        ? const Color(0xFF69F0AE)
-                        : widget.world.themeColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
+              widget.isCompleted
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFF69F0AE).withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Text(
+                        'COMPLETE',
+                        style: TextStyle(
+                          color: Color(0xFF69F0AE),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(widget.world.missionsRequired, (i) {
+                        final filled = i < widget.progress;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 1),
+                          child: Icon(
+                            filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: filled
+                                ? const Color(0xFFFFD54F)
+                                : Colors.white.withValues(alpha: 0.3),
+                            size: 14,
+                          ),
+                        );
+                      }),
+                    ),
           ],
         ),
       ),

@@ -349,6 +349,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   ui.FragmentProgram? _shockwaveProgram;
   // Tier 3: Slow-motion on finisher kill
   bool _slowMotion = false;
+  int _slowMotionFrame = 0;
 
   // Tier 3: Shockwave overlay
   double _shockwaveProgress = -1.0; // -1 = inactive
@@ -413,6 +414,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     'POWER UP!',
   ];
 
+  static const _encouragementTextPools = {
+    'attack': ['BRUSH TO ATTACK!', 'FIGHT THAT MONSTER!', 'KEEP GOING!', 'ATTACK!'],
+    'mid': ['KEEP BRUSHING!', "DON'T STOP!", "YOU'VE GOT THIS!", 'POWER UP!'],
+    'almost': ['ALMOST THERE!', 'NEARLY DONE!', 'SO CLOSE!', 'FINAL PUSH!'],
+    'finish': ['FINISH IT OFF!', 'ONE MORE HIT!', 'TAKE IT DOWN!', 'LAST STRIKE!'],
+  };
+
+  int _encouragementTextVariant = 0;
   bool _playedEncouragement = false;
   bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
@@ -429,6 +438,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     ['voice_arc4_beat1.mp3', 'voice_arc4_beat2.mp3', 'voice_arc4_beat3.mp3'],
     ['voice_arc5_beat1.mp3', 'voice_arc5_beat2.mp3', 'voice_arc5_beat3.mp3'],
     ['voice_arc6_beat1.mp3', 'voice_arc6_beat2.mp3', 'voice_arc6_beat3.mp3'],
+    ['voice_arc7_beat1.mp3', 'voice_arc7_beat2.mp3', 'voice_arc7_beat3.mp3'],
+    ['voice_arc8_beat1.mp3', 'voice_arc8_beat2.mp3', 'voice_arc8_beat3.mp3'],
+    ['voice_arc9_beat1.mp3', 'voice_arc9_beat2.mp3', 'voice_arc9_beat3.mp3'],
+    ['voice_arc10_beat1.mp3', 'voice_arc10_beat2.mp3', 'voice_arc10_beat3.mp3'],
   ];
   int _currentArcIndex = -1;
   int _lastArcIndex = -1;
@@ -602,7 +615,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _initParticles() {
     _particles.clear();
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 20; i++) {
       _particles.add(_createParticle());
     }
   }
@@ -630,7 +643,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       return;
     }
     // Slow-motion: skip every other frame for cinematic finisher
-    if (_slowMotion && _random.nextBool()) return;
+    if (_slowMotion) {
+      _slowMotionFrame++;
+      if (_slowMotionFrame % 2 == 0) return;
+    }
     for (int i = 0; i < _particles.length; i++) {
       final p = _particles[i];
       p.x += p.vx;
@@ -880,6 +896,13 @@ class _BrushingScreenState extends State<BrushingScreen>
       _sessionStage = SessionStage.worldIntro;
     });
     _playWorldMissionBriefing();
+
+    // Auto-advance after 10 seconds; tap anywhere skips immediately
+    _worldIntroTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted && _showWorldIntro) {
+        _dismissWorldIntro();
+      }
+    });
   }
 
   void _dismissWorldIntro() {
@@ -1128,15 +1151,19 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
     _attackStyleIndex = 4;
     _attackSequenceController.forward(from: 0);
-    _screenShakeController.forward(from: 0);
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) _screenShakeController.forward(from: 0);
+    });
     _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     HapticFeedback.heavyImpact();
     _audio.playSfx('zap.mp3');
 
-    // Tier 3: Shockwave on finisher
-    _shockwaveController.forward(from: 0);
+    // Tier 3: Shockwave on finisher (staggered for visual impact)
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) _shockwaveController.forward(from: 0);
+    });
 
-    for (int i = 0; i < 30; i++) {
+    for (int i = 0; i < 18; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 4.0 + _random.nextDouble() * 8;
       _hitSparks.add(
@@ -1165,6 +1192,9 @@ class _BrushingScreenState extends State<BrushingScreen>
           scale: 2.0,
         ),
       );
+      while (_damagePopups.length > 15) {
+        _damagePopups.removeAt(0);
+      }
     });
 
     Future.delayed(const Duration(milliseconds: 800), () {
@@ -1199,7 +1229,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _spawnDefeatSparks() {
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 12; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 3.0 + _random.nextDouble() * 6;
       _hitSparks.add(
@@ -1392,8 +1422,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   /// Used to suppress companion voice when it would collide with arc beats.
   bool _isArcBeatNearby() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    // Check if an arc beat played within the last 3 seconds
-    if (now - _lastArcBeatTime < 3000) return true;
+    // Check if an arc beat played within the last 5 seconds
+    if (now - _lastArcBeatTime < 5000) return true;
     // Check if an arc beat is scheduled within the next 3 seconds
     final energizeAt = (_phaseDuration * 0.80).round();
     final supportAt = (_phaseDuration * 0.50).round();
@@ -1454,6 +1484,9 @@ class _BrushingScreenState extends State<BrushingScreen>
           scale: 1.35,
         ),
       );
+      while (_damagePopups.length > 15) {
+        _damagePopups.removeAt(0);
+      }
     });
     // Keep micro-reward as visual-only to avoid competing with guidance voices.
   }
@@ -1476,6 +1509,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     }
     _lastArcIndex = next;
     _currentArcIndex = next;
+    _encouragementTextVariant = _random.nextInt(4);
   }
 
   void _playNextEncouragementVoice() {
@@ -1538,11 +1572,14 @@ class _BrushingScreenState extends State<BrushingScreen>
           ),
         );
       }
+      while (_damagePopups.length > 15) {
+        _damagePopups.removeAt(0);
+      }
     });
   }
 
   void _spawnHitSparks() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 5; i++) {
       final angle = _random.nextDouble() * 2 * pi;
       final speed = 2.0 + _random.nextDouble() * 5;
       _hitSparks.add(
@@ -1649,12 +1686,13 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   String _getEncouragementText() {
+    final v = _encouragementTextVariant;
     if (_phaseSecondsLeft > 20) {
-      return _cameraReady ? 'BRUSH TO ATTACK!' : 'FIGHT THAT MONSTER!';
+      return _encouragementTextPools['attack']![v];
     }
-    if (_phaseSecondsLeft > 10) return 'KEEP BRUSHING!';
-    if (_phaseSecondsLeft > 5) return 'ALMOST THERE!';
-    return 'FINISH IT OFF!';
+    if (_phaseSecondsLeft > 10) return _encouragementTextPools['mid']![v];
+    if (_phaseSecondsLeft > 5) return _encouragementTextPools['almost']![v];
+    return _encouragementTextPools['finish']![v];
   }
 
   @override
@@ -1853,22 +1891,46 @@ class _BrushingScreenState extends State<BrushingScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: _world.themeColor, width: 4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _world.themeColor.withValues(alpha: 0.55),
-                              blurRadius: 28,
-                              spreadRadius: 3,
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 1.0, end: 0.0),
+                        duration: const Duration(seconds: 10),
+                        builder: (context, value, child) {
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox(
+                                width: 156,
+                                height: 156,
+                                child: CircularProgressIndicator(
+                                  value: value,
+                                  strokeWidth: 3,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    _world.themeColor.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ),
+                              child!,
+                            ],
+                          );
+                        },
+                        child: Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: _world.themeColor, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _world.themeColor.withValues(alpha: 0.55),
+                                blurRadius: 28,
+                                spreadRadius: 3,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -1887,45 +1949,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 ),
                               ],
                             ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Story-style mission briefing
-                      Text(
-                        'Cavity monsters are hiding in',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        _world.name.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: _world.themeColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _world.description,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Brush your teeth to defeat them!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 14,
-                          fontStyle: FontStyle.italic,
-                        ),
                       ),
                       const SizedBox(height: 24),
                       _PulsingTapToFight(themeColor: _world.themeColor),
@@ -3368,7 +3391,8 @@ class _WorldParticlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_WorldParticlePainter oldDelegate) => true;
+  bool shouldRepaint(_WorldParticlePainter oldDelegate) =>
+      particles.length != oldDelegate.particles.length;
 }
 
 class _HitSparkPainter extends CustomPainter {
@@ -3382,15 +3406,11 @@ class _HitSparkPainter extends CustomPainter {
       if (s.life <= 0) continue;
       final paint = Paint()
         ..color = s.color.withValues(alpha: s.life.clamp(0, 1))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-      final glowPaint = Paint()
-        ..color = s.color.withValues(alpha: s.life.clamp(0, 1) * 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
       final px = cx + s.x;
       final py = cy + s.y;
       final r = s.size * s.life;
 
-      // Tier 2: Draw 4-pointed star shape instead of circle
       final path = Path();
       for (int i = 0; i < 4; i++) {
         final outerAngle = i * pi / 2;
@@ -3403,14 +3423,13 @@ class _HitSparkPainter extends CustomPainter {
         path.lineTo(px + cos(innerAngle) * r * 0.4, py + sin(innerAngle) * r * 0.4);
       }
       path.close();
-
-      canvas.drawPath(path, glowPaint);
       canvas.drawPath(path, paint);
     }
   }
 
   @override
-  bool shouldRepaint(_HitSparkPainter oldDelegate) => true;
+  bool shouldRepaint(_HitSparkPainter oldDelegate) =>
+      sparks.length != oldDelegate.sparks.length || sparks.isNotEmpty;
 }
 
 /// Energy ring particles orbiting the monster

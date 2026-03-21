@@ -12,6 +12,8 @@ import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
 import '../services/analytics_service.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
 import 'home_screen.dart';
 import 'card_album_screen.dart';
 
@@ -167,6 +169,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   late AnimationController _rewardRevealController;
   int _newStreak = 0;
   int _newStars = 0;
+  int _previousStars = 0;
   int _starsEarnedThisSession = 0;
   List<Achievement> _newAchievements = [];
   // Next unlock: whichever of hero/weapon is closer
@@ -176,6 +179,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _nextUnlockAt = 0;
   int _starsToNextUnlock = 0;
   bool _nextUnlockIsHero = true;
+  String? _nextUnlockId;
   WorldData _world = WorldService.allWorlds[0];
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
@@ -200,6 +204,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   late AnimationController _newBadgeController;
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
+  int _collectedCardCount = 0;
 
   // Victory celebration arcs: each arc is a 3-beat connected story
   // [beat1 = celebration, beat2 = star earned, beat3 = chest prompt]
@@ -209,6 +214,19 @@ class _VictoryScreenState extends State<VictoryScreen>
     ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3'],
     ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3'],
   ];
+
+  static const Map<String, String> _unlockVoices = {
+    'frost': 'voice_unlock_next_frost.mp3',
+    'bolt': 'voice_unlock_next_bolt.mp3',
+    'shadow': 'voice_unlock_next_shadow.mp3',
+    'leaf': 'voice_unlock_next_leaf.mp3',
+    'nova': 'voice_unlock_next_nova.mp3',
+    'flame_sword': 'voice_unlock_next_flame_sword.mp3',
+    'ice_hammer': 'voice_unlock_next_ice_hammer.mp3',
+    'lightning_wand': 'voice_unlock_next_lightning_wand.mp3',
+    'vine_whip': 'voice_unlock_next_vine_whip.mp3',
+    'cosmic_shield': 'voice_unlock_next_cosmic_shield.mp3',
+  };
 
   // Post-chest encouragement variants (replaces single voice_keep_going)
   static const _chestEncouragements = [
@@ -278,6 +296,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     final hero = await _heroService.getSelectedHero();
     _world = await _worldService.getCurrentWorld();
     _dailyModifier = _worldService.getDailyModifier();
+    _previousStars = await _streakService.getTotalStars();
     final outcome = await _streakService.recordBrush(
       heroId: hero.id,
       worldId: _world.id,
@@ -309,6 +328,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     final nextHero = await _heroService.getNextLockedHero();
     final nextWeapon = await _weaponService.getNextLockedWeapon();
     _computeNextUnlock(nextHero, nextWeapon);
+    _collectedCardCount = await _cardService.getCollectedCount();
 
     // Analytics: log completion + update user properties
     final analytics = AnalyticsService();
@@ -328,6 +348,13 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     if (mounted) setState(() {});
 
+    // Auto-sync progress to cloud if signed in (fire-and-forget)
+    if (AuthService().currentUser != null) {
+      SyncService().uploadProgress().catchError((e) {
+        debugPrint('Cloud sync failed: $e');
+      });
+    }
+
     // ── NEW TIMING SEQUENCE ──
     // t=0       Victory SFX + confetti
     _audio.playSfx('victory.mp3');
@@ -341,19 +368,17 @@ class _VictoryScreenState extends State<VictoryScreen>
     final arc = _victoryArcs[arcIndex];
     _audio.playVoice(arc[0]); // celebration
 
-    // t=~2.5s   Arc beat 2 (star earned) — queued via voice pipeline
-    _audio.playVoice(arc[1]); // "+1 star!"
+    // Arc beat 2 (star earned) — queued via voice pipeline
+    await _audio.playVoice(arc[1]); // "+1 star!"
     _starController.forward();
     _starRotationController.repeat();
     _starGlowController.repeat(reverse: true);
 
-    // t=~4s     Chest drops in with bounce + arc beat 3 (chest prompt)
-    Future.delayed(const Duration(milliseconds: 4000), () {
-      if (!mounted) return;
-      setState(() => _showChest = true);
-      _chestBounceController.repeat(reverse: true);
-      _audio.playVoice(arc[2]); // chest prompt
-    });
+    // Chest drops after voice completes
+    if (!mounted) return;
+    setState(() => _showChest = true);
+    _chestBounceController.repeat(reverse: true);
+    _audio.playVoice(arc[2]); // chest prompt
     // NOTE: Achievements are now shown AFTER the chest/card sequence,
     // not concurrently. See _openChest for the scheduling.
   }
@@ -363,6 +388,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     if (nextHero == null && nextWeapon == null) {
       // Everything unlocked — no progress bar.
       _nextUnlockName = null;
+      _nextUnlockId = null;
       return;
     }
 
@@ -380,12 +406,14 @@ class _VictoryScreenState extends State<VictoryScreen>
       _nextUnlockColor = nextHero.primaryColor;
       _nextUnlockAt = nextHero.unlockAt;
       _nextUnlockIsHero = true;
+      _nextUnlockId = nextHero.id;
     } else {
       _nextUnlockName = nextWeapon!.name;
       _nextUnlockImagePath = nextWeapon.imagePath;
       _nextUnlockColor = nextWeapon.primaryColor;
       _nextUnlockAt = nextWeapon.unlockAt;
       _nextUnlockIsHero = false;
+      _nextUnlockId = nextWeapon.id;
     }
     _starsToNextUnlock = _nextUnlockAt - _newStars;
     if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
@@ -449,6 +477,17 @@ class _VictoryScreenState extends State<VictoryScreen>
       if (drop.isNew) {
         _newBadgeController.forward();
         _audio.playVoice('voice_card_new.mp3');
+      } else {
+        // Duplicate card — show POWER UP badge with voice and check for bonus star
+        _newBadgeController.forward();
+        _audio.playVoice('voice_card_power_up.mp3');
+        final bonusStars = await _cardService.checkDuplicateBonus();
+        if (bonusStars > 0) {
+          await _streakService.addBonusStars(bonusStars);
+          _newStars = await _streakService.getTotalStars();
+          _starsEarnedThisSession += bonusStars;
+          if (mounted) setState(() {});
+        }
       }
       // Play the specific card description voice
       await _audio.playVoice('voice_card_${drop.card.id}.mp3');
@@ -470,6 +509,18 @@ class _VictoryScreenState extends State<VictoryScreen>
       await Future.delayed(const Duration(milliseconds: 1500));
       if (!mounted) return;
 
+      // ── Milestone celebration (70/80/90 stars) ──
+      for (final milestone in [70, 80, 90]) {
+        if (_newStars >= milestone && _previousStars < milestone) {
+          final voiceFile = 'voice_milestone_$milestone.mp3';
+          await _audio.playVoice(voiceFile);
+          _confettiController.repeat();
+          await Future.delayed(const Duration(milliseconds: 500));
+          break; // Only play one milestone per session
+        }
+      }
+      if (!mounted) return;
+
       // ── Achievements (AFTER card reveal) ──
       for (int i = 0; i < _newAchievements.length; i++) {
         if (!mounted) break;
@@ -484,11 +535,18 @@ class _VictoryScreenState extends State<VictoryScreen>
         await Future.delayed(const Duration(milliseconds: 1000));
       }
 
-      // Queue encouragement about next unlock progress
-      if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
-        _audio.playVoice(
-          _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
-        );
+      // Legendary ranger voice or next-unlock encouragement
+      if (_nextUnlockName == null && _collectedCardCount >= 70 && mounted) {
+        await _audio.playVoice('voice_legend.mp3');
+      } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
+        final unlockVoice = _nextUnlockId != null ? _unlockVoices[_nextUnlockId] : null;
+        if (unlockVoice != null) {
+          _audio.playVoice(unlockVoice);
+        } else {
+          _audio.playVoice(
+            _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
+          );
+        }
       }
 
       // ── DONE button with whoosh SFX ──
@@ -501,9 +559,11 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
 
-  void _openCardAlbum() {
+  void _openCardAlbum({String? highlightCardId}) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CardAlbumScreen()),
+      MaterialPageRoute(
+        builder: (_) => CardAlbumScreen(highlightCardId: highlightCardId),
+      ),
     );
   }
 
@@ -516,7 +576,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   Widget _buildCardDropReveal() {
     final drop = _cardDrop!;
-    final glowColor = _rarityGlowColor(drop.card.rarity);
+    final card = drop.card;
+    final glowColor = _rarityGlowColor(card.rarity);
+    final rarityLabel = card.rarity.name.toUpperCase();
 
     return AnimatedBuilder(
       animation: Listenable.merge([_cardFlyController, _cardGlowController]),
@@ -525,242 +587,126 @@ class _VictoryScreenState extends State<VictoryScreen>
           _cardFlyController.value.clamp(0.0, 1.0),
         );
         final glowPulse = _cardGlowController.value;
-        final cardScale = flyProgress;
-        final cardOpacity = flyProgress.clamp(0.0, 1.0);
 
         return Opacity(
-          opacity: cardOpacity,
+          opacity: flyProgress.clamp(0.0, 1.0),
           child: Transform.scale(
-            scale: cardScale,
-            child: GestureDetector(
-              onTap: _openCardAlbum,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Column(
-                  children: [
-                    // Main card reveal
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Rarity glow behind card
-                        Container(
-                          width: 160 + glowPulse * 20,
-                          height: 180 + glowPulse * 20,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: glowColor.withValues(
-                                  alpha: 0.3 + glowPulse * 0.3,
-                                ),
-                                blurRadius: 40 + glowPulse * 20,
-                                spreadRadius: 5 + glowPulse * 10,
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Card body
-                        Container(
-                          width: 150,
-                          height: 180,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: glowColor.withValues(alpha: 0.7),
-                              width: 2.5,
-                            ),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF1A1A2E),
-                                drop.card.tintColor.withValues(alpha: 0.3),
-                              ],
-                            ),
-                          ),
-                          child: Stack(
-                            children: [
-                              // Monster image
-                              Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 8, bottom: 36),
-                                  child: ColorFiltered(
-                                    colorFilter: ColorFilter.mode(
-                                      drop.card.tintColor.withValues(alpha: 0.35),
-                                      BlendMode.srcATop,
-                                    ),
-                                    child: Image.asset(
-                                      drop.card.imagePath,
-                                      width: 90,
-                                      height: 90,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Name + rarity at bottom
-                              Positioned(
-                                left: 8,
-                                right: 8,
-                                bottom: 8,
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      drop.card.name,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      drop.card.rarityLabel,
-                                      style: TextStyle(
-                                        color: drop.card.rarityColor,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // "NEW!" badge (animated)
-                              if (drop.isNew)
-                                Positioned(
-                                  top: -2,
-                                  right: -2,
-                                  child: AnimatedBuilder(
-                                    animation: _newBadgeController,
-                                    builder: (context, child) {
-                                      final badgeScale = Curves.elasticOut
-                                          .transform(_newBadgeController.value);
-                                      return Transform.scale(
-                                        scale: badgeScale,
-                                        child: child,
-                                      );
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF69F0AE),
-                                        borderRadius: BorderRadius.circular(8),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: const Color(0xFF69F0AE)
-                                                .withValues(alpha: 0.6),
-                                            blurRadius: 8,
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Text(
-                                        'NEW!',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 11,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              // Epic scale bounce effect
-                              if (drop.card.rarity == CardRarity.epic &&
-                                  glowPulse > 0)
-                                Positioned.fill(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: const Color(0xFFFFD54F)
-                                            .withValues(alpha: glowPulse * 0.5),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+            scale: flyProgress,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                children: [
+                  Container(
+                    width: 200,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A0A3E),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: glowColor.withValues(alpha: 0.6 + glowPulse * 0.4),
+                        width: 3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: glowColor.withValues(alpha: 0.3 + glowPulse * 0.3),
+                          blurRadius: 20 + glowPulse * 10,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
-                    // World progress indicator
-                    if (_showWorldProgress) ...[
-                      const SizedBox(height: 12),
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: 1),
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeOut,
-                        builder: (context, opacity, child) =>
-                            Opacity(opacity: opacity, child: child),
-                        child: Column(
-                          children: [
-                            Text(
-                              '${drop.worldCollected}/${drop.worldTotal} ${drop.worldName} monsters found!',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (_worldJustCompleted) ...[
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFFD54F),
-                                      Color(0xFFFF6D00),
-                                    ],
-                                  ),
-                                ),
-                                child: const Text(
-                                  'WORLD COMPLETE!',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 14,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                    // Tap hint
-                    const SizedBox(height: 6),
-                    Row(
+                    child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          'Tap to see album',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 11,
+                        if (_newBadgeController.value > 0)
+                          ScaleTransition(
+                            scale: CurvedAnimation(
+                              parent: _newBadgeController,
+                              curve: Curves.elasticOut,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: drop.isNew ? const Color(0xFF00E676) : const Color(0xFFFFD740),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                drop.isNew ? 'NEW!' : 'POWER UP!',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: glowColor.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              'assets/images/monster_${card.baseImageIndex + 1}.png',
+                              fit: BoxFit.cover,
+                              color: card.tintColor.withValues(alpha: 0.3),
+                              colorBlendMode: BlendMode.overlay,
+                            ),
                           ),
                         ),
-                        Icon(
-                          Icons.chevron_right,
-                          color: Colors.white.withValues(alpha: 0.4),
-                          size: 16,
+                        const SizedBox(height: 12),
+                        Text(
+                          card.name,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          rarityLabel,
+                          style: TextStyle(
+                            color: glowColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 2,
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_showWorldProgress) ...[
+                    Text(
+                      _worldJustCompleted
+                          ? 'WORLD COMPLETE!'
+                          : '${_cardDrop!.worldCollected}/${_cardDrop!.worldTotal} ${_world.name} monsters found!',
+                      style: TextStyle(
+                        color: _worldJustCompleted ? Colors.yellowAccent : Colors.white70,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                   ],
-                ),
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () => _openCardAlbum(highlightCardId: drop.card.id),
+                    child: const Text(
+                      'Tap to see album >',
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -816,7 +762,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: _showDoneButton,
+      child: Scaffold(
       body: SpaceBackground(
         child: SafeArea(
           child: Stack(
@@ -980,15 +928,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                         child: Row(
                           children: [
                             Container(
-                              width: 44,
-                              height: 44,
+                              width: 56,
+                              height: 56,
                               decoration: BoxDecoration(
                                 shape: _nextUnlockIsHero
                                     ? BoxShape.circle
                                     : BoxShape.rectangle,
                                 borderRadius: _nextUnlockIsHero
                                     ? null
-                                    : BorderRadius.circular(10),
+                                    : BorderRadius.circular(12),
                                 border: Border.all(
                                   color: _nextUnlockColor,
                                   width: 2.5,
@@ -1001,32 +949,16 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   ),
                                 ],
                               ),
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(
-                                      _nextUnlockIsHero ? 20 : 8,
-                                    ),
-                                    child: ColorFiltered(
-                                      colorFilter: const ColorFilter.mode(
-                                        Colors.black54,
-                                        BlendMode.saturation,
-                                      ),
-                                      child: Image.asset(
-                                        _nextUnlockImagePath!,
-                                        width: 40,
-                                        height: 40,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.lock,
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    size: 16,
-                                  ),
-                                ],
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  _nextUnlockIsHero ? 28 : 12,
+                                ),
+                                child: Image.asset(
+                                  _nextUnlockImagePath!,
+                                  width: 52,
+                                  height: 52,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -1086,6 +1018,114 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ],
                         ),
                       ),
+                    if (_chestOpened &&
+                        _nextUnlockName != null &&
+                        _starsToNextUnlock > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, left: 54, right: 40),
+                        child: Text(
+                          '$_starsToNextUnlock more to unlock $_nextUnlockName!',
+                          style: TextStyle(
+                            color: _nextUnlockColor.withValues(alpha: 0.9),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            shadows: [
+                              Shadow(
+                                color: _nextUnlockColor.withValues(alpha: 0.5),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // LEGENDARY RANGER badge (all heroes/weapons/70+ cards)
+                    if (_chestOpened &&
+                        _nextUnlockName == null &&
+                        _collectedCardCount >= 70)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
+                                blurRadius: 16,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'LEGENDARY RANGER',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // Card collection progress (shown when all heroes/weapons unlocked)
+                    if (_chestOpened &&
+                        _nextUnlockName == null &&
+                        _collectedCardCount < CardService.allCards.length)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: 16, left: 40, right: 40,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.style,
+                              color: Color(0xFF00E5FF),
+                              size: 22,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(7),
+                                child: SizedBox(
+                                  height: 14,
+                                  child: LinearProgressIndicator(
+                                    value: (_collectedCardCount /
+                                            CardService.allCards.length)
+                                        .clamp(0.0, 1.0),
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.15),
+                                    valueColor: const AlwaysStoppedAnimation(
+                                      Color(0xFF00E5FF),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '$_collectedCardCount/${CardService.allCards.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                     // Card drop reveal
                     if (_showCardDrop && _cardDrop != null)
                       _buildCardDropReveal(),
@@ -1152,6 +1192,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           ),
         ),
       ),
+    ),
     );
   }
 

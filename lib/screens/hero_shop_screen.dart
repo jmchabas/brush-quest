@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
@@ -33,6 +34,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Show star count immediately before async load refines it
+    SharedPreferences.getInstance().then((p) {
+      if (mounted) setState(() => _stars = p.getInt('total_stars') ?? 0);
+    });
     _loadData();
     AnalyticsService().logShopVisit();
   }
@@ -81,7 +86,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.lightImpact();
       // Describe the hero, then tell them they need more stars
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true);
+      AudioService().playVoice('voice_need_stars.mp3');
     }
   }
 
@@ -106,7 +111,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.lightImpact();
       // Describe the weapon, then tell them they need more stars
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
-      AudioService().playVoice('voice_need_stars.mp3', clearQueue: true);
+      AudioService().playVoice('voice_need_stars.mp3');
     }
   }
 
@@ -551,7 +556,8 @@ class _WeaponCard extends StatelessWidget {
               child: Column(
                 children: [
                   Expanded(
-                    child: ClipOval(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
                       child: Opacity(
                         opacity: isUnlocked ? 1.0 : 0.85,
                         child: ColorFiltered(
@@ -757,7 +763,7 @@ class _FeaturedWeaponDisplay extends StatelessWidget {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: weapon.primaryColor.withValues(alpha: 0.6),
                   width: 3,
@@ -770,7 +776,8 @@ class _FeaturedWeaponDisplay extends StatelessWidget {
                   ),
                 ],
               ),
-              child: ClipOval(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(17),
                 child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
               ),
             ),
@@ -957,11 +964,13 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: ClipOval(
-                    child: Image.asset(widget.weapon.imagePath, fit: BoxFit.cover),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    widget.weapon.imagePath,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -1015,25 +1024,11 @@ class _LockedProgressIndicator extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Star count text: "X/Y"
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.star,
-              color: progressColor,
-              size: 14,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              '$currentStars/$threshold',
-              style: TextStyle(
-                color: progressColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ],
+        // Star icon only (no numeric fraction)
+        Icon(
+          Icons.star,
+          color: progressColor,
+          size: 14,
         ),
         const SizedBox(height: 4),
         // Mini progress bar

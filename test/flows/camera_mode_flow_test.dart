@@ -13,7 +13,8 @@ void main() {
       source.contains("prefs.setBool('camera_mode_configured', true)"),
       isTrue,
     );
-    expect(source.contains('_showPreBrushPicker();'), isTrue);
+    // Picker was removed — brushing flow goes directly to BrushingScreen
+    expect(source.contains('_launchBrushingScreen()'), isTrue);
   });
 
   test('onboarding does NOT silently enable camera (COPPA)', () {
