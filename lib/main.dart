@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'services/analytics_service.dart';
+import 'services/streak_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'widgets/asset_preloader.dart';
@@ -32,6 +33,8 @@ void main() async {
   } catch (_) {
     // Firebase/Crashlytics/Analytics unavailable — app still launches.
   }
+
+  await StreakService.migrateToWalletEconomy();
 
   runApp(const BrushQuestApp());
 }

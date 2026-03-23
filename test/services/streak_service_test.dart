@@ -413,6 +413,29 @@ void main() {
     });
   });
 
+  group('Migration', () {
+    test('migrateToWalletEconomy copies total_stars to star_wallet', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 42});
+      await StreakService.migrateToWalletEconomy();
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('star_wallet'), 42);
+    });
+
+    test('migrateToWalletEconomy is idempotent', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 42, 'star_wallet': 10});
+      await StreakService.migrateToWalletEconomy();
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('star_wallet'), 10); // NOT overwritten
+    });
+
+    test('migrateToWalletEconomy handles zero stars', () async {
+      SharedPreferences.setMockInitialValues({});
+      await StreakService.migrateToWalletEconomy();
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('star_wallet'), 0);
+    });
+  });
+
   group('Streak bonuses', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});

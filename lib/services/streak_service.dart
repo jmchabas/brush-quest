@@ -277,4 +277,19 @@ class StreakService {
   BrushSlot _slotForHour(int hour) {
     return hour < 15 ? BrushSlot.morning : BrushSlot.evening;
   }
+
+  /// Migrate from v1 (cumulative) to v2 (wallet) economy.
+  /// Credits existing total_stars to star_wallet if wallet key doesn't exist.
+  /// Run once on app startup.
+  ///
+  /// DESIGN DECISION: Existing users keep ALL previously-unlocked heroes/weapons
+  /// AND get their full star total credited to the wallet. This is intentional:
+  /// Oliver arrives feeling RICHER — he walks into the new shop with spendable
+  /// stars and can buy things immediately.
+  static Future<void> migrateToWalletEconomy() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('star_wallet')) return; // Already migrated
+    final totalStars = prefs.getInt('total_stars') ?? 0;
+    await prefs.setInt('star_wallet', totalStars);
+  }
 }
