@@ -11,6 +11,7 @@ import '../services/trophy_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
+import '../widgets/star_rain.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
@@ -159,10 +160,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _worldService = WorldService();
   final _random = Random();
 
-  late AnimationController _starController;
-  late Animation<double> _starScale;
-  late AnimationController _starRotationController;
-  late AnimationController _starGlowController;
   late AnimationController _confettiController;
   late AnimationController _doneButtonController;
   late AnimationController _chestBounceController;
@@ -174,6 +171,9 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _starsEarnedThisSession = 0;
   int _previousWallet = 0;
   int _newWallet = 0;
+  // Bonus breakdown for star rain waves
+  int _dailyBonus = 0;
+  int _streakMultiplierBonus = 0;
   List<Achievement> _newAchievements = [];
   // Next unlock: whichever of hero/weapon is closer
   String? _nextUnlockName;
@@ -247,21 +247,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   void initState() {
     super.initState();
 
-    _starController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-    _starScale = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _starController, curve: Curves.elasticOut),
-    );
-    _starRotationController = AnimationController(
-      duration: const Duration(seconds: 8),
-      vsync: this,
-    );
-    _starGlowController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
     _confettiController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -311,6 +296,8 @@ class _VictoryScreenState extends State<VictoryScreen>
       worldId: _world.id,
     );
     _starsEarnedThisSession = outcome.starsEarned;
+    _dailyBonus = outcome.breakdown.dailyBonus;
+    _streakMultiplierBonus = outcome.breakdown.streakMultiplierBonus;
     if (outcome.starsEarned > 0) {
       await _worldService.recordMission();
     }
@@ -381,9 +368,19 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     // Arc beat 2 (star earned) — queued via voice pipeline
     await _audio.playVoice(arc[1]); // "+1 star!"
-    _starController.forward();
-    _starRotationController.repeat();
-    _starGlowController.repeat(reverse: true);
+
+    // Play bonus-specific voice lines
+    if (_streakMultiplierBonus > 0 && _newStreak == 3) {
+      _audio.playVoice('voice_super_power.mp3');
+    } else if (_streakMultiplierBonus > 0 && _newStreak == 7) {
+      _audio.playVoice('voice_mega_power.mp3');
+    } else if (_streakMultiplierBonus > 0) {
+      _audio.playVoice('voice_streak_bonus.mp3');
+    }
+
+    if (_dailyBonus > 0) {
+      _audio.playVoice('voice_full_charge.mp3');
+    }
 
     // Show DONE button early so the user can exit before the chest sequence.
     // The reward chain continues to play, but the child is never trapped.
@@ -745,9 +742,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   void dispose() {
-    _starController.dispose();
-    _starRotationController.dispose();
-    _starGlowController.dispose();
     _confettiController.dispose();
     _doneButtonController.dispose();
     _chestBounceController.dispose();
@@ -810,52 +804,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                   children: [
                     const SizedBox(height: 24),
 
-                    // Big star
-                    AnimatedBuilder(
-                      animation: Listenable.merge([
-                        _starScale,
-                        _starRotationController,
-                        _starGlowController,
-                      ]),
-                      builder: (context, child) {
-                        final glow = 0.4 + _starGlowController.value * 0.4;
-                        return ScaleTransition(
-                          scale: _starScale,
-                          child: Transform.rotate(
-                            angle: _starRotationController.value * 2 * pi * 0.1,
-                            child: Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const RadialGradient(
-                                  colors: [
-                                    Color(0xFFFFD54F),
-                                    Color(0xFFFFA000),
-                                    Color(0xFFFF6F00),
-                                  ],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFFFFD54F,
-                                    ).withValues(alpha: glow),
-                                    blurRadius: 50,
-                                    spreadRadius: 15,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.star,
-                                size: 70,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
                     Text(
                       'GREAT JOB!',
                       style: Theme.of(context).textTheme.headlineLarge
@@ -875,15 +823,13 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ),
 
                     const SizedBox(height: 10),
+                    // Star rain wave animation
                     if (_starsEarnedThisSession > 0)
-                      Text(
-                        '+$_starsEarnedThisSession STAR THIS SESSION',
-                        style: const TextStyle(
-                          color: Color(0xFFFFD54F),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
+                      StarRain(
+                        baseStars: 2,
+                        streakBonus: _streakMultiplierBonus,
+                        dailyBonus: _dailyBonus,
+                        currentStreak: _newStreak,
                       ),
                     const SizedBox(height: 12),
 

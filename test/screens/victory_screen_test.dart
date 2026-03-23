@@ -1,4 +1,5 @@
 import 'package:brush_quest/screens/victory_screen.dart';
+import 'package:brush_quest/widgets/star_rain.dart';
 import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
@@ -86,7 +87,13 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('victory screen shows star icon', (tester) async {
+  testWidgets('victory screen shows StarRain widget', (tester) async {
+    await pumpVictory(tester);
+    expect(find.byType(StarRain), findsOneWidget);
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('victory screen shows star icons', (tester) async {
     await pumpVictory(tester);
     expect(find.byIcon(Icons.star), findsWidgets);
     await tester.binding.setSurfaceSize(null);
