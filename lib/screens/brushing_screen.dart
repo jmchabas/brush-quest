@@ -389,12 +389,10 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   static const _phaseVoiceFiles = {
     BrushPhase.topLeft: 'voice_top_left.mp3',
-    // TODO: Replace placeholder with dedicated voice_top_front.mp3
-    BrushPhase.topFront: 'voice_top_left.mp3',
+    BrushPhase.topFront: 'voice_top_front.mp3',
     BrushPhase.topRight: 'voice_top_right.mp3',
     BrushPhase.bottomLeft: 'voice_bottom_left.mp3',
-    // TODO: Replace placeholder with dedicated voice_bottom_front.mp3
-    BrushPhase.bottomFront: 'voice_bottom_left.mp3',
+    BrushPhase.bottomFront: 'voice_bottom_front.mp3',
     BrushPhase.bottomRight: 'voice_bottom_right.mp3',
   };
 
