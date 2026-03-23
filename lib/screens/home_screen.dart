@@ -33,7 +33,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _worldService = WorldService();
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
-  int _totalStars = 0;
+  int _totalStars = 0;  // Ranger Rank (lifetime total)
+  int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
   bool _bossReady = false;
@@ -126,7 +127,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadStats() async {
-    final stars = await _streakService.getTotalStars();
+    final wallet = await _streakService.getWallet();
+    final rank = await _streakService.getRangerRank();
     final hero = await _heroService.getSelectedHero();
     final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
@@ -136,7 +138,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     if (mounted) {
       setState(() {
-        _totalStars = stars;
+        _totalStars = rank;
+        _wallet = wallet;
         _selectedHero = hero;
         _selectedWeapon = weapon;
         _streak = streak;
@@ -189,9 +192,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       brushStreak: _streak,
       totalStars: _totalStars,
       nextHeroName: nextHero?.name,
-      nextHeroUnlockAt: nextHero?.unlockAt,
+      nextHeroUnlockAt: nextHero?.price,
       nextWeaponName: nextWeapon?.name,
-      nextWeaponUnlockAt: nextWeapon?.unlockAt,
+      nextWeaponUnlockAt: nextWeapon?.price,
       todayDate: todayDate,
       lastGreetingDate: lastGreetingDate,
       nextHeroId: nextHero?.id,
@@ -670,10 +673,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Golden star pill
+                      // Ranger Rank pill (shield — the "pride number")
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFF7C4DFF).withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.shield,
+                              color: Color(0xFF7C4DFF),
+                              size: 26,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_totalStars',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x807C4DFF),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Star Wallet pill (spendable stars)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
@@ -690,15 +734,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             const Icon(
                               Icons.star,
                               color: Color(0xFFFFD54F),
-                              size: 26,
+                              size: 22,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '$_totalStars',
+                              '$_wallet',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 28,
+                                fontSize: 22,
                                 shadows: [
                                   Shadow(
                                     color: Color(0x80FFD54F),

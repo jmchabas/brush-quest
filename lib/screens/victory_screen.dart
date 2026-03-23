@@ -171,6 +171,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _newStars = 0;
   int _previousStars = 0;
   int _starsEarnedThisSession = 0;
+  int _previousWallet = 0;
+  int _newWallet = 0;
   List<Achievement> _newAchievements = [];
   // Next unlock: whichever of hero/weapon is closer
   String? _nextUnlockName;
@@ -297,6 +299,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     _world = await _worldService.getCurrentWorld();
     _dailyModifier = _worldService.getDailyModifier();
     _previousStars = await _streakService.getTotalStars();
+    _previousWallet = await _streakService.getWallet();
     final outcome = await _streakService.recordBrush(
       heroId: hero.id,
       worldId: _world.id,
@@ -307,6 +310,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
+    _newWallet = await _streakService.getWallet();
     await _worldService.getWorldProgress(_world.id);
 
     final lifetimeBrushes = await _streakService.getTotalBrushes();
@@ -322,6 +326,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     if (achievementBonus > 0) {
       await _streakService.addBonusStars(achievementBonus);
       _newStars = await _streakService.getTotalStars();
+      _newWallet = await _streakService.getWallet();
     }
 
     // Pick whichever of next hero / next weapon unlocks sooner
@@ -400,8 +405,8 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     final bool pickHero;
     if (nextHero != null && nextWeapon != null) {
-      // Pick whichever has the lower (closer) unlockAt threshold.
-      pickHero = nextHero.unlockAt <= nextWeapon.unlockAt;
+      // Pick whichever has the lower (cheaper) price.
+      pickHero = nextHero.price <= nextWeapon.price;
     } else {
       pickHero = nextHero != null;
     }
@@ -410,18 +415,18 @@ class _VictoryScreenState extends State<VictoryScreen>
       _nextUnlockName = nextHero!.name;
       _nextUnlockImagePath = nextHero.imagePath;
       _nextUnlockColor = nextHero.primaryColor;
-      _nextUnlockAt = nextHero.unlockAt;
+      _nextUnlockAt = nextHero.price;
       _nextUnlockIsHero = true;
       _nextUnlockId = nextHero.id;
     } else {
       _nextUnlockName = nextWeapon!.name;
       _nextUnlockImagePath = nextWeapon.imagePath;
       _nextUnlockColor = nextWeapon.primaryColor;
-      _nextUnlockAt = nextWeapon.unlockAt;
+      _nextUnlockAt = nextWeapon.price;
       _nextUnlockIsHero = false;
       _nextUnlockId = nextWeapon.id;
     }
-    _starsToNextUnlock = _nextUnlockAt - _newStars;
+    _starsToNextUnlock = _nextUnlockAt - _newWallet;
     if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
   }
 
@@ -446,12 +451,12 @@ class _VictoryScreenState extends State<VictoryScreen>
         final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
         if (totalBonus > 0) {
           await _streakService.addBonusStars(totalBonus);
-          final updated = await _streakService.getTotalStars();
-          _newStars = updated;
+          _newStars = await _streakService.getTotalStars();
+          _newWallet = await _streakService.getWallet();
           if (mounted) {
             setState(() {
               if (_nextUnlockName != null) {
-                _starsToNextUnlock = _nextUnlockAt - _newStars;
+                _starsToNextUnlock = _nextUnlockAt - _newWallet;
                 if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
               }
             });
@@ -492,6 +497,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           if (bonusStars > 0) {
             await _streakService.addBonusStars(bonusStars);
             _newStars = await _streakService.getTotalStars();
+            _newWallet = await _streakService.getWallet();
             _starsEarnedThisSession += bonusStars;
             if (mounted) setState(() {});
           }
@@ -888,25 +894,26 @@ class _VictoryScreenState extends State<VictoryScreen>
                       ),
                     const SizedBox(height: 12),
 
-                    // Star bank
+                    // Wallet + Rank display
                     GlassCard(
-                      margin: const EdgeInsets.symmetric(horizontal: 48),
+                      margin: const EdgeInsets.symmetric(horizontal: 32),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
+                        horizontal: 24,
                         vertical: 10,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Ranger Rank (shield)
                           const Icon(
-                            Icons.star,
-                            color: Colors.yellowAccent,
-                            size: 32,
+                            Icons.shield,
+                            color: Color(0xFF7C4DFF),
+                            size: 28,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 4),
                           TweenAnimationBuilder<int>(
-                            tween: IntTween(begin: 0, end: _newStars),
+                            tween: IntTween(begin: _previousStars, end: _newStars),
                             duration: const Duration(milliseconds: 1500),
                             builder: (context, val, _) => Text(
                               '$val',
@@ -914,7 +921,35 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 32,
+                                    fontSize: 28,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Divider
+                          Container(
+                            width: 1,
+                            height: 28,
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                          const SizedBox(width: 16),
+                          // Star Wallet
+                          const Icon(
+                            Icons.star,
+                            color: Color(0xFFFFD54F),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 4),
+                          TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: _previousWallet, end: _newWallet),
+                            duration: const Duration(milliseconds: 1500),
+                            builder: (context, val, _) => Text(
+                              '$val',
+                              style: Theme.of(context).textTheme.headlineLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 24,
                                   ),
                             ),
                           ),
@@ -991,7 +1026,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   child: SizedBox(
                                     height: 14,
                                     child: LinearProgressIndicator(
-                                      value: (_newStars / _nextUnlockAt).clamp(
+                                      value: (_newWallet / _nextUnlockAt).clamp(
                                         0.0,
                                         1.0,
                                       ),
@@ -1036,7 +1071,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                       Padding(
                         padding: const EdgeInsets.only(top: 6, left: 54, right: 40),
                         child: Text(
-                          '$_starsToNextUnlock more to unlock $_nextUnlockName!',
+                          '$_starsToNextUnlock more to get $_nextUnlockName!',
                           style: TextStyle(
                             color: _nextUnlockColor.withValues(alpha: 0.9),
                             fontSize: 13,
