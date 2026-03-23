@@ -28,9 +28,9 @@
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
-  - [ ] P2.1: Google Play Console families policy config
-  - [ ] P2.2: Physical mailing address -> LLC workstream (see `/llc`)
-- **Blocked on**: Google Play developer account suspended (appeal pending)
+  - [x] P2.2: Privacy policy overhauled — COPPA 2025 + CCPA + data security program
+  - [ ] P2.1: Google Play Console families policy config — BLOCKED on org account
+- **Blocked on**: Google Play org account (need D-U-N-S number first)
 - **Next up**: Kid testing buddy voice with Oliver & Theo, Play Store submission
 - **Needs CEO decision**: None
 
@@ -65,52 +65,58 @@
 - **Needs CEO decision**: None — model approved
 
 ### LLC
-- **Status**: In progress — registered agent hired, filing next
-- **Last session**: 2026-03-15
-- **Entity name**: AnemosGP (California LLC)
+- **Status**: Nearly complete — LLC approved, EIN obtained, bank open, D-U-N-S pending
+- **Last session**: 2026-03-20
+- **Entity name**: AnemosGP LLC (California), DBA Brush Quest (filing TBD)
+- **EIN**: 41-5007192
 - **Command**: `/llc` — dedicated session command with full checklist
 - **What happened**:
-  - Decided on California (home state — cheapest since CA charges $800/yr franchise tax regardless)
-  - Hired Northwest Registered Agent ($125/yr, paid)
-  - Filed Articles of Organization (Doc# B20260127451, $75 paid)
-  - Business address: 2108 N ST, STE N, Sacramento, CA 95816
-  - Google Drive folder structure: `gdrive:Projects/Brush-quest/Business/`
-  - Phone: existing Google Fi number for business use
+  - LLC approved by SoS on 03/19/2026
+  - EIN obtained: 41-5007192
+  - Mercury bank account opened (checking ending 2545)
+  - Operating Agreement created
+  - Privacy policy overhauled (COPPA 2025 + CCPA, phone number, 10 sections)
+  - Data security program document created (COPPA 312.8)
+  - DBA "Brush Quest" form pre-filled (not yet filed)
 - **Checklist**:
   - [x] Choose state: California
   - [x] Registered agent: Northwest ($125/yr, active 03/15/2026 - 03/15/2027)
   - [x] Articles of Organization filed (CA Form LLC-1, $75 — Doc# B20260127451)
-  - [ ] File Statement of Information (CA Form LLC-12, $20) — within 90 days of formation
-  - [ ] Get EIN (irs.gov, free, instant)
-  - [ ] Get D-U-N-S number (dnb.com, free, ~30 day wait)
-  - [ ] Open business bank account (Mercury/Relay/Chase)
-  - [ ] Update privacy policy with LLC info
-  - [ ] Switch Google Play to organization account
-- **Blocked on**: Secretary of State processing Articles of Organization (~5 business days from 03/15/2026)
-- **Next up**: Wait for LLC approval → EIN → D-U-N-S → bank account (calendar reminder set for March 20)
+  - [x] LLC approved by Secretary of State (03/19/2026)
+  - [x] EIN obtained (41-5007192)
+  - [x] Operating Agreement created
+  - [x] Business bank account opened (Mercury, checking ending 2545)
+  - [x] Update privacy policy with LLC info + phone (510) 214-6383
+  - [ ] File Statement of Information (CA Form LLC-12, $20) — within 90 days of formation (due ~06/13/2026)
+  - [ ] File DBA "Brush Quest" (FBN form pre-filled)
+  - [x] D-U-N-S applied (03/20/2026, Case # DFC-507818 / D&B # 10170423, expedited $229)
+  - [ ] D-U-N-S number received (expedited 8 biz days, expected ~April 1)
+  - [ ] Register Google Play organization account — BLOCKED on D-U-N-S
+- **Blocked on**: D-U-N-S processing (expedited, expected ~April 1)
+- **Next up**: Wait for D-U-N-S → register Google Play org account. Answer unknown calls (D&B verification).
 - **Estimated cost**: ~$1,015 year 1, ~$935/year ongoing (CA franchise tax is $800/yr)
-- **Why it matters**: COPPA requires physical address in privacy policy. Google Play shows address publicly for monetized apps. Home address should not be public.
 
 ### ACCOUNTING
-- **Status**: In progress — QuickBooks set up, bank account pending
-- **Last session**: 2026-03-15
+- **Status**: In progress — QuickBooks + Mercury bank open, need to connect and log expenses
+- **Last session**: 2026-03-20
 - **Command**: `/accounting` — dedicated session command
 - **What happened**:
   - Chose accounting stack: Mercury (bank) + QuickBooks Simple Start ($15/mo) + Mercury credit card
   - Signed up for QuickBooks Simple Start
+  - Mercury bank account opened (checking ending 2545)
   - Tax type: sole proprietor (single-member LLC, Schedule C)
   - Tax calendar reminders set (franchise tax July 15, annual return April 2027)
-  - Google Drive structure for business docs created
+  - Google Drive structure for business docs: `gdrive:Projects/AnemosGP LLC/`
 - **Checklist**:
   - [x] QuickBooks Simple Start signed up
   - [x] Tax calendar reminders set
-  - [ ] Log existing expenses ($125 RA + $75 LLC filing)
-  - [ ] Set up expense categories in QuickBooks
-  - [ ] Open Mercury bank account — BLOCKED on EIN
-  - [ ] Get Mercury credit card — after bank
+  - [x] Open Mercury bank account (checking ending 2545)
   - [ ] Connect Mercury → QuickBooks
-- **Blocked on**: EIN (which is blocked on LLC approval ~March 20)
-- **Next up**: Log first expenses in QuickBooks, then Mercury bank after EIN
+  - [ ] Log existing expenses (RA $125, LLC filing $75, all receipts in `AnemosGP LLC/Receipts/`)
+  - [ ] Set up expense categories in QuickBooks
+  - [ ] Get Mercury credit card
+- **Blocked on**: Nothing
+- **Next up**: Connect Mercury → QuickBooks, log all existing expenses
 - **Needs CEO decision**: None
 
 ### MERCH
@@ -146,6 +152,22 @@
 - **Next up**: First Monday weekly brief
 - **Needs CEO decision**: N/A
 
+### MEMORY SYSTEM
+- **Status**: Active — 4-tier architecture built, knowledge graph operational
+- **Last session**: 2026-03-20
+- **What happened**:
+  - Built 4-tier memory model: HOT (MEMORY.md index) → WARM (topic files with frontmatter) → COLD (archive) → CACHE (.remember/ session handoff)
+  - Write gate criteria to prevent memory bloat
+  - Size limits enforced per tier (150 lines hot, 200 lines warm, 25 files max)
+  - Staleness tracking via last_verified dates with 30/90 day thresholds
+  - Knowledge graph (mcp-knowledge-graph) for cross-project entities and relationships
+  - Promotion/demotion rules between tiers
+  - Frontmatter standard for warm files (name, description, type, last_verified)
+  - Cross-project orchestration in ~/Projects/CLAUDE.md
+- **Blocked on**: Nothing
+- **Next up**: Refine write gate criteria from real usage, improve cross-project entity linking, session handoff reliability
+- **Needs CEO decision**: None
+
 ---
 
 ## Open Decisions
@@ -174,7 +196,8 @@
 
 | Blocker | Owner | Since | Impact | Status |
 |---------|-------|-------|--------|--------|
-| Google Play developer account suspended | Jim | 2026-03-14 | Blocks ALL user acquisition | APPEAL PENDING — verification failed, appeal submitted |
+| D-U-N-S number pending | Jim | 2026-03-20 | Blocks Google Play org account | APPLIED — Case DFC-507818, expedited $229, expected ~April 1 |
+| Google Play developer account (personal) suspended | Jim | 2026-03-14 | N/A — going org account route | ABANDONED — registering org account under AnemosGP LLC instead |
 | No Firebase Analytics events | APP | 2026-03-14 | Flying blind on retention | DONE — COPPA-compliant, 10 events instrumented |
-| No privacy policy page | LANDING | 2026-03-14 | Blocks Play Store | DONE — COPPA-compliant, in-app link added |
+| No privacy policy page | LANDING | 2026-03-14 | Blocks Play Store | DONE — COPPA 2025 + CCPA compliant, 10 sections, live |
 | No email capture on landing page | LANDING | 2026-03-14 | Losing potential early adopters | DONE — Buttondown, platform-aware forms, QR code for desktop |

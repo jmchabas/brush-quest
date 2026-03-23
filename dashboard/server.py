@@ -37,6 +37,7 @@ WORKSTREAM_CATEGORIES = {
     "STRATEGY": "Ops",
     "LLC": "Business",
     "ACCOUNTING": "Business",
+    "MEMORY SYSTEM": "Ops",
 }
 
 CATEGORY_ORDER = ["Product", "Business", "Ops"]
@@ -302,8 +303,13 @@ def status_color(status_text):
     return "#b0bec5"
 
 
-def render_html():
-    """Build the full dashboard HTML."""
+def render_html(*, static_export=False):
+    """Build the full dashboard HTML.
+
+    Args:
+        static_export: If True, omit auto-refresh and add site navigation for
+            hosting on brushquest.app.
+    """
     workstreams, blockers, priority, phase = parse_status()
     decisions = parse_strategy()
     cycle_data = parse_cycle_history()
@@ -481,15 +487,28 @@ def render_html():
             <span>{entry['message']}</span>
         </div>"""
 
+    refresh_tag = '' if static_export else '<meta http-equiv="refresh" content="30">'
+    favicon_prefix = '' if static_export else '/'
+
+    nav_html = ""
+    if static_export:
+        nav_html = """
+<nav style="display:flex;gap:24px;align-items:center;padding:16px 24px;border-bottom:1px solid #1a1a3a;font-size:14px;">
+    <a href="index.html" style="color:#b388ff;text-decoration:none;">&#8592; Home</a>
+    <a href="victories.html" style="color:#00e5ff;text-decoration:none;">Victories</a>
+    <a href="privacy-policy.html" style="color:#666;text-decoration:none;">Privacy</a>
+</nav>"""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brush Quest Dashboard</title>
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
-<meta http-equiv="refresh" content="30">
+<meta name="description" content="Live project dashboard for Brush Quest — a kids' toothbrushing app. Workstreams, blockers, dev cycles, and git activity.">
+<link rel="icon" type="image/png" sizes="32x32" href="{favicon_prefix}favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="{favicon_prefix}favicon.png">
+{refresh_tag}
 <style>
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     body {{
@@ -792,10 +811,11 @@ def render_html():
     .cycle-next strong {{
         color: #b388ff;
     }}
+    nav a:hover {{ color: #fff !important; }}
 </style>
 </head>
 <body>
-
+{nav_html}
 <div class="header">
     <h1>Brush Quest</h1>
     <div class="meta">
@@ -836,6 +856,8 @@ def render_html():
 <div class="panel">
     {git_html if git_html else '<div style="color:#666;font-size:13px">No git history</div>'}
 </div>
+
+{'<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated ' + now + ' &mdash; <a href="victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>' if static_export else ''}
 
 </body>
 </html>"""
@@ -886,7 +908,21 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
         pass
 
 
+def export_static():
+    """Export the dashboard as a static HTML file to docs/dashboard.html."""
+    output_path = PROJECT_ROOT / "docs" / "dashboard.html"
+    html = render_html(static_export=True)
+    output_path.write_text(html)
+    print(f"  Exported to {output_path}")
+
+
 def main():
+    import sys
+
+    if "--export" in sys.argv:
+        export_static()
+        return
+
     server = http.server.HTTPServer(("", PORT), DashboardHandler)
     print(f"\n  Brush Quest Dashboard")
     print(f"  http://localhost:{PORT}")
