@@ -412,4 +412,45 @@ void main() {
       expect(await service.getTotalStars(), await service.getRangerRank());
     });
   });
+
+  group('Streak bonuses', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('daily completion bonus awards +1 when both slots done', () async {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonus(streak: 1, bothSlotsDone: true);
+      expect(bonus, 1);
+    });
+
+    test('streak 3+ adds +1 per brush', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 3, bothSlotsDone: false);
+      expect(bonus, 1);
+    });
+
+    test('streak 7+ adds +2 per brush (replaces +1)', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 7, bothSlotsDone: false);
+      expect(bonus, 2);
+    });
+
+    test('streak 7+ with both slots gives +3 total bonus', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 7, bothSlotsDone: true);
+      expect(bonus, 3);
+    });
+
+    test('streak 0-2 with one slot gives no bonus', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 2, bothSlotsDone: false);
+      expect(bonus, 0);
+    });
+
+    test('BrushOutcome includes baseStars and streakBonus', () async {
+      final service = StreakService();
+      final outcome = await service.recordBrush();
+      // First brush, no streak bonus expected (streak=1, only one slot done)
+      expect(outcome.baseStars, 2);
+      expect(outcome.streakBonus, 0); // No streak bonus on first brush
+      expect(outcome.starsEarned, 2); // base only
+    });
+  });
 }

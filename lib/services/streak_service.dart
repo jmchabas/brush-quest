@@ -6,11 +6,15 @@ import 'sync_service.dart';
 enum BrushSlot { morning, evening }
 
 class BrushOutcome {
-  final int starsEarned;
+  final int baseStars;
+  final int streakBonus;
+  final int starsEarned; // baseStars + streakBonus
   final BrushSlot slot;
   final bool newSlotCompleted;
 
   const BrushOutcome({
+    required this.baseStars,
+    required this.streakBonus,
     required this.starsEarned,
     required this.slot,
     required this.newSlotCompleted,
@@ -66,6 +70,18 @@ class StreakService {
   static const _keyEveningDoneDate = 'evening_done_date';
   static const _keyStarWallet = 'star_wallet';
 
+  /// Calculate bonus stars from streak length and daily slot completion.
+  int calculateStreakBonus({required int streak, required bool bothSlotsDone}) {
+    int bonus = 0;
+    if (bothSlotsDone) bonus += 1; // Daily completion
+    if (streak >= 7) {
+      bonus += 2; // 7+ day streak
+    } else if (streak >= 3) {
+      bonus += 1; // 3+ day streak
+    }
+    return bonus;
+  }
+
   Future<BrushOutcome> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
     final prefs = await SharedPreferences.getInstance();
     final today = _todayString();
@@ -108,14 +124,25 @@ class StreakService {
       await prefs.setInt(_keyBestStreak, streak);
     }
 
+    // Calculate streak bonus
+    final updatedSlots = TodaySlotsStatus(
+      morningDone: prefs.getString(_keyMorningDoneDate) == today,
+      eveningDone: prefs.getString(_keyEveningDoneDate) == today,
+    );
+    final streakBonus = calculateStreakBonus(
+      streak: streak,
+      bothSlotsDone: updatedSlots.morningDone && updatedSlots.eveningDone,
+    );
+    final totalEarned = starsEarned + streakBonus;
+
     // Update total stars
     int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
-    totalStars += starsEarned;
+    totalStars += totalEarned;
     await prefs.setInt(_keyTotalStars, totalStars);
 
     // Credit wallet (spendable balance)
     int wallet = prefs.getInt(_keyStarWallet) ?? 0;
-    wallet += starsEarned;
+    wallet += totalEarned;
     await prefs.setInt(_keyStarWallet, wallet);
 
     // Update lifetime brush count
@@ -146,7 +173,9 @@ class StreakService {
     }
 
     return BrushOutcome(
-      starsEarned: starsEarned,
+      baseStars: starsEarned,
+      streakBonus: streakBonus,
+      starsEarned: totalEarned,
       slot: slot,
       newSlotCompleted: newSlotCompleted,
     );
