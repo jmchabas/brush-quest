@@ -178,6 +178,11 @@ class AudioService {
     'voice_chest_bonus_star.mp3',
     'voice_chest_double.mp3',
     'voice_chest_jackpot.mp3',
+    // Bonus communication voice lines
+    'voice_full_charge.mp3',
+    'voice_super_power.mp3',
+    'voice_mega_power.mp3',
+    'voice_streak_bonus.mp3',
     'voice_intro_hero_blaze.mp3',
     'voice_intro_hero_frost.mp3',
     'voice_intro_hero_bolt.mp3',
