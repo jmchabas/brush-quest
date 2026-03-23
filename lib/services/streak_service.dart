@@ -64,6 +64,7 @@ class StreakService {
   static const _keyHistory = 'brush_history';
   static const _keyMorningDoneDate = 'morning_done_date';
   static const _keyEveningDoneDate = 'evening_done_date';
+  static const _keyStarWallet = 'star_wallet';
 
   Future<BrushOutcome> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -75,8 +76,8 @@ class StreakService {
     final slotAlreadyDone = prefs.getString(slotKey) == today;
     final newSlotCompleted = !slotAlreadyDone;
 
-    // Every completed brush earns 1 star — no daily cap.
-    const starsEarned = 1;
+    // Every completed brush earns 2 stars — no daily cap.
+    const starsEarned = 2;
     if (newSlotCompleted) {
       await prefs.setString(slotKey, today);
     }
@@ -111,6 +112,11 @@ class StreakService {
     int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
     totalStars += starsEarned;
     await prefs.setInt(_keyTotalStars, totalStars);
+
+    // Credit wallet (spendable balance)
+    int wallet = prefs.getInt(_keyStarWallet) ?? 0;
+    wallet += starsEarned;
+    await prefs.setInt(_keyStarWallet, wallet);
 
     // Update lifetime brush count
     int totalBrushes = prefs.getInt(_keyTotalBrushes) ?? 0;
@@ -168,6 +174,29 @@ class StreakService {
     final prefs = await SharedPreferences.getInstance();
     final current = prefs.getInt(_keyTotalStars) ?? 0;
     await prefs.setInt(_keyTotalStars, current + amount);
+    // Also credit wallet
+    final wallet = prefs.getInt(_keyStarWallet) ?? 0;
+    await prefs.setInt(_keyStarWallet, wallet + amount);
+  }
+
+  Future<int> getWallet() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keyStarWallet) ?? 0;
+  }
+
+  Future<int> getRangerRank() async {
+    return getTotalStars(); // Ranger Rank IS the lifetime total
+  }
+
+  /// Spend stars from the wallet. Returns true if successful.
+  /// Ranger Rank is never affected by spending.
+  Future<bool> spendStars(int amount) async {
+    if (amount <= 0) return false;
+    final prefs = await SharedPreferences.getInstance();
+    final wallet = prefs.getInt(_keyStarWallet) ?? 0;
+    if (wallet < amount) return false;
+    await prefs.setInt(_keyStarWallet, wallet - amount);
+    return true;
   }
 
   Future<int> getTodayBrushCount() async {
