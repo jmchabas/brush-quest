@@ -135,6 +135,7 @@ class VictoryScreen extends StatefulWidget {
   final int monstersDefeated;
   final bool isBossSession;
   final String? sessionId;
+  final String? trophyTargetId;
   const VictoryScreen({
     super.key,
     this.starsCollected = 1,
@@ -142,6 +143,7 @@ class VictoryScreen extends StatefulWidget {
     this.monstersDefeated = 4,
     this.isBossSession = false,
     this.sessionId,
+    this.trophyTargetId,
   });
 
   @override

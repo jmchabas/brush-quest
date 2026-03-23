@@ -16,6 +16,7 @@ import '../widgets/mute_button.dart';
 import 'package:lottie/lottie.dart';
 import '../widgets/mouth_guide.dart';
 import '../services/analytics_service.dart';
+import '../services/trophy_service.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
@@ -245,6 +246,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   final _worldService = WorldService();
   final _cameraService = CameraService();
   final _weaponService = WeaponService();
+  final _trophyService = TrophyService();
+  TrophyMonster? _currentTrophyTarget;
 
   HeroCharacter _hero = HeroService.allHeroes[0];
   WorldData _world = WorldService.allWorlds[0];
@@ -610,8 +613,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   _MonsterSlot _createMonster() {
+    final imageIndex = _currentTrophyTarget?.baseImageIndex
+        ?? _random.nextInt(_monsterImages.length);
     return _MonsterSlot(
-      imageIndex: _random.nextInt(_monsterImages.length),
+      imageIndex: imageIndex,
       health: 1.0,
       alive: true,
       wobblePhase: _random.nextDouble() * 2 * pi,
@@ -822,6 +827,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     final world = await _worldService.getCurrentWorld();
     final weapon = await _weaponService.getSelectedWeapon();
     final totalBrushes = await StreakService().getTotalBrushes();
+    final trophyTarget = await _trophyService.getNextUncaptured(world.id);
     final prefs = await SharedPreferences.getInstance();
     final duration = prefs.getInt('phase_duration') ?? 20;
     if (mounted) {
@@ -832,7 +838,8 @@ class _BrushingScreenState extends State<BrushingScreen>
         _weapon = weapon;
         _phaseDuration = duration;
         _isBossSession = totalBrushes > 0 && (totalBrushes + 1) % 5 == 0;
-        _monster = _createWorldMonster();
+        _currentTrophyTarget = trophyTarget;
+        _monster = _createMonster();
         _initParticles();
       });
     }
@@ -1717,6 +1724,7 @@ class _BrushingScreenState extends State<BrushingScreen>
           monstersDefeated: _monstersDefeated,
           isBossSession: _isBossSession,
           sessionId: _sessionId,
+          trophyTargetId: _currentTrophyTarget?.id,
         ),
         transitionsBuilder: (context, anim, secondaryAnimation, child) =>
             FadeTransition(opacity: anim, child: child),
