@@ -667,7 +667,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: Image.asset(
-                              'assets/images/monster_${card.baseImageIndex + 1}.png',
+                              card.imagePath,
                               fit: BoxFit.cover,
                               color: card.tintColor.withValues(alpha: 0.3),
                               colorBlendMode: BlendMode.overlay,
