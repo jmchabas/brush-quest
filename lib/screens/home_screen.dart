@@ -57,6 +57,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'voice_go_go_go.mp3',
   ];
 
+  static const Map<String, String> _unlockVoices = {
+    'frost': 'voice_unlock_next_frost.mp3',
+    'bolt': 'voice_unlock_next_bolt.mp3',
+    'shadow': 'voice_unlock_next_shadow.mp3',
+    'leaf': 'voice_unlock_next_leaf.mp3',
+    'nova': 'voice_unlock_next_nova.mp3',
+    'flame_sword': 'voice_unlock_next_flame_sword.mp3',
+    'ice_hammer': 'voice_unlock_next_ice_hammer.mp3',
+    'lightning_wand': 'voice_unlock_next_lightning_wand.mp3',
+    'vine_whip': 'voice_unlock_next_vine_whip.mp3',
+    'cosmic_burst': 'voice_unlock_next_cosmic_shield.mp3',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -181,6 +194,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       nextWeaponUnlockAt: nextWeapon?.unlockAt,
       todayDate: todayDate,
       lastGreetingDate: lastGreetingDate,
+      nextHeroId: nextHero?.id,
+      nextHeroImagePath: nextHero?.imagePath,
+      nextWeaponId: nextWeapon?.id,
+      nextWeaponImagePath: nextWeapon?.imagePath,
     );
 
     if (result != null && mounted) {
@@ -199,6 +216,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _showGreetingPopup(GreetingResult greeting) {
     AudioService().playVoice(greeting.voiceFile);
+    // Queue unlock tease voice AFTER the greeting voice finishes
+    if (greeting.teaseItemId != null) {
+      final unlockVoice = _unlockVoices[greeting.teaseItemId];
+      if (unlockVoice != null) {
+        AudioService().playVoice(unlockVoice);
+      }
+    }
     HapticFeedback.mediumImpact();
 
     final title = switch (greeting.state) {
@@ -266,14 +290,82 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
-                if (greeting.teaseItemName != null && greeting.teaseStarsAway != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    "You're ${greeting.teaseStarsAway} stars from ${greeting.teaseItemName}!",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 14,
+                if (greeting.teaseItemImagePath != null &&
+                    greeting.teaseItemUnlockAt != null &&
+                    greeting.teaseStarsAway != null &&
+                    greeting.teaseStarsAway! > 0) ...[
+                  const SizedBox(height: 16),
+                  // Next unlock item icon
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.3),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        greeting.teaseItemImagePath!,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Progress bar toward unlock
+                  SizedBox(
+                    width: 160,
+                    child: Column(
+                      children: [
+                        // Star icons showing progress
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFD54F),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${greeting.totalStars}',
+                              style: const TextStyle(
+                                color: Color(0xFFFFD54F),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              ' / ${greeting.teaseItemUnlockAt}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // Progress bar
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: greeting.totalStars / greeting.teaseItemUnlockAt!,
+                            minHeight: 8,
+                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFFFD54F),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

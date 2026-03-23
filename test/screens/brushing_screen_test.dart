@@ -48,7 +48,7 @@ void main() {
 
   testWidgets('world intro has a close button', (tester) async {
     SharedPreferences.setMockInitialValues({
-      'phase_duration': 30,
+      'phase_duration': 20,
       'camera_enabled': false,
       'selected_hero': 'blaze',
       'selected_weapon': 'star_blaster',

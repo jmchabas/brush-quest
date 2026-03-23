@@ -225,7 +225,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     'ice_hammer': 'voice_unlock_next_ice_hammer.mp3',
     'lightning_wand': 'voice_unlock_next_lightning_wand.mp3',
     'vine_whip': 'voice_unlock_next_vine_whip.mp3',
-    'cosmic_shield': 'voice_unlock_next_cosmic_shield.mp3',
+    'cosmic_burst': 'voice_unlock_next_cosmic_shield.mp3',
   };
 
   // Post-chest encouragement variants (replaces single voice_keep_going)
@@ -374,8 +374,14 @@ class _VictoryScreenState extends State<VictoryScreen>
     _starRotationController.repeat();
     _starGlowController.repeat(reverse: true);
 
-    // Chest drops after voice completes
+    // Show DONE button early so the user can exit before the chest sequence.
+    // The reward chain continues to play, but the child is never trapped.
     if (!mounted) return;
+    _audio.playSfx('whoosh.mp3');
+    setState(() => _showDoneButton = true);
+    _doneButtonController.repeat(reverse: true);
+
+    // Chest drops after voice completes
     setState(() => _showChest = true);
     _chestBounceController.repeat(reverse: true);
     _audio.playVoice(arc[2]); // chest prompt
@@ -431,129 +437,135 @@ class _VictoryScreenState extends State<VictoryScreen>
     _audio.playSfx('star_chime.mp3');
 
     Future.delayed(const Duration(milliseconds: 500), () async {
-      if (!mounted) return;
-      _rewardRevealController.forward();
-      if (_reward!.bonusStars > 0) HapticFeedback.mediumImpact();
-      await _audio.playVoice(_reward!.voiceFile);
+      try {
+        if (!mounted) return;
+        _rewardRevealController.forward();
+        if (_reward!.bonusStars > 0) HapticFeedback.mediumImpact();
+        await _audio.playVoice(_reward!.voiceFile);
 
-      final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
-      if (totalBonus > 0) {
-        await _streakService.addBonusStars(totalBonus);
-        final updated = await _streakService.getTotalStars();
-        _newStars = updated;
-        if (mounted) {
-          setState(() {
-            if (_nextUnlockName != null) {
-              _starsToNextUnlock = _nextUnlockAt - _newStars;
-              if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
-            }
-          });
+        final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
+        if (totalBonus > 0) {
+          await _streakService.addBonusStars(totalBonus);
+          final updated = await _streakService.getTotalStars();
+          _newStars = updated;
+          if (mounted) {
+            setState(() {
+              if (_nextUnlockName != null) {
+                _starsToNextUnlock = _nextUnlockAt - _newStars;
+                if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
+              }
+            });
+          }
         }
-      }
 
-      // ── Card reveal (guaranteed drop) ──
-      final drop = await _cardService.guaranteedCardDrop(_world.id);
-      if (!mounted) return;
+        // ── Card reveal (guaranteed drop) ──
+        final drop = await _cardService.guaranteedCardDrop(_world.id);
+        if (!mounted) return;
 
-      // Short pause before card flies out
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
+        // Short pause before card flies out
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (!mounted) return;
 
-      setState(() {
-        _cardDrop = drop;
-        _showCardDrop = true;
-      });
-      HapticFeedback.mediumImpact();
-      _audio.playSfx('star_chime.mp3');
+        setState(() {
+          _cardDrop = drop;
+          _showCardDrop = true;
+        });
+        HapticFeedback.mediumImpact();
+        _audio.playSfx('star_chime.mp3');
 
-      // Card fly-in animation
-      _cardFlyController.forward();
+        // Card fly-in animation
+        _cardFlyController.forward();
 
-      // After fly-in, start glow + NEW badge + voice
-      await Future.delayed(const Duration(milliseconds: 700));
-      if (!mounted) return;
+        // After fly-in, start glow + NEW badge + voice
+        await Future.delayed(const Duration(milliseconds: 700));
+        if (!mounted) return;
 
-      _cardGlowController.repeat(reverse: true);
-      if (drop.isNew) {
-        _newBadgeController.forward();
-        _audio.playVoice('voice_card_new.mp3');
-      } else {
-        // Duplicate card — show POWER UP badge with voice and check for bonus star
-        _newBadgeController.forward();
-        _audio.playVoice('voice_card_power_up.mp3');
-        final bonusStars = await _cardService.checkDuplicateBonus();
-        if (bonusStars > 0) {
-          await _streakService.addBonusStars(bonusStars);
-          _newStars = await _streakService.getTotalStars();
-          _starsEarnedThisSession += bonusStars;
-          if (mounted) setState(() {});
-        }
-      }
-      // Play the specific card description voice
-      await _audio.playVoice('voice_card_${drop.card.id}.mp3');
-      if (!mounted) return;
-
-      // Show world progress after card voice finishes
-      setState(() {
-        _showWorldProgress = true;
-        _worldJustCompleted = drop.isNew &&
-            drop.worldCollected == drop.worldTotal;
-      });
-
-      if (_worldJustCompleted) {
-        HapticFeedback.heavyImpact();
-        _audio.playSfx('victory.mp3');
-      }
-
-      // Short pause to let the kid see the world progress
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (!mounted) return;
-
-      // ── Milestone celebration (70/80/90 stars) ──
-      for (final milestone in [70, 80, 90]) {
-        if (_newStars >= milestone && _previousStars < milestone) {
-          final voiceFile = 'voice_milestone_$milestone.mp3';
-          await _audio.playVoice(voiceFile);
-          _confettiController.repeat();
-          await Future.delayed(const Duration(milliseconds: 500));
-          break; // Only play one milestone per session
-        }
-      }
-      if (!mounted) return;
-
-      // ── Achievements (AFTER card reveal) ──
-      for (int i = 0; i < _newAchievements.length; i++) {
-        if (!mounted) break;
-        if (i > 0) {
-          await Future.delayed(const Duration(milliseconds: 1200));
-        }
-        if (mounted) _showAchievement(_newAchievements[i]);
-      }
-
-      // Wait a beat after last achievement before showing DONE
-      if (_newAchievements.isNotEmpty) {
-        await Future.delayed(const Duration(milliseconds: 1000));
-      }
-
-      // Legendary ranger voice or next-unlock encouragement
-      if (_nextUnlockName == null && _collectedCardCount >= 70 && mounted) {
-        await _audio.playVoice('voice_legend.mp3');
-      } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
-        final unlockVoice = _nextUnlockId != null ? _unlockVoices[_nextUnlockId] : null;
-        if (unlockVoice != null) {
-          _audio.playVoice(unlockVoice);
+        _cardGlowController.repeat(reverse: true);
+        if (drop.isNew) {
+          _newBadgeController.forward();
+          _audio.playVoice('voice_card_new.mp3');
         } else {
-          _audio.playVoice(
-            _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
-          );
+          // Duplicate card — show POWER UP badge with voice and check for bonus star
+          _newBadgeController.forward();
+          _audio.playVoice('voice_card_power_up.mp3');
+          final bonusStars = await _cardService.checkDuplicateBonus();
+          if (bonusStars > 0) {
+            await _streakService.addBonusStars(bonusStars);
+            _newStars = await _streakService.getTotalStars();
+            _starsEarnedThisSession += bonusStars;
+            if (mounted) setState(() {});
+          }
         }
-      }
+        // Play the specific card description voice
+        await _audio.playVoice('voice_card_${drop.card.id}.mp3');
+        if (!mounted) return;
 
-      // ── DONE button with whoosh SFX ──
-      if (mounted) {
-        _audio.playSfx('whoosh.mp3');
-        setState(() => _showDoneButton = true);
-        _doneButtonController.repeat(reverse: true);
+        // Show world progress after card voice finishes
+        setState(() {
+          _showWorldProgress = true;
+          _worldJustCompleted = drop.isNew &&
+              drop.worldCollected == drop.worldTotal;
+        });
+
+        if (_worldJustCompleted) {
+          HapticFeedback.heavyImpact();
+          _audio.playSfx('victory.mp3');
+        }
+
+        // Short pause to let the kid see the world progress
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+
+        // ── Milestone celebration (70/80/90 stars) ──
+        for (final milestone in [70, 80, 90]) {
+          if (_newStars >= milestone && _previousStars < milestone) {
+            final voiceFile = 'voice_milestone_$milestone.mp3';
+            await _audio.playVoice(voiceFile);
+            _confettiController.repeat();
+            await Future.delayed(const Duration(milliseconds: 500));
+            break; // Only play one milestone per session
+          }
+        }
+        if (!mounted) return;
+
+        // ── Achievements (AFTER card reveal) ──
+        for (int i = 0; i < _newAchievements.length; i++) {
+          if (!mounted) break;
+          if (i > 0) {
+            await Future.delayed(const Duration(milliseconds: 1200));
+          }
+          if (mounted) _showAchievement(_newAchievements[i]);
+        }
+
+        // Wait a beat after last achievement before showing DONE
+        if (_newAchievements.isNotEmpty) {
+          await Future.delayed(const Duration(milliseconds: 1000));
+        }
+
+        // Legendary ranger voice or next-unlock encouragement
+        if (_nextUnlockName == null && _collectedCardCount >= 70 && mounted) {
+          await _audio.playVoice('voice_legend.mp3');
+        } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
+          final unlockVoice = _nextUnlockId != null ? _unlockVoices[_nextUnlockId] : null;
+          if (unlockVoice != null) {
+            _audio.playVoice(unlockVoice);
+          } else {
+            _audio.playVoice(
+              _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Victory chest sequence error: $e');
+      } finally {
+        // Guarantee the DONE button is visible even if the reward chain fails.
+        // It may already be showing (set in _recordAndAnimate), but this
+        // ensures it appears if the early-show somehow didn't fire.
+        if (mounted && !_showDoneButton) {
+          _audio.playSfx('whoosh.mp3');
+          setState(() => _showDoneButton = true);
+          _doneButtonController.repeat(reverse: true);
+        }
       }
     });
   }

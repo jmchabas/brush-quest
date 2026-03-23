@@ -25,14 +25,25 @@ class BrushingScreen extends StatefulWidget {
   State<BrushingScreen> createState() => _BrushingScreenState();
 }
 
-enum BrushPhase { countdown, topLeft, topRight, bottomLeft, bottomRight, done }
+enum BrushPhase {
+  countdown,
+  topLeft,
+  topFront,
+  topRight,
+  bottomLeft,
+  bottomFront,
+  bottomRight,
+  done,
+}
 
 enum SessionStage { worldIntro, countdown, brushing, done }
 
 const brushPhaseOrder = [
   BrushPhase.topLeft,
+  BrushPhase.topFront,
   BrushPhase.topRight,
   BrushPhase.bottomLeft,
+  BrushPhase.bottomFront,
   BrushPhase.bottomRight,
 ];
 
@@ -248,8 +259,8 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   BrushPhase _phase = BrushPhase.countdown;
   int _countdownValue = 3;
-  int _phaseSecondsLeft = 30;
-  int _phaseDuration = 30;
+  int _phaseSecondsLeft = 20;
+  int _phaseDuration = 20;
   Timer? _timer;
   Timer? _baseAttackTimer;
   bool _isPaused = false;
@@ -360,22 +371,30 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   static const _phaseNames = {
     BrushPhase.topLeft: 'TOP LEFT',
+    BrushPhase.topFront: 'TOP FRONT',
     BrushPhase.topRight: 'TOP RIGHT',
     BrushPhase.bottomLeft: 'BOTTOM LEFT',
+    BrushPhase.bottomFront: 'BOTTOM FRONT',
     BrushPhase.bottomRight: 'BOTTOM RIGHT',
   };
 
   static const _phaseToMouthQuadrant = {
     BrushPhase.topLeft: MouthQuadrant.topLeft,
+    BrushPhase.topFront: MouthQuadrant.topFront,
     BrushPhase.topRight: MouthQuadrant.topRight,
     BrushPhase.bottomLeft: MouthQuadrant.bottomLeft,
+    BrushPhase.bottomFront: MouthQuadrant.bottomFront,
     BrushPhase.bottomRight: MouthQuadrant.bottomRight,
   };
 
   static const _phaseVoiceFiles = {
     BrushPhase.topLeft: 'voice_top_left.mp3',
+    // TODO: Replace placeholder with dedicated voice_top_front.mp3
+    BrushPhase.topFront: 'voice_top_left.mp3',
     BrushPhase.topRight: 'voice_top_right.mp3',
     BrushPhase.bottomLeft: 'voice_bottom_left.mp3',
+    // TODO: Replace placeholder with dedicated voice_bottom_front.mp3
+    BrushPhase.bottomFront: 'voice_bottom_left.mp3',
     BrushPhase.bottomRight: 'voice_bottom_right.mp3',
   };
 
@@ -806,7 +825,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     final weapon = await _weaponService.getSelectedWeapon();
     final totalBrushes = await StreakService().getTotalBrushes();
     final prefs = await SharedPreferences.getInstance();
-    final duration = prefs.getInt('phase_duration') ?? 30;
+    final duration = prefs.getInt('phase_duration') ?? 20;
     if (mounted) {
       setState(() {
         _hero = hero;
@@ -889,7 +908,20 @@ class _BrushingScreenState extends State<BrushingScreen>
     await prefs.remove(_checkpointWorldKey);
   }
 
-  void _startWorldIntro() {
+  void _startWorldIntro() async {
+    // Skip intro for worlds the user has already seen
+    final prefs = await SharedPreferences.getInstance();
+    final seenKey = 'world_intro_seen_${_world.id}';
+    if (prefs.getBool(seenKey) == true) {
+      if (!mounted) return;
+      setState(() {
+        _showWorldIntro = false;
+        _sessionStage = SessionStage.countdown;
+      });
+      _startCountdown();
+      return;
+    }
+
     _worldIntroTimer?.cancel();
     setState(() {
       _showWorldIntro = true;
@@ -905,8 +937,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
-  void _dismissWorldIntro() {
+  void _dismissWorldIntro() async {
     _worldIntroTimer?.cancel();
+
+    // Mark this world's intro as seen so it skips next time
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('world_intro_seen_${_world.id}', true);
+
+    if (!mounted) return;
     setState(() {
       _showWorldIntro = false;
       _sessionStage = SessionStage.countdown;
@@ -1617,7 +1655,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       _stallTimer?.cancel();
       _companionTimer?.cancel();
       _microRewardTimer?.cancel();
+      // Audio cue: whoosh SFX signals the game is paused
+      _audio.playSfx('whoosh.mp3');
     } else {
+      // Audio cue: encouraging voice on resume
+      _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
       _monsterBreathController.repeat(reverse: true);
       _heroIdleController.repeat(reverse: true);
       if (_cameraReady) {
@@ -2446,7 +2488,7 @@ class _BrushingScreenState extends State<BrushingScreen>
             key: ValueKey('mission-hud-${_phase.name}'),
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mouth guide (separate from world info)
+              // Mouth guide — prominent so the kid sees where to brush
               AnimatedBuilder(
                 animation: _mouthGuideGlowController,
                 builder: (context, _) => MouthGuide(
@@ -2455,7 +2497,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                       MouthQuadrant.topLeft,
                   glowAnim: _mouthGuideGlowController.value,
                   highlightColor: _world.themeColor,
-                  size: 62,
+                  size: 82,
                 ),
               ),
               const SizedBox(width: 8),

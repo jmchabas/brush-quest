@@ -57,7 +57,14 @@ class AudioService {
   bool get isVoicePlaying => _voicePlaying;
   bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
 
-  /// Current voice narrator style ('classic' or 'buddy').
+  /// Available voice styles.
+  static const voiceStyles = {
+    'classic': 'Jessica — warm & clear',
+    'buddy': 'George — friendly guide',
+    'boy': 'Liam — excited adventurer',
+  };
+
+  /// Current voice narrator style ('classic', 'buddy', or 'boy').
   String get voiceStyle => _voiceStyle;
 
   /// Base path for voice files under assets/audio/.
@@ -354,6 +361,17 @@ class AudioService {
     'voice_milestone_80.mp3',
     'voice_milestone_90.mp3',
     'voice_legend.mp3',
+    // Unlock encouragement voices (Cycle 7)
+    'voice_unlock_next_frost.mp3',
+    'voice_unlock_next_bolt.mp3',
+    'voice_unlock_next_shadow.mp3',
+    'voice_unlock_next_leaf.mp3',
+    'voice_unlock_next_nova.mp3',
+    'voice_unlock_next_flame_sword.mp3',
+    'voice_unlock_next_ice_hammer.mp3',
+    'voice_unlock_next_lightning_wand.mp3',
+    'voice_unlock_next_vine_whip.mp3',
+    'voice_unlock_next_cosmic_shield.mp3',
   ];
 
   List<String> get encouragementVoices =>
@@ -520,7 +538,7 @@ class AudioService {
                 .where((s) => s == PlayerState.stopped)
                 .first
                 .then((_) => false),
-            Future.delayed(const Duration(seconds: 5), () => false),
+            Future.delayed(const Duration(seconds: 15), () => false),
           ]);
           if (!completed) {
             _reportAudioIssue(

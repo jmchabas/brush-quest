@@ -44,8 +44,8 @@ void main() {
     // The voice pump must use Future.any with:
     //   1. onPlayerComplete — natural end of voice
     //   2. onPlayerStateChanged (stopped) — interrupt from another playVoice call
-    //   3. Duration(seconds: 5) timeout — fallback safety net
-    // Without signal 2, interrupts wait for the 5s timeout before playing
+    //   3. Duration(seconds: 15) timeout — fallback safety net
+    // Without signal 2, interrupts wait for the timeout before playing
     // the next queued voice, causing multi-second delays on user taps.
 
     // Verify Future.any is used
@@ -78,11 +78,12 @@ void main() {
       reason: 'Voice pump must watch for PlayerState.stopped specifically.',
     );
 
-    // Verify 5-second timeout is one of the signals
+    // Verify 15-second timeout is one of the signals (raised from 5s because
+    // 47+ voice files exceed 5 seconds and were being cut off mid-sentence).
     expect(
-      RegExp(r'Duration\(seconds:\s*5\)').hasMatch(audioSource),
+      RegExp(r'Duration\(seconds:\s*15\)').hasMatch(audioSource),
       isTrue,
-      reason: 'Voice pump must have a 5-second timeout as fallback.',
+      reason: 'Voice pump must have a 15-second timeout as fallback.',
     );
   });
 

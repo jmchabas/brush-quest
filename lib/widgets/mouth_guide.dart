@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 
-enum MouthQuadrant { topLeft, topRight, bottomLeft, bottomRight }
+enum MouthQuadrant {
+  topLeft,
+  topFront,
+  topRight,
+  bottomLeft,
+  bottomFront,
+  bottomRight,
+}
 
 class MouthGuide extends StatelessWidget {
   final MouthQuadrant activeQuadrant;
@@ -101,19 +108,21 @@ class _MouthGuidePainter extends CustomPainter {
 
     canvas.restore();
 
-    // Quadrant dividers (subtle)
+    // Zone dividers (subtle) — 3 columns, 2 rows
     final dividerPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.15)
       ..strokeWidth = 1.5;
-    // Vertical center line
-    canvas.drawLine(Offset(cx, h * 0.1), Offset(cx, h * 0.9), dividerPaint);
+    // Left vertical divider (1/3 mark)
+    canvas.drawLine(Offset(w * 0.33, h * 0.1), Offset(w * 0.33, h * 0.9), dividerPaint);
+    // Right vertical divider (2/3 mark)
+    canvas.drawLine(Offset(w * 0.67, h * 0.1), Offset(w * 0.67, h * 0.9), dividerPaint);
     // Horizontal center line
     canvas.drawLine(Offset(w * 0.08, cy), Offset(w * 0.92, cy), dividerPaint);
 
-    // Active quadrant glow overlay
-    _drawQuadrantHighlight(canvas, w, h, cx, cy);
+    // Active zone glow overlay
+    _drawZoneHighlight(canvas, w, h, cx, cy);
 
-    // Toothbrush icon in active quadrant
+    // Sparkle indicator in active zone
     _drawBrushIndicator(canvas, w, h, cx, cy);
   }
 
@@ -137,6 +146,22 @@ class _MouthGuidePainter extends CustomPainter {
     canvas.drawPath(lowerGumPath, Paint()..color = color);
   }
 
+  /// Map a tooth index (0-based out of teethCount) to its zone.
+  MouthQuadrant _toothZone(int i, int teethCount, bool isUpper) {
+    // 10 teeth: indices 0-2 = left, 3-6 = front, 7-9 = right
+    // 3 left teeth, 4 front teeth, 3 right teeth
+    final leftEnd = (teethCount * 0.3).floor(); // 3
+    final rightStart = teethCount - leftEnd;     // 7
+
+    if (i < leftEnd) {
+      return isUpper ? MouthQuadrant.topLeft : MouthQuadrant.bottomLeft;
+    } else if (i >= rightStart) {
+      return isUpper ? MouthQuadrant.topRight : MouthQuadrant.bottomRight;
+    } else {
+      return isUpper ? MouthQuadrant.topFront : MouthQuadrant.bottomFront;
+    }
+  }
+
   void _drawTeethRow(Canvas canvas, double w, double h, {required bool isUpper}) {
     final teethCount = 10;
     final cx = w / 2;
@@ -148,19 +173,8 @@ class _MouthGuidePainter extends CustomPainter {
 
     for (int i = 0; i < teethCount; i++) {
       final x = startX + i * (toothW + gap);
-      final isLeft = i < teethCount / 2;
 
-      MouthQuadrant quadrant;
-      if (isUpper && isLeft) {
-        quadrant = MouthQuadrant.topLeft;
-      } else if (isUpper && !isLeft) {
-        quadrant = MouthQuadrant.topRight;
-      } else if (!isUpper && isLeft) {
-        quadrant = MouthQuadrant.bottomLeft;
-      } else {
-        quadrant = MouthQuadrant.bottomRight;
-      }
-
+      final quadrant = _toothZone(i, teethCount, isUpper);
       final isActive = activeQuadrant == quadrant;
 
       // Slight arc: teeth near center are taller
@@ -221,18 +235,28 @@ class _MouthGuidePainter extends CustomPainter {
     }
   }
 
-  void _drawQuadrantHighlight(Canvas canvas, double w, double h, double cx, double cy) {
-    Rect quadRect;
-    switch (activeQuadrant) {
+  /// Get the bounding rect for a 6-zone layout.
+  Rect _zoneRect(MouthQuadrant zone, double w, double h, double cx, double cy) {
+    // 3 columns: left=[0.06, 0.33], front=[0.33, 0.67], right=[0.67, 0.94]
+    // 2 rows: top=[0.06, cy], bottom=[cy, 0.94]
+    switch (zone) {
       case MouthQuadrant.topLeft:
-        quadRect = Rect.fromLTRB(w * 0.06, h * 0.06, cx, cy);
+        return Rect.fromLTRB(w * 0.06, h * 0.06, w * 0.33, cy);
+      case MouthQuadrant.topFront:
+        return Rect.fromLTRB(w * 0.33, h * 0.06, w * 0.67, cy);
       case MouthQuadrant.topRight:
-        quadRect = Rect.fromLTRB(cx, h * 0.06, w * 0.94, cy);
+        return Rect.fromLTRB(w * 0.67, h * 0.06, w * 0.94, cy);
       case MouthQuadrant.bottomLeft:
-        quadRect = Rect.fromLTRB(w * 0.06, cy, cx, h * 0.94);
+        return Rect.fromLTRB(w * 0.06, cy, w * 0.33, h * 0.94);
+      case MouthQuadrant.bottomFront:
+        return Rect.fromLTRB(w * 0.33, cy, w * 0.67, h * 0.94);
       case MouthQuadrant.bottomRight:
-        quadRect = Rect.fromLTRB(cx, cy, w * 0.94, h * 0.94);
+        return Rect.fromLTRB(w * 0.67, cy, w * 0.94, h * 0.94);
     }
+  }
+
+  void _drawZoneHighlight(Canvas canvas, double w, double h, double cx, double cy) {
+    final quadRect = _zoneRect(activeQuadrant, w, h, cx, cy);
 
     final glowAlpha = 0.05 + glowAnim * 0.08;
     canvas.drawRect(
@@ -244,21 +268,9 @@ class _MouthGuidePainter extends CustomPainter {
   }
 
   void _drawBrushIndicator(Canvas canvas, double w, double h, double cx, double cy) {
-    double bx, by;
-    switch (activeQuadrant) {
-      case MouthQuadrant.topLeft:
-        bx = cx * 0.5;
-        by = cy * 0.55;
-      case MouthQuadrant.topRight:
-        bx = cx + cx * 0.5;
-        by = cy * 0.55;
-      case MouthQuadrant.bottomLeft:
-        bx = cx * 0.5;
-        by = cy + cy * 0.45;
-      case MouthQuadrant.bottomRight:
-        bx = cx + cx * 0.5;
-        by = cy + cy * 0.45;
-    }
+    final quadRect = _zoneRect(activeQuadrant, w, h, cx, cy);
+    final bx = quadRect.center.dx;
+    final by = quadRect.center.dy;
 
     // Animated sparkle circle
     final sparkleSize = 6.0 + glowAnim * 4.0;
