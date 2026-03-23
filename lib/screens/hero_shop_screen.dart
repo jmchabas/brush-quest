@@ -26,7 +26,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   String _selectedHeroId = 'blaze';
   List<String> _unlockedWeapons = ['star_blaster'];
   String _selectedWeaponId = 'star_blaster';
-  int _stars = 0;
+  int _wallet = 0;
+  int _rank = 0;
 
   late TabController _tabController;
 
@@ -34,9 +35,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // Show star count immediately before async load refines it
+    // Show wallet/rank immediately before async load refines them
     SharedPreferences.getInstance().then((p) {
-      if (mounted) setState(() => _stars = p.getInt('total_stars') ?? 0);
+      if (mounted) {
+        setState(() {
+          _wallet = p.getInt('star_wallet') ?? 0;
+          _rank = p.getInt('total_stars') ?? 0;
+        });
+      }
     });
     _loadData();
     AnalyticsService().logShopVisit();
@@ -53,14 +59,16 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     final selectedHero = await _heroService.getSelectedHeroId();
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     final selectedWeapon = await _weaponService.getSelectedWeaponId();
-    final stars = await _streakService.getTotalStars();
+    final wallet = await _streakService.getWallet();
+    final rank = await _streakService.getRangerRank();
     if (mounted) {
       setState(() {
         _unlockedHeroes = unlockedHeroes;
         _selectedHeroId = selectedHero;
         _unlockedWeapons = unlockedWeapons;
         _selectedWeaponId = selectedWeapon;
-        _stars = stars;
+        _wallet = wallet;
+        _rank = rank;
       });
     }
   }
@@ -71,12 +79,16 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
       await _loadData();
-    } else if (_stars >= hero.unlockAt) {
-      final success = await _heroService.unlockHero(hero.id);
+    } else if (_wallet >= hero.price) {
+      if (hero.price > 10) {
+        final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);
+        if (!confirmed) return;
+      }
+      final success = await _heroService.purchaseHero(hero.id);
       if (success) {
         await _heroService.selectHero(hero.id);
         HapticFeedback.heavyImpact();
-        AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _stars);
+        AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _rank);
         // Finding #8: Don't play voice here — the unlock dialog's initState
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showHeroUnlockAnimation(hero);
@@ -96,12 +108,16 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       await _loadData();
-    } else if (_stars >= weapon.unlockAt) {
-      final success = await _weaponService.unlockWeapon(weapon.id);
+    } else if (_wallet >= weapon.price) {
+      if (weapon.price > 10) {
+        final confirmed = await _showPurchaseConfirmation(weapon.name, weapon.price);
+        if (!confirmed) return;
+      }
+      final success = await _weaponService.purchaseWeapon(weapon.id);
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         HapticFeedback.heavyImpact();
-        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsAtUnlock: _stars);
+        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsAtUnlock: _rank);
         // Finding #8: Don't play voice here — the unlock dialog's initState
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showWeaponUnlockAnimation(weapon);
@@ -113,6 +129,45 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       AudioService().playVoice('voice_need_stars.mp3');
     }
+  }
+
+  Future<bool> _showPurchaseConfirmation(String itemName, int price) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Get $itemName?',
+              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.star, color: Colors.amber, size: 32),
+              const SizedBox(width: 8),
+              Text('$price', style: const TextStyle(color: Colors.amber, fontSize: 32, fontWeight: FontWeight.bold)),
+            ]),
+            const SizedBox(height: 24),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Not yet', style: TextStyle(color: Colors.white54, fontSize: 18)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00E676),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('YES!', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    ) ?? false;
   }
 
   void _playSelectionVoice(String fileName) {
@@ -172,10 +227,44 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                             ),
                       ),
                     ),
-                    // Star balance
+                    // Ranger Rank
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.cyanAccent.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.shield,
+                            color: Colors.cyanAccent,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$_rank',
+                            style: const TextStyle(
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Wallet
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
@@ -191,15 +280,15 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                           const Icon(
                             Icons.star,
                             color: Colors.yellowAccent,
-                            size: 20,
+                            size: 18,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '$_stars',
+                            '$_wallet',
                             style: const TextStyle(
                               color: Colors.yellowAccent,
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: 16,
                             ),
                           ),
                         ],
@@ -304,14 +393,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 final hero = HeroService.allHeroes[index];
                 final isUnlocked = _unlockedHeroes.contains(hero.id);
                 final isSelected = _selectedHeroId == hero.id;
-                final canUnlock = _stars >= hero.unlockAt;
+                final canAfford = _wallet >= hero.price;
 
                 return _HeroCard(
                   hero: hero,
                   isUnlocked: isUnlocked,
                   isSelected: isSelected,
-                  canAfford: canUnlock,
-                  currentStars: _stars,
+                  canAfford: canAfford,
+                  currentStars: _wallet,
                   onTap: () => _onHeroTap(hero),
                 );
               },
@@ -350,14 +439,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 final weapon = WeaponService.allWeapons[index];
                 final isUnlocked = _unlockedWeapons.contains(weapon.id);
                 final isSelected = _selectedWeaponId == weapon.id;
-                final canUnlock = _stars >= weapon.unlockAt;
+                final canAfford = _wallet >= weapon.price;
 
                 return _WeaponCard(
                   weapon: weapon,
                   isUnlocked: isUnlocked,
                   isSelected: isSelected,
-                  canAfford: canUnlock,
-                  currentStars: _stars,
+                  canAfford: canAfford,
+                  currentStars: _wallet,
                   onTap: () => _onWeaponTap(weapon),
                 );
               },
@@ -438,10 +527,10 @@ class _HeroCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (!isUnlocked && hero.unlockAt > 0)
-                    _LockedProgressIndicator(
-                      currentStars: currentStars,
-                      threshold: hero.unlockAt,
+                  if (!isUnlocked && hero.price > 0)
+                    _PriceTag(
+                      price: hero.price,
+                      wallet: currentStars,
                       canAfford: canAfford,
                     ),
                 ],
@@ -573,10 +662,10 @@ class _WeaponCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (!isUnlocked && weapon.unlockAt > 0)
-                    _LockedProgressIndicator(
-                      currentStars: currentStars,
-                      threshold: weapon.unlockAt,
+                  if (!isUnlocked && weapon.price > 0)
+                    _PriceTag(
+                      price: weapon.price,
+                      wallet: currentStars,
                       canAfford: canAfford,
                     ),
                 ],
@@ -1002,52 +1091,56 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
   }
 }
 
-/// Progress indicator for locked items showing "X/Y" stars toward threshold
-/// and a mini linear progress bar. The bar only ever fills up — never resets.
-class _LockedProgressIndicator extends StatelessWidget {
-  final int currentStars;
-  final int threshold;
+/// Price tag for locked items showing the star cost.
+/// Affordable items show the price in amber/green; unaffordable in gray with
+/// a hint showing how many more stars are needed.
+class _PriceTag extends StatelessWidget {
+  final int price;
+  final int wallet;
   final bool canAfford;
 
-  const _LockedProgressIndicator({
-    required this.currentStars,
-    required this.threshold,
+  const _PriceTag({
+    required this.price,
+    required this.wallet,
     required this.canAfford,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = (currentStars / threshold).clamp(0.0, 1.0);
-    final progressColor =
+    final tagColor =
         canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.5);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Star icon only (no numeric fraction)
-        Icon(
-          Icons.star,
-          color: progressColor,
-          size: 14,
+        // Price row
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.star, color: tagColor, size: 14),
+            const SizedBox(width: 2),
+            Text(
+              '$price',
+              style: TextStyle(
+                color: tagColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
-        // Mini progress bar
-        SizedBox(
-          width: 80,
-          height: 4,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(
-                canAfford
-                    ? Colors.yellowAccent
-                    : Colors.white.withValues(alpha: 0.3),
+        // "Need X more" hint for unaffordable items
+        if (!canAfford)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '${price - wallet} more',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 10,
               ),
             ),
           ),
-        ),
       ],
     );
   }
