@@ -5,12 +5,20 @@ import 'sync_service.dart';
 
 enum BrushSlot { morning, evening }
 
+class BonusBreakdown {
+  final int dailyBonus;
+  final int streakMultiplierBonus;
+  int get total => dailyBonus + streakMultiplierBonus;
+  const BonusBreakdown({required this.dailyBonus, required this.streakMultiplierBonus});
+}
+
 class BrushOutcome {
   final int baseStars;
   final int streakBonus;
   final int starsEarned; // baseStars + streakBonus
   final BrushSlot slot;
   final bool newSlotCompleted;
+  final BonusBreakdown breakdown;
 
   const BrushOutcome({
     required this.baseStars,
@@ -18,6 +26,7 @@ class BrushOutcome {
     required this.starsEarned,
     required this.slot,
     required this.newSlotCompleted,
+    required this.breakdown,
   });
 }
 
@@ -82,6 +91,20 @@ class StreakService {
     return bonus;
   }
 
+  /// Same as [calculateStreakBonus] but returns a [BonusBreakdown] that
+  /// separates the daily-pair bonus from the streak-multiplier bonus.
+  /// Used by the victory screen to animate each bonus wave separately.
+  BonusBreakdown calculateStreakBonusDetailed({required int streak, required bool bothSlotsDone}) {
+    final dailyBonus = bothSlotsDone ? 1 : 0;
+    int streakMultiplierBonus = 0;
+    if (streak >= 7) {
+      streakMultiplierBonus = 2;
+    } else if (streak >= 3) {
+      streakMultiplierBonus = 1;
+    }
+    return BonusBreakdown(dailyBonus: dailyBonus, streakMultiplierBonus: streakMultiplierBonus);
+  }
+
   Future<BrushOutcome> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
     final prefs = await SharedPreferences.getInstance();
     final today = _todayString();
@@ -129,10 +152,11 @@ class StreakService {
       morningDone: prefs.getString(_keyMorningDoneDate) == today,
       eveningDone: prefs.getString(_keyEveningDoneDate) == today,
     );
-    final streakBonus = calculateStreakBonus(
+    final breakdown = calculateStreakBonusDetailed(
       streak: streak,
       bothSlotsDone: updatedSlots.morningDone && updatedSlots.eveningDone,
     );
+    final streakBonus = breakdown.total;
     final totalEarned = starsEarned + streakBonus;
 
     // Update total stars
@@ -178,6 +202,7 @@ class StreakService {
       starsEarned: totalEarned,
       slot: slot,
       newSlotCompleted: newSlotCompleted,
+      breakdown: breakdown,
     );
   }
 

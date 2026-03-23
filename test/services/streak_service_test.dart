@@ -436,6 +436,44 @@ void main() {
     });
   });
 
+  group('BonusBreakdown', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('BrushOutcome exposes dailyBonus separately from streakMultiplierBonus', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 5, bothSlotsDone: true);
+      expect(bonus.dailyBonus, 1);
+      expect(bonus.streakMultiplierBonus, 1);
+      expect(bonus.total, 2);
+    });
+
+    test('7-day streak gives streakMultiplierBonus of 2', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 7, bothSlotsDone: false);
+      expect(bonus.dailyBonus, 0);
+      expect(bonus.streakMultiplierBonus, 2);
+      expect(bonus.total, 2);
+    });
+
+    test('no streak and single slot gives zero bonus', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 1, bothSlotsDone: false);
+      expect(bonus.dailyBonus, 0);
+      expect(bonus.streakMultiplierBonus, 0);
+      expect(bonus.total, 0);
+    });
+
+    test('7-day streak with both slots gives max bonus of 3', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 7, bothSlotsDone: true);
+      expect(bonus.dailyBonus, 1);
+      expect(bonus.streakMultiplierBonus, 2);
+      expect(bonus.total, 3);
+    });
+  });
+
   group('Streak bonuses', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
