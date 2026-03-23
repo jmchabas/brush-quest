@@ -41,4 +41,5 @@ flutter:
     - assets/audio/
     - assets/audio/voices/classic/
     - assets/audio/voices/buddy/
+    - assets/audio/voices/boy/
     - assets/animations/
