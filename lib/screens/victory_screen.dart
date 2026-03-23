@@ -7,7 +7,7 @@ import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
-import '../services/card_service.dart';
+import '../services/trophy_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
@@ -15,7 +15,6 @@ import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import 'home_screen.dart';
-import 'card_album_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
 
@@ -193,22 +192,27 @@ class _VictoryScreenState extends State<VictoryScreen>
     color: Color(0xFFB388FF),
   );
 
-  final _cardService = CardService();
+  final _trophyService = TrophyService();
 
   bool _showChest = false;
   bool _chestOpened = false;
   _ChestReward? _reward;
-  CardDropResult? _cardDrop;
-  bool _showCardDrop = false;
   bool _showDoneButton = false;
 
-  // Card reveal animation controllers
+  // Trophy reveal state
+  bool _showTrophyReveal = false;
+  bool _trophyCaptured = false;
+  int _trophyDefeats = 0;
+  int _trophyRequired = 0;
+  TrophyMonster? _revealedTrophy;
+  int _totalTrophies = 0;
+
+  // Trophy reveal animation controllers (reuse card names for compatibility)
   late AnimationController _cardFlyController;
   late AnimationController _cardGlowController;
   late AnimationController _newBadgeController;
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
-  int _collectedCardCount = 0;
 
   // Victory celebration arcs: each arc is a 3-beat connected story
   // [beat1 = celebration, beat2 = star earned, beat3 = chest prompt]
@@ -335,7 +339,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     final nextHero = await _heroService.getNextLockedHero();
     final nextWeapon = await _weaponService.getNextLockedWeapon();
     _computeNextUnlock(nextHero, nextWeapon);
-    _collectedCardCount = await _cardService.getCollectedCount();
+    _totalTrophies = await _trophyService.getTotalCaptured();
 
     // Analytics: log completion + update user properties
     final analytics = AnalyticsService();
@@ -465,59 +469,64 @@ class _VictoryScreenState extends State<VictoryScreen>
           }
         }
 
-        // ── Card reveal (guaranteed drop) ──
-        final drop = await _cardService.guaranteedCardDrop(_world.id);
-        if (!mounted) return;
+        // ── Trophy defeat/capture ──
+        if (widget.trophyTargetId != null) {
+          final result = await _trophyService.recordDefeat(widget.trophyTargetId!);
+          if (!mounted) return;
 
-        // Short pause before card flies out
-        await Future.delayed(const Duration(milliseconds: 500));
-        if (!mounted) return;
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (!mounted) return;
 
-        setState(() {
-          _cardDrop = drop;
-          _showCardDrop = true;
-        });
-        HapticFeedback.mediumImpact();
-        _audio.playSfx('star_chime.mp3');
+          final trophy = TrophyService.allTrophies.firstWhere(
+            (t) => t.id == widget.trophyTargetId,
+            orElse: () => TrophyService.allTrophies.first,
+          );
 
-        // Card fly-in animation
-        _cardFlyController.forward();
+          setState(() {
+            _showTrophyReveal = true;
+            _trophyCaptured = result.captured;
+            _trophyDefeats = result.currentDefeats;
+            _trophyRequired = result.required;
+            _revealedTrophy = trophy;
+          });
 
-        // After fly-in, start glow + NEW badge + voice
-        await Future.delayed(const Duration(milliseconds: 700));
-        if (!mounted) return;
+          HapticFeedback.mediumImpact();
+          _cardFlyController.forward();
 
-        _cardGlowController.repeat(reverse: true);
-        if (drop.isNew) {
+          await Future.delayed(const Duration(milliseconds: 700));
+          if (!mounted) return;
+
+          _cardGlowController.repeat(reverse: true);
           _newBadgeController.forward();
-          _audio.playVoice('voice_card_new.mp3');
-        } else {
-          // Duplicate card — show POWER UP badge with voice and check for bonus star
-          _newBadgeController.forward();
-          _audio.playVoice('voice_card_power_up.mp3');
-          final bonusStars = await _cardService.checkDuplicateBonus();
-          if (bonusStars > 0) {
-            await _streakService.addBonusStars(bonusStars);
-            _newStars = await _streakService.getTotalStars();
-            _newWallet = await _streakService.getWallet();
-            _starsEarnedThisSession += bonusStars;
-            if (mounted) setState(() {});
+
+          if (result.captured) {
+            HapticFeedback.heavyImpact();
+            _audio.playVoice('voice_card_new.mp3');
+          } else {
+            _audio.playVoice('voice_keep_going.mp3');
           }
-        }
-        // Play the specific card description voice
-        await _audio.playVoice('voice_card_${drop.card.id}.mp3');
-        if (!mounted) return;
 
-        // Show world progress after card voice finishes
-        setState(() {
-          _showWorldProgress = true;
-          _worldJustCompleted = drop.isNew &&
-              drop.worldCollected == drop.worldTotal;
-        });
+          // Play monster description voice
+          // Trophy IDs like 'cc_t1' → card voice 'voice_card_cc_01.mp3'
+          final cardVoiceId = widget.trophyTargetId!.replaceAll('_t', '_0');
+          await _audio.playVoice('voice_card_$cardVoiceId.mp3');
+          if (!mounted) return;
 
-        if (_worldJustCompleted) {
-          HapticFeedback.heavyImpact();
-          _audio.playSfx('victory.mp3');
+          // Update total trophies count
+          _totalTrophies = await _trophyService.getTotalCaptured();
+
+          // Show world progress
+          final worldComplete = await _trophyService.isWorldComplete(_world.id);
+          if (!mounted) return;
+          setState(() {
+            _showWorldProgress = true;
+            _worldJustCompleted = worldComplete;
+          });
+
+          if (_worldJustCompleted) {
+            HapticFeedback.heavyImpact();
+            _audio.playSfx('victory.mp3');
+          }
         }
 
         // Short pause to let the kid see the world progress
@@ -551,7 +560,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         }
 
         // Legendary ranger voice or next-unlock encouragement
-        if (_nextUnlockName == null && _collectedCardCount >= 70 && mounted) {
+        if (_nextUnlockName == null && _totalTrophies >= TrophyService.allTrophies.length && mounted) {
           await _audio.playVoice('voice_legend.mp3');
         } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
           final unlockVoice = _nextUnlockId != null ? _unlockVoices[_nextUnlockId] : null;
@@ -579,26 +588,12 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
 
-  void _openCardAlbum({String? highlightCardId}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CardAlbumScreen(highlightCardId: highlightCardId),
-      ),
-    );
-  }
 
-  /// Rarity-based glow color for card reveal.
-  Color _rarityGlowColor(CardRarity rarity) => switch (rarity) {
-    CardRarity.common => const Color(0xFF00E5FF), // cyan
-    CardRarity.rare => const Color(0xFFB388FF),   // purple
-    CardRarity.epic => const Color(0xFFFFD54F),   // gold
-  };
-
-  Widget _buildCardDropReveal() {
-    final drop = _cardDrop!;
-    final card = drop.card;
-    final glowColor = _rarityGlowColor(card.rarity);
-    final rarityLabel = card.rarity.name.toUpperCase();
+  Widget _buildTrophyReveal() {
+    final trophy = _revealedTrophy!;
+    final glowColor = _trophyCaptured
+        ? const Color(0xFF00E676) // green for captured
+        : const Color(0xFFFFAB00); // amber for hit
 
     return AnimatedBuilder(
       animation: Listenable.merge([_cardFlyController, _cardGlowController]),
@@ -646,11 +641,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: drop.isNew ? const Color(0xFF00E676) : const Color(0xFFFFD740),
+                                color: _trophyCaptured
+                                    ? const Color(0xFF00E676)
+                                    : const Color(0xFFFFAB00),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                drop.isNew ? 'NEW!' : 'POWER UP!',
+                                _trophyCaptured
+                                    ? 'CAUGHT!'
+                                    : 'HIT! $_trophyDefeats/$_trophyRequired',
                                 style: const TextStyle(
                                   color: Colors.black,
                                   fontWeight: FontWeight.bold,
@@ -675,16 +674,16 @@ class _VictoryScreenState extends State<VictoryScreen>
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: Image.asset(
-                              card.imagePath,
+                              trophy.imagePath,
                               fit: BoxFit.cover,
-                              color: card.tintColor.withValues(alpha: 0.3),
+                              color: trophy.tintColor.withValues(alpha: 0.3),
                               colorBlendMode: BlendMode.overlay,
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          card.name,
+                          trophy.name,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -694,9 +693,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          rarityLabel,
+                          _trophyCaptured ? trophy.title : 'Keep fighting!',
                           style: TextStyle(
-                            color: glowColor,
+                            color: _trophyCaptured ? glowColor : Colors.white70,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                             letterSpacing: 2,
@@ -710,7 +709,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                     Text(
                       _worldJustCompleted
                           ? 'WORLD COMPLETE!'
-                          : '${_cardDrop!.worldCollected}/${_cardDrop!.worldTotal} ${_world.name} monsters found!',
+                          : '${_world.name} trophies collected!',
                       style: TextStyle(
                         color: _worldJustCompleted ? Colors.yellowAccent : Colors.white70,
                         fontWeight: FontWeight.bold,
@@ -718,14 +717,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () => _openCardAlbum(highlightCardId: drop.card.id),
-                    child: const Text(
-                      'Tap to see album >',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -1087,10 +1078,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ),
                         ),
                       ),
-                    // LEGENDARY RANGER badge (all heroes/weapons/70+ cards)
+                    // LEGENDARY RANGER badge (all heroes/weapons/trophies)
                     if (_chestOpened &&
                         _nextUnlockName == null &&
-                        _collectedCardCount >= 70)
+                        _totalTrophies >= TrophyService.allTrophies.length)
                       Padding(
                         padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
                         child: Container(
@@ -1128,10 +1119,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
 
-                    // Card collection progress (shown when all heroes/weapons unlocked)
+                    // Trophy collection progress (shown when all heroes/weapons unlocked)
                     if (_chestOpened &&
                         _nextUnlockName == null &&
-                        _collectedCardCount < CardService.allCards.length)
+                        _totalTrophies < TrophyService.allTrophies.length)
                       Padding(
                         padding: const EdgeInsets.only(
                           top: 16, left: 40, right: 40,
@@ -1139,7 +1130,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         child: Row(
                           children: [
                             const Icon(
-                              Icons.style,
+                              Icons.emoji_events,
                               color: Color(0xFF00E5FF),
                               size: 22,
                             ),
@@ -1150,8 +1141,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 child: SizedBox(
                                   height: 14,
                                   child: LinearProgressIndicator(
-                                    value: (_collectedCardCount /
-                                            CardService.allCards.length)
+                                    value: (_totalTrophies /
+                                            TrophyService.allTrophies.length)
                                         .clamp(0.0, 1.0),
                                     backgroundColor:
                                         Colors.white.withValues(alpha: 0.15),
@@ -1164,7 +1155,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '$_collectedCardCount/${CardService.allCards.length}',
+                              '$_totalTrophies/${TrophyService.allTrophies.length}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -1175,9 +1166,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
 
-                    // Card drop reveal
-                    if (_showCardDrop && _cardDrop != null)
-                      _buildCardDropReveal(),
+                    // Trophy reveal
+                    if (_showTrophyReveal && _revealedTrophy != null)
+                      _buildTrophyReveal(),
 
                     const SizedBox(height: 24),
 
