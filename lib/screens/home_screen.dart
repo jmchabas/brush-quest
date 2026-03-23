@@ -15,7 +15,7 @@ import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
 import 'settings_screen.dart';
-import 'card_album_screen.dart';
+import 'trophy_wall_screen.dart';
 import '../services/analytics_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -507,9 +507,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .then((_) => _loadStats());
   }
 
-  void _openCards() {
+  void _openTrophies() {
     Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const CardAlbumScreen()))
+        .push(MaterialPageRoute(builder: (_) => const TrophyWallScreen()))
         .then((_) => _loadStats());
   }
 
@@ -1060,10 +1060,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.style,
-                              label: 'CARDS',
+                              icon: Icons.emoji_events,
+                              label: 'TROPHY',
                               color: const Color(0xFFFFD54F),
-                              onTap: _openCards,
+                              onTap: _openTrophies,
                             ),
                           ),
                         ],
