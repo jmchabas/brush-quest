@@ -98,8 +98,8 @@ void main() {
   testWidgets('star counter renders with correct value', (tester) async {
     await pumpHome(tester);
 
-    // Star icon is present
-    expect(find.byIcon(Icons.star), findsOneWidget);
+    // Star icon is present (may be multiple: stats bar + SunMoonTracker center star)
+    expect(find.byIcon(Icons.star), findsWidgets);
     // Star count value "7" is rendered
     expect(find.text('7'), findsOneWidget);
 

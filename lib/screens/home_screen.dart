@@ -11,6 +11,7 @@ import '../services/world_service.dart';
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
+import '../widgets/sun_moon_tracker.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
@@ -34,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
   int _totalStars = 0;  // Ranger Rank (lifetime total)
+  bool _morningDone = false;
+  bool _eveningDone = false;
   int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
@@ -135,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final totalBrushes = await _streakService.getTotalBrushes();
     final bossReady = (totalBrushes % 5) == 4;
     final world = await _worldService.getCurrentWorld();
+    final slots = await _streakService.getTodaySlots();
 
     if (mounted) {
       setState(() {
@@ -146,6 +150,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _totalBrushes = totalBrushes;
         _bossReady = bossReady;
         _currentWorld = world;
+        _morningDone = slots.morningDone;
+        _eveningDone = slots.eveningDone;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -904,7 +910,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  SunMoonTracker(
+                    morningDone: _morningDone,
+                    eveningDone: _eveningDone,
+                  ),
+                  const SizedBox(height: 8),
 
                   // BRUSH button
                   GestureDetector(
