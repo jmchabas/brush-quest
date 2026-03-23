@@ -33,10 +33,12 @@ const _syncKeys = [
   'muted',
   'onboarding_completed',
   'collected_cards',
-  'daily_login_date',
-  'daily_login_streak',
+  'last_greeting_date',
+  'voice_style',
+  'star_wallet',
+  'trophy_captured',
 ];
-const _prefixSyncKeys = ['world_progress_', 'achievement_'];
+const _prefixSyncKeys = ['world_progress_', 'achievement_', 'card_dup_count_', 'trophy_defeats_'];
 
 /// Mirrors SyncService._shouldSyncKey
 bool shouldSyncKey(String key) {
@@ -67,6 +69,7 @@ int progressScoreFromPrefs(SharedPreferences prefs) {
   final stars = prefs.getInt('total_stars') ?? 0;
   final heroes = (prefs.getStringList('unlocked_heroes') ?? const []).length;
   final weapons = (prefs.getStringList('unlocked_weapons') ?? const []).length;
+  final trophies = (prefs.getStringList('trophy_captured') ?? const []).length;
   final keys = prefs.getKeys();
   final achievements = keys
       .where((k) => k.startsWith('achievement_') && (prefs.getBool(k) ?? false))
@@ -74,7 +77,7 @@ int progressScoreFromPrefs(SharedPreferences prefs) {
   final worldProgress = keys
       .where((k) => k.startsWith('world_progress_'))
       .fold<int>(0, (acc, key) => acc + (prefs.getInt(key) ?? 0));
-  return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + worldProgress * 3;
+  return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + worldProgress * 3 + trophies * 25;
 }
 
 /// Mirrors SyncService._progressScoreFromCloud
@@ -95,7 +98,9 @@ int progressScoreFromCloud(Map<String, dynamic> cloudData) {
       (cloudData['unlocked_heroes'] is List) ? (cloudData['unlocked_heroes'] as List).length : 0;
   final weapons =
       (cloudData['unlocked_weapons'] is List) ? (cloudData['unlocked_weapons'] as List).length : 0;
-  return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + sumWorldProgress * 3;
+  final trophies =
+      (cloudData['trophy_captured'] is List) ? (cloudData['trophy_captured'] as List).length : 0;
+  return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + sumWorldProgress * 3 + trophies * 25;
 }
 
 /// Mirrors SyncService's buildLocalData pattern (from uploadProgress)
@@ -140,6 +145,8 @@ void main() {
       expect(shouldSyncKey('world_progress_slime_swamp'), isTrue);
       expect(shouldSyncKey('achievement_first_brush'), isTrue);
       expect(shouldSyncKey('achievement_streak_3'), isTrue);
+      expect(shouldSyncKey('card_dup_count_cc_01'), isTrue);
+      expect(shouldSyncKey('trophy_defeats_cc_t1'), isTrue);
     });
 
     test('rejects non-sync keys', () {
@@ -457,12 +464,15 @@ void main() {
         'muted': false,
         'onboarding_completed': true,
         'collected_cards': ['cc_01', 'cc_02', 'ss_01'],
-        'daily_login_date': '2026-03-14',
-        'daily_login_streak': 3,
+        'last_greeting_date': '2026-03-14',
+        'voice_style': 'cheerful',
+        'star_wallet': 25,
+        'trophy_captured': ['cc_t1', 'ss_t1'],
         'achievement_first_brush': true,
         'achievement_streak_3': true,
         'world_progress_candy_crater': 7,
         'world_progress_slime_swamp': 4,
+        'trophy_defeats_cc_t2': 1,
         'brush_history': ['{"date":"2026-03-13"}', '{"date":"2026-03-14"}'],
       });
       final prefs = await SharedPreferences.getInstance();
@@ -483,6 +493,9 @@ void main() {
       expect(prefs2.getStringList('collected_cards'), ['cc_01', 'cc_02', 'ss_01']);
       expect(prefs2.getBool('achievement_first_brush'), true);
       expect(prefs2.getInt('world_progress_candy_crater'), 7);
+      expect(prefs2.getInt('star_wallet'), 25);
+      expect(prefs2.getStringList('trophy_captured'), ['cc_t1', 'ss_t1']);
+      expect(prefs2.getInt('trophy_defeats_cc_t2'), 1);
       expect(prefs2.getStringList('brush_history'), ['{"date":"2026-03-13"}', '{"date":"2026-03-14"}']);
     });
   });

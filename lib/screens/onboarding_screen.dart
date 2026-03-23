@@ -26,11 +26,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late AnimationController _floatController;
   late AnimationController _glowController;
 
+  // Battle scene animation for page 2
+  late AnimationController _battleController;
+
   // Animated quadrant cycling for mouth guide demo
   static const _quadrantOrder = [
     MouthQuadrant.topLeft,
+    MouthQuadrant.topFront,
     MouthQuadrant.topRight,
     MouthQuadrant.bottomLeft,
+    MouthQuadrant.bottomFront,
     MouthQuadrant.bottomRight,
   ];
   int _quadrantIndex = 0;
@@ -51,6 +56,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     )..repeat(reverse: true);
+    // 5-second battle loop: fight (0-0.4), defeat (0.4-0.7), star (0.7-0.9), pause (0.9-1.0)
+    _battleController = AnimationController(
+      duration: const Duration(milliseconds: 5000),
+      vsync: this,
+    )..repeat();
     _quadrantCycleController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -74,6 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _pulseController.dispose();
     _floatController.dispose();
     _glowController.dispose();
+    _battleController.dispose();
     _quadrantCycleController.dispose();
     super.dispose();
   }
@@ -318,185 +329,343 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _buildHowToPlayPage() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const Spacer(flex: 1),
-          // Panel 1: BRUSH — large toothbrush with sparkle animation
-          Row(
+    // Battle sequence driven by _battleController (0.0 -> 1.0 over 5 seconds):
+    //   0.0 - 0.40: Hero attacks monster (lunging + impact sparks)
+    //   0.40 - 0.70: Monster defeated (shrinks, fades, spins away)
+    //   0.70 - 0.90: Star earned (bounces in with celebration)
+    //   0.90 - 1.00: Brief pause before loop restarts
+    return AnimatedBuilder(
+      animation: _battleController,
+      builder: (context, _) {
+        final t = _battleController.value;
+
+        // --- Hero animation ---
+        // During fight phase, hero lunges right toward monster
+        final double heroLunge;
+        if (t < 0.40) {
+          // Rapid back-and-forth lunging (attack swings)
+          heroLunge = sin(t / 0.40 * pi * 6) * 18;
+        } else {
+          // After fight, hero settles
+          heroLunge = 0;
+        }
+        // Hero scale pulse during attack
+        final double heroScale;
+        if (t < 0.40) {
+          heroScale = 1.0 + sin(t / 0.40 * pi * 6).abs() * 0.12;
+        } else {
+          heroScale = 1.0;
+        }
+
+        // --- Monster animation ---
+        final double monsterShake;
+        final double monsterScale;
+        final double monsterOpacity;
+        final double monsterRotation;
+        if (t < 0.40) {
+          // Taking hits — shake intensifies over the fight
+          final fightProgress = t / 0.40;
+          monsterShake = sin(t * pi * 30) * (2 + fightProgress * 6);
+          monsterScale = 1.0 - fightProgress * 0.1; // Slight shrink
+          monsterOpacity = 1.0;
+          monsterRotation = 0;
+        } else if (t < 0.70) {
+          // Defeated — shrink, spin, fade
+          final defeatProgress = (t - 0.40) / 0.30;
+          final eased = Curves.easeInBack.transform(defeatProgress);
+          monsterShake = 0;
+          monsterScale = (1.0 - eased) * 0.9;
+          monsterOpacity = 1.0 - eased;
+          monsterRotation = eased * pi * 2;
+        } else {
+          monsterShake = 0;
+          monsterScale = 0;
+          monsterOpacity = 0;
+          monsterRotation = 0;
+        }
+
+        // --- Impact effects (sparks/bolts between hero and monster) ---
+        final double impactOpacity;
+        final double impactScale;
+        if (t < 0.40) {
+          // Flash on each hit
+          impactOpacity = sin(t / 0.40 * pi * 6).abs() * 0.9;
+          impactScale = 0.6 + sin(t / 0.40 * pi * 6).abs() * 0.6;
+        } else if (t < 0.50) {
+          // Lingering flash during defeat start
+          final fade = (t - 0.40) / 0.10;
+          impactOpacity = (1.0 - fade) * 0.7;
+          impactScale = 1.0 - fade * 0.3;
+        } else {
+          impactOpacity = 0;
+          impactScale = 0;
+        }
+
+        // --- Star animation ---
+        final double starScale;
+        final double starOpacity;
+        final double starBounce;
+        if (t < 0.70) {
+          starScale = 0;
+          starOpacity = 0;
+          starBounce = 0;
+        } else if (t < 0.90) {
+          // Star arrives with elastic bounce
+          final starProgress = (t - 0.70) / 0.20;
+          final eased = Curves.elasticOut.transform(starProgress);
+          starScale = eased;
+          starOpacity = starProgress.clamp(0.0, 1.0);
+          starBounce = sin(starProgress * pi * 3) * (1.0 - starProgress) * 12;
+        } else {
+          // Star holds with gentle float
+          final holdProgress = (t - 0.90) / 0.10;
+          starScale = 1.0;
+          starOpacity = 1.0;
+          starBounce = sin(holdProgress * pi) * 4;
+        }
+
+        // --- Star glow ring ---
+        final double glowRingScale;
+        final double glowRingOpacity;
+        if (t >= 0.72 && t < 0.85) {
+          final ringProgress = (t - 0.72) / 0.13;
+          glowRingScale = 0.5 + ringProgress * 1.5;
+          glowRingOpacity = (1.0 - ringProgress) * 0.6;
+        } else {
+          glowRingScale = 0;
+          glowRingOpacity = 0;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
             children: [
-              // Blaze guide on panel 1
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: AnimatedBuilder(
-                  animation: _floatController,
-                  builder: (context, child) {
-                    final y = sin(_floatController.value * pi) * 5;
-                    return Transform.translate(
-                      offset: Offset(0, y),
-                      child: child,
-                    );
-                  },
-                  child: Image.asset(
-                    'assets/images/hero_blaze.png',
-                    width: 56,
-                    height: 56,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, _) {
-                          final glow = 0.2 + _pulseController.value * 0.4;
-                          return Container(
-                            width: 130,
-                            height: 130,
+              const Spacer(flex: 2),
+              // Battle arena
+              SizedBox(
+                height: 320,
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    // --- Energy ring behind the fight ---
+                    if (t < 0.50)
+                      Positioned(
+                        child: Container(
+                          width: 200,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFF7C4DFF).withValues(
+                                alpha: 0.1 + (t < 0.40 ? t / 0.40 * 0.15 : 0),
+                              ),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // --- Hero (Blaze) — bottom-left ---
+                    Positioned(
+                      left: 16,
+                      bottom: 40,
+                      child: Transform.translate(
+                        offset: Offset(heroLunge, 0),
+                        child: Transform.scale(
+                          scale: heroScale,
+                          child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF69F0AE)
-                                      .withValues(alpha: glow),
-                                  blurRadius: 30,
-                                  spreadRadius: 8,
+                                  color: const Color(0xFF7C4DFF)
+                                      .withValues(alpha: 0.4),
+                                  blurRadius: 20,
+                                  spreadRadius: 4,
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      ),
-                      AnimatedBuilder(
-                        animation: _floatController,
-                        builder: (context, child) {
-                          final angle =
-                              sin(_floatController.value * pi * 2) * 0.08;
-                          return Transform.rotate(angle: angle, child: child);
-                        },
-                        child: Image.asset(
-                          'assets/images/toothbrush_icon.png',
-                          width: 110,
-                          height: 110,
-                          fit: BoxFit.contain,
+                            child: Image.asset(
+                              'assets/images/hero_blaze.png',
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+
+                    // --- Monster — top-right ---
+                    Positioned(
+                      right: 16,
+                      top: 20,
+                      child: Transform.translate(
+                        offset: Offset(monsterShake, 0),
+                        child: Transform.rotate(
+                          angle: monsterRotation,
+                          child: Transform.scale(
+                            scale: monsterScale,
+                            child: Opacity(
+                              opacity: monsterOpacity.clamp(0.0, 1.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFF1744)
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 16,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: Image.asset(
+                                  'assets/images/monster_purple.png',
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // --- Impact effects (between hero and monster) ---
+                    if (impactOpacity > 0.01)
+                      Positioned(
+                        right: 80,
+                        top: 100,
+                        child: Transform.scale(
+                          scale: impactScale,
+                          child: Opacity(
+                            opacity: impactOpacity.clamp(0.0, 1.0),
+                            child: const _ImpactBurst(),
+                          ),
+                        ),
+                      ),
+
+                    // --- Defeat explosion particles ---
+                    if (t >= 0.40 && t < 0.65)
+                      Positioned(
+                        right: 40,
+                        top: 45,
+                        child: _DefeatParticles(
+                          progress: ((t - 0.40) / 0.25).clamp(0.0, 1.0),
+                        ),
+                      ),
+
+                    // --- Star glow ring expanding ---
+                    if (glowRingOpacity > 0.01)
+                      Positioned(
+                        right: 36,
+                        top: 40,
+                        child: Transform.scale(
+                          scale: glowRingScale,
+                          child: Opacity(
+                            opacity: glowRingOpacity.clamp(0.0, 1.0),
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFFFD740),
+                                  width: 3,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // --- Star earned (appears where monster was) ---
+                    if (starOpacity > 0.01)
+                      Positioned(
+                        right: 36,
+                        top: 30 - starBounce,
+                        child: Transform.scale(
+                          scale: starScale,
+                          child: Opacity(
+                            opacity: starOpacity.clamp(0.0, 1.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFFD740)
+                                        .withValues(alpha: 0.6),
+                                    blurRadius: 30,
+                                    spreadRadius: 10,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.star_rounded,
+                                color: Color(0xFFFFD740),
+                                size: 80,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // --- Small sparkle stars around the earned star ---
+                    if (t >= 0.74 && t < 0.90)
+                      ..._buildSparkles(
+                        centerRight: 56,
+                        centerTop: 55,
+                        progress: ((t - 0.74) / 0.16).clamp(0.0, 1.0),
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 56),
+              const Spacer(flex: 3),
             ],
           ),
-          const SizedBox(height: 8),
-          _StepArrow(animation: _pulseController, color: const Color(0xFF7C4DFF)),
-          const SizedBox(height: 8),
-          // Panel 2: FIGHT — monster + zap
-          SizedBox(
-            height: 130,
-            child: Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      final shake =
-                          sin(_pulseController.value * pi * 4) * 3;
-                      return Transform.translate(
-                        offset: Offset(shake, 0),
-                        child: child,
-                      );
-                    },
-                    child: Image.asset(
-                      'assets/images/monster_purple.png',
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: 40,
-                    child: AnimatedBuilder(
-                      animation: _glowController,
-                      builder: (context, _) {
-                        final scale = 0.7 + _glowController.value * 0.5;
-                        final opacity = 0.4 + _glowController.value * 0.6;
-                        return Transform.scale(
-                          scale: scale,
-                          child: Icon(
-                            Icons.flash_on,
-                            color: const Color(0xFFFFD740)
-                                .withValues(alpha: opacity),
-                            size: 44,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _StepArrow(animation: _pulseController, color: const Color(0xFFFFD740)),
-          const SizedBox(height: 8),
-          // Panel 3: WIN — large star with radiating glow
-          SizedBox(
-            height: 120,
-            child: Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, _) {
-                      final glow = 0.3 + _pulseController.value * 0.5;
-                      return Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFFD740)
-                                  .withValues(alpha: glow),
-                              blurRadius: 35,
-                              spreadRadius: 10,
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  AnimatedBuilder(
-                    animation: _floatController,
-                    builder: (context, _) {
-                      final bounce = sin(_floatController.value * pi) * 6;
-                      return Transform.translate(
-                        offset: Offset(0, -bounce),
-                        child: const Icon(
-                          Icons.star_rounded,
-                          color: Color(0xFFFFD740),
-                          size: 90,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const Spacer(flex: 1),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  /// Builds small sparkle stars that fly out from the earned star.
+  List<Widget> _buildSparkles({
+    required double centerRight,
+    required double centerTop,
+    required double progress,
+  }) {
+    const sparkleOffsets = [
+      Offset(-40, -30),
+      Offset(35, -25),
+      Offset(-30, 30),
+      Offset(40, 20),
+      Offset(0, -40),
+      Offset(-20, 0),
+    ];
+    return sparkleOffsets.map((offset) {
+      final dx = offset.dx * progress;
+      final dy = offset.dy * progress;
+      final opacity = (1.0 - progress).clamp(0.0, 1.0) * 0.8;
+      final scale = 0.5 + (1.0 - progress) * 0.5;
+      return Positioned(
+        right: centerRight - dx,
+        top: centerTop - dy,
+        child: Transform.scale(
+          scale: scale,
+          child: Opacity(
+            opacity: opacity,
+            child: const Icon(
+              Icons.star_rounded,
+              color: Color(0xFFFFD740),
+              size: 20,
+            ),
+          ),
+        ),
+      );
+    }).toList();
   }
 
   Widget _buildMouthGuidePage() {
@@ -632,32 +801,112 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-/// Animated arrow connecting the how-to-play steps.
-class _StepArrow extends StatelessWidget {
-  final AnimationController animation;
-  final Color color;
-
-  const _StepArrow({
-    required this.animation,
-    required this.color,
-  });
+/// Starburst / zap impact effect between hero and monster.
+class _ImpactBurst extends StatelessWidget {
+  const _ImpactBurst();
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, _) {
-        final offset = animation.value * 4;
-        final opacity = 0.4 + animation.value * 0.4;
-        return Transform.translate(
-          offset: Offset(0, offset),
-          child: Icon(
-            Icons.keyboard_double_arrow_down_rounded,
-            color: color.withValues(alpha: opacity),
-            size: 32,
+    return SizedBox(
+      width: 70,
+      height: 70,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Central flash
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.9),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD740).withValues(alpha: 0.8),
+                  blurRadius: 20,
+                  spreadRadius: 6,
+                ),
+              ],
+            ),
           ),
-        );
-      },
+          // Radiating bolts
+          const Positioned(
+            top: 0,
+            child: Icon(Icons.bolt, color: Color(0xFFFFD740), size: 24),
+          ),
+          const Positioned(
+            bottom: 0,
+            child: Icon(Icons.bolt, color: Color(0xFFFF9100), size: 20),
+          ),
+          Positioned(
+            left: 0,
+            child: Transform.rotate(
+              angle: -pi / 4,
+              child: const Icon(Icons.bolt, color: Color(0xFFFFD740), size: 22),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            child: Transform.rotate(
+              angle: pi / 4,
+              child: const Icon(Icons.bolt, color: Color(0xFFFF9100), size: 22),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Particles that fly out when the monster is defeated.
+class _DefeatParticles extends StatelessWidget {
+  final double progress;
+
+  const _DefeatParticles({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = (1.0 - progress).clamp(0.0, 1.0);
+    const particleData = [
+      // (dx multiplier, dy multiplier, size, color)
+      (1.0, -1.0, 12.0, Color(0xFFFF1744)),
+      (-0.8, -0.6, 10.0, Color(0xFFFF9100)),
+      (0.5, 1.0, 8.0, Color(0xFF7C4DFF)),
+      (-1.0, 0.3, 10.0, Color(0xFFFF1744)),
+      (0.3, -1.2, 9.0, Color(0xFFFF9100)),
+      (-0.5, 0.8, 11.0, Color(0xFF7C4DFF)),
+    ];
+    return SizedBox(
+      width: 120,
+      height: 120,
+      child: Stack(
+        alignment: Alignment.center,
+        children: particleData.map((p) {
+          final dx = p.$1 * progress * 50;
+          final dy = p.$2 * progress * 50;
+          return Transform.translate(
+            offset: Offset(dx, dy),
+            child: Opacity(
+              opacity: opacity,
+              child: Container(
+                width: p.$3,
+                height: p.$3,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: p.$4,
+                  boxShadow: [
+                    BoxShadow(
+                      color: p.$4.withValues(alpha: 0.6),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

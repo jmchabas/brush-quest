@@ -12,35 +12,35 @@ void main() {
 
     // ── Star earning ──────────────────────────────────────────────
 
-    test('first brush grants one star and one daily slot', () async {
+    test('first brush grants two stars and one daily slot', () async {
       final service = StreakService();
       final outcome = await service.recordBrush();
       final stars = await service.getTotalStars();
       final todayCount = await service.getTodayBrushCount();
 
-      expect(outcome.starsEarned, 1);
-      expect(stars, 1);
+      expect(outcome.starsEarned, 2);
+      expect(stars, 2);
       expect(todayCount, 1);
     });
 
-    test('second brush same slot still grants a star (no daily cap)', () async {
+    test('second brush same slot still grants stars (no daily cap)', () async {
       final service = StreakService();
       await service.recordBrush();
       final second = await service.recordBrush();
       final stars = await service.getTotalStars();
 
-      expect(second.starsEarned, 1);
-      expect(stars, 2);
+      expect(second.starsEarned, 2);
+      expect(stars, 4);
     });
 
-    test('multiple brushes all give 1 star each', () async {
+    test('multiple brushes all give 2 stars each', () async {
       final service = StreakService();
       for (int i = 0; i < 5; i++) {
         final outcome = await service.recordBrush();
-        expect(outcome.starsEarned, 1);
+        expect(outcome.starsEarned, 2);
       }
       final stars = await service.getTotalStars();
-      expect(stars, 5);
+      expect(stars, 10);
     });
 
     // ── Today brush count ─────────────────────────────────────────
@@ -85,7 +85,7 @@ void main() {
         await service.recordBrush();
       }
       final stars = await service.getTotalStars();
-      expect(stars, 10);
+      expect(stars, 20);
     });
 
     // ── Bonus stars ───────────────────────────────────────────────
@@ -353,6 +353,165 @@ void main() {
       final record = BrushRecord.fromJson(json);
       expect(record.heroId, 'blaze');
       expect(record.worldId, 'candy_crater');
+    });
+  });
+
+  group('Wallet and Ranger Rank', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('recordBrush credits both wallet and ranger rank', () async {
+      final service = StreakService();
+      await service.recordBrush();
+
+      expect(await service.getWallet(), 2);
+      expect(await service.getRangerRank(), 2);
+    });
+
+    test('spendStars deducts from wallet only', () async {
+      final service = StreakService();
+      await service.recordBrush();
+      await service.recordBrush();
+
+      final success = await service.spendStars(3);
+      expect(success, true);
+      expect(await service.getWallet(), 1);
+      expect(await service.getRangerRank(), 4);
+    });
+
+    test('spendStars fails when insufficient balance', () async {
+      final service = StreakService();
+      await service.recordBrush();
+
+      final success = await service.spendStars(5);
+      expect(success, false);
+      expect(await service.getWallet(), 2);
+    });
+
+    test('spendStars rejects zero and negative amounts', () async {
+      final service = StreakService();
+      await service.recordBrush();
+
+      expect(await service.spendStars(0), false);
+      expect(await service.spendStars(-1), false);
+    });
+
+    test('addBonusStars credits both wallet and rank', () async {
+      final service = StreakService();
+      await service.addBonusStars(5);
+
+      expect(await service.getWallet(), 5);
+      expect(await service.getRangerRank(), 5);
+    });
+
+    test('getTotalStars still works as alias for ranger rank', () async {
+      final service = StreakService();
+      await service.recordBrush();
+
+      expect(await service.getTotalStars(), await service.getRangerRank());
+    });
+  });
+
+  group('Migration', () {
+    test('migrateToWalletEconomy copies total_stars to star_wallet', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 42});
+      await StreakService.migrateToWalletEconomy();
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('star_wallet'), 42);
+    });
+
+    test('migrateToWalletEconomy is idempotent', () async {
+      SharedPreferences.setMockInitialValues({'total_stars': 42, 'star_wallet': 10});
+      await StreakService.migrateToWalletEconomy();
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('star_wallet'), 10); // NOT overwritten
+    });
+
+    test('migrateToWalletEconomy handles zero stars', () async {
+      SharedPreferences.setMockInitialValues({});
+      await StreakService.migrateToWalletEconomy();
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('star_wallet'), 0);
+    });
+  });
+
+  group('BonusBreakdown', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('BrushOutcome exposes dailyBonus separately from streakMultiplierBonus', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 5, bothSlotsDone: true);
+      expect(bonus.dailyBonus, 1);
+      expect(bonus.streakMultiplierBonus, 1);
+      expect(bonus.total, 2);
+    });
+
+    test('7-day streak gives streakMultiplierBonus of 2', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 7, bothSlotsDone: false);
+      expect(bonus.dailyBonus, 0);
+      expect(bonus.streakMultiplierBonus, 2);
+      expect(bonus.total, 2);
+    });
+
+    test('no streak and single slot gives zero bonus', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 1, bothSlotsDone: false);
+      expect(bonus.dailyBonus, 0);
+      expect(bonus.streakMultiplierBonus, 0);
+      expect(bonus.total, 0);
+    });
+
+    test('7-day streak with both slots gives max bonus of 3', () {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonusDetailed(streak: 7, bothSlotsDone: true);
+      expect(bonus.dailyBonus, 1);
+      expect(bonus.streakMultiplierBonus, 2);
+      expect(bonus.total, 3);
+    });
+  });
+
+  group('Streak bonuses', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('daily completion bonus awards +1 when both slots done', () async {
+      final service = StreakService();
+      final bonus = service.calculateStreakBonus(streak: 1, bothSlotsDone: true);
+      expect(bonus, 1);
+    });
+
+    test('streak 3+ adds +1 per brush', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 3, bothSlotsDone: false);
+      expect(bonus, 1);
+    });
+
+    test('streak 7+ adds +2 per brush (replaces +1)', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 7, bothSlotsDone: false);
+      expect(bonus, 2);
+    });
+
+    test('streak 7+ with both slots gives +3 total bonus', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 7, bothSlotsDone: true);
+      expect(bonus, 3);
+    });
+
+    test('streak 0-2 with one slot gives no bonus', () async {
+      final bonus = StreakService().calculateStreakBonus(streak: 2, bothSlotsDone: false);
+      expect(bonus, 0);
+    });
+
+    test('BrushOutcome includes baseStars and streakBonus', () async {
+      final service = StreakService();
+      final outcome = await service.recordBrush();
+      // First brush, no streak bonus expected (streak=1, only one slot done)
+      expect(outcome.baseStars, 2);
+      expect(outcome.streakBonus, 0); // No streak bonus on first brush
+      expect(outcome.starsEarned, 2); // base only
     });
   });
 }

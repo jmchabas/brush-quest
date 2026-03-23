@@ -34,8 +34,10 @@ class SyncService {
     'collected_cards',
     'last_greeting_date',
     'voice_style',
+    'star_wallet',
+    'trophy_captured',
   ];
-  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'card_dup_count_'];
+  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'card_dup_count_', 'trophy_defeats_'];
 
   DocumentReference? get _userDoc {
     final user = AuthService().currentUser;
@@ -158,12 +160,13 @@ class SyncService {
     final stars = prefs.getInt('total_stars') ?? 0;
     final heroes = (prefs.getStringList('unlocked_heroes') ?? const []).length;
     final weapons = (prefs.getStringList('unlocked_weapons') ?? const []).length;
+    final trophies = (prefs.getStringList('trophy_captured') ?? const []).length;
     final keys = prefs.getKeys();
     final achievements = keys.where((k) => k.startsWith('achievement_') && (prefs.getBool(k) ?? false)).length;
     final worldProgress = keys
         .where((k) => k.startsWith('world_progress_'))
         .fold<int>(0, (acc, key) => acc + (prefs.getInt(key) ?? 0));
-    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + worldProgress * 3;
+    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + worldProgress * 3 + trophies * 25;
   }
 
   int _progressScoreFromCloud(Map<String, dynamic> cloudData) {
@@ -181,6 +184,7 @@ class SyncService {
     final stars = (cloudData['total_stars'] as int?) ?? 0;
     final heroes = (cloudData['unlocked_heroes'] is List) ? (cloudData['unlocked_heroes'] as List).length : 0;
     final weapons = (cloudData['unlocked_weapons'] is List) ? (cloudData['unlocked_weapons'] as List).length : 0;
-    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + sumWorldProgress * 3;
+    final trophies = (cloudData['trophy_captured'] is List) ? (cloudData['trophy_captured'] as List).length : 0;
+    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + sumWorldProgress * 3 + trophies * 25;
   }
 }

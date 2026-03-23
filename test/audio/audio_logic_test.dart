@@ -254,6 +254,12 @@ void main() {
       );
     });
 
+    test('10s phase: thresholds are 8, 5, 2 (all distinct)', () {
+      final t = thresholdsFor(10);
+      expect(t, [8, 5, 2]);
+      expect(t.toSet().length, 3, reason: 'all thresholds should be unique');
+    });
+
     test('15s phase: thresholds are 12, 8, 3 (all distinct)', () {
       final t = thresholdsFor(15);
       expect(t, [12, 8, 3]);
@@ -266,14 +272,8 @@ void main() {
       expect(t.toSet().length, 3);
     });
 
-    test('30s phase: thresholds are 24, 15, 6 (all distinct)', () {
-      final t = thresholdsFor(30);
-      expect(t, [24, 15, 6]);
-      expect(t.toSet().length, 3);
-    });
-
     test('thresholds are strictly decreasing for all supported durations', () {
-      for (final d in [15, 20, 30]) {
+      for (final d in [10, 15, 20]) {
         final t = thresholdsFor(d);
         expect(t[0] > t[1], isTrue,
             reason: 'energize > support for duration $d');
@@ -283,7 +283,7 @@ void main() {
     });
 
     test('all thresholds are within valid countdown range [1, duration-1]', () {
-      for (final d in [15, 20, 30]) {
+      for (final d in [10, 15, 20]) {
         final t = thresholdsFor(d);
         for (final v in t) {
           expect(v >= 1 && v < d, isTrue,
@@ -333,24 +333,33 @@ void main() {
   // 5. Phase voice mapping
   // ===========================================================================
   group('phase voice mapping (_phaseVoiceFiles)', () {
-    // Replicate the map from brushing_screen.dart
+    // Replicate the map from brushing_screen.dart (6 zones)
+    // topFront and bottomFront use placeholder voice files for now
     const phaseVoiceFiles = {
       'topLeft': 'voice_top_left.mp3',
+      'topFront': 'voice_top_left.mp3', // placeholder
       'topRight': 'voice_top_right.mp3',
       'bottomLeft': 'voice_bottom_left.mp3',
+      'bottomFront': 'voice_bottom_left.mp3', // placeholder
       'bottomRight': 'voice_bottom_right.mp3',
     };
 
-    test('all 4 phases map to correct directional voice files', () {
+    test('all 6 phases map to voice files', () {
       expect(phaseVoiceFiles['topLeft'], 'voice_top_left.mp3');
+      expect(phaseVoiceFiles['topFront'], isNotNull);
       expect(phaseVoiceFiles['topRight'], 'voice_top_right.mp3');
       expect(phaseVoiceFiles['bottomLeft'], 'voice_bottom_left.mp3');
+      expect(phaseVoiceFiles['bottomFront'], isNotNull);
       expect(phaseVoiceFiles['bottomRight'], 'voice_bottom_right.mp3');
     });
 
-    test('source contains the _phaseVoiceFiles map with all 4 entries', () {
+    test('source contains the _phaseVoiceFiles map with all 6 entries', () {
       expect(
         brushingScreenSrc.contains("BrushPhase.topLeft: 'voice_top_left.mp3'"),
+        isTrue,
+      );
+      expect(
+        brushingScreenSrc.contains("BrushPhase.topFront:"),
         isTrue,
       );
       expect(
@@ -364,15 +373,23 @@ void main() {
         isTrue,
       );
       expect(
+        brushingScreenSrc.contains("BrushPhase.bottomFront:"),
+        isTrue,
+      );
+      expect(
         brushingScreenSrc
             .contains("BrushPhase.bottomRight: 'voice_bottom_right.mp3'"),
         isTrue,
       );
     });
 
-    test('brushPhaseOrder contains exactly the 4 brushing phases', () {
+    test('brushPhaseOrder contains exactly the 6 brushing phases', () {
       expect(
         brushingScreenSrc.contains('BrushPhase.topLeft,'),
+        isTrue,
+      );
+      expect(
+        brushingScreenSrc.contains('BrushPhase.topFront,'),
         isTrue,
       );
       expect(
@@ -384,13 +401,19 @@ void main() {
         isTrue,
       );
       expect(
+        brushingScreenSrc.contains('BrushPhase.bottomFront,'),
+        isTrue,
+      );
+      expect(
         brushingScreenSrc.contains('BrushPhase.bottomRight,'),
         isTrue,
       );
     });
 
     test('all phase voice files are in _allAudioFiles', () {
-      for (final voiceFile in phaseVoiceFiles.values) {
+      // Only check the unique voice files (front phases use placeholders)
+      final uniqueVoiceFiles = phaseVoiceFiles.values.toSet();
+      for (final voiceFile in uniqueVoiceFiles) {
         expect(
           audioServiceSrc.contains("'$voiceFile'"),
           isTrue,

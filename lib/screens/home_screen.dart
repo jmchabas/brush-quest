@@ -11,11 +11,12 @@ import '../services/world_service.dart';
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
+import '../widgets/sun_moon_tracker.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
 import 'settings_screen.dart';
-import 'card_album_screen.dart';
+import 'trophy_wall_screen.dart';
 import '../services/analytics_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -33,7 +34,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _worldService = WorldService();
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
-  int _totalStars = 0;
+  int _totalStars = 0;  // Ranger Rank (lifetime total)
+  bool _morningDone = false;
+  bool _eveningDone = false;
+  int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
   bool _bossReady = false;
@@ -56,6 +60,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'voice_keep_it_up.mp3',
     'voice_go_go_go.mp3',
   ];
+
+  static const Map<String, String> _unlockVoices = {
+    'frost': 'voice_unlock_next_frost.mp3',
+    'bolt': 'voice_unlock_next_bolt.mp3',
+    'shadow': 'voice_unlock_next_shadow.mp3',
+    'leaf': 'voice_unlock_next_leaf.mp3',
+    'nova': 'voice_unlock_next_nova.mp3',
+    'flame_sword': 'voice_unlock_next_flame_sword.mp3',
+    'ice_hammer': 'voice_unlock_next_ice_hammer.mp3',
+    'lightning_wand': 'voice_unlock_next_lightning_wand.mp3',
+    'vine_whip': 'voice_unlock_next_vine_whip.mp3',
+    'cosmic_burst': 'voice_unlock_next_cosmic_shield.mp3',
+  };
 
   @override
   void initState() {
@@ -113,23 +130,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadStats() async {
-    final stars = await _streakService.getTotalStars();
+    final wallet = await _streakService.getWallet();
+    final rank = await _streakService.getRangerRank();
     final hero = await _heroService.getSelectedHero();
     final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
     final bossReady = (totalBrushes % 5) == 4;
     final world = await _worldService.getCurrentWorld();
+    final slots = await _streakService.getTodaySlots();
 
     if (mounted) {
       setState(() {
-        _totalStars = stars;
+        _totalStars = rank;
+        _wallet = wallet;
         _selectedHero = hero;
         _selectedWeapon = weapon;
         _streak = streak;
         _totalBrushes = totalBrushes;
         _bossReady = bossReady;
         _currentWorld = world;
+        _morningDone = slots.morningDone;
+        _eveningDone = slots.eveningDone;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -176,11 +198,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       brushStreak: _streak,
       totalStars: _totalStars,
       nextHeroName: nextHero?.name,
-      nextHeroUnlockAt: nextHero?.unlockAt,
+      nextHeroUnlockAt: nextHero?.price,
       nextWeaponName: nextWeapon?.name,
-      nextWeaponUnlockAt: nextWeapon?.unlockAt,
+      nextWeaponUnlockAt: nextWeapon?.price,
       todayDate: todayDate,
       lastGreetingDate: lastGreetingDate,
+      nextHeroId: nextHero?.id,
+      nextHeroImagePath: nextHero?.imagePath,
+      nextWeaponId: nextWeapon?.id,
+      nextWeaponImagePath: nextWeapon?.imagePath,
     );
 
     if (result != null && mounted) {
@@ -199,6 +225,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _showGreetingPopup(GreetingResult greeting) {
     AudioService().playVoice(greeting.voiceFile);
+    // Queue unlock tease voice AFTER the greeting voice finishes
+    if (greeting.teaseItemId != null) {
+      final unlockVoice = _unlockVoices[greeting.teaseItemId];
+      if (unlockVoice != null) {
+        AudioService().playVoice(unlockVoice);
+      }
+    }
     HapticFeedback.mediumImpact();
 
     final title = switch (greeting.state) {
@@ -266,14 +299,82 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
-                if (greeting.teaseItemName != null && greeting.teaseStarsAway != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    "You're ${greeting.teaseStarsAway} stars from ${greeting.teaseItemName}!",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 14,
+                if (greeting.teaseItemImagePath != null &&
+                    greeting.teaseItemUnlockAt != null &&
+                    greeting.teaseStarsAway != null &&
+                    greeting.teaseStarsAway! > 0) ...[
+                  const SizedBox(height: 16),
+                  // Next unlock item icon
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.3),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        greeting.teaseItemImagePath!,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Progress bar toward unlock
+                  SizedBox(
+                    width: 160,
+                    child: Column(
+                      children: [
+                        // Star icons showing progress
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFD54F),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${greeting.totalStars}',
+                              style: const TextStyle(
+                                color: Color(0xFFFFD54F),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              ' / ${greeting.teaseItemUnlockAt}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // Progress bar
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: greeting.totalStars / greeting.teaseItemUnlockAt!,
+                            minHeight: 8,
+                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Color(0xFFFFD54F),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -412,9 +513,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .then((_) => _loadStats());
   }
 
-  void _openCards() {
+  void _openTrophies() {
     Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const CardAlbumScreen()))
+        .push(MaterialPageRoute(builder: (_) => const TrophyWallScreen()))
         .then((_) => _loadStats());
   }
 
@@ -578,10 +679,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Golden star pill
+                      // Ranger Rank pill (shield — the "pride number")
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFF7C4DFF).withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.shield,
+                              color: Color(0xFF7C4DFF),
+                              size: 26,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_totalStars',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 28,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x807C4DFF),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Star Wallet pill (spendable stars)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
@@ -598,15 +740,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             const Icon(
                               Icons.star,
                               color: Color(0xFFFFD54F),
-                              size: 26,
+                              size: 22,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '$_totalStars',
+                              '$_wallet',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 28,
+                                fontSize: 22,
                                 shadows: [
                                   Shadow(
                                     color: Color(0x80FFD54F),
@@ -768,7 +910,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  SunMoonTracker(
+                    morningDone: _morningDone,
+                    eveningDone: _eveningDone,
+                  ),
+                  const SizedBox(height: 8),
 
                   // BRUSH button
                   GestureDetector(
@@ -924,10 +1071,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.style,
-                              label: 'CARDS',
+                              icon: Icons.emoji_events,
+                              label: 'TROPHY',
                               color: const Color(0xFFFFD54F),
-                              onTap: _openCards,
+                              onTap: _openTrophies,
                             ),
                           ),
                         ],

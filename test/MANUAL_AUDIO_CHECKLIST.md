@@ -87,16 +87,18 @@ Precondition: clear app data or fresh install so `onboarding_completed` is false
 - [ ] Music loops continuously for full 2-minute session
 - [ ] Music health check fires every 5 seconds (`ensureMusicPlaying`) -- if music somehow stops, it restarts
 
-### 3d. Phase Transitions (4 phases: TL, TR, BL, BR)
+### 3d. Phase Transitions (6 zones: TL, TF, TR, BL, BF, BR)
 - [ ] Phase 1 start (Top Left): `whoosh.mp3` SFX + `voice_top_left.mp3` after 300ms delay
-- [ ] Phase 2 start (Top Right): `whoosh.mp3` SFX + `voice_top_right.mp3` after 300ms delay
-- [ ] Phase 3 start (Bottom Left): `whoosh.mp3` SFX + `voice_bottom_left.mp3` after 300ms delay
-- [ ] Phase 4 start (Bottom Right): `whoosh.mp3` SFX + `voice_bottom_right.mp3` after 300ms delay
+- [ ] Phase 2 start (Top Front): `whoosh.mp3` SFX + voice after 300ms delay (placeholder: reuses top left)
+- [ ] Phase 3 start (Top Right): `whoosh.mp3` SFX + `voice_top_right.mp3` after 300ms delay
+- [ ] Phase 4 start (Bottom Left): `whoosh.mp3` SFX + `voice_bottom_left.mp3` after 300ms delay
+- [ ] Phase 5 start (Bottom Front): `whoosh.mp3` SFX + voice after 300ms delay (placeholder: reuses bottom left)
+- [ ] Phase 6 start (Bottom Right): `whoosh.mp3` SFX + `voice_bottom_right.mp3` after 300ms delay
 - [ ] Each phase direction voice is correct (says "top left" not "bottom right", etc.)
 - [ ] Monster defeat SFX (`monster_defeat.mp3`) plays when phase timer expires and monster is killed
 
 ### 3e. Encouragement Voices During Each Phase
-With default 30s phases, encouragements fire at ~80%, ~50%, and ~20% of each phase timer.
+With default 20s phases, encouragements fire at ~80%, ~50%, and ~20% of each phase timer.
 
 - [ ] Energizing voice (~80%): one of `voice_go_go_go.mp3`, `voice_super.mp3`, `voice_unstoppable.mp3`, `voice_nice_combo.mp3`
 - [ ] Supportive voice (~50%): one of `voice_youre_doing_great.mp3`, `voice_keep_it_up.mp3`, `voice_keep_going.mp3`, `voice_so_strong.mp3`

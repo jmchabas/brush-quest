@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/audio_service.dart';
 import '../services/auth_service.dart';
+import '../services/streak_service.dart';
 import '../services/sync_service.dart';
 import '../services/analytics_service.dart';
 import '../widgets/space_background.dart';
@@ -18,7 +21,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  int _phaseDuration = 30;
+  int _phaseDuration = 20;
   bool _cameraEnabled = false;
   int _totalBrushes = 0;
   int _bestStreak = 0;
@@ -26,6 +29,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _syncing = false;
   bool _parentUnlocked = false;
   String _voiceStyle = 'classic';
+
+  // Brush history stats
+  List<BrushRecord> _brushHistory = [];
+  bool _historyLoaded = false;
 
   final _auth = AuthService();
   final _sync = SyncService();
@@ -51,8 +58,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _generateMathChallenge() {
-    _mathA = 2 + DateTime.now().second % 7;
-    _mathB = 2 + DateTime.now().minute % 5;
+    _mathA = 4 + DateTime.now().second % 6;
+    _mathB = 3 + DateTime.now().minute % 5;
   }
 
   void _checkMathAnswer() {
@@ -74,13 +81,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final history = await StreakService().getHistory();
     if (mounted) {
       setState(() {
-        _phaseDuration = prefs.getInt('phase_duration') ?? 30;
+        _phaseDuration = prefs.getInt('phase_duration') ?? 20;
         _cameraEnabled = prefs.getBool('camera_enabled') ?? false;
         _totalBrushes = prefs.getInt('total_brushes') ?? 0;
         _bestStreak = prefs.getInt('best_streak') ?? 0;
         _voiceStyle = AudioService().voiceStyle;
+        _brushHistory = history;
+        _historyLoaded = true;
       });
     }
   }
@@ -572,6 +582,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'card_dup_bonus_threshold',
       'camera_mode_configured',
       'voice_style',
+      'onboarding_completed',
+      'camera_enabled',
+      'muted',
+      'phase_duration',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);
@@ -579,7 +593,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     for (final key in prefs.getKeys()) {
       if (key.startsWith('world_progress_') ||
           key.startsWith('achievement_') ||
-          key.startsWith('card_dup_count_')) {
+          key.startsWith('card_dup_count_') ||
+          key.startsWith('world_intro_seen_')) {
         await prefs.remove(key);
       }
     }
@@ -962,7 +977,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Timer per zone',
                       child: Row(
                         children: [
-                          for (final sec in [15, 20, 30])
+                          for (final sec in [10, 15, 20])
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: _DurationChip(
@@ -1006,9 +1021,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _SettingCard(
                       icon: Icons.record_voice_over,
                       title: 'Narrator voice',
-                      subtitle: _voiceStyle == 'classic'
-                          ? 'Jessica — warm & clear'
-                          : 'George — friendly guide',
+                      subtitle: AudioService.voiceStyles[_voiceStyle] ?? '',
                       child: SegmentedButton<String>(
                         segments: const [
                           ButtonSegment<String>(
@@ -1018,6 +1031,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ButtonSegment<String>(
                             value: 'buddy',
                             label: Text('Buddy'),
+                          ),
+                          ButtonSegment<String>(
+                            value: 'boy',
+                            label: Text('Boy'),
                           ),
                         ],
                         selected: {_voiceStyle},
@@ -1068,6 +1085,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 8),
 
+                    if (_historyLoaded)
+                      _WeekActivityCard(history: _brushHistory),
+                    const SizedBox(height: 8),
+
+                    if (_historyLoaded)
+                      _ConsistencyAndPatternCard(
+                        history: _brushHistory,
+                      ),
+                    const SizedBox(height: 8),
+
                     _SettingCard(
                       icon: Icons.cleaning_services,
                       title: 'Total brushes',
@@ -1088,6 +1115,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         '$_bestStreak days',
                         style: const TextStyle(
                           color: Colors.orangeAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _SettingCard(
+                      icon: Icons.schedule,
+                      title: 'Minutes brushed',
+                      child: Text(
+                        '${(_totalBrushes * _phaseDuration * 6 / 60).round()}',
+                        style: const TextStyle(
+                          color: Color(0xFF00E5FF),
                           fontWeight: FontWeight.bold,
                           fontSize: 20,
                         ),
@@ -1356,4 +1396,368 @@ class _ActionButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 7-day activity visual — row of circles showing brushing activity per day.
+class _WeekActivityCard extends StatelessWidget {
+  final List<BrushRecord> history;
+
+  const _WeekActivityCard({required this.history});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Build a map of date string -> brush count for the last 7 days
+    final Map<String, int> dayCounts = {};
+    for (final record in history) {
+      dayCounts[record.date] = (dayCounts[record.date] ?? 0) + 1;
+    }
+
+    // Day abbreviations starting from 6 days ago through today
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Last 7 days',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(7, (i) {
+              final day = today.subtract(Duration(days: 6 - i));
+              final dateStr =
+                  '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+              final count = dayCounts[dateStr] ?? 0;
+              final dayLabel = dayLabels[day.weekday - 1];
+
+              return Column(
+                children: [
+                  _DayDot(count: count),
+                  const SizedBox(height: 6),
+                  Text(
+                    dayLabel,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A single day dot: empty (missed), single check (brushed once), x2 badge (brushed twice+).
+class _DayDot extends StatelessWidget {
+  final int count;
+
+  const _DayDot({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 36.0;
+    if (count == 0) {
+      // Empty circle — missed day
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 2,
+          ),
+        ),
+      );
+    }
+
+    // Filled circle with checkmark
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFF00E676),
+          ),
+          child: const Icon(Icons.check, color: Colors.white, size: 20),
+        ),
+        if (count >= 2)
+          Positioned(
+            top: -4,
+            right: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD54F),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '\u00d7$count',
+                style: const TextStyle(
+                  color: Color(0xFF1A0A3E),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Consistency score ring + morning/evening split bar.
+class _ConsistencyAndPatternCard extends StatelessWidget {
+  final List<BrushRecord> history;
+
+  const _ConsistencyAndPatternCard({required this.history});
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Count unique days brushed in last 14 days
+    final Set<String> daysWithBrush = {};
+    for (final record in history) {
+      // Parse the record date
+      final parts = record.date.split('-');
+      if (parts.length == 3) {
+        final recordDate = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
+        if (today.difference(recordDate).inDays < 14) {
+          daysWithBrush.add(record.date);
+        }
+      }
+    }
+    final consistencyPct =
+        daysWithBrush.isEmpty ? 0.0 : daysWithBrush.length / 14.0;
+    final consistencyDisplay = (consistencyPct * 100).round();
+    final consistencyColor = consistencyPct > 0.8
+        ? const Color(0xFF00E676)
+        : consistencyPct >= 0.5
+            ? const Color(0xFFFFD54F)
+            : Colors.redAccent;
+
+    // Morning vs evening pattern
+    int morningCount = 0;
+    int eveningCount = 0;
+    for (final record in history) {
+      final timeParts = record.time.split(':');
+      if (timeParts.length == 2) {
+        final hour = int.tryParse(timeParts[0]) ?? 12;
+        if (hour < 12) {
+          morningCount++;
+        } else {
+          eveningCount++;
+        }
+      }
+    }
+    final totalSlots = morningCount + eveningCount;
+    final morningPct =
+        totalSlots == 0 ? 0.0 : morningCount / totalSlots;
+    final eveningPct =
+        totalSlots == 0 ? 0.0 : eveningCount / totalSlots;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          // Consistency ring + label
+          Row(
+            children: [
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: CustomPaint(
+                  painter: _ConsistencyRingPainter(
+                    progress: consistencyPct,
+                    color: consistencyColor,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$consistencyDisplay%',
+                      style: TextStyle(
+                        color: consistencyColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Consistency (14 days)',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${daysWithBrush.length} of 14 days',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (totalSlots > 0) ...[
+            const SizedBox(height: 16),
+            // Morning / Evening split bar
+            Row(
+              children: [
+                const Icon(
+                  Icons.wb_sunny,
+                  color: Color(0xFFFFD54F),
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: SizedBox(
+                      height: 8,
+                      child: Row(
+                        children: [
+                          if (morningPct > 0)
+                            Expanded(
+                              flex: (morningPct * 100).round().clamp(1, 100),
+                              child: Container(
+                                color: const Color(0xFFFFD54F),
+                              ),
+                            ),
+                          if (eveningPct > 0)
+                            Expanded(
+                              flex: (eveningPct * 100).round().clamp(1, 100),
+                              child: Container(
+                                color: const Color(0xFF7C4DFF),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.nightlight_round,
+                  color: Color(0xFF7C4DFF),
+                  size: 16,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Morning: ${(morningPct * 100).round()}%',
+                  style: const TextStyle(
+                    color: Color(0xFFFFD54F),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Evening: ${(eveningPct * 100).round()}%',
+                  style: const TextStyle(
+                    color: Color(0xFF7C4DFF),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Custom painter for a progress ring.
+class _ConsistencyRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _ConsistencyRingPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 4;
+    const strokeWidth = 5.0;
+
+    // Background ring
+    final bgPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Progress arc
+    if (progress > 0) {
+      final fgPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        fgPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConsistencyRingPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.color != color;
 }

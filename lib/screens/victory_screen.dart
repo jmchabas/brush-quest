@@ -7,15 +7,15 @@ import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
-import '../services/card_service.dart';
+import '../services/trophy_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
+import '../widgets/star_rain.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import 'home_screen.dart';
-import 'card_album_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
 
@@ -135,6 +135,7 @@ class VictoryScreen extends StatefulWidget {
   final int monstersDefeated;
   final bool isBossSession;
   final String? sessionId;
+  final String? trophyTargetId;
   const VictoryScreen({
     super.key,
     this.starsCollected = 1,
@@ -142,6 +143,7 @@ class VictoryScreen extends StatefulWidget {
     this.monstersDefeated = 4,
     this.isBossSession = false,
     this.sessionId,
+    this.trophyTargetId,
   });
 
   @override
@@ -158,10 +160,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _worldService = WorldService();
   final _random = Random();
 
-  late AnimationController _starController;
-  late Animation<double> _starScale;
-  late AnimationController _starRotationController;
-  late AnimationController _starGlowController;
   late AnimationController _confettiController;
   late AnimationController _doneButtonController;
   late AnimationController _chestBounceController;
@@ -171,6 +169,11 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _newStars = 0;
   int _previousStars = 0;
   int _starsEarnedThisSession = 0;
+  int _previousWallet = 0;
+  int _newWallet = 0;
+  // Bonus breakdown for star rain waves
+  int _dailyBonus = 0;
+  int _streakMultiplierBonus = 0;
   List<Achievement> _newAchievements = [];
   // Next unlock: whichever of hero/weapon is closer
   String? _nextUnlockName;
@@ -189,22 +192,27 @@ class _VictoryScreenState extends State<VictoryScreen>
     color: Color(0xFFB388FF),
   );
 
-  final _cardService = CardService();
+  final _trophyService = TrophyService();
 
   bool _showChest = false;
   bool _chestOpened = false;
   _ChestReward? _reward;
-  CardDropResult? _cardDrop;
-  bool _showCardDrop = false;
   bool _showDoneButton = false;
 
-  // Card reveal animation controllers
+  // Trophy reveal state
+  bool _showTrophyReveal = false;
+  bool _trophyCaptured = false;
+  int _trophyDefeats = 0;
+  int _trophyRequired = 0;
+  TrophyMonster? _revealedTrophy;
+  int _totalTrophies = 0;
+
+  // Trophy reveal animation controllers (reuse card names for compatibility)
   late AnimationController _cardFlyController;
   late AnimationController _cardGlowController;
   late AnimationController _newBadgeController;
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
-  int _collectedCardCount = 0;
 
   // Victory celebration arcs: each arc is a 3-beat connected story
   // [beat1 = celebration, beat2 = star earned, beat3 = chest prompt]
@@ -225,7 +233,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     'ice_hammer': 'voice_unlock_next_ice_hammer.mp3',
     'lightning_wand': 'voice_unlock_next_lightning_wand.mp3',
     'vine_whip': 'voice_unlock_next_vine_whip.mp3',
-    'cosmic_shield': 'voice_unlock_next_cosmic_shield.mp3',
+    'cosmic_burst': 'voice_unlock_next_cosmic_shield.mp3',
   };
 
   // Post-chest encouragement variants (replaces single voice_keep_going)
@@ -239,21 +247,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   void initState() {
     super.initState();
 
-    _starController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-    _starScale = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _starController, curve: Curves.elasticOut),
-    );
-    _starRotationController = AnimationController(
-      duration: const Duration(seconds: 8),
-      vsync: this,
-    );
-    _starGlowController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
     _confettiController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
@@ -297,16 +290,20 @@ class _VictoryScreenState extends State<VictoryScreen>
     _world = await _worldService.getCurrentWorld();
     _dailyModifier = _worldService.getDailyModifier();
     _previousStars = await _streakService.getTotalStars();
+    _previousWallet = await _streakService.getWallet();
     final outcome = await _streakService.recordBrush(
       heroId: hero.id,
       worldId: _world.id,
     );
     _starsEarnedThisSession = outcome.starsEarned;
+    _dailyBonus = outcome.breakdown.dailyBonus;
+    _streakMultiplierBonus = outcome.breakdown.streakMultiplierBonus;
     if (outcome.starsEarned > 0) {
       await _worldService.recordMission();
     }
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
+    _newWallet = await _streakService.getWallet();
     await _worldService.getWorldProgress(_world.id);
 
     final lifetimeBrushes = await _streakService.getTotalBrushes();
@@ -322,13 +319,14 @@ class _VictoryScreenState extends State<VictoryScreen>
     if (achievementBonus > 0) {
       await _streakService.addBonusStars(achievementBonus);
       _newStars = await _streakService.getTotalStars();
+      _newWallet = await _streakService.getWallet();
     }
 
     // Pick whichever of next hero / next weapon unlocks sooner
     final nextHero = await _heroService.getNextLockedHero();
     final nextWeapon = await _weaponService.getNextLockedWeapon();
     _computeNextUnlock(nextHero, nextWeapon);
-    _collectedCardCount = await _cardService.getCollectedCount();
+    _totalTrophies = await _trophyService.getTotalCaptured();
 
     // Analytics: log completion + update user properties
     final analytics = AnalyticsService();
@@ -370,12 +368,28 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     // Arc beat 2 (star earned) — queued via voice pipeline
     await _audio.playVoice(arc[1]); // "+1 star!"
-    _starController.forward();
-    _starRotationController.repeat();
-    _starGlowController.repeat(reverse: true);
+
+    // Play bonus-specific voice lines
+    if (_streakMultiplierBonus > 0 && _newStreak == 3) {
+      _audio.playVoice('voice_super_power.mp3');
+    } else if (_streakMultiplierBonus > 0 && _newStreak == 7) {
+      _audio.playVoice('voice_mega_power.mp3');
+    } else if (_streakMultiplierBonus > 0) {
+      _audio.playVoice('voice_streak_bonus.mp3');
+    }
+
+    if (_dailyBonus > 0) {
+      _audio.playVoice('voice_full_charge.mp3');
+    }
+
+    // Show DONE button early so the user can exit before the chest sequence.
+    // The reward chain continues to play, but the child is never trapped.
+    if (!mounted) return;
+    _audio.playSfx('whoosh.mp3');
+    setState(() => _showDoneButton = true);
+    _doneButtonController.repeat(reverse: true);
 
     // Chest drops after voice completes
-    if (!mounted) return;
     setState(() => _showChest = true);
     _chestBounceController.repeat(reverse: true);
     _audio.playVoice(arc[2]); // chest prompt
@@ -394,8 +408,8 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     final bool pickHero;
     if (nextHero != null && nextWeapon != null) {
-      // Pick whichever has the lower (closer) unlockAt threshold.
-      pickHero = nextHero.unlockAt <= nextWeapon.unlockAt;
+      // Pick whichever has the lower (cheaper) price.
+      pickHero = nextHero.price <= nextWeapon.price;
     } else {
       pickHero = nextHero != null;
     }
@@ -404,18 +418,18 @@ class _VictoryScreenState extends State<VictoryScreen>
       _nextUnlockName = nextHero!.name;
       _nextUnlockImagePath = nextHero.imagePath;
       _nextUnlockColor = nextHero.primaryColor;
-      _nextUnlockAt = nextHero.unlockAt;
+      _nextUnlockAt = nextHero.price;
       _nextUnlockIsHero = true;
       _nextUnlockId = nextHero.id;
     } else {
       _nextUnlockName = nextWeapon!.name;
       _nextUnlockImagePath = nextWeapon.imagePath;
       _nextUnlockColor = nextWeapon.primaryColor;
-      _nextUnlockAt = nextWeapon.unlockAt;
+      _nextUnlockAt = nextWeapon.price;
       _nextUnlockIsHero = false;
       _nextUnlockId = nextWeapon.id;
     }
-    _starsToNextUnlock = _nextUnlockAt - _newStars;
+    _starsToNextUnlock = _nextUnlockAt - _newWallet;
     if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
   }
 
@@ -431,154 +445,152 @@ class _VictoryScreenState extends State<VictoryScreen>
     _audio.playSfx('star_chime.mp3');
 
     Future.delayed(const Duration(milliseconds: 500), () async {
-      if (!mounted) return;
-      _rewardRevealController.forward();
-      if (_reward!.bonusStars > 0) HapticFeedback.mediumImpact();
-      await _audio.playVoice(_reward!.voiceFile);
+      try {
+        if (!mounted) return;
+        _rewardRevealController.forward();
+        if (_reward!.bonusStars > 0) HapticFeedback.mediumImpact();
+        await _audio.playVoice(_reward!.voiceFile);
 
-      final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
-      if (totalBonus > 0) {
-        await _streakService.addBonusStars(totalBonus);
-        final updated = await _streakService.getTotalStars();
-        _newStars = updated;
-        if (mounted) {
-          setState(() {
-            if (_nextUnlockName != null) {
-              _starsToNextUnlock = _nextUnlockAt - _newStars;
-              if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
-            }
-          });
-        }
-      }
-
-      // ── Card reveal (guaranteed drop) ──
-      final drop = await _cardService.guaranteedCardDrop(_world.id);
-      if (!mounted) return;
-
-      // Short pause before card flies out
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-
-      setState(() {
-        _cardDrop = drop;
-        _showCardDrop = true;
-      });
-      HapticFeedback.mediumImpact();
-      _audio.playSfx('star_chime.mp3');
-
-      // Card fly-in animation
-      _cardFlyController.forward();
-
-      // After fly-in, start glow + NEW badge + voice
-      await Future.delayed(const Duration(milliseconds: 700));
-      if (!mounted) return;
-
-      _cardGlowController.repeat(reverse: true);
-      if (drop.isNew) {
-        _newBadgeController.forward();
-        _audio.playVoice('voice_card_new.mp3');
-      } else {
-        // Duplicate card — show POWER UP badge with voice and check for bonus star
-        _newBadgeController.forward();
-        _audio.playVoice('voice_card_power_up.mp3');
-        final bonusStars = await _cardService.checkDuplicateBonus();
-        if (bonusStars > 0) {
-          await _streakService.addBonusStars(bonusStars);
+        final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
+        if (totalBonus > 0) {
+          await _streakService.addBonusStars(totalBonus);
           _newStars = await _streakService.getTotalStars();
-          _starsEarnedThisSession += bonusStars;
-          if (mounted) setState(() {});
+          _newWallet = await _streakService.getWallet();
+          if (mounted) {
+            setState(() {
+              if (_nextUnlockName != null) {
+                _starsToNextUnlock = _nextUnlockAt - _newWallet;
+                if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
+              }
+            });
+          }
         }
-      }
-      // Play the specific card description voice
-      await _audio.playVoice('voice_card_${drop.card.id}.mp3');
-      if (!mounted) return;
 
-      // Show world progress after card voice finishes
-      setState(() {
-        _showWorldProgress = true;
-        _worldJustCompleted = drop.isNew &&
-            drop.worldCollected == drop.worldTotal;
-      });
+        // ── Trophy defeat/capture ──
+        if (widget.trophyTargetId != null) {
+          final result = await _trophyService.recordDefeat(widget.trophyTargetId!);
+          if (!mounted) return;
 
-      if (_worldJustCompleted) {
-        HapticFeedback.heavyImpact();
-        _audio.playSfx('victory.mp3');
-      }
-
-      // Short pause to let the kid see the world progress
-      await Future.delayed(const Duration(milliseconds: 1500));
-      if (!mounted) return;
-
-      // ── Milestone celebration (70/80/90 stars) ──
-      for (final milestone in [70, 80, 90]) {
-        if (_newStars >= milestone && _previousStars < milestone) {
-          final voiceFile = 'voice_milestone_$milestone.mp3';
-          await _audio.playVoice(voiceFile);
-          _confettiController.repeat();
           await Future.delayed(const Duration(milliseconds: 500));
-          break; // Only play one milestone per session
-        }
-      }
-      if (!mounted) return;
+          if (!mounted) return;
 
-      // ── Achievements (AFTER card reveal) ──
-      for (int i = 0; i < _newAchievements.length; i++) {
-        if (!mounted) break;
-        if (i > 0) {
-          await Future.delayed(const Duration(milliseconds: 1200));
-        }
-        if (mounted) _showAchievement(_newAchievements[i]);
-      }
-
-      // Wait a beat after last achievement before showing DONE
-      if (_newAchievements.isNotEmpty) {
-        await Future.delayed(const Duration(milliseconds: 1000));
-      }
-
-      // Legendary ranger voice or next-unlock encouragement
-      if (_nextUnlockName == null && _collectedCardCount >= 70 && mounted) {
-        await _audio.playVoice('voice_legend.mp3');
-      } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
-        final unlockVoice = _nextUnlockId != null ? _unlockVoices[_nextUnlockId] : null;
-        if (unlockVoice != null) {
-          _audio.playVoice(unlockVoice);
-        } else {
-          _audio.playVoice(
-            _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
+          final trophy = TrophyService.allTrophies.firstWhere(
+            (t) => t.id == widget.trophyTargetId,
+            orElse: () => TrophyService.allTrophies.first,
           );
-        }
-      }
 
-      // ── DONE button with whoosh SFX ──
-      if (mounted) {
-        _audio.playSfx('whoosh.mp3');
-        setState(() => _showDoneButton = true);
-        _doneButtonController.repeat(reverse: true);
+          setState(() {
+            _showTrophyReveal = true;
+            _trophyCaptured = result.captured;
+            _trophyDefeats = result.currentDefeats;
+            _trophyRequired = result.required;
+            _revealedTrophy = trophy;
+          });
+
+          HapticFeedback.mediumImpact();
+          _cardFlyController.forward();
+
+          await Future.delayed(const Duration(milliseconds: 700));
+          if (!mounted) return;
+
+          _cardGlowController.repeat(reverse: true);
+          _newBadgeController.forward();
+
+          if (result.captured) {
+            HapticFeedback.heavyImpact();
+            _audio.playVoice('voice_card_new.mp3');
+          } else {
+            _audio.playVoice('voice_keep_going.mp3');
+          }
+
+          // Play monster description voice
+          // Trophy IDs like 'cc_t1' → card voice 'voice_card_cc_01.mp3'
+          final cardVoiceId = widget.trophyTargetId!.replaceAll('_t', '_0');
+          await _audio.playVoice('voice_card_$cardVoiceId.mp3');
+          if (!mounted) return;
+
+          // Update total trophies count
+          _totalTrophies = await _trophyService.getTotalCaptured();
+
+          // Show world progress
+          final worldComplete = await _trophyService.isWorldComplete(_world.id);
+          if (!mounted) return;
+          setState(() {
+            _showWorldProgress = true;
+            _worldJustCompleted = worldComplete;
+          });
+
+          if (_worldJustCompleted) {
+            HapticFeedback.heavyImpact();
+            _audio.playSfx('victory.mp3');
+          }
+        }
+
+        // Short pause to let the kid see the world progress
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+
+        // ── Milestone celebration (70/80/90 stars) ──
+        for (final milestone in [70, 80, 90]) {
+          if (_newStars >= milestone && _previousStars < milestone) {
+            final voiceFile = 'voice_milestone_$milestone.mp3';
+            await _audio.playVoice(voiceFile);
+            _confettiController.repeat();
+            await Future.delayed(const Duration(milliseconds: 500));
+            break; // Only play one milestone per session
+          }
+        }
+        if (!mounted) return;
+
+        // ── Achievements (AFTER card reveal) ──
+        for (int i = 0; i < _newAchievements.length; i++) {
+          if (!mounted) break;
+          if (i > 0) {
+            await Future.delayed(const Duration(milliseconds: 1200));
+          }
+          if (mounted) _showAchievement(_newAchievements[i]);
+        }
+
+        // Wait a beat after last achievement before showing DONE
+        if (_newAchievements.isNotEmpty) {
+          await Future.delayed(const Duration(milliseconds: 1000));
+        }
+
+        // Legendary ranger voice or next-unlock encouragement
+        if (_nextUnlockName == null && _totalTrophies >= TrophyService.allTrophies.length && mounted) {
+          await _audio.playVoice('voice_legend.mp3');
+        } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
+          final unlockVoice = _nextUnlockId != null ? _unlockVoices[_nextUnlockId] : null;
+          if (unlockVoice != null) {
+            _audio.playVoice(unlockVoice);
+          } else {
+            _audio.playVoice(
+              _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Victory chest sequence error: $e');
+      } finally {
+        // Guarantee the DONE button is visible even if the reward chain fails.
+        // It may already be showing (set in _recordAndAnimate), but this
+        // ensures it appears if the early-show somehow didn't fire.
+        if (mounted && !_showDoneButton) {
+          _audio.playSfx('whoosh.mp3');
+          setState(() => _showDoneButton = true);
+          _doneButtonController.repeat(reverse: true);
+        }
       }
     });
   }
 
 
-  void _openCardAlbum({String? highlightCardId}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CardAlbumScreen(highlightCardId: highlightCardId),
-      ),
-    );
-  }
 
-  /// Rarity-based glow color for card reveal.
-  Color _rarityGlowColor(CardRarity rarity) => switch (rarity) {
-    CardRarity.common => const Color(0xFF00E5FF), // cyan
-    CardRarity.rare => const Color(0xFFB388FF),   // purple
-    CardRarity.epic => const Color(0xFFFFD54F),   // gold
-  };
-
-  Widget _buildCardDropReveal() {
-    final drop = _cardDrop!;
-    final card = drop.card;
-    final glowColor = _rarityGlowColor(card.rarity);
-    final rarityLabel = card.rarity.name.toUpperCase();
+  Widget _buildTrophyReveal() {
+    final trophy = _revealedTrophy!;
+    final glowColor = _trophyCaptured
+        ? const Color(0xFF00E676) // green for captured
+        : const Color(0xFFFFAB00); // amber for hit
 
     return AnimatedBuilder(
       animation: Listenable.merge([_cardFlyController, _cardGlowController]),
@@ -626,11 +638,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: drop.isNew ? const Color(0xFF00E676) : const Color(0xFFFFD740),
+                                color: _trophyCaptured
+                                    ? const Color(0xFF00E676)
+                                    : const Color(0xFFFFAB00),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                drop.isNew ? 'NEW!' : 'POWER UP!',
+                                _trophyCaptured
+                                    ? 'CAUGHT!'
+                                    : 'HIT! $_trophyDefeats/$_trophyRequired',
                                 style: const TextStyle(
                                   color: Colors.black,
                                   fontWeight: FontWeight.bold,
@@ -655,16 +671,16 @@ class _VictoryScreenState extends State<VictoryScreen>
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
                             child: Image.asset(
-                              'assets/images/monster_${card.baseImageIndex + 1}.png',
+                              trophy.imagePath,
                               fit: BoxFit.cover,
-                              color: card.tintColor.withValues(alpha: 0.3),
+                              color: trophy.tintColor.withValues(alpha: 0.3),
                               colorBlendMode: BlendMode.overlay,
                             ),
                           ),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          card.name,
+                          trophy.name,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: Colors.white,
@@ -674,9 +690,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          rarityLabel,
+                          _trophyCaptured ? trophy.title : 'Keep fighting!',
                           style: TextStyle(
-                            color: glowColor,
+                            color: _trophyCaptured ? glowColor : Colors.white70,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                             letterSpacing: 2,
@@ -690,7 +706,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                     Text(
                       _worldJustCompleted
                           ? 'WORLD COMPLETE!'
-                          : '${_cardDrop!.worldCollected}/${_cardDrop!.worldTotal} ${_world.name} monsters found!',
+                          : '${_world.name} trophies collected!',
                       style: TextStyle(
                         color: _worldJustCompleted ? Colors.yellowAccent : Colors.white70,
                         fontWeight: FontWeight.bold,
@@ -698,14 +714,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 4),
-                  GestureDetector(
-                    onTap: () => _openCardAlbum(highlightCardId: drop.card.id),
-                    child: const Text(
-                      'Tap to see album >',
-                      style: TextStyle(color: Colors.white38, fontSize: 12),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -734,9 +742,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   void dispose() {
-    _starController.dispose();
-    _starRotationController.dispose();
-    _starGlowController.dispose();
     _confettiController.dispose();
     _doneButtonController.dispose();
     _chestBounceController.dispose();
@@ -799,52 +804,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                   children: [
                     const SizedBox(height: 24),
 
-                    // Big star
-                    AnimatedBuilder(
-                      animation: Listenable.merge([
-                        _starScale,
-                        _starRotationController,
-                        _starGlowController,
-                      ]),
-                      builder: (context, child) {
-                        final glow = 0.4 + _starGlowController.value * 0.4;
-                        return ScaleTransition(
-                          scale: _starScale,
-                          child: Transform.rotate(
-                            angle: _starRotationController.value * 2 * pi * 0.1,
-                            child: Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const RadialGradient(
-                                  colors: [
-                                    Color(0xFFFFD54F),
-                                    Color(0xFFFFA000),
-                                    Color(0xFFFF6F00),
-                                  ],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFFFFD54F,
-                                    ).withValues(alpha: glow),
-                                    blurRadius: 50,
-                                    spreadRadius: 15,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.star,
-                                size: 70,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
                     Text(
                       'GREAT JOB!',
                       style: Theme.of(context).textTheme.headlineLarge
@@ -864,37 +823,36 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ),
 
                     const SizedBox(height: 10),
+                    // Star rain wave animation
                     if (_starsEarnedThisSession > 0)
-                      Text(
-                        '+$_starsEarnedThisSession STAR THIS SESSION',
-                        style: const TextStyle(
-                          color: Color(0xFFFFD54F),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
+                      StarRain(
+                        baseStars: 2,
+                        streakBonus: _streakMultiplierBonus,
+                        dailyBonus: _dailyBonus,
+                        currentStreak: _newStreak,
                       ),
                     const SizedBox(height: 12),
 
-                    // Star bank
+                    // Wallet + Rank display
                     GlassCard(
-                      margin: const EdgeInsets.symmetric(horizontal: 48),
+                      margin: const EdgeInsets.symmetric(horizontal: 32),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
+                        horizontal: 24,
                         vertical: 10,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Ranger Rank (shield)
                           const Icon(
-                            Icons.star,
-                            color: Colors.yellowAccent,
-                            size: 32,
+                            Icons.shield,
+                            color: Color(0xFF7C4DFF),
+                            size: 28,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 4),
                           TweenAnimationBuilder<int>(
-                            tween: IntTween(begin: 0, end: _newStars),
+                            tween: IntTween(begin: _previousStars, end: _newStars),
                             duration: const Duration(milliseconds: 1500),
                             builder: (context, val, _) => Text(
                               '$val',
@@ -902,7 +860,35 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 32,
+                                    fontSize: 28,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Divider
+                          Container(
+                            width: 1,
+                            height: 28,
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                          const SizedBox(width: 16),
+                          // Star Wallet
+                          const Icon(
+                            Icons.star,
+                            color: Color(0xFFFFD54F),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 4),
+                          TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: _previousWallet, end: _newWallet),
+                            duration: const Duration(milliseconds: 1500),
+                            builder: (context, val, _) => Text(
+                              '$val',
+                              style: Theme.of(context).textTheme.headlineLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 24,
                                   ),
                             ),
                           ),
@@ -979,7 +965,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   child: SizedBox(
                                     height: 14,
                                     child: LinearProgressIndicator(
-                                      value: (_newStars / _nextUnlockAt).clamp(
+                                      value: (_newWallet / _nextUnlockAt).clamp(
                                         0.0,
                                         1.0,
                                       ),
@@ -1024,7 +1010,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                       Padding(
                         padding: const EdgeInsets.only(top: 6, left: 54, right: 40),
                         child: Text(
-                          '$_starsToNextUnlock more to unlock $_nextUnlockName!',
+                          '$_starsToNextUnlock more to get $_nextUnlockName!',
                           style: TextStyle(
                             color: _nextUnlockColor.withValues(alpha: 0.9),
                             fontSize: 13,
@@ -1038,10 +1024,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ),
                         ),
                       ),
-                    // LEGENDARY RANGER badge (all heroes/weapons/70+ cards)
+                    // LEGENDARY RANGER badge (all heroes/weapons/trophies)
                     if (_chestOpened &&
                         _nextUnlockName == null &&
-                        _collectedCardCount >= 70)
+                        _totalTrophies >= TrophyService.allTrophies.length)
                       Padding(
                         padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
                         child: Container(
@@ -1079,10 +1065,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
 
-                    // Card collection progress (shown when all heroes/weapons unlocked)
+                    // Trophy collection progress (shown when all heroes/weapons unlocked)
                     if (_chestOpened &&
                         _nextUnlockName == null &&
-                        _collectedCardCount < CardService.allCards.length)
+                        _totalTrophies < TrophyService.allTrophies.length)
                       Padding(
                         padding: const EdgeInsets.only(
                           top: 16, left: 40, right: 40,
@@ -1090,7 +1076,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         child: Row(
                           children: [
                             const Icon(
-                              Icons.style,
+                              Icons.emoji_events,
                               color: Color(0xFF00E5FF),
                               size: 22,
                             ),
@@ -1101,8 +1087,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 child: SizedBox(
                                   height: 14,
                                   child: LinearProgressIndicator(
-                                    value: (_collectedCardCount /
-                                            CardService.allCards.length)
+                                    value: (_totalTrophies /
+                                            TrophyService.allTrophies.length)
                                         .clamp(0.0, 1.0),
                                     backgroundColor:
                                         Colors.white.withValues(alpha: 0.15),
@@ -1115,7 +1101,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '$_collectedCardCount/${CardService.allCards.length}',
+                              '$_totalTrophies/${TrophyService.allTrophies.length}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -1126,9 +1112,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
 
-                    // Card drop reveal
-                    if (_showCardDrop && _cardDrop != null)
-                      _buildCardDropReveal(),
+                    // Trophy reveal
+                    if (_showTrophyReveal && _revealedTrophy != null)
+                      _buildTrophyReveal(),
 
                     const SizedBox(height: 24),
 

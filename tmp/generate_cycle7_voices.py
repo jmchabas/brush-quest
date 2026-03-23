@@ -20,9 +20,11 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-# Voice IDs
+# DEPRECATED: Use generate_all_voices.py instead for new voice generation.
+# This script had a bug: buddy voice ID was BQ Buddy instead of George.
+# Voice IDs (fixed)
 CLASSIC_VOICE_ID = "cgSgspJ2msm6clMCkdW9"  # Jessica
-BUDDY_VOICE_ID = "KgnilQWk9YVtLxuGYyYS"    # BQ Buddy
+BUDDY_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"    # George (was incorrectly KgnilQWk9YVtLxuGYyYS)
 
 MODEL_ID = "eleven_multilingual_v2"
 

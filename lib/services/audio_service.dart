@@ -57,7 +57,14 @@ class AudioService {
   bool get isVoicePlaying => _voicePlaying;
   bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
 
-  /// Current voice narrator style ('classic' or 'buddy').
+  /// Available voice styles.
+  static const voiceStyles = {
+    'classic': 'Jessica — warm & clear',
+    'buddy': 'George — friendly guide',
+    'boy': 'Liam — excited adventurer',
+  };
+
+  /// Current voice narrator style ('classic', 'buddy', or 'boy').
   String get voiceStyle => _voiceStyle;
 
   /// Base path for voice files under assets/audio/.
@@ -135,9 +142,11 @@ class AudioService {
     'countdown_beep.mp3',
     'monster_defeat.mp3',
     'victory.mp3',
+    'voice_bottom_front.mp3',
     'voice_bottom_left.mp3',
     'voice_bottom_right.mp3',
     'voice_countdown.mp3',
+    'voice_top_front.mp3',
     'voice_top_left.mp3',
     'voice_top_right.mp3',
     'voice_keep_going.mp3',
@@ -169,6 +178,11 @@ class AudioService {
     'voice_chest_bonus_star.mp3',
     'voice_chest_double.mp3',
     'voice_chest_jackpot.mp3',
+    // Bonus communication voice lines
+    'voice_full_charge.mp3',
+    'voice_super_power.mp3',
+    'voice_mega_power.mp3',
+    'voice_streak_bonus.mp3',
     'voice_intro_hero_blaze.mp3',
     'voice_intro_hero_frost.mp3',
     'voice_intro_hero_bolt.mp3',
@@ -354,6 +368,17 @@ class AudioService {
     'voice_milestone_80.mp3',
     'voice_milestone_90.mp3',
     'voice_legend.mp3',
+    // Unlock encouragement voices (Cycle 7)
+    'voice_unlock_next_frost.mp3',
+    'voice_unlock_next_bolt.mp3',
+    'voice_unlock_next_shadow.mp3',
+    'voice_unlock_next_leaf.mp3',
+    'voice_unlock_next_nova.mp3',
+    'voice_unlock_next_flame_sword.mp3',
+    'voice_unlock_next_ice_hammer.mp3',
+    'voice_unlock_next_lightning_wand.mp3',
+    'voice_unlock_next_vine_whip.mp3',
+    'voice_unlock_next_cosmic_shield.mp3',
   ];
 
   List<String> get encouragementVoices =>
@@ -520,7 +545,7 @@ class AudioService {
                 .where((s) => s == PlayerState.stopped)
                 .first
                 .then((_) => false),
-            Future.delayed(const Duration(seconds: 5), () => false),
+            Future.delayed(const Duration(seconds: 15), () => false),
           ]);
           if (!completed) {
             _reportAudioIssue(

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'streak_service.dart';
 
 class HeroCharacter {
   final String id;
   final String name;
   final String title;
   final String description;
-  final int unlockAt;
+  final int price;
   final String imagePath;
   final Color primaryColor;
   final Color attackColor;
@@ -16,7 +17,7 @@ class HeroCharacter {
     required this.name,
     required this.title,
     required this.description,
-    required this.unlockAt,
+    required this.price,
     required this.imagePath,
     required this.primaryColor,
     required this.attackColor,
@@ -28,7 +29,7 @@ class HeroService {
   static const _selectedKey = 'selected_hero';
   static bool _purchasing = false;
 
-  // Cumulative star thresholds — the star counter never drops.
+  // Star prices — deducted from wallet on purchase.
   // Interleaved with weapons for a new unlock every 3-5 days at 2x/day.
   static const List<HeroCharacter> allHeroes = [
     HeroCharacter(
@@ -36,7 +37,7 @@ class HeroService {
       name: 'BLAZE',
       title: 'Fire Dragon',
       description: 'A fierce little dragon who burns cavity monsters with blazing fire breath!',
-      unlockAt: 0,
+      price: 0,
       imagePath: 'assets/images/hero_blaze.png',
       primaryColor: Color(0xFFFF6D00),
       attackColor: Color(0xFFFF9100),
@@ -46,7 +47,7 @@ class HeroService {
       name: 'FROST',
       title: 'Ice Wolf',
       description: 'A brave wolf knight who freezes monsters solid with icy howls!',
-      unlockAt: 14,
+      price: 15,
       imagePath: 'assets/images/hero_frost.png',
       primaryColor: Color(0xFF40C4FF),
       attackColor: Color(0xFF80D8FF),
@@ -56,7 +57,7 @@ class HeroService {
       name: 'BOLT',
       title: 'Lightning Robot',
       description: 'A super-charged robot who zaps monsters with electric bolts!',
-      unlockAt: 30,
+      price: 20,
       imagePath: 'assets/images/hero_bolt.png',
       primaryColor: Color(0xFFFFD600),
       attackColor: Color(0xFFFFFF00),
@@ -66,7 +67,7 @@ class HeroService {
       name: 'SHADOW',
       title: 'Ninja Cat',
       description: 'A sneaky ninja cat who strikes from the shadows with dark energy!',
-      unlockAt: 50,
+      price: 30,
       imagePath: 'assets/images/hero_shadow.png',
       primaryColor: Color(0xFFAA00FF),
       attackColor: Color(0xFFD500F9),
@@ -76,7 +77,7 @@ class HeroService {
       name: 'LEAF',
       title: 'Nature Guardian',
       description: 'A mighty tree guardian who smashes monsters with vine whip attacks!',
-      unlockAt: 74,
+      price: 35,
       imagePath: 'assets/images/hero_leaf.png',
       primaryColor: Color(0xFF00E676),
       attackColor: Color(0xFF69F0AE),
@@ -86,7 +87,7 @@ class HeroService {
       name: 'NOVA',
       title: 'Cosmic Phoenix',
       description: 'The legendary phoenix who unleashes cosmic star bursts of pure light!',
-      unlockAt: 98,
+      price: 40,
       imagePath: 'assets/images/hero_nova.png',
       primaryColor: Color(0xFFFFD54F),
       attackColor: Color(0xFFFFE082),
@@ -113,21 +114,30 @@ class HeroService {
     await prefs.setString(_selectedKey, heroId);
   }
 
-  Future<bool> unlockHero(String heroId) async {
+  /// Purchase a hero by spending stars from the wallet.
+  /// Returns true if purchase succeeds or hero already owned.
+  /// Returns false if insufficient stars or invalid hero ID.
+  Future<bool> purchaseHero(String heroId) async {
     if (_purchasing) return false;
     _purchasing = true;
     try {
       final hero = getHeroById(heroId);
-      if (hero.id != heroId) return false; // Invalid ID
+      if (hero.id != heroId) return false;
       final prefs = await SharedPreferences.getInstance();
 
       final unlocked = prefs.getStringList(_unlockedKey) ?? ['blaze'];
-      if (unlocked.contains(heroId)) return true;
+      if (unlocked.contains(heroId)) return true; // Already owned
 
-      final stars = prefs.getInt('total_stars') ?? 0;
-      if (stars < hero.unlockAt) return false;
+      if (hero.price == 0) {
+        unlocked.add(heroId);
+        await prefs.setStringList(_unlockedKey, unlocked);
+        return true;
+      }
 
-      // Cumulative economy: stars are never deducted.
+      // Deduct from wallet
+      final success = await StreakService().spendStars(hero.price);
+      if (!success) return false;
+
       unlocked.add(heroId);
       await prefs.setStringList(_unlockedKey, unlocked);
       return true;
@@ -135,6 +145,9 @@ class HeroService {
       _purchasing = false;
     }
   }
+
+  @Deprecated('Use purchaseHero instead')
+  Future<bool> unlockHero(String heroId) => purchaseHero(heroId);
 
   Future<bool> isHeroUnlocked(String heroId) async {
     final unlocked = await getUnlockedHeroIds();

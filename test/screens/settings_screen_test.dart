@@ -42,7 +42,7 @@ void main() {
 
   Future<void> pumpSettings(WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({
-      'phase_duration': 30,
+      'phase_duration': 20,
       'camera_enabled': false,
       'total_brushes': 10,
       'best_streak': 5,

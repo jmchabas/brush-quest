@@ -15,13 +15,21 @@ class GreetingResult {
   final int brushStreak;
   final String? teaseItemName;
   final int? teaseStarsAway;
+  final String? teaseItemId;
+  final String? teaseItemImagePath;
+  final int? teaseItemUnlockAt;
+  final int totalStars;
 
   const GreetingResult({
     required this.state,
     required this.voiceFile,
     required this.brushStreak,
+    required this.totalStars,
     this.teaseItemName,
     this.teaseStarsAway,
+    this.teaseItemId,
+    this.teaseItemImagePath,
+    this.teaseItemUnlockAt,
   });
 }
 
@@ -69,6 +77,10 @@ class GreetingService {
     required int? nextWeaponUnlockAt,
     required String todayDate,
     required String? lastGreetingDate,
+    String? nextHeroId,
+    String? nextHeroImagePath,
+    String? nextWeaponId,
+    String? nextWeaponImagePath,
   }) {
     // Already greeted today
     if (lastGreetingDate == todayDate) return null;
@@ -83,6 +95,9 @@ class GreetingService {
     // Tease: show whichever unlock is closer
     String? teaseItemName;
     int? teaseStarsAway;
+    String? teaseItemId;
+    String? teaseItemImagePath;
+    int? teaseItemUnlockAt;
     final heroDistance = (nextHeroUnlockAt != null) ? nextHeroUnlockAt - totalStars : null;
     final weaponDistance = (nextWeaponUnlockAt != null) ? nextWeaponUnlockAt - totalStars : null;
 
@@ -90,24 +105,40 @@ class GreetingService {
       if (weaponDistance <= heroDistance) {
         teaseItemName = nextWeaponName;
         teaseStarsAway = weaponDistance;
+        teaseItemId = nextWeaponId;
+        teaseItemImagePath = nextWeaponImagePath;
+        teaseItemUnlockAt = nextWeaponUnlockAt;
       } else {
         teaseItemName = nextHeroName;
         teaseStarsAway = heroDistance;
+        teaseItemId = nextHeroId;
+        teaseItemImagePath = nextHeroImagePath;
+        teaseItemUnlockAt = nextHeroUnlockAt;
       }
     } else if (heroDistance != null && heroDistance > 0) {
       teaseItemName = nextHeroName;
       teaseStarsAway = heroDistance;
+      teaseItemId = nextHeroId;
+      teaseItemImagePath = nextHeroImagePath;
+      teaseItemUnlockAt = nextHeroUnlockAt;
     } else if (weaponDistance != null && weaponDistance > 0) {
       teaseItemName = nextWeaponName;
       teaseStarsAway = weaponDistance;
+      teaseItemId = nextWeaponId;
+      teaseItemImagePath = nextWeaponImagePath;
+      teaseItemUnlockAt = nextWeaponUnlockAt;
     }
 
     return GreetingResult(
       state: state,
       voiceFile: voiceFile,
       brushStreak: brushStreak,
+      totalStars: totalStars,
       teaseItemName: teaseItemName,
       teaseStarsAway: teaseStarsAway,
+      teaseItemId: teaseItemId,
+      teaseItemImagePath: teaseItemImagePath,
+      teaseItemUnlockAt: teaseItemUnlockAt,
     );
   }
 

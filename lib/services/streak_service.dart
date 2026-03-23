@@ -5,15 +5,28 @@ import 'sync_service.dart';
 
 enum BrushSlot { morning, evening }
 
+class BonusBreakdown {
+  final int dailyBonus;
+  final int streakMultiplierBonus;
+  int get total => dailyBonus + streakMultiplierBonus;
+  const BonusBreakdown({required this.dailyBonus, required this.streakMultiplierBonus});
+}
+
 class BrushOutcome {
-  final int starsEarned;
+  final int baseStars;
+  final int streakBonus;
+  final int starsEarned; // baseStars + streakBonus
   final BrushSlot slot;
   final bool newSlotCompleted;
+  final BonusBreakdown breakdown;
 
   const BrushOutcome({
+    required this.baseStars,
+    required this.streakBonus,
     required this.starsEarned,
     required this.slot,
     required this.newSlotCompleted,
+    required this.breakdown,
   });
 }
 
@@ -64,6 +77,33 @@ class StreakService {
   static const _keyHistory = 'brush_history';
   static const _keyMorningDoneDate = 'morning_done_date';
   static const _keyEveningDoneDate = 'evening_done_date';
+  static const _keyStarWallet = 'star_wallet';
+
+  /// Calculate bonus stars from streak length and daily slot completion.
+  int calculateStreakBonus({required int streak, required bool bothSlotsDone}) {
+    int bonus = 0;
+    if (bothSlotsDone) bonus += 1; // Daily completion
+    if (streak >= 7) {
+      bonus += 2; // 7+ day streak
+    } else if (streak >= 3) {
+      bonus += 1; // 3+ day streak
+    }
+    return bonus;
+  }
+
+  /// Same as [calculateStreakBonus] but returns a [BonusBreakdown] that
+  /// separates the daily-pair bonus from the streak-multiplier bonus.
+  /// Used by the victory screen to animate each bonus wave separately.
+  BonusBreakdown calculateStreakBonusDetailed({required int streak, required bool bothSlotsDone}) {
+    final dailyBonus = bothSlotsDone ? 1 : 0;
+    int streakMultiplierBonus = 0;
+    if (streak >= 7) {
+      streakMultiplierBonus = 2;
+    } else if (streak >= 3) {
+      streakMultiplierBonus = 1;
+    }
+    return BonusBreakdown(dailyBonus: dailyBonus, streakMultiplierBonus: streakMultiplierBonus);
+  }
 
   Future<BrushOutcome> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -75,8 +115,8 @@ class StreakService {
     final slotAlreadyDone = prefs.getString(slotKey) == today;
     final newSlotCompleted = !slotAlreadyDone;
 
-    // Every completed brush earns 1 star — no daily cap.
-    const starsEarned = 1;
+    // Every completed brush earns 2 stars — no daily cap.
+    const starsEarned = 2;
     if (newSlotCompleted) {
       await prefs.setString(slotKey, today);
     }
@@ -107,10 +147,27 @@ class StreakService {
       await prefs.setInt(_keyBestStreak, streak);
     }
 
+    // Calculate streak bonus
+    final updatedSlots = TodaySlotsStatus(
+      morningDone: prefs.getString(_keyMorningDoneDate) == today,
+      eveningDone: prefs.getString(_keyEveningDoneDate) == today,
+    );
+    final breakdown = calculateStreakBonusDetailed(
+      streak: streak,
+      bothSlotsDone: updatedSlots.morningDone && updatedSlots.eveningDone,
+    );
+    final streakBonus = breakdown.total;
+    final totalEarned = starsEarned + streakBonus;
+
     // Update total stars
     int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
-    totalStars += starsEarned;
+    totalStars += totalEarned;
     await prefs.setInt(_keyTotalStars, totalStars);
+
+    // Credit wallet (spendable balance)
+    int wallet = prefs.getInt(_keyStarWallet) ?? 0;
+    wallet += totalEarned;
+    await prefs.setInt(_keyStarWallet, wallet);
 
     // Update lifetime brush count
     int totalBrushes = prefs.getInt(_keyTotalBrushes) ?? 0;
@@ -140,9 +197,12 @@ class StreakService {
     }
 
     return BrushOutcome(
-      starsEarned: starsEarned,
+      baseStars: starsEarned,
+      streakBonus: streakBonus,
+      starsEarned: totalEarned,
       slot: slot,
       newSlotCompleted: newSlotCompleted,
+      breakdown: breakdown,
     );
   }
 
@@ -168,6 +228,29 @@ class StreakService {
     final prefs = await SharedPreferences.getInstance();
     final current = prefs.getInt(_keyTotalStars) ?? 0;
     await prefs.setInt(_keyTotalStars, current + amount);
+    // Also credit wallet
+    final wallet = prefs.getInt(_keyStarWallet) ?? 0;
+    await prefs.setInt(_keyStarWallet, wallet + amount);
+  }
+
+  Future<int> getWallet() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_keyStarWallet) ?? 0;
+  }
+
+  Future<int> getRangerRank() async {
+    return getTotalStars(); // Ranger Rank IS the lifetime total
+  }
+
+  /// Spend stars from the wallet. Returns true if successful.
+  /// Ranger Rank is never affected by spending.
+  Future<bool> spendStars(int amount) async {
+    if (amount <= 0) return false;
+    final prefs = await SharedPreferences.getInstance();
+    final wallet = prefs.getInt(_keyStarWallet) ?? 0;
+    if (wallet < amount) return false;
+    await prefs.setInt(_keyStarWallet, wallet - amount);
+    return true;
   }
 
   Future<int> getTodayBrushCount() async {
@@ -218,5 +301,20 @@ class StreakService {
 
   BrushSlot _slotForHour(int hour) {
     return hour < 15 ? BrushSlot.morning : BrushSlot.evening;
+  }
+
+  /// Migrate from v1 (cumulative) to v2 (wallet) economy.
+  /// Credits existing total_stars to star_wallet if wallet key doesn't exist.
+  /// Run once on app startup.
+  ///
+  /// DESIGN DECISION: Existing users keep ALL previously-unlocked heroes/weapons
+  /// AND get their full star total credited to the wallet. This is intentional:
+  /// Oliver arrives feeling RICHER — he walks into the new shop with spendable
+  /// stars and can buy things immediately.
+  static Future<void> migrateToWalletEconomy() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('star_wallet')) return; // Already migrated
+    final totalStars = prefs.getInt('total_stars') ?? 0;
+    await prefs.setInt('star_wallet', totalStars);
   }
 }

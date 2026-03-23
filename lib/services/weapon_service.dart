@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'streak_service.dart';
 
 enum AttackEffectType {
   defaultBeam,
@@ -14,7 +15,7 @@ class WeaponItem {
   final String id;
   final String name;
   final String description;
-  final int unlockAt;
+  final int price;
   final AttackEffectType effectType;
   final Color primaryColor;
   final Color secondaryColor;
@@ -25,7 +26,7 @@ class WeaponItem {
     required this.id,
     required this.name,
     required this.description,
-    required this.unlockAt,
+    required this.price,
     required this.effectType,
     required this.primaryColor,
     required this.secondaryColor,
@@ -39,13 +40,13 @@ class WeaponService {
   static const _selectedKey = 'selected_weapon';
   static bool _purchasing = false;
 
-  // Cumulative star thresholds — interleaved with heroes.
+  // Star prices — deducted from wallet on purchase.
   static const List<WeaponItem> allWeapons = [
     WeaponItem(
       id: 'star_blaster',
       name: 'STAR BLASTER',
       description: 'The classic beam weapon. Reliable and strong!',
-      unlockAt: 0,
+      price: 0,
       effectType: AttackEffectType.defaultBeam,
       primaryColor: Color(0xFF7C4DFF),
       secondaryColor: Color(0xFFB388FF),
@@ -56,7 +57,7 @@ class WeaponService {
       id: 'flame_sword',
       name: 'FLAME SWORD',
       description: 'Fiery slashes that burn through cavity monsters!',
-      unlockAt: 6,
+      price: 10,
       effectType: AttackEffectType.flameSword,
       primaryColor: Color(0xFFFF6D00),
       secondaryColor: Color(0xFFFFAB40),
@@ -67,7 +68,7 @@ class WeaponService {
       id: 'ice_hammer',
       name: 'ICE HAMMER',
       description: 'Freezing shockwaves that shatter monsters!',
-      unlockAt: 22,
+      price: 15,
       effectType: AttackEffectType.iceHammer,
       primaryColor: Color(0xFF40C4FF),
       secondaryColor: Color(0xFF80D8FF),
@@ -78,7 +79,7 @@ class WeaponService {
       id: 'lightning_wand',
       name: 'LIGHTNING WAND',
       description: 'Electric bolts that zap monsters from afar!',
-      unlockAt: 40,
+      price: 18,
       effectType: AttackEffectType.lightningWand,
       primaryColor: Color(0xFFFFD600),
       secondaryColor: Color(0xFFFFFF00),
@@ -89,7 +90,7 @@ class WeaponService {
       id: 'vine_whip',
       name: 'VINE WHIP',
       description: 'Nature strikes that tangle and crush!',
-      unlockAt: 62,
+      price: 22,
       effectType: AttackEffectType.vineWhip,
       primaryColor: Color(0xFF00E676),
       secondaryColor: Color(0xFF69F0AE),
@@ -100,7 +101,7 @@ class WeaponService {
       id: 'cosmic_burst',
       name: 'COSMIC BURST',
       description: 'The ultimate weapon! Rainbow star explosions!',
-      unlockAt: 88,
+      price: 25,
       effectType: AttackEffectType.cosmicBurst,
       primaryColor: Color(0xFFFF4081),
       secondaryColor: Color(0xFFFFD54F),
@@ -129,7 +130,10 @@ class WeaponService {
     await prefs.setString(_selectedKey, weaponId);
   }
 
-  Future<bool> unlockWeapon(String weaponId) async {
+  /// Purchase a weapon by spending stars from the wallet.
+  /// Returns true if purchase succeeds or weapon already owned.
+  /// Returns false if insufficient stars or invalid weapon ID.
+  Future<bool> purchaseWeapon(String weaponId) async {
     if (_purchasing) return false;
     _purchasing = true;
     try {
@@ -138,12 +142,18 @@ class WeaponService {
       final prefs = await SharedPreferences.getInstance();
 
       final unlocked = prefs.getStringList(_unlockedKey) ?? ['star_blaster'];
-      if (unlocked.contains(weaponId)) return true;
+      if (unlocked.contains(weaponId)) return true; // Already owned
 
-      final stars = prefs.getInt('total_stars') ?? 0;
-      if (stars < weapon.unlockAt) return false;
+      if (weapon.price == 0) {
+        unlocked.add(weaponId);
+        await prefs.setStringList(_unlockedKey, unlocked);
+        return true;
+      }
 
-      // Cumulative economy: stars are never deducted.
+      // Deduct from wallet
+      final success = await StreakService().spendStars(weapon.price);
+      if (!success) return false;
+
       unlocked.add(weaponId);
       await prefs.setStringList(_unlockedKey, unlocked);
       return true;
@@ -151,6 +161,9 @@ class WeaponService {
       _purchasing = false;
     }
   }
+
+  @Deprecated('Use purchaseWeapon instead')
+  Future<bool> unlockWeapon(String weaponId) => purchaseWeapon(weaponId);
 
   Future<bool> isWeaponUnlocked(String weaponId) async {
     final unlocked = await getUnlockedWeaponIds();
