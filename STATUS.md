@@ -11,20 +11,23 @@
 ## Workstream Status
 
 ### APP
-- **Status**: Cycle 6 shipped — 30 findings across 9 streams, onboarding overhaul, victory flow, home UX, 4 new voice arcs + 651 tests
-- **Last session**: 2026-03-20
-- **Last commit**: `e9cb7d5` — Cycle 6 implementation (30 findings, 9 streams)
+- **Status**: Cycle 8 shipped — 17 findings, 10 streams, 6-zone brushing, victory safety, parent stats + 623 tests
+- **Last session**: 2026-03-23
+- **Last commit**: `606c40b` — Cycle 8 (17 findings, 10 streams)
 - **What happened**:
-  - **Onboarding**: comic-strip how-to-play (no step numbers), animated quadrant cycling on mouth guide
-  - **Victory screen**: PopScope blocks exit, voice-chained chest sequence, power-up voice on dups, milestone voices at 70/80/90 stars, legendary ranger badge
-  - **Home screen**: nav hidden until first brush, voice_tap_hero for new users, 15% bigger hero, "NEW!" streak badge, voice-driven greeting dismiss
-  - **Settings**: narrator subtitles (Jessica/George), distinctive preview voice, direct tutorial replay, full navigator reset after progress wipe
-  - **Voice system**: 4 new encouragement arcs (7-10, total 10), 5s companion suppression near arc beats, world intro trimmed
-  - **Quick fixes**: friendly sync/restore errors, auth retry safety, reset keys for camera/voice_style, deleted orphan voice file
-  - **World map**: pulsing rocket beacon replaces "YOU ARE HERE" text, locked worlds more visible
-  - **Tests**: 30 greeting service tests + 7 home screen widget tests (651 total)
-  - APK **99MB**, uploaded to Google Drive
-  - 651 tests passing, dart analyze clean
+  - **6-zone brushing**: TL/TF/TR/BL/BF/BR, default 20s/zone, visual mouth guide (no text labels)
+  - **Victory safety**: try/catch prevents dead-end trap, early DONE button
+  - **Voice timeout**: 5s→15s (fixed 47+ truncated voice files)
+  - **Parent gate**: hardened math floor (min 4×3=12)
+  - **Onboarding P2**: animated battle scene replacing abstract diagram
+  - **Greeting tease**: item icon + progress bar + voice (replaces text-only)
+  - **Parent stats**: 7-day activity, consistency ring, morning/evening, minutes brushed
+  - **World intro**: skips after first visit per world
+  - **Pause voice**: whoosh on pause, "Let's fight!" on resume
+  - **Reset**: added onboarding_completed, camera_enabled, muted, phase_duration
+  - **Fix**: cosmic_burst unlock voice key
+  - APK **90.3MB** (-8.8%), uploaded to Google Drive
+  - 623 tests passing, dart analyze clean
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
@@ -135,11 +138,11 @@
 - **Needs CEO decision**: None
 
 ### DEV CYCLE
-- **Status**: Cycle 6 complete — 30 findings shipped
-- **Last session**: 2026-03-20
+- **Status**: Cycle 8 complete — 17 findings shipped (5 deferred)
+- **Last session**: 2026-03-23
 - **Command**: `/cycle` (full audit), `/cycle ship` (verify+ship), `/cycle visual` (emulator screenshots)
 - **Repo**: `~/Projects/dev-cycle` (GitHub: jmchabas/dev-cycle, private)
-- **Cycles completed**: 1, 5, 6 (Cycle 2 analysis done but framework overhauled before implementation)
+- **Cycles completed**: 1, 2, 3, 4, 5, 6, 8 (Cycle 7 informal — shipped but no LEARN phase)
 - **Blocked on**: Nothing
 - **Next up**: Run next cycle when ready
 - **Needs CEO decision**: None
