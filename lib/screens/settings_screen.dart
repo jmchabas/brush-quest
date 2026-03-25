@@ -751,7 +751,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  // ── Habit Strength card builder ──────────────────────────────
+  // ── Unified Habit Strength card (ring + stats + totals) ──────
   Widget _buildHabitStrength() {
     final pct = _habitDays / 14.0;
     final color = pct > 0.8
@@ -760,64 +760,182 @@ class _SettingsScreenState extends State<SettingsScreen>
             ? const Color(0xFFFFD54F)
             : Colors.orangeAccent;
 
+    // Morning vs evening pattern from brush history
+    int morningCount = 0;
+    int eveningCount = 0;
+    for (final record in _brushHistory) {
+      final timeParts = record.time.split(':');
+      if (timeParts.length == 2) {
+        final hour = int.tryParse(timeParts[0]) ?? 12;
+        if (hour < 12) {
+          morningCount++;
+        } else {
+          eveningCount++;
+        }
+      }
+    }
+    final totalSlots = morningCount + eveningCount;
+    final morningPct = totalSlots == 0 ? 0.0 : morningCount / totalSlots;
+    final eveningPct = totalSlots == 0 ? 0.0 : eveningCount / totalSlots;
+
     return GlassCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top row: Consistency ring + stats column
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  '$_habitDays of 14 days',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+              SizedBox(
+                width: 64,
+                height: 64,
+                child: CustomPaint(
+                  painter: _ConsistencyRingPainter(
+                    progress: pct,
+                    color: color,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${(pct * 100).round()}%',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              Text(
-                '${(pct * 100).round()}%',
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$_habitDays of 14 days',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    // Morning / Evening split bar
+                    if (totalSlots > 0) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.wb_sunny, color: Color(0xFFFFD54F), size: 14),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: SizedBox(
+                                height: 6,
+                                child: Row(
+                                  children: [
+                                    if (morningPct > 0)
+                                      Expanded(
+                                        flex: (morningPct * 100).round().clamp(1, 100),
+                                        child: Container(color: const Color(0xFFFFD54F)),
+                                      ),
+                                    if (eveningPct > 0)
+                                      Expanded(
+                                        flex: (eveningPct * 100).round().clamp(1, 100),
+                                        child: Container(color: const Color(0xFF7C4DFF)),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.nightlight_round, color: Color(0xFF7C4DFF), size: 14),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${(morningPct * 100).round()}%',
+                            style: const TextStyle(color: Color(0xFFFFD54F), fontSize: 11),
+                          ),
+                          Text(
+                            '${(eveningPct * 100).round()}%',
+                            style: const TextStyle(color: Color(0xFF7C4DFF), fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    // Streak info
+                    Row(
+                      children: [
+                        const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$_currentStreak days',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(Icons.emoji_events, color: Color(0xFFFFD54F), size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$_bestStreak days',
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: pct,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 6,
+          // Bottom row: Total brushes + Minutes brushed
+          if (_totalBrushes > 0) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Row(
+                    children: [
+                      const ImageIcon(
+                        AssetImage('assets/images/icon_toothbrush.png'),
+                        size: 18,
+                        color: Colors.white54,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$_totalBrushes brushes',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule, color: Colors.white54, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${(_totalBrushes * _phaseDuration * 6 / 60).round()} min',
+                        style: const TextStyle(
+                          color: Color(0xFF00E5FF),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                'Current streak: $_currentStreak days',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.emoji_events, color: Color(0xFFFFD54F), size: 18),
-              const SizedBox(width: 6),
-              Text(
-                'Best streak: $_bestStreak days',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ),
+          ],
         ],
       ),
     );
@@ -864,49 +982,6 @@ class _SettingsScreenState extends State<SettingsScreen>
 
         // ── PAUSE STREAK ─────────────────────────────────────
         _buildPauseStreakCard(),
-
-        const SizedBox(height: 24),
-
-        // ── BRUSH HISTORY ────────────────────────────────────
-        if (_historyLoaded && _brushHistory.isNotEmpty) ...[
-          _SectionHeader(
-            icon: Icons.history,
-            label: 'BRUSH HISTORY',
-            color: Colors.white54,
-          ),
-          const SizedBox(height: 8),
-          _ConsistencyAndPatternCard(history: _brushHistory),
-          const SizedBox(height: 8),
-          _SettingCard(
-            icon: Icons.cleaning_services,
-            customIcon: const ImageIcon(
-              AssetImage('assets/images/icon_toothbrush.png'),
-              size: 22,
-            ),
-            title: 'Total brushes',
-            child: Text(
-              '$_totalBrushes',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _SettingCard(
-            icon: Icons.schedule,
-            title: 'Minutes brushed',
-            child: Text(
-              '${(_totalBrushes * _phaseDuration * 6 / 60).round()}',
-              style: const TextStyle(
-                color: Color(0xFF00E5FF),
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-          ),
-        ],
 
         const SizedBox(height: 32),
 
@@ -1170,17 +1245,28 @@ class _SettingsScreenState extends State<SettingsScreen>
         _SettingCard(
           icon: Icons.timer,
           title: 'Timer per zone',
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              for (final sec in [10, 15, 20])
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _DurationChip(
-                    seconds: sec,
-                    selected: _phaseDuration == sec,
-                    onTap: () => _setPhaseDuration(sec),
-                  ),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final sec in [10, 15, 20])
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _DurationChip(
+                        seconds: sec,
+                        selected: _phaseDuration == sec,
+                        onTap: () => _setPhaseDuration(sec),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${_phaseDuration}s \u00d7 6 zones = ${_phaseDuration * 6 ~/ 60}:${(_phaseDuration * 6 % 60).toString().padLeft(2, '0')}',
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -1645,14 +1731,12 @@ class _SectionHeader extends StatelessWidget {
 
 class _SettingCard extends StatelessWidget {
   final IconData icon;
-  final Widget? customIcon;
   final String title;
   final String? subtitle;
   final Widget child;
 
   const _SettingCard({
     required this.icon,
-    this.customIcon,
     required this.title,
     this.subtitle,
     required this.child,
@@ -1669,9 +1753,7 @@ class _SettingCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          customIcon != null
-              ? IconTheme(data: const IconThemeData(color: Colors.white54, size: 22), child: customIcon!)
-              : Icon(icon, color: Colors.white54, size: 22),
+          Icon(icon, color: Colors.white54, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1873,7 +1955,7 @@ class _WeekActivityCard extends StatelessWidget {
   }
 }
 
-/// A single day dot: empty (missed), single check (brushed once), x2 badge (brushed twice+).
+/// A single day dot: empty (missed), half-filled (brushed once), full (brushed 2+).
 class _DayDot extends StatelessWidget {
   final int count;
 
@@ -1897,229 +1979,51 @@ class _DayDot extends StatelessWidget {
       );
     }
 
-    // Filled circle with checkmark
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Color(0xFF00E676),
-          ),
-          child: const Icon(Icons.check, color: Colors.white, size: 20),
-        ),
-        if (count >= 2)
-          Positioned(
-            top: -4,
-            right: -4,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+    if (count == 1) {
+      // Half-filled green circle — brushed once
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          children: [
+            // Bottom half green fill
+            ClipOval(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                heightFactor: 0.5,
+                child: Container(
+                  width: size,
+                  height: size,
+                  color: const Color(0xFF00E676),
+                ),
+              ),
+            ),
+            // Outline circle on top
+            Container(
+              width: size,
+              height: size,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFD54F),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '\u00d7$count',
-                style: const TextStyle(
-                  color: Color(0xFF1A0A3E),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF00E676),
+                  width: 2,
                 ),
               ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Consistency score ring + morning/evening split bar.
-class _ConsistencyAndPatternCard extends StatelessWidget {
-  final List<BrushRecord> history;
-
-  const _ConsistencyAndPatternCard({required this.history});
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    // Count unique days brushed in last 14 days
-    final Set<String> daysWithBrush = {};
-    for (final record in history) {
-      // Parse the record date
-      final parts = record.date.split('-');
-      if (parts.length == 3) {
-        final recordDate = DateTime(
-          int.parse(parts[0]),
-          int.parse(parts[1]),
-          int.parse(parts[2]),
-        );
-        if (today.difference(recordDate).inDays < 14) {
-          daysWithBrush.add(record.date);
-        }
-      }
-    }
-    final consistencyPct =
-        daysWithBrush.isEmpty ? 0.0 : daysWithBrush.length / 14.0;
-    final consistencyDisplay = (consistencyPct * 100).round();
-    final consistencyColor = consistencyPct > 0.8
-        ? const Color(0xFF00E676)
-        : consistencyPct >= 0.5
-            ? const Color(0xFFFFD54F)
-            : Colors.redAccent;
-
-    // Morning vs evening pattern
-    int morningCount = 0;
-    int eveningCount = 0;
-    for (final record in history) {
-      final timeParts = record.time.split(':');
-      if (timeParts.length == 2) {
-        final hour = int.tryParse(timeParts[0]) ?? 12;
-        if (hour < 12) {
-          morningCount++;
-        } else {
-          eveningCount++;
-        }
-      }
-    }
-    final totalSlots = morningCount + eveningCount;
-    final morningPct =
-        totalSlots == 0 ? 0.0 : morningCount / totalSlots;
-    final eveningPct =
-        totalSlots == 0 ? 0.0 : eveningCount / totalSlots;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        children: [
-          // Consistency ring + label
-          Row(
-            children: [
-              SizedBox(
-                width: 56,
-                height: 56,
-                child: CustomPaint(
-                  painter: _ConsistencyRingPainter(
-                    progress: consistencyPct,
-                    color: consistencyColor,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$consistencyDisplay%',
-                      style: TextStyle(
-                        color: consistencyColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Consistency (14 days)',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${daysWithBrush.length} of 14 days',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          if (totalSlots > 0) ...[
-            const SizedBox(height: 16),
-            // Morning / Evening split bar
-            Row(
-              children: [
-                const Icon(
-                  Icons.wb_sunny,
-                  color: Color(0xFFFFD54F),
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: SizedBox(
-                      height: 8,
-                      child: Row(
-                        children: [
-                          if (morningPct > 0)
-                            Expanded(
-                              flex: (morningPct * 100).round().clamp(1, 100),
-                              child: Container(
-                                color: const Color(0xFFFFD54F),
-                              ),
-                            ),
-                          if (eveningPct > 0)
-                            Expanded(
-                              flex: (eveningPct * 100).round().clamp(1, 100),
-                              child: Container(
-                                color: const Color(0xFF7C4DFF),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.nightlight_round,
-                  color: Color(0xFF7C4DFF),
-                  size: 16,
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Morning: ${(morningPct * 100).round()}%',
-                  style: const TextStyle(
-                    color: Color(0xFFFFD54F),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  'Evening: ${(eveningPct * 100).round()}%',
-                  style: const TextStyle(
-                    color: Color(0xFF7C4DFF),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
             ),
           ],
-        ],
+        ),
+      );
+    }
+
+    // Full green circle with checkmark — brushed 2+
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF00E676),
       ),
+      child: const Icon(Icons.check, color: Colors.white, size: 20),
     );
   }
 }
