@@ -22,7 +22,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with TickerProviderStateMixin {
   int _phaseDuration = 20;
   bool _cameraEnabled = false;
   int _totalBrushes = 0;
@@ -46,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _auth = AuthService();
   final _sync = SyncService();
 
+  // Tab controller for 3-tab layout
+  late TabController _tabController;
 
   // Math challenge state
   late int _mathA;
@@ -56,12 +59,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _generateMathChallenge();
     _loadSettings();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _mathController.dispose();
     super.dispose();
   }
@@ -818,109 +823,569 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ── Parent Tools card builder ──────────────────────────────
-  Widget _buildParentTools() {
+
+  // ── Dashboard Tab (Tab 1) ──────────────────────────────
+  Widget _buildDashboardTab() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      children: [
+        // ── HABIT STRENGTH (top of dashboard) ────────────────
+        _SectionHeader(
+          icon: Icons.fitness_center,
+          label: 'HABIT STRENGTH',
+          color: const Color(0xFF00E676),
+        ),
+        const SizedBox(height: 8),
+        _buildHabitStrength(),
+
+        const SizedBox(height: 24),
+
+        // ── THIS WEEK ────────────────────────────────────────
+        _SectionHeader(
+          icon: Icons.calendar_view_week,
+          label: 'THIS WEEK',
+          color: const Color(0xFFFFD54F),
+        ),
+        const SizedBox(height: 8),
+        if (_historyLoaded) _WeekActivityCard(history: _brushHistory),
+
+        const SizedBox(height: 24),
+
+        // ── TODAY STATUS ─────────────────────────────────────
+        _SectionHeader(
+          icon: Icons.today,
+          label: 'TODAY',
+          color: const Color(0xFF00E5FF),
+        ),
+        const SizedBox(height: 8),
+        _buildTodayStatus(),
+
+        const SizedBox(height: 24),
+
+        // ── PAUSE STREAK ─────────────────────────────────────
+        _buildPauseStreakCard(),
+
+        const SizedBox(height: 24),
+
+        // ── BRUSH HISTORY ────────────────────────────────────
+        if (_historyLoaded && _brushHistory.isNotEmpty) ...[
+          _SectionHeader(
+            icon: Icons.history,
+            label: 'BRUSH HISTORY',
+            color: Colors.white54,
+          ),
+          const SizedBox(height: 8),
+          _ConsistencyAndPatternCard(history: _brushHistory),
+          const SizedBox(height: 8),
+          _SettingCard(
+            icon: Icons.cleaning_services,
+            customIcon: const ImageIcon(
+              AssetImage('assets/images/icon_toothbrush.png'),
+              size: 22,
+            ),
+            title: 'Total brushes',
+            child: Text(
+              '$_totalBrushes',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _SettingCard(
+            icon: Icons.schedule,
+            title: 'Minutes brushed',
+            child: Text(
+              '${(_totalBrushes * _phaseDuration * 6 / 60).round()}',
+              style: const TextStyle(
+                color: Color(0xFF00E5FF),
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 32),
+
+        Center(
+          child: Text(
+            'Brush Quest v7',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.3),
+              fontSize: 12,
+              letterSpacing: 2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // ── Pause Streak card (extracted from _buildParentTools) ──
+  Widget _buildPauseStreakCard() {
     return GlassCard(
-      child: Column(
+      child: Row(
         children: [
-          // How Brush Quest Works
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ParentGuideScreen()),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.menu_book, color: Colors.white54, size: 20),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'How Brush Quest Works',
-                      style: TextStyle(color: Colors.white, fontSize: 15),
-                    ),
+          const Icon(Icons.pause_circle_outline, color: Colors.white54, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Pause Streak',
+                  style: TextStyle(color: Colors.white, fontSize: 15),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _streakPaused && _pauseEnd != null
+                      ? 'Paused until ${_pauseEnd!.month}/${_pauseEnd!.day}'
+                      : 'Streak is active',
+                  style: TextStyle(
+                    color: _streakPaused
+                        ? const Color(0xFFFFD54F)
+                        : Colors.white.withValues(alpha: 0.4),
+                    fontSize: 12,
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.white38, size: 22),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _streakPaused,
+            onChanged: (value) async {
+              if (value) {
+                final now = DateTime.now();
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: now.add(const Duration(days: 1)),
+                  firstDate: now.add(const Duration(days: 1)),
+                  lastDate: now.add(const Duration(days: 7)),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: const ColorScheme.dark(
+                          primary: Color(0xFF7C4DFF),
+                          surface: Color(0xFF1A0A3E),
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+                if (picked != null) {
+                  await StreakService().setStreakPause(picked);
+                  setState(() {
+                    _streakPaused = true;
+                    _pauseEnd = picked;
+                  });
+                }
+              } else {
+                await StreakService().clearStreakPause();
+                setState(() {
+                  _streakPaused = false;
+                  _pauseEnd = null;
+                });
+              }
+            },
+            activeThumbColor: const Color(0xFFFFD54F),
+            activeTrackColor: const Color(0xFFFFD54F).withValues(alpha: 0.3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Settings Tab (Tab 2) ──────────────────────────────
+  Widget _buildSettingsTab(bool signedIn, dynamic user) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      children: [
+        // ── ACCOUNT ──────────────────────────────────────────
+        _SectionHeader(
+          icon: Icons.person,
+          label: 'ACCOUNT',
+          color: const Color(0xFF00E676),
+        ),
+        const SizedBox(height: 8),
+        if (!signedIn) ...[
+          GestureDetector(
+            onTap: _signingIn ? null : _handleSignIn,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A237E), Color(0xFF283593)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.15),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (_signingIn)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  else ...[
+                    const Icon(
+                      Icons.login,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Sign in with Google',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
-          Divider(color: Colors.white.withValues(alpha: 0.1), height: 20),
-          // Pause Streak
-          Row(
-            children: [
-              const Icon(Icons.pause_circle_outline, color: Colors.white54, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 4),
+          Text(
+            'Save your progress to the cloud',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 12,
+            ),
+          ),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF00E676).withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
                   children: [
-                    const Text(
-                      'Pause Streak',
-                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    const CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Color(0xFF7C4DFF),
+                      child: Icon(Icons.person, color: Colors.white, size: 20),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _streakPaused && _pauseEnd != null
-                          ? 'Paused until ${_pauseEnd!.month}/${_pauseEnd!.day}'
-                          : 'Streak is active',
-                      style: TextStyle(
-                        color: _streakPaused
-                            ? const Color(0xFFFFD54F)
-                            : Colors.white.withValues(alpha: 0.4),
-                        fontSize: 12,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.displayName ?? 'Space Ranger',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          if (user.email != null)
+                            Text(
+                              user.email!,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _handleSignOut,
+                      child: const Text(
+                        'Sign out',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Switch(
-                value: _streakPaused,
-                onChanged: (value) async {
-                  if (value) {
-                    // Show date picker
-                    final now = DateTime.now();
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: now.add(const Duration(days: 1)),
-                      firstDate: now.add(const Duration(days: 1)),
-                      lastDate: now.add(const Duration(days: 7)),
-                      builder: (context, child) {
-                        return Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: const ColorScheme.dark(
-                              primary: Color(0xFF7C4DFF),
-                              surface: Color(0xFF1A0A3E),
-                            ),
-                          ),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (picked != null) {
-                      await StreakService().setStreakPause(picked);
-                      setState(() {
-                        _streakPaused = true;
-                        _pauseEnd = picked;
-                      });
-                    }
-                  } else {
-                    await StreakService().clearStreakPause();
-                    setState(() {
-                      _streakPaused = false;
-                      _pauseEnd = null;
-                    });
-                  }
-                },
-                activeThumbColor: const Color(0xFFFFD54F),
-                activeTrackColor: const Color(0xFFFFD54F).withValues(alpha: 0.3),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.cloud_upload,
+                        label: 'SAVE',
+                        color: const Color(0xFF00E5FF),
+                        loading: _syncing,
+                        onTap: _handleSyncNow,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.cloud_download,
+                        label: 'RESTORE',
+                        color: const Color(0xFF7C4DFF),
+                        loading: _syncing,
+                        onTap: _handleRestoreFromCloud,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
+
+        const SizedBox(height: 24),
+
+        // ── BRUSHING ─────────────────────────────────────────
+        _SectionHeader(
+          icon: Icons.cleaning_services,
+          customIcon: const ImageIcon(
+            AssetImage('assets/images/icon_toothbrush.png'),
+            size: 20,
+          ),
+          label: 'BRUSHING',
+          color: const Color(0xFF00E5FF),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.timer,
+          title: 'Timer per zone',
+          child: Row(
+            children: [
+              for (final sec in [10, 15, 20])
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _DurationChip(
+                    seconds: sec,
+                    selected: _phaseDuration == sec,
+                    onTap: () => _setPhaseDuration(sec),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.sensors,
+          title: 'Brushing detection',
+          child: Switch(
+            value: _cameraEnabled,
+            onChanged: _toggleCamera,
+            activeThumbColor: const Color(0xFF00E5FF),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: AudioService().isMuted ? Icons.volume_off : Icons.volume_up,
+          title: 'Sound',
+          child: Switch(
+            value: !AudioService().isMuted,
+            onChanged: (_) async {
+              await AudioService().toggleMute();
+              setState(() {});
+            },
+            activeThumbColor: const Color(0xFF00E5FF),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.record_voice_over,
+          title: 'Narrator voice',
+          subtitle: AudioService.voiceStyles[_voiceStyle] ?? '',
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SegmentedButton<String>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment<String>(
+                  value: 'classic',
+                  label: Text('Classic'),
+                ),
+                ButtonSegment<String>(
+                  value: 'buddy',
+                  label: Text('Buddy'),
+                ),
+                ButtonSegment<String>(
+                  value: 'boy',
+                  label: Text('Boy'),
+                ),
+              ],
+              selected: {_voiceStyle},
+              onSelectionChanged: (selected) async {
+                final style = selected.first;
+                await AudioService().setVoiceStyle(style);
+                setState(() => _voiceStyle = style);
+                await Future.delayed(const Duration(milliseconds: 200));
+                AudioService().playVoice('voice_greet_just_started_1.mp3',
+                    interrupt: true, clearQueue: true);
+              },
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                  (states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return const Color(0xFF00E5FF).withValues(alpha: 0.3);
+                    }
+                    return Colors.white.withValues(alpha: 0.06);
+                  },
+                ),
+                foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                  (states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return const Color(0xFF00E5FF);
+                    }
+                    return Colors.white54;
+                  },
+                ),
+                side: WidgetStateProperty.all(
+                  BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                ),
+                textStyle: WidgetStateProperty.all(
+                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // ── OTHER ────────────────────────────────────────────
+        _SectionHeader(
+          icon: Icons.settings,
+          label: 'OTHER',
+          color: const Color(0xFF7C4DFF),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.replay,
+          title: 'Show tutorial again',
+          child: IconButton(
+            icon: const Icon(
+              Icons.replay,
+              color: Color(0xFF00E5FF),
+              size: 24,
+            ),
+            onPressed: _resetOnboarding,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.delete_forever,
+          title: "Delete child's data",
+          child: IconButton(
+            icon: const Icon(
+              Icons.delete_outline,
+              color: Colors.redAccent,
+              size: 24,
+            ),
+            onPressed: _resetProgress,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.privacy_tip_outlined,
+          title: 'Privacy policy',
+          child: IconButton(
+            icon: const Icon(
+              Icons.open_in_new,
+              color: Color(0xFF7C4DFF),
+              size: 24,
+            ),
+            onPressed: _openPrivacyPolicy,
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // ── Guide Tab (Tab 3) ──────────────────────────────────
+  Widget _buildGuideTab() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.menu_book,
+              color: Color(0xFF7C4DFF),
+              size: 64,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Parent Guide',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Learn how Brush Quest helps build your child\'s brushing habit.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 32),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ParentGuideScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.5),
+                    width: 2,
+                  ),
+                ),
+                child: const Text(
+                  'HOW BRUSH QUEST WORKS',
+                  style: TextStyle(
+                    color: Color(0xFF7C4DFF),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1102,476 +1567,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               if (!_parentUnlocked)
                 Expanded(child: _buildParentGate())
-              else
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
-                  children: [
-                    // ── A. TODAY STATUS ──────────────────────────────
-                    _SectionHeader(
-                      icon: Icons.today,
-                      label: 'TODAY',
-                      color: const Color(0xFF00E5FF),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildTodayStatus(),
-
-                    const SizedBox(height: 24),
-
-                    // ── B. THIS WEEK ────────────────────────────────
-                    _SectionHeader(
-                      icon: Icons.calendar_view_week,
-                      label: 'THIS WEEK',
-                      color: const Color(0xFFFFD54F),
-                    ),
-                    const SizedBox(height: 8),
-                    if (_historyLoaded)
-                      _WeekActivityCard(history: _brushHistory),
-
-                    const SizedBox(height: 24),
-
-                    // ── C. HABIT STRENGTH ────────────────────────────
-                    _SectionHeader(
-                      icon: Icons.fitness_center,
-                      label: 'HABIT STRENGTH',
-                      color: const Color(0xFF00E676),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildHabitStrength(),
-
-                    const SizedBox(height: 24),
-
-                    // ── D. PARENT TOOLS ──────────────────────────────
-                    _SectionHeader(
-                      icon: Icons.build_outlined,
-                      label: 'PARENT TOOLS',
-                      color: const Color(0xFF7C4DFF),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildParentTools(),
-
-                    const SizedBox(height: 24),
-
-                    // ── E. SETTINGS (collapsed) ──────────────────────
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                      ),
-                      child: Theme(
-                        data: Theme.of(context).copyWith(
-                          dividerColor: Colors.transparent,
-                          splashColor: Colors.transparent,
-                        ),
-                        child: ExpansionTile(
-                          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-                          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          title: Row(
-                            children: [
-                              const Icon(Icons.settings, color: Colors.white70, size: 20),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Settings',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          ),
-                          iconColor: Colors.white54,
-                          collapsedIconColor: Colors.white54,
-                          initiallyExpanded: false,
-                          children: [
-                            // BRUSHING settings
-                            _SectionHeader(
-                              icon: Icons.cleaning_services,
-                              customIcon: const ImageIcon(
-                                AssetImage('assets/images/icon_toothbrush.png'),
-                                size: 20,
-                              ),
-                              label: 'BRUSHING',
-                              color: const Color(0xFF00E5FF),
-                            ),
-                            const SizedBox(height: 8),
-                            _SettingCard(
-                              icon: Icons.timer,
-                              title: 'Timer per zone',
-                              child: Row(
-                                children: [
-                                  for (final sec in [10, 15, 20])
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: _DurationChip(
-                                        seconds: sec,
-                                        selected: _phaseDuration == sec,
-                                        onTap: () => _setPhaseDuration(sec),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _SettingCard(
-                              icon: Icons.sensors,
-                              title: 'Brushing detection',
-                              child: Switch(
-                                value: _cameraEnabled,
-                                onChanged: _toggleCamera,
-                                activeThumbColor: const Color(0xFF00E5FF),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _SettingCard(
-                              icon: AudioService().isMuted
-                                  ? Icons.volume_off
-                                  : Icons.volume_up,
-                              title: 'Sound',
-                              child: Switch(
-                                value: !AudioService().isMuted,
-                                onChanged: (_) async {
-                                  await AudioService().toggleMute();
-                                  setState(() {});
-                                },
-                                activeThumbColor: const Color(0xFF00E5FF),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _SettingCard(
-                              icon: Icons.record_voice_over,
-                              title: 'Narrator voice',
-                              subtitle: AudioService.voiceStyles[_voiceStyle] ?? '',
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: SegmentedButton<String>(
-                                  showSelectedIcon: false,
-                                  segments: const [
-                                  ButtonSegment<String>(
-                                    value: 'classic',
-                                    label: Text('Classic'),
-                                  ),
-                                  ButtonSegment<String>(
-                                    value: 'buddy',
-                                    label: Text('Buddy'),
-                                  ),
-                                  ButtonSegment<String>(
-                                    value: 'boy',
-                                    label: Text('Boy'),
-                                  ),
-                                ],
-                                selected: {_voiceStyle},
-                                onSelectionChanged: (selected) async {
-                                  final style = selected.first;
-                                  await AudioService().setVoiceStyle(style);
-                                  setState(() => _voiceStyle = style);
-                                  await Future.delayed(const Duration(milliseconds: 200));
-                                  AudioService().playVoice('voice_greet_just_started_1.mp3',
-                                      interrupt: true, clearQueue: true);
-                                },
-                                style: ButtonStyle(
-                                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                                    (states) {
-                                      if (states.contains(WidgetState.selected)) {
-                                        return const Color(0xFF00E5FF).withValues(alpha: 0.3);
-                                      }
-                                      return Colors.white.withValues(alpha: 0.06);
-                                    },
-                                  ),
-                                  foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                                    (states) {
-                                      if (states.contains(WidgetState.selected)) {
-                                        return const Color(0xFF00E5FF);
-                                      }
-                                      return Colors.white54;
-                                    },
-                                  ),
-                                  side: WidgetStateProperty.all(
-                                    BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                                  ),
-                                  textStyle: WidgetStateProperty.all(
-                                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                              ),
-                            ),
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // ACCOUNT settings
-                            _SectionHeader(
-                              icon: Icons.person,
-                              label: 'ACCOUNT',
-                              color: const Color(0xFF00E676),
-                            ),
-                            const SizedBox(height: 8),
-                            if (!signedIn) ...[
-                              GestureDetector(
-                                onTap: _signingIn ? null : _handleSignIn,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFF1A237E), Color(0xFF283593)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.15),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      if (_signingIn)
-                                        const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      else ...[
-                                        const Icon(
-                                          Icons.login,
-                                          color: Colors.white,
-                                          size: 22,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        const Text(
-                                          'Sign in with Google',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Save your progress to the cloud',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.4),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ] else ...[
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.06),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: const Color(
-                                      0xFF00E676,
-                                    ).withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const CircleAvatar(
-                                          radius: 20,
-                                          backgroundColor: Color(0xFF7C4DFF),
-                                          child: Icon(Icons.person, color: Colors.white, size: 20),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                user.displayName ?? 'Space Ranger',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 15,
-                                                ),
-                                              ),
-                                              if (user.email != null)
-                                                Text(
-                                                  user.email!,
-                                                  style: TextStyle(
-                                                    color: Colors.white.withValues(
-                                                      alpha: 0.5,
-                                                    ),
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: _handleSignOut,
-                                          child: const Text(
-                                            'Sign out',
-                                            style: TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _ActionButton(
-                                            icon: Icons.cloud_upload,
-                                            label: 'SAVE',
-                                            color: const Color(0xFF00E5FF),
-                                            loading: _syncing,
-                                            onTap: _handleSyncNow,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: _ActionButton(
-                                            icon: Icons.cloud_download,
-                                            label: 'RESTORE',
-                                            color: const Color(0xFF7C4DFF),
-                                            loading: _syncing,
-                                            onTap: _handleRestoreFromCloud,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-
-                            const SizedBox(height: 24),
-
-                            // DATA MANAGEMENT settings
-                            _SectionHeader(
-                              icon: Icons.settings,
-                              label: 'OTHER',
-                              color: const Color(0xFF7C4DFF),
-                            ),
-                            const SizedBox(height: 8),
-                            _SettingCard(
-                              icon: Icons.replay,
-                              title: 'Show tutorial again',
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.replay,
-                                  color: Color(0xFF00E5FF),
-                                  size: 24,
-                                ),
-                                onPressed: _resetOnboarding,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _SettingCard(
-                              icon: Icons.delete_forever,
-                              title: "Delete child's data",
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline,
-                                  color: Colors.redAccent,
-                                  size: 24,
-                                ),
-                                onPressed: _resetProgress,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _SettingCard(
-                              icon: Icons.privacy_tip_outlined,
-                              title: 'Privacy policy',
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.open_in_new,
-                                  color: Color(0xFF7C4DFF),
-                                  size: 24,
-                                ),
-                                onPressed: _openPrivacyPolicy,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // ── F. BRUSH HISTORY ──────────────────────────────
-                    if (_historyLoaded && _brushHistory.isNotEmpty) ...[
-                      _SectionHeader(
-                        icon: Icons.history,
-                        label: 'BRUSH HISTORY',
-                        color: Colors.white54,
-                      ),
-                      const SizedBox(height: 8),
-                      if (_historyLoaded)
-                        _ConsistencyAndPatternCard(
-                          history: _brushHistory,
-                        ),
-                      const SizedBox(height: 8),
-                      _SettingCard(
-                        icon: Icons.cleaning_services,
-                        customIcon: const ImageIcon(
-                          AssetImage('assets/images/icon_toothbrush.png'),
-                          size: 22,
-                        ),
-                        title: 'Total brushes',
-                        child: Text(
-                          '$_totalBrushes',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _SettingCard(
-                        icon: Icons.schedule,
-                        title: 'Minutes brushed',
-                        child: Text(
-                          '${(_totalBrushes * _phaseDuration * 6 / 60).round()}',
-                          style: const TextStyle(
-                            color: Color(0xFF00E5FF),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 32),
-
-                    Center(
-                      child: Text(
-                        'Brush Quest v7',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          fontSize: 12,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+              else ...[
+                // ── Tab Bar ──────────────────────────────────────
+                TabBar(
+                  controller: _tabController,
+                  indicatorColor: const Color(0xFF00E5FF),
+                  indicatorWeight: 3,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withValues(alpha: 0.5),
+                  tabs: const [
+                    Tab(icon: Icon(Icons.dashboard), text: 'Dashboard'),
+                    Tab(icon: Icon(Icons.settings), text: 'Settings'),
+                    Tab(icon: Icon(Icons.menu_book), text: 'Guide'),
                   ],
                 ),
-              ),
+                // ── Tab Views ────────────────────────────────────
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // ═══ TAB 1: DASHBOARD ═══
+                      _buildDashboardTab(),
+                      // ═══ TAB 2: SETTINGS ═══
+                      _buildSettingsTab(signedIn, user),
+                      // ═══ TAB 3: GUIDE ═══
+                      _buildGuideTab(),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
