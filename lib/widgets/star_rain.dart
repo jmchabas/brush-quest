@@ -8,6 +8,7 @@ class _StarWave {
   final Color color;
   final Color glowColor;
   final IconData sourceIcon;
+  final String? sourceImagePath;
   final String? label;
   final bool hasTrail;
 
@@ -16,6 +17,7 @@ class _StarWave {
     required this.color,
     required this.glowColor,
     required this.sourceIcon,
+    this.sourceImagePath,
     this.label,
     this.hasTrail = false,
   });
@@ -104,6 +106,7 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
       color: const Color(0xFFFFD54F), // gold
       glowColor: const Color(0xFFFFF176),
       sourceIcon: Icons.cleaning_services,
+      sourceImagePath: 'assets/images/icon_toothbrush.png',
     ));
 
     // Wave 2: streak bonus.
@@ -286,7 +289,13 @@ class _WaveIndicator extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(wave.sourceIcon, color: wave.color, size: 26),
+            child: wave.sourceImagePath != null
+                ? ImageIcon(
+                    AssetImage(wave.sourceImagePath!),
+                    color: wave.color,
+                    size: 26,
+                  )
+                : Icon(wave.sourceIcon, color: wave.color, size: 26),
           ),
           const SizedBox(height: 6),
           // Star icons.

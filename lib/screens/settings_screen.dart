@@ -1191,6 +1191,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             // BRUSHING settings
                             _SectionHeader(
                               icon: Icons.cleaning_services,
+                              customIcon: const ImageIcon(
+                                AssetImage('assets/images/icon_toothbrush.png'),
+                                size: 20,
+                              ),
                               label: 'BRUSHING',
                               color: const Color(0xFF00E5FF),
                             ),
@@ -1523,6 +1527,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 8),
                       _SettingCard(
                         icon: Icons.cleaning_services,
+                        customIcon: const ImageIcon(
+                          AssetImage('assets/images/icon_toothbrush.png'),
+                          size: 22,
+                        ),
                         title: 'Total brushes',
                         child: Text(
                           '$_totalBrushes',
@@ -1574,11 +1582,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
+  final Widget? customIcon;
   final String label;
   final Color color;
 
   const _SectionHeader({
     required this.icon,
+    this.customIcon,
     required this.label,
     required this.color,
   });
@@ -1587,7 +1597,9 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: color, size: 20),
+        customIcon != null
+            ? IconTheme(data: IconThemeData(color: color, size: 20), child: customIcon!)
+            : Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
         Text(
           label,
@@ -1609,12 +1621,14 @@ class _SectionHeader extends StatelessWidget {
 
 class _SettingCard extends StatelessWidget {
   final IconData icon;
+  final Widget? customIcon;
   final String title;
   final String? subtitle;
   final Widget child;
 
   const _SettingCard({
     required this.icon,
+    this.customIcon,
     required this.title,
     this.subtitle,
     required this.child,
@@ -1631,7 +1645,9 @@ class _SettingCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white54, size: 22),
+          customIcon != null
+              ? IconTheme(data: const IconThemeData(color: Colors.white54, size: 22), child: customIcon!)
+              : Icon(icon, color: Colors.white54, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

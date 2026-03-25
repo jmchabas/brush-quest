@@ -8,7 +8,8 @@ void main() {
       home: Scaffold(body: StarRain(baseStars: 2)),
     ));
     await tester.pump();
-    expect(find.byIcon(Icons.cleaning_services), findsOneWidget);
+    // Wave 1 now uses ImageIcon (toothbrush asset) instead of cleaning_services.
+    expect(find.byType(ImageIcon), findsOneWidget);
     expect(find.byIcon(Icons.local_fire_department), findsNothing);
   });
 
