@@ -32,6 +32,7 @@ void main() {
       'today_brush_count': 1,
       'today_date': today,
       'muted': false,
+      'last_daily_bonus_date': today,
     });
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
