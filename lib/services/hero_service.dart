@@ -24,35 +24,33 @@ class HeroCharacter {
   });
 }
 
-class HeroSkin {
-  final String id;
-  final String heroId;
-  final String name;
-  final String description;
-  final int price;
+class HeroEvolution {
+  final String id;          // e.g., 'blaze_stage2'
+  final String heroId;      // 'blaze'
+  final int stage;          // 1, 2, or 3
+  final String name;        // 'FLAME KNIGHT'
+  final String description; // flavor text
+  final int price;          // 0 (base comes free), 25, 45
   final Color primaryColor;
   final Color attackColor;
-  final Color tintColor;
-  final double tintStrength;
 
-  const HeroSkin({
+  const HeroEvolution({
     required this.id,
     required this.heroId,
+    required this.stage,
     required this.name,
     required this.description,
     required this.price,
     required this.primaryColor,
     required this.attackColor,
-    required this.tintColor,
-    required this.tintStrength,
   });
 }
 
 class HeroService {
   static const _unlockedKey = 'unlocked_heroes';
   static const _selectedKey = 'selected_hero';
-  static const _unlockedSkinsKey = 'unlocked_skins';
-  static const _equippedSkinPrefix = 'equipped_skin_';
+  static const _unlockedEvolutionsKey = 'unlocked_evolutions';
+  static const _evolutionStagePrefix = 'evolution_stage_';
   static bool _purchasing = false;
 
   // Star prices — deducted from wallet on purchase.
@@ -195,189 +193,197 @@ class HeroService {
   }
 
   // ---------------------------------------------------------------------------
-  // Hero Skins
+  // Hero Evolutions (replaces old tint-based skins)
   // ---------------------------------------------------------------------------
 
-  static const List<HeroSkin> allSkins = [
-    // Blaze skins (base: orange)
-    HeroSkin(id: 'blaze_ice', heroId: 'blaze', name: 'Ice Blaze',
-      description: 'Freezes monsters in their tracks!',
+  static const List<HeroEvolution> allEvolutions = [
+    // Blaze evolutions (base: orange)
+    HeroEvolution(id: 'blaze_stage1', heroId: 'blaze', stage: 1,
+      name: 'BLAZE',
+      description: 'A fierce little dragon who burns cavity monsters!',
+      price: 0,
+      primaryColor: Color(0xFFFF6D00), attackColor: Color(0xFFFF9100)),
+    HeroEvolution(id: 'blaze_stage2', heroId: 'blaze', stage: 2,
+      name: 'FLAME KNIGHT',
+      description: 'Upgraded fire armor with glowing flame patterns!',
       price: 25,
-      primaryColor: Color(0xFF40C4FF), attackColor: Color(0xFF80D8FF),
-      tintColor: Color(0xFF40C4FF), tintStrength: 0.45),
-    HeroSkin(id: 'blaze_gold', heroId: 'blaze', name: 'Golden Blaze',
-      description: 'Legendary golden armor — monsters flee in fear!',
-      price: 35,
-      primaryColor: Color(0xFFFFD700), attackColor: Color(0xFFFFE082),
-      tintColor: Color(0xFFFFD700), tintStrength: 0.4),
-    HeroSkin(id: 'blaze_shadow', heroId: 'blaze', name: 'Dark Blaze',
-      description: 'Shadow stealth mode — sneak attack bonus!',
+      primaryColor: Color(0xFFFF6D00), attackColor: Color(0xFFFF9100)),
+    HeroEvolution(id: 'blaze_stage3', heroId: 'blaze', stage: 3,
+      name: 'INFERNO LORD',
+      description: 'Legendary fire armor — monsters flee in terror!',
       price: 45,
-      primaryColor: Color(0xFF7C4DFF), attackColor: Color(0xFFB388FF),
-      tintColor: Color(0xFF4A148C), tintStrength: 0.5),
+      primaryColor: Color(0xFFFF6D00), attackColor: Color(0xFFFF9100)),
 
-    // Frost skins (base: blue)
-    HeroSkin(id: 'frost_fire', heroId: 'frost', name: 'Fire Frost',
-      description: 'Blazing hot and ice cold at the same time!',
+    // Frost evolutions (base: blue)
+    HeroEvolution(id: 'frost_stage1', heroId: 'frost', stage: 1,
+      name: 'FROST',
+      description: 'A brave wolf knight who freezes monsters solid with icy howls!',
+      price: 0,
+      primaryColor: Color(0xFF40C4FF), attackColor: Color(0xFF80D8FF)),
+    HeroEvolution(id: 'frost_stage2', heroId: 'frost', stage: 2,
+      name: 'CRYSTAL KNIGHT',
+      description: 'Crystalline armor with frost breath power!',
       price: 25,
-      primaryColor: Color(0xFFFF6D00), attackColor: Color(0xFFFF9100),
-      tintColor: Color(0xFFFF6D00), tintStrength: 0.45),
-    HeroSkin(id: 'frost_crystal', heroId: 'frost', name: 'Crystal Frost',
-      description: 'Crystal armor reflects monster attacks right back!',
-      price: 35,
-      primaryColor: Color(0xFF00E5FF), attackColor: Color(0xFFE0F7FA),
-      tintColor: Color(0xFF00BCD4), tintStrength: 0.35),
-    HeroSkin(id: 'frost_emerald', heroId: 'frost', name: 'Emerald Frost',
-      description: 'Ancient emerald power — nature and ice combined!',
+      primaryColor: Color(0xFF40C4FF), attackColor: Color(0xFF80D8FF)),
+    HeroEvolution(id: 'frost_stage3', heroId: 'frost', stage: 3,
+      name: 'BLIZZARD LORD',
+      description: 'Ultimate ice armor — freezes everything!',
       price: 45,
-      primaryColor: Color(0xFF00E676), attackColor: Color(0xFF69F0AE),
-      tintColor: Color(0xFF2E7D32), tintStrength: 0.45),
+      primaryColor: Color(0xFF40C4FF), attackColor: Color(0xFF80D8FF)),
 
-    // Bolt skins (base: yellow)
-    HeroSkin(id: 'bolt_plasma', heroId: 'bolt', name: 'Plasma Bolt',
-      description: 'Supercharged plasma — double the zap power!',
+    // Bolt evolutions (base: yellow)
+    HeroEvolution(id: 'bolt_stage1', heroId: 'bolt', stage: 1,
+      name: 'BOLT',
+      description: 'A super-charged robot who zaps monsters with electric bolts!',
+      price: 0,
+      primaryColor: Color(0xFFFFD600), attackColor: Color(0xFFFFFF00)),
+    HeroEvolution(id: 'bolt_stage2', heroId: 'bolt', stage: 2,
+      name: 'THUNDER KNIGHT',
+      description: 'Electric coils and crackling lightning power!',
       price: 25,
-      primaryColor: Color(0xFFFF4081), attackColor: Color(0xFFFF80AB),
-      tintColor: Color(0xFFE91E63), tintStrength: 0.45),
-    HeroSkin(id: 'bolt_copper', heroId: 'bolt', name: 'Copper Bolt',
-      description: 'Ancient copper circuits never miss a shot!',
-      price: 35,
-      primaryColor: Color(0xFFBF8040), attackColor: Color(0xFFD4A574),
-      tintColor: Color(0xFF8D6E63), tintStrength: 0.45),
-    HeroSkin(id: 'bolt_neon', heroId: 'bolt', name: 'Neon Bolt',
-      description: 'Glowing neon blasts blind monsters on impact!',
+      primaryColor: Color(0xFFFFD600), attackColor: Color(0xFFFFFF00)),
+    HeroEvolution(id: 'bolt_stage3', heroId: 'bolt', stage: 3,
+      name: 'STORM LORD',
+      description: 'Tesla-powered armor — lightning strikes all!',
       price: 45,
-      primaryColor: Color(0xFF76FF03), attackColor: Color(0xFFB2FF59),
-      tintColor: Color(0xFF64DD17), tintStrength: 0.45),
+      primaryColor: Color(0xFFFFD600), attackColor: Color(0xFFFFFF00)),
 
-    // Shadow skins (base: purple)
-    HeroSkin(id: 'shadow_crimson', heroId: 'shadow', name: 'Crimson Shadow',
-      description: 'Crimson fury — strikes twice as fast!',
+    // Shadow evolutions (base: purple)
+    HeroEvolution(id: 'shadow_stage1', heroId: 'shadow', stage: 1,
+      name: 'SHADOW',
+      description: 'A sneaky ninja cat who strikes from the shadows with dark energy!',
+      price: 0,
+      primaryColor: Color(0xFFAA00FF), attackColor: Color(0xFFD500F9)),
+    HeroEvolution(id: 'shadow_stage2', heroId: 'shadow', stage: 2,
+      name: 'PHANTOM KNIGHT',
+      description: 'Sleek dark armor with shadow energy!',
       price: 30,
-      primaryColor: Color(0xFFFF1744), attackColor: Color(0xFFFF5252),
-      tintColor: Color(0xFFD50000), tintStrength: 0.45),
-    HeroSkin(id: 'shadow_phantom', heroId: 'shadow', name: 'Phantom Shadow',
-      description: 'Ghost form — monsters can\'t even see the attacks coming!',
-      price: 40,
-      primaryColor: Color(0xFFBDBDBD), attackColor: Color(0xFFE0E0E0),
-      tintColor: Color(0xFF9E9E9E), tintStrength: 0.4),
-    HeroSkin(id: 'shadow_void', heroId: 'shadow', name: 'Void Shadow',
-      description: 'Void energy — the most powerful darkness in the galaxy!',
+      primaryColor: Color(0xFFAA00FF), attackColor: Color(0xFFD500F9)),
+    HeroEvolution(id: 'shadow_stage3', heroId: 'shadow', stage: 3,
+      name: 'VOID LORD',
+      description: 'Legendary void armor — invisible and deadly!',
       price: 50,
-      primaryColor: Color(0xFF1A237E), attackColor: Color(0xFF3949AB),
-      tintColor: Color(0xFF0D1B3E), tintStrength: 0.5),
+      primaryColor: Color(0xFFAA00FF), attackColor: Color(0xFFD500F9)),
 
-    // Leaf skins (base: green)
-    HeroSkin(id: 'leaf_autumn', heroId: 'leaf', name: 'Autumn Leaf',
-      description: 'Autumn storm — rains leaves on every monster!',
+    // Leaf evolutions (base: green)
+    HeroEvolution(id: 'leaf_stage1', heroId: 'leaf', stage: 1,
+      name: 'LEAF',
+      description: 'A mighty tree guardian who smashes monsters with vine whip attacks!',
+      price: 0,
+      primaryColor: Color(0xFF00E676), attackColor: Color(0xFF69F0AE)),
+    HeroEvolution(id: 'leaf_stage2', heroId: 'leaf', stage: 2,
+      name: 'FOREST KNIGHT',
+      description: 'Living vine armor with nature magic!',
       price: 30,
-      primaryColor: Color(0xFFFF8F00), attackColor: Color(0xFFFFB74D),
-      tintColor: Color(0xFFE65100), tintStrength: 0.45),
-    HeroSkin(id: 'leaf_blossom', heroId: 'leaf', name: 'Blossom Leaf',
-      description: 'Cherry blossom power — beautiful and unstoppable!',
-      price: 40,
-      primaryColor: Color(0xFFFF80AB), attackColor: Color(0xFFF48FB1),
-      tintColor: Color(0xFFEC407A), tintStrength: 0.4),
-    HeroSkin(id: 'leaf_frost', heroId: 'leaf', name: 'Frosted Leaf',
-      description: 'Winter guardian — freezing vines trap every enemy!',
+      primaryColor: Color(0xFF00E676), attackColor: Color(0xFF69F0AE)),
+    HeroEvolution(id: 'leaf_stage3', heroId: 'leaf', stage: 3,
+      name: 'ANCIENT GUARDIAN',
+      description: 'Legendary tree armor — unstoppable!',
       price: 50,
-      primaryColor: Color(0xFF81D4FA), attackColor: Color(0xFFB3E5FC),
-      tintColor: Color(0xFF4FC3F7), tintStrength: 0.45),
+      primaryColor: Color(0xFF00E676), attackColor: Color(0xFF69F0AE)),
 
-    // Nova skins (base: gold)
-    HeroSkin(id: 'nova_nebula', heroId: 'nova', name: 'Nebula Nova',
-      description: 'Born from a nebula — cosmic energy at maximum!',
+    // Nova evolutions (base: gold)
+    HeroEvolution(id: 'nova_stage1', heroId: 'nova', stage: 1,
+      name: 'NOVA',
+      description: 'The legendary phoenix who unleashes cosmic star bursts of pure light!',
+      price: 0,
+      primaryColor: Color(0xFFFFD54F), attackColor: Color(0xFFFFE082)),
+    HeroEvolution(id: 'nova_stage2', heroId: 'nova', stage: 2,
+      name: 'STAR KNIGHT',
+      description: 'Golden armor with cosmic star energy!',
       price: 30,
-      primaryColor: Color(0xFF7B1FA2), attackColor: Color(0xFFCE93D8),
-      tintColor: Color(0xFF6A1B9A), tintStrength: 0.45),
-    HeroSkin(id: 'nova_solar', heroId: 'nova', name: 'Solar Nova',
-      description: 'Powered by a star — unleashes solar flares on monsters!',
-      price: 40,
-      primaryColor: Color(0xFFFF3D00), attackColor: Color(0xFFFF6E40),
-      tintColor: Color(0xFFDD2C00), tintStrength: 0.4),
-    HeroSkin(id: 'nova_prism', heroId: 'nova', name: 'Prism Nova',
-      description: 'Rainbow prism — splits light into unstoppable laser beams!',
+      primaryColor: Color(0xFFFFD54F), attackColor: Color(0xFFFFE082)),
+    HeroEvolution(id: 'nova_stage3', heroId: 'nova', stage: 3,
+      name: 'CELESTIAL LORD',
+      description: 'Legendary cosmic armor — pure starlight!',
       price: 50,
-      primaryColor: Color(0xFF00BFA5), attackColor: Color(0xFF64FFDA),
-      tintColor: Color(0xFF00897B), tintStrength: 0.4),
+      primaryColor: Color(0xFFFFD54F), attackColor: Color(0xFFFFE082)),
   ];
 
-  static List<HeroSkin> skinsForHero(String heroId) {
-    return allSkins.where((s) => s.heroId == heroId).toList();
+  static List<HeroEvolution> evolutionsForHero(String heroId) {
+    return allEvolutions.where((e) => e.heroId == heroId).toList();
   }
 
-  static HeroSkin? getSkinById(String? id) {
+  static HeroEvolution? getEvolutionById(String? id) {
     if (id == null) return null;
     try {
-      return allSkins.firstWhere((s) => s.id == id);
+      return allEvolutions.firstWhere((e) => e.id == id);
     } catch (_) {
       return null;
     }
   }
 
-  Future<List<String>> getUnlockedSkinIds() async {
+  static HeroEvolution getEvolutionForHero(String heroId, int stage) {
+    return allEvolutions.firstWhere(
+      (e) => e.heroId == heroId && e.stage == stage,
+      orElse: () => allEvolutions.firstWhere((e) => e.heroId == heroId && e.stage == 1),
+    );
+  }
+
+  Future<List<String>> getUnlockedEvolutionIds() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_unlockedSkinsKey) ?? [];
+    return prefs.getStringList(_unlockedEvolutionsKey) ?? [];
   }
 
-  Future<bool> isSkinUnlocked(String skinId) async {
-    final unlocked = await getUnlockedSkinIds();
-    return unlocked.contains(skinId);
+  Future<bool> isEvolutionUnlocked(String evolutionId) async {
+    final unlocked = await getUnlockedEvolutionIds();
+    return unlocked.contains(evolutionId);
   }
 
-  Future<bool> purchaseSkin(String skinId) async {
+  Future<bool> purchaseEvolution(String evolutionId) async {
     if (_purchasing) return false;
     _purchasing = true;
     try {
-      final skin = getSkinById(skinId);
-      if (skin == null) return false;
+      final evo = getEvolutionById(evolutionId);
+      if (evo == null) return false;
+
+      // Stage 1 is always free — no purchase needed
+      if (evo.price == 0) return true;
 
       final prefs = await SharedPreferences.getInstance();
-      final unlocked = prefs.getStringList(_unlockedSkinsKey) ?? [];
-      if (unlocked.contains(skinId)) return true;
+      final unlocked = prefs.getStringList(_unlockedEvolutionsKey) ?? [];
+      if (unlocked.contains(evolutionId)) return true;
 
-      final success = await StreakService().spendStars(skin.price);
+      final success = await StreakService().spendStars(evo.price);
       if (!success) return false;
 
-      unlocked.add(skinId);
-      await prefs.setStringList(_unlockedSkinsKey, unlocked);
+      unlocked.add(evolutionId);
+      await prefs.setStringList(_unlockedEvolutionsKey, unlocked);
       return true;
     } finally {
       _purchasing = false;
     }
   }
 
-  Future<String?> getEquippedSkinId(String heroId) async {
+  Future<int> getEvolutionStage(String heroId) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('$_equippedSkinPrefix$heroId');
+    return prefs.getInt('$_evolutionStagePrefix$heroId') ?? 1;
   }
 
-  Future<void> equipSkin(String heroId, String? skinId) async {
+  Future<void> setEvolutionStage(String heroId, int stage) async {
     final prefs = await SharedPreferences.getInstance();
-    if (skinId == null) {
-      await prefs.remove('$_equippedSkinPrefix$heroId');
-    } else {
-      await prefs.setString('$_equippedSkinPrefix$heroId', skinId);
-    }
+    await prefs.setInt('$_evolutionStagePrefix$heroId', stage);
   }
 
-  /// Build a hero image widget with optional skin tint overlay.
-  static Widget buildHeroImage(String heroId, {String? skinId, double size = 120}) {
-    final hero = getHeroById(heroId);
-    final skin = getSkinById(skinId);
-
-    Widget image = Image.asset(hero.imagePath, width: size, height: size, fit: BoxFit.contain);
-
-    if (skin != null) {
-      image = ColorFiltered(
-        colorFilter: ColorFilter.mode(
-          skin.tintColor.withValues(alpha: skin.tintStrength),
-          BlendMode.color,
-        ),
-        child: image,
-      );
-    }
-
-    return image;
+  /// Build a hero image widget using the composite hero+weapon image.
+  /// Falls back to the base hero image if the composite doesn't exist.
+  static Widget buildHeroImage(String heroId, {int stage = 1, String? weaponId, double size = 120}) {
+    weaponId ??= 'star_blaster';
+    final path = 'assets/images/heroes/hero_${heroId}_stage${stage}_$weaponId.png';
+    return Image.asset(
+      path,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback to base hero image if composite doesn't exist
+        return Image.asset(
+          'assets/images/hero_$heroId.png',
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+        );
+      },
+    );
   }
 }

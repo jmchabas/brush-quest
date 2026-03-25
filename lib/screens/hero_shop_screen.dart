@@ -28,8 +28,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   String _selectedWeaponId = 'star_blaster';
   int _wallet = 0;
   int _rank = 0;
-  List<String> _unlockedSkins = [];
-  Map<String, String?> _equippedSkins = {};
+  List<String> _unlockedEvolutions = [];
+  Map<String, int> _evolutionStages = {};
 
   late TabController _tabController;
 
@@ -63,10 +63,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     final selectedWeapon = await _weaponService.getSelectedWeaponId();
     final wallet = await _streakService.getWallet();
     final rank = await _streakService.getRangerRank();
-    final unlockedSkins = await _heroService.getUnlockedSkinIds();
-    final equippedSkins = <String, String?>{};
+    final unlockedEvolutions = await _heroService.getUnlockedEvolutionIds();
+    final evolutionStages = <String, int>{};
     for (final hero in HeroService.allHeroes) {
-      equippedSkins[hero.id] = await _heroService.getEquippedSkinId(hero.id);
+      evolutionStages[hero.id] = await _heroService.getEvolutionStage(hero.id);
     }
     if (mounted) {
       setState(() {
@@ -76,20 +76,20 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         _selectedWeaponId = selectedWeapon;
         _wallet = wallet;
         _rank = rank;
-        _unlockedSkins = unlockedSkins;
-        _equippedSkins = equippedSkins;
+        _unlockedEvolutions = unlockedEvolutions;
+        _evolutionStages = evolutionStages;
       });
     }
   }
 
   Future<void> _onHeroTap(HeroCharacter hero) async {
     if (_unlockedHeroes.contains(hero.id)) {
-      // Select hero and open the skin bottom sheet
+      // Select hero and open the armor/evolution bottom sheet
       await _heroService.selectHero(hero.id);
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
       await _loadData();
-      if (mounted) _showSkinBottomSheet(hero);
+      if (mounted) _showArmorBottomSheet(hero);
     } else if (_wallet >= hero.price) {
       if (hero.price > 10) {
         final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);
@@ -246,9 +246,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     );
   }
 
-  void _showSkinBottomSheet(HeroCharacter hero) {
-    final skins = HeroService.skinsForHero(hero.id);
-    if (skins.isEmpty) return;
+  void _showArmorBottomSheet(HeroCharacter hero) {
+    final evolutions = HeroService.evolutionsForHero(hero.id);
+    if (evolutions.isEmpty) return;
 
     showModalBottomSheet(
       context: context,
@@ -257,7 +257,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
-            final equippedSkinId = _equippedSkins[hero.id];
+            final currentStage = _evolutionStages[hero.id] ?? 1;
+            final currentWeaponId = _selectedWeaponId;
 
             return Container(
               decoration: const BoxDecoration(
@@ -278,7 +279,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Hero image with current skin
+                  // Hero image with current evolution + weapon
                   Container(
                     width: 100,
                     height: 100,
@@ -299,14 +300,15 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                     child: ClipOval(
                       child: HeroService.buildHeroImage(
                         hero.id,
-                        skinId: equippedSkinId,
+                        stage: currentStage,
+                        weaponId: currentWeaponId,
                         size: 100,
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    hero.name,
+                    HeroService.getEvolutionForHero(hero.id, currentStage).name,
                     style: TextStyle(
                       color: hero.primaryColor,
                       fontSize: 22,
@@ -332,11 +334,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // "Styles" header
+                  // "Armor" header
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'STYLES',
+                      'ARMOR',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 13,
@@ -346,29 +348,20 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Default option
-                  _buildSkinOption(
-                    ctx: ctx,
-                    setSheetState: setSheetState,
-                    hero: hero,
-                    skin: null,
-                    isOwned: true,
-                    isEquipped: equippedSkinId == null,
-                  ),
-                  const SizedBox(height: 8),
-                  // Skin options
-                  ...skins.map((skin) {
-                    final isOwned = _unlockedSkins.contains(skin.id);
-                    final isEquipped = equippedSkinId == skin.id;
+                  // Evolution options
+                  ...evolutions.map((evo) {
+                    final isOwned = evo.stage == 1 || _unlockedEvolutions.contains(evo.id);
+                    final isEquipped = currentStage == evo.stage;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: _buildSkinOption(
+                      child: _buildEvolutionOption(
                         ctx: ctx,
                         setSheetState: setSheetState,
                         hero: hero,
-                        skin: skin,
+                        evolution: evo,
                         isOwned: isOwned,
                         isEquipped: isEquipped,
+                        currentWeaponId: currentWeaponId,
                       ),
                     );
                   }),
@@ -381,39 +374,38 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     );
   }
 
-  Widget _buildSkinOption({
+  Widget _buildEvolutionOption({
     required BuildContext ctx,
     required StateSetter setSheetState,
     required HeroCharacter hero,
-    required HeroSkin? skin,
+    required HeroEvolution evolution,
     required bool isOwned,
     required bool isEquipped,
+    required String currentWeaponId,
   }) {
-    final isDefault = skin == null;
-    final displayColor = isDefault ? hero.primaryColor : skin.tintColor;
-    final displayName = isDefault ? 'Default' : skin.name;
-    final canAfford = isDefault || isOwned || _wallet >= skin.price;
+    final displayColor = hero.primaryColor;
+    final canAfford = isOwned || _wallet >= evolution.price;
 
     return GestureDetector(
       onTap: () async {
         if (isEquipped) return;
-        if (isOwned || isDefault) {
-          // Equip
-          await _heroService.equipSkin(hero.id, skin?.id);
+        if (isOwned) {
+          // Equip this evolution stage
+          await _heroService.setEvolutionStage(hero.id, evolution.stage);
           HapticFeedback.mediumImpact();
           _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
           await _loadData();
           setSheetState(() {});
         } else if (canAfford) {
-          // Purchase — skin is non-null here (isDefault branch was handled above)
-          if (skin.price > 10) {
-            final confirmed = await _showPurchaseConfirmation(skin.name, skin.price);
+          // Purchase evolution
+          if (evolution.price > 10) {
+            final confirmed = await _showPurchaseConfirmation(evolution.name, evolution.price);
             if (!confirmed) return;
           }
-          final success = await _heroService.purchaseSkin(skin.id);
+          final success = await _heroService.purchaseEvolution(evolution.id);
           if (success) {
             // Auto-equip after purchase
-            await _heroService.equipSkin(hero.id, skin.id);
+            await _heroService.setEvolutionStage(hero.id, evolution.stage);
             HapticFeedback.heavyImpact();
             await _loadData();
             setSheetState(() {});
@@ -423,14 +415,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           HapticFeedback.lightImpact();
           AudioService().playVoice('voice_need_stars.mp3');
           _showCannotAffordSnackBar(
-            price: skin.price,
+            price: evolution.price,
             wallet: _wallet,
-            accentColor: skin.primaryColor,
+            accentColor: hero.primaryColor,
           );
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isEquipped
               ? displayColor.withValues(alpha: 0.15)
@@ -445,54 +437,56 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         ),
         child: Row(
           children: [
-            // Color circle preview
+            // Hero evolution preview thumbnail
             Container(
-              width: 36,
-              height: 36,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: displayColor,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: isEquipped
+                      ? displayColor.withValues(alpha: 0.6)
+                      : Colors.white.withValues(alpha: 0.2),
                   width: 2,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: displayColor.withValues(alpha: 0.4),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: HeroService.buildHeroImage(
+                  hero.id,
+                  stage: evolution.stage,
+                  weaponId: currentWeaponId,
+                  size: 48,
+                ),
               ),
             ),
-            const SizedBox(width: 14),
-            // Name + optional flavor text
+            const SizedBox(width: 12),
+            // Name + description
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    displayName,
+                    evolution.name,
                     style: TextStyle(
                       color: isEquipped ? Colors.white : Colors.white.withValues(alpha: 0.8),
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: isEquipped ? FontWeight.bold : FontWeight.w500,
                     ),
                   ),
-                  if (!isDefault)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        skin.description,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      evolution.description,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 11,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
                 ],
               ),
             ),
@@ -514,7 +508,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                   ),
                 ),
               )
-            else if (isOwned || isDefault)
+            else if (isOwned)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
@@ -522,7 +516,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  isDefault ? 'DEFAULT' : 'OWNED',
+                  'OWNED',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 11,
@@ -542,7 +536,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${skin.price}',
+                    '${evolution.price}',
                     style: TextStyle(
                       color: canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.4),
                       fontSize: 14,

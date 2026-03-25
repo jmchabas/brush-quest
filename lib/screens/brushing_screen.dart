@@ -237,6 +237,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   TrophyMonster? _currentTrophyTarget;
 
   HeroCharacter _hero = HeroService.allHeroes[0];
+  int _evolutionStage = 1;
   WorldData _world = WorldService.allWorlds[0];
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
@@ -810,12 +811,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     final hero = await _heroService.getSelectedHero();
     final world = await _worldService.getCurrentWorld();
     final weapon = await _weaponService.getSelectedWeapon();
+    final evolutionStage = await _heroService.getEvolutionStage(hero.id);
     final trophyTarget = await _trophyService.getNextUncaptured(world.id);
     final prefs = await SharedPreferences.getInstance();
     final duration = prefs.getInt('phase_duration') ?? 20;
     if (mounted) {
       setState(() {
         _hero = hero;
+        _evolutionStage = evolutionStage;
         _world = world;
         _dailyModifier = _worldService.getDailyModifier();
         _weapon = weapon;
@@ -1758,7 +1761,12 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(17),
-                      child: Image.asset(_hero.imagePath, fit: BoxFit.contain),
+                      child: HeroService.buildHeroImage(
+                        _hero.id,
+                        stage: _evolutionStage,
+                        weaponId: _weapon.id,
+                        size: 130,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -2946,11 +2954,11 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== HERO ====================
 
   Widget _buildHero(double size) {
-    final avatar = Image.asset(
-      _hero.imagePath,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
+    final avatar = HeroService.buildHeroImage(
+      _hero.id,
+      stage: _evolutionStage,
+      weaponId: _weapon.id,
+      size: size,
     );
 
     return AnimatedBuilder(

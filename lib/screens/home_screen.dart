@@ -43,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _streak = 0;
   int _totalBrushes = 0;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
+  int _evolutionStage = 1;
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
   WorldData? _currentWorld;
 
@@ -160,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final rank = await _streakService.getRangerRank();
     final hero = await _heroService.getSelectedHero();
     final weapon = await _weaponService.getSelectedWeapon();
+    final evolutionStage = await _heroService.getEvolutionStage(hero.id);
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
     final world = await _worldService.getCurrentWorld();
@@ -170,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _totalStars = rank;
         _wallet = wallet;
         _selectedHero = hero;
+        _evolutionStage = evolutionStage;
         _selectedWeapon = weapon;
         _streak = streak;
         _totalBrushes = totalBrushes;
@@ -870,9 +873,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               ],
                                             ),
                                             child: ClipOval(
-                                              child: Image.asset(
-                                                _selectedHero.imagePath,
-                                                fit: BoxFit.cover,
+                                              child: HeroService.buildHeroImage(
+                                                _selectedHero.id,
+                                                stage: _evolutionStage,
+                                                weaponId: _selectedWeapon.id,
+                                                size: 180,
                                               ),
                                             ),
                                           ),
