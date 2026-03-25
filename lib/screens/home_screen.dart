@@ -40,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
-  bool _bossReady = false;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
   WorldData? _currentWorld;
@@ -136,7 +135,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final weapon = await _weaponService.getSelectedWeapon();
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
-    final bossReady = (totalBrushes % 5) == 4;
     final world = await _worldService.getCurrentWorld();
     final slots = await _streakService.getTodaySlots();
 
@@ -148,7 +146,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedWeapon = weapon;
         _streak = streak;
         _totalBrushes = totalBrushes;
-        _bossReady = bossReady;
         _currentWorld = world;
         _morningDone = slots.morningDone;
         _eveningDone = slots.eveningDone;
@@ -473,7 +470,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       heroId: _selectedHero.id,
       weaponId: _selectedWeapon.id,
       worldId: '', // world selected in brushing screen
-      isBossSession: _bossReady,
     );
     Navigator.of(context)
         .push(
@@ -997,51 +993,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
-
-                  // Boss fight badge
-                  if (_bossReady) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: const Color(0xFFFF5252).withValues(alpha: 0.15),
-                        border: Border.all(
-                          color: const Color(0xFFFF5252).withValues(alpha: 0.5),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFF5252).withValues(alpha: 0.3),
-                            blurRadius: 10,
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.workspace_premium,
-                            color: Color(0xFFFF5252),
-                            size: 16,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'BOSS FIGHT READY!',
-                            style: TextStyle(
-                              color: Color(0xFFFF5252),
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
 
                   const Spacer(),
 

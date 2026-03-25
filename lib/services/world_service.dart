@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum DailyModifierType { none, frenzy, precision, treasureBoost, bossRush }
+enum DailyModifierType { none, frenzy, precision, treasureBoost }
 
 class DailyModifier {
   final DailyModifierType type;
@@ -11,7 +11,6 @@ class DailyModifier {
   final Color color;
   final double damageMultiplier;
   final int chestBonusStars;
-  final double bossChanceMultiplier;
 
   const DailyModifier({
     required this.type,
@@ -21,7 +20,6 @@ class DailyModifier {
     required this.color,
     this.damageMultiplier = 1.0,
     this.chestBonusStars = 0,
-    this.bossChanceMultiplier = 1.0,
   });
 }
 
@@ -242,7 +240,7 @@ class WorldService {
   DailyModifier getDailyModifier([DateTime? date]) {
     final now = date ?? DateTime.now();
     final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
-    final idx = dayOfYear % 5;
+    final idx = dayOfYear % 4;
     switch (idx) {
       case 0:
         return const DailyModifier(
@@ -270,15 +268,6 @@ class WorldService {
           icon: Icons.card_giftcard,
           color: Color(0xFF69F0AE),
           chestBonusStars: 1,
-        );
-      case 3:
-        return const DailyModifier(
-          type: DailyModifierType.bossRush,
-          title: 'BOSS RUSH',
-          description: 'Boss chance is higher today.',
-          icon: Icons.workspace_premium,
-          color: Color(0xFFFF6E40),
-          bossChanceMultiplier: 1.5,
         );
       default:
         return const DailyModifier(

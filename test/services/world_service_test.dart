@@ -20,20 +20,19 @@ void main() {
       for (int i = 0; i < 30; i++) {
         final m = service.getDailyModifier(DateTime(2026, 1, 1 + i));
         expect(m.damageMultiplier >= 1.0, true);
-        expect(m.bossChanceMultiplier >= 1.0, true);
         expect(m.chestBonusStars >= 0, true);
       }
     });
 
-    test('modifier cycles through all 5 types over 5 days', () {
+    test('modifier cycles through all 4 types over 4 days', () {
       final service = WorldService();
       final types = <DailyModifierType>{};
       // Jan 1 2026 is day 0 of year -> idx 0, Jan 2 -> idx 1, etc.
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 4; i++) {
         final m = service.getDailyModifier(DateTime(2026, 1, 1 + i));
         types.add(m.type);
       }
-      expect(types.length, 5);
+      expect(types.length, 4);
     });
 
     test('getDailyModifier defaults to now when no date is passed', () {

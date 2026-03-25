@@ -133,7 +133,6 @@ class VictoryScreen extends StatefulWidget {
   final int starsCollected;
   final int totalHits;
   final int monstersDefeated;
-  final bool isBossSession;
   final String? sessionId;
   final String? trophyTargetId;
   const VictoryScreen({
@@ -141,7 +140,6 @@ class VictoryScreen extends StatefulWidget {
     this.starsCollected = 1,
     this.totalHits = 0,
     this.monstersDefeated = 4,
-    this.isBossSession = false,
     this.sessionId,
     this.trophyTargetId,
   });
@@ -198,6 +196,11 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _chestOpened = false;
   _ChestReward? _reward;
   bool _showDoneButton = false;
+
+  // Contextual tip state
+  String? _tipText;
+  IconData? _tipIcon;
+  bool _showTip = true;
 
   // Trophy reveal state
   bool _showTrophyReveal = false;
@@ -333,7 +336,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     analytics.logBrushSessionComplete(
       totalHits: widget.totalHits,
       monstersDefeated: widget.monstersDefeated,
-      isBossSession: widget.isBossSession,
       starsEarned: _starsEarnedThisSession,
       newStreak: _newStreak,
       totalStars: _newStars,
@@ -345,6 +347,9 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
 
     if (mounted) setState(() {});
+
+    // Calculate contextual tip (non-blocking, runs after data is ready)
+    _calculateTip();
 
     // Auto-sync progress to cloud if signed in (fire-and-forget)
     if (AuthService().currentUser != null) {
@@ -431,6 +436,55 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
     _starsToNextUnlock = _nextUnlockAt - _newWallet;
     if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
+  }
+
+  Future<void> _calculateTip() async {
+    final streak = await _streakService.getStreak();
+    final slots = await _streakService.getTodaySlots();
+    final totalBrushes = await _streakService.getTotalBrushes();
+
+    String? text;
+    IconData? icon;
+
+    // Priority 1: Streak at risk (streak >= 3, encourage return)
+    if (streak >= 3) {
+      text = 'Come back tomorrow to keep your $streak-day streak going!';
+      icon = Icons.local_fire_department;
+    }
+    // Priority 2: AM/PM nudge (one slot done, other not, user is experienced)
+    else if (totalBrushes >= 5) {
+      if (slots.morningDone && !slots.eveningDone) {
+        text = 'Brush tonight too for a bonus star!';
+        icon = Icons.nightlight_round;
+      } else if (slots.eveningDone && !slots.morningDone) {
+        text = 'Brush tomorrow morning for a bonus star!';
+        icon = Icons.wb_sunny;
+      }
+    }
+
+    // Priority 3: Achievement approaching (only if no tip yet)
+    if (text == null) {
+      for (final milestone in [10, 25, 50, 100]) {
+        final remaining = milestone - totalBrushes;
+        if (remaining > 0 && remaining <= 3) {
+          text = '$remaining more brushes to your next badge!';
+          icon = Icons.emoji_events;
+          break;
+        }
+      }
+    }
+
+    // Apply tip if one was selected
+    if (text != null && mounted) {
+      setState(() {
+        _tipText = text;
+        _tipIcon = icon;
+      });
+      // Auto-fade after 4 seconds
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _showTip = false);
+      });
+    }
   }
 
   void _openChest() {
@@ -1174,6 +1228,45 @@ class _VictoryScreenState extends State<VictoryScreen>
                 ),
                 ),
               ),
+
+              // Contextual tip overlay
+              if (_tipText != null)
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  child: AnimatedOpacity(
+                    opacity: _showTip ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 500),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _showTip = false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_tipIcon, color: Colors.amber, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _tipText!,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

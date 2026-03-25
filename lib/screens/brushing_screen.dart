@@ -10,7 +10,6 @@ import '../services/hero_service.dart';
 import '../services/world_service.dart';
 import '../services/camera_service.dart';
 import '../services/weapon_service.dart';
-import '../services/streak_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'package:lottie/lottie.dart';
@@ -203,18 +202,6 @@ class _MonsterPersonality {
     );
   }
 
-  factory _MonsterPersonality.boss(Random rng) {
-    return _MonsterPersonality(
-      bobSpeed: 0.4 + rng.nextDouble() * 0.3,
-      bobAmount: 4.0 + rng.nextDouble() * 6.0,
-      wobbleAmount: 0.01 + rng.nextDouble() * 0.02,
-      sizeMultiplier: 1.1 + rng.nextDouble() * 0.1,
-      tintColor: const Color(0xFFFFD54F),
-      tintStrength: 0.15,
-      name: 'THE CAVITY KING',
-      entranceStyle: 3,
-    );
-  }
 }
 
 class _MonsterSlot {
@@ -353,9 +340,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   static const _checkpointSecondsKey = 'session_checkpoint_seconds';
   static const _checkpointWorldKey = 'session_checkpoint_world';
 
-  // Boss battle system
-  bool _isBossSession = false;
-  bool _isBossPhase = false;
   late final String _sessionId;
 
   // Tier 3: Fragment shaders
@@ -826,7 +810,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     final hero = await _heroService.getSelectedHero();
     final world = await _worldService.getCurrentWorld();
     final weapon = await _weaponService.getSelectedWeapon();
-    final totalBrushes = await StreakService().getTotalBrushes();
     final trophyTarget = await _trophyService.getNextUncaptured(world.id);
     final prefs = await SharedPreferences.getInstance();
     final duration = prefs.getInt('phase_duration') ?? 20;
@@ -837,7 +820,6 @@ class _BrushingScreenState extends State<BrushingScreen>
         _dailyModifier = _worldService.getDailyModifier();
         _weapon = weapon;
         _phaseDuration = duration;
-        _isBossSession = totalBrushes > 0 && (totalBrushes + 1) % 5 == 0;
         _currentTrophyTarget = trophyTarget;
         _monster = _createMonster();
         _initParticles();
@@ -968,10 +950,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _playWorldMissionBriefing() {
-    final voiceFile = _isBossSession
-        ? 'voice_unstoppable.mp3'
-        : 'voice_world_${_world.id}.mp3';
-    _audio.playVoice(voiceFile, clearQueue: true, interrupt: true);
+    _audio.playVoice('voice_world_${_world.id}.mp3', clearQueue: true, interrupt: true);
   }
 
   @override
@@ -1114,13 +1093,7 @@ class _BrushingScreenState extends State<BrushingScreen>
             _startMonsterDeath(_monster);
             _playDefeatAnimation(() {
               final nextIndex = currentIndex + 1;
-              final isLastPhase = nextIndex == brushPhaseOrder.length - 1;
-              if (_isBossSession && isLastPhase) {
-                _isBossPhase = true;
-                _monster = _createBossMonster();
-              } else {
-                _monster = _createWorldMonster();
-              }
+              _monster = _createWorldMonster();
               _switchToPhase(brushPhaseOrder[nextIndex]);
               _playEntranceAnimation();
             });
@@ -1370,8 +1343,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       _attackStyleIndex = _totalHits % AttackStyle.values.length;
       if (_monster.alive) {
         _monster.hitRecoil = 1.0;
-        // Each attack does damage (boss takes half damage)
-        final baseDamage = _isBossPhase ? 0.04 : 0.08;
+        final baseDamage = 0.08;
         _monster.health -= baseDamage * _dailyModifier.damageMultiplier;
         if (_monster.health <= 0) {
           _monster.health = 0;
@@ -1417,18 +1389,17 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _monstersDefeated++;
-    final wasBoss = _isBossPhase;
     setState(() {
       _damagePopups.add(
         _DamagePopup(
-          text: wasBoss ? 'BOSS K.O.!' : 'K.O.!',
+          text: 'K.O.!',
           x: 0.5,
           y: 0.12,
-          color: wasBoss ? const Color(0xFFFFD54F) : Colors.yellowAccent,
+          color: Colors.yellowAccent,
           opacity: 1.0,
           offsetY: 0,
           rotation: 0,
-          scale: wasBoss ? 2.6 : 2.2,
+          scale: 2.2,
         ),
       );
     });
@@ -1454,7 +1425,6 @@ class _BrushingScreenState extends State<BrushingScreen>
         return;
       }
       setState(() {
-        _isBossPhase = false; // Boss was one-time, back to normal
         _monster = _createWorldMonster();
       });
       _playEntranceAnimation();
@@ -1532,16 +1502,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
     });
     // Keep micro-reward as visual-only to avoid competing with guidance voices.
-  }
-
-  _MonsterSlot _createBossMonster() {
-    return _MonsterSlot(
-      imageIndex: _random.nextInt(_monsterImages.length),
-      health: 1.0,
-      alive: true,
-      wobblePhase: _random.nextDouble() * 2 * pi,
-      personality: _MonsterPersonality.boss(_random),
-    );
   }
 
   void _pickNextArc() {
@@ -1722,7 +1682,6 @@ class _BrushingScreenState extends State<BrushingScreen>
           starsCollected: 1,
           totalHits: _totalHits,
           monstersDefeated: _monstersDefeated,
-          isBossSession: _isBossSession,
           sessionId: _sessionId,
           trophyTargetId: _currentTrophyTarget?.id,
         ),
@@ -2016,7 +1975,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   Widget _buildBrushing() {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final monsterSize = _isBossPhase ? 200.0 : 160.0;
+    final monsterSize = 160.0;
     final heroSize = 168.0;
 
     return Scaffold(
@@ -2865,84 +2824,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                       ),
                     // (Red pulse circle removed — replaced by damage-reactive tint on sprite)
                     // (White flash now handled by ColorFilter on the sprite itself)
-                    // Boss crown glow + label
-                    if (_isBossPhase) ...[
-                      Positioned(
-                        top: -5,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)],
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFFFFD54F,
-                                ).withValues(alpha: 0.6),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.workspace_premium,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'BOSS',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Boss golden aura
-                      Positioned(
-                        bottom: 10,
-                        child: Container(
-                          width: size + 30,
-                          height: size + 30,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFFFFD54F,
-                                ).withValues(alpha: 0.15 + breathT * 0.15),
-                                blurRadius: 30,
-                                spreadRadius: 12,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Tier 3: Boss energy shield shimmer
-                      Positioned(
-                        bottom: 10,
-                        child: CustomPaint(
-                          size: Size(size + 40, size + 40),
-                          painter: _BossShieldPainter(
-                            animValue: breathT,
-                            health: _monster.health,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -4191,63 +4072,6 @@ class _ShockwavePainter extends CustomPainter {
   @override
   bool shouldRepaint(_ShockwavePainter oldDelegate) =>
       progress != oldDelegate.progress;
-}
-
-/// Boss energy shield — iridescent shimmer ring
-class _BossShieldPainter extends CustomPainter {
-  final double animValue;
-  final double health;
-
-  _BossShieldPainter({required this.animValue, required this.health});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final radius = size.width * 0.45;
-
-    // Shield weakens as health drops
-    final shieldAlpha = health.clamp(0.1, 0.6);
-
-    // Rotating rainbow shimmer
-    for (int i = 0; i < 12; i++) {
-      final angle = (i / 12) * 2 * pi + animValue * pi * 3;
-      final shimmerAlpha = (sin(angle * 3 + animValue * pi * 6) * 0.5 + 0.5) * shieldAlpha;
-
-      // Iridescent color cycling
-      final hue = ((i / 12) * 360 + animValue * 360) % 360;
-      final color = HSVColor.fromAHSV(shimmerAlpha, hue, 0.7, 1.0).toColor();
-
-      final arcStart = angle - 0.3;
-      final arcSweep = 0.6;
-
-      final paint = Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3 + sin(angle + animValue * pi * 4) * 1.5
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-
-      canvas.drawArc(
-        Rect.fromCircle(center: Offset(cx, cy), radius: radius),
-        arcStart,
-        arcSweep,
-        false,
-        paint,
-      );
-    }
-
-    // Outer glow ring
-    final ringPaint = Paint()
-      ..color = const Color(0xFFFFD54F).withValues(alpha: shieldAlpha * 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-    canvas.drawCircle(Offset(cx, cy), radius, ringPaint);
-  }
-
-  @override
-  bool shouldRepaint(_BossShieldPainter oldDelegate) =>
-      animValue != oldDelegate.animValue || health != oldDelegate.health;
 }
 
 /// Weapon trail — glowing arc during hero attacks (like Fruit Ninja)

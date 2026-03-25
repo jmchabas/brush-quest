@@ -697,11 +697,10 @@ void main() {
       'voice_go_go_go.mp3',
       'voice_awesome.mp3',
       'voice_wow_amazing.mp3',
-      'voice_unstoppable.mp3',
     ];
 
-    test('AudioService exposes encouragementVoices with 10 entries', () {
-      expect(encouragementVoices.length, 10);
+    test('AudioService exposes encouragementVoices with 9 entries', () {
+      expect(encouragementVoices.length, 9);
     });
 
     test('_playNextEncouragementVoice avoids repeating the same voice', () {

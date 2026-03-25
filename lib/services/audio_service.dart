@@ -99,7 +99,6 @@ class AudioService {
     'voice_go_go_go.mp3',
     'voice_awesome.mp3',
     'voice_wow_amazing.mp3',
-    'voice_unstoppable.mp3',
   ];
 
   static const Map<String, String> heroPickerVoices = {
@@ -158,7 +157,6 @@ class AudioService {
     'voice_go_go_go.mp3',
     'voice_awesome.mp3',
     'voice_wow_amazing.mp3',
-    'voice_unstoppable.mp3',
     'voice_welcome_back.mp3',
     'voice_picker_hero_blaze.mp3',
     'voice_picker_hero_frost.mp3',

@@ -61,7 +61,6 @@ class AnalyticsService {
     required String heroId,
     required String weaponId,
     required String worldId,
-    required bool isBossSession,
   }) async {
     await _analytics.logEvent(
       name: 'brush_session_start',
@@ -69,7 +68,6 @@ class AnalyticsService {
         'hero_id': heroId,
         'weapon_id': weaponId,
         'world_id': worldId,
-        'is_boss': isBossSession.toString(),
       },
     );
   }
@@ -77,7 +75,6 @@ class AnalyticsService {
   Future<void> logBrushSessionComplete({
     required int totalHits,
     required int monstersDefeated,
-    required bool isBossSession,
     required int starsEarned,
     required int newStreak,
     required int totalStars,
@@ -87,7 +84,6 @@ class AnalyticsService {
       parameters: {
         'total_hits': totalHits,
         'monsters_defeated': monstersDefeated,
-        'is_boss': isBossSession.toString(),
         'stars_earned': starsEarned,
         'streak': newStreak,
         'total_stars': totalStars,
