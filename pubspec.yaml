@@ -38,6 +38,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/heroes/
     - assets/audio/
     - assets/audio/voices/classic/
     - assets/audio/voices/buddy/

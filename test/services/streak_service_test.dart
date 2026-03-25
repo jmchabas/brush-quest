@@ -159,6 +159,97 @@ void main() {
       expect(streak, 6);
     });
 
+    test('streak continues when last brush was 2 days ago (grace period)', () async {
+      final now = DateTime.now();
+      final twoDaysAgo = now.subtract(const Duration(days: 2));
+      final twoDaysAgoStr =
+          '${twoDaysAgo.year}-${twoDaysAgo.month.toString().padLeft(2, '0')}-${twoDaysAgo.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': twoDaysAgoStr,
+        'current_streak': 5,
+      });
+
+      final service = StreakService();
+      await service.recordBrush();
+      final streak = await service.getStreak();
+      expect(streak, 6); // Grace period: streak continues
+    });
+
+    test('streak breaks when last brush was 3+ days ago (no pause)', () async {
+      final now = DateTime.now();
+      final threeDaysAgo = now.subtract(const Duration(days: 3));
+      final threeDaysAgoStr =
+          '${threeDaysAgo.year}-${threeDaysAgo.month.toString().padLeft(2, '0')}-${threeDaysAgo.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': threeDaysAgoStr,
+        'current_streak': 8,
+      });
+
+      final service = StreakService();
+      await service.recordBrush();
+      final streak = await service.getStreak();
+      expect(streak, 1); // No grace period: streak broken
+    });
+
+    test('getStreak returns streak when last brush was 2 days ago', () async {
+      final now = DateTime.now();
+      final twoDaysAgo = now.subtract(const Duration(days: 2));
+      final twoDaysAgoStr =
+          '${twoDaysAgo.year}-${twoDaysAgo.month.toString().padLeft(2, '0')}-${twoDaysAgo.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': twoDaysAgoStr,
+        'current_streak': 4,
+      });
+
+      final service = StreakService();
+      final streak = await service.getStreak();
+      expect(streak, 4); // Grace period: streak still valid
+    });
+
+    test('getStreak returns 0 when last brush was 3+ days ago', () async {
+      final now = DateTime.now();
+      final threeDaysAgo = now.subtract(const Duration(days: 3));
+      final threeDaysAgoStr =
+          '${threeDaysAgo.year}-${threeDaysAgo.month.toString().padLeft(2, '0')}-${threeDaysAgo.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': threeDaysAgoStr,
+        'current_streak': 4,
+      });
+
+      final service = StreakService();
+      final streak = await service.getStreak();
+      expect(streak, 0); // Beyond grace period: streak shows 0
+    });
+
+    test('streak continues during pause even after 3+ days', () async {
+      final now = DateTime.now();
+      final fiveDaysAgo = now.subtract(const Duration(days: 5));
+      final fiveDaysAgoStr =
+          '${fiveDaysAgo.year}-${fiveDaysAgo.month.toString().padLeft(2, '0')}-${fiveDaysAgo.day.toString().padLeft(2, '0')}';
+      final pauseUntil = now.add(const Duration(days: 3));
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': fiveDaysAgoStr,
+        'current_streak': 10,
+        'streak_pause_until': pauseUntil.toIso8601String(),
+      });
+
+      final service = StreakService();
+
+      // getStreak should return the stored streak while paused
+      final readStreak = await service.getStreak();
+      expect(readStreak, 10);
+
+      // recordBrush should continue the streak (not reset)
+      await service.recordBrush();
+      final streak = await service.getStreak();
+      expect(streak, 11); // Paused: streak continues
+    });
+
     test('getStreak returns 0 when last brush date is stale (more than yesterday)', () async {
       final now = DateTime.now();
       final longAgo = now.subtract(const Duration(days: 10));
@@ -189,6 +280,50 @@ void main() {
       final service = StreakService();
       final streak = await service.getStreak();
       expect(streak, 4);
+    });
+
+    // ── Parent pause helpers ────────────────────────────────────────
+
+    test('isStreakPaused returns false when no pause set', () async {
+      final service = StreakService();
+      expect(await service.isStreakPaused(), false);
+    });
+
+    test('isStreakPaused returns true when pause is in the future', () async {
+      final service = StreakService();
+      await service.setStreakPause(DateTime.now().add(const Duration(days: 2)));
+      expect(await service.isStreakPaused(), true);
+    });
+
+    test('isStreakPaused returns false when pause is in the past', () async {
+      SharedPreferences.setMockInitialValues({
+        'streak_pause_until': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+      });
+      final service = StreakService();
+      expect(await service.isStreakPaused(), false);
+    });
+
+    test('clearStreakPause removes the pause', () async {
+      final service = StreakService();
+      await service.setStreakPause(DateTime.now().add(const Duration(days: 2)));
+      expect(await service.isStreakPaused(), true);
+      await service.clearStreakPause();
+      expect(await service.isStreakPaused(), false);
+    });
+
+    test('getStreakPauseEnd returns null when no pause set', () async {
+      final service = StreakService();
+      expect(await service.getStreakPauseEnd(), isNull);
+    });
+
+    test('getStreakPauseEnd returns the stored date', () async {
+      final service = StreakService();
+      final until = DateTime.now().add(const Duration(days: 3));
+      await service.setStreakPause(until);
+      final result = await service.getStreakPauseEnd();
+      expect(result, isNotNull);
+      // Compare to nearest second to avoid microsecond differences
+      expect(result!.difference(until).inSeconds.abs(), lessThan(1));
     });
 
     // ── Best streak ───────────────────────────────────────────────

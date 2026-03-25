@@ -78,6 +78,7 @@ class StreakService {
   static const _keyMorningDoneDate = 'morning_done_date';
   static const _keyEveningDoneDate = 'evening_done_date';
   static const _keyStarWallet = 'star_wallet';
+  static const _keyStreakPauseUntil = 'streak_pause_until';
 
   /// Calculate bonus stars from streak length and daily slot completion.
   int calculateStreakBonus({required int streak, required bool bothSlotsDone}) {
@@ -130,12 +131,19 @@ class StreakService {
     // Update streak (once per day, on first brush of the day)
     int streak = prefs.getInt(_keyCurrentStreak) ?? 0;
     if (lastDate != today) {
-      if (lastDate == _yesterdayString()) {
+      if (lastDate == _yesterdayString() || lastDate == _twoDaysAgoString()) {
         streak++;
       } else if (lastDate.isEmpty) {
         streak = 1;
       } else {
-        streak = 1; // Streak broken
+        // Check if streak is paused before breaking it
+        final pauseEnd = prefs.getString(_keyStreakPauseUntil);
+        final isPaused = pauseEnd != null && DateTime.now().isBefore(DateTime.tryParse(pauseEnd) ?? DateTime(2000));
+        if (isPaused) {
+          streak++; // Paused — continue streak
+        } else {
+          streak = 1; // Streak broken (2+ days missed, not paused)
+        }
       }
       await prefs.setInt(_keyCurrentStreak, streak);
       await prefs.setString(_keyLastBrushDate, today);
@@ -211,8 +219,16 @@ class StreakService {
     final lastDate = prefs.getString(_keyLastBrushDate) ?? '';
     final today = _todayString();
     final yesterday = _yesterdayString();
+    final twoDaysAgo = _twoDaysAgoString();
 
-    if (lastDate == today || lastDate == yesterday) {
+    // If paused, always return the stored streak
+    final pauseEnd = prefs.getString(_keyStreakPauseUntil);
+    final isPaused = pauseEnd != null && DateTime.now().isBefore(DateTime.tryParse(pauseEnd) ?? DateTime(2000));
+    if (isPaused) {
+      return prefs.getInt(_keyCurrentStreak) ?? 0;
+    }
+
+    if (lastDate == today || lastDate == yesterday || lastDate == twoDaysAgo) {
       return prefs.getInt(_keyCurrentStreak) ?? 0;
     }
     return 0;
@@ -299,8 +315,39 @@ class StreakService {
     return '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
   }
 
+  String _twoDaysAgoString() {
+    final twoDaysAgo = DateTime.now().subtract(const Duration(days: 2));
+    return '${twoDaysAgo.year}-${twoDaysAgo.month.toString().padLeft(2, '0')}-${twoDaysAgo.day.toString().padLeft(2, '0')}';
+  }
+
   BrushSlot _slotForHour(int hour) {
     return hour < 15 ? BrushSlot.morning : BrushSlot.evening;
+  }
+
+  Future<void> setStreakPause(DateTime until) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyStreakPauseUntil, until.toIso8601String());
+  }
+
+  Future<void> clearStreakPause() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyStreakPauseUntil);
+  }
+
+  Future<bool> isStreakPaused() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pauseUntil = prefs.getString(_keyStreakPauseUntil);
+    if (pauseUntil == null) return false;
+    final until = DateTime.tryParse(pauseUntil);
+    if (until == null) return false;
+    return DateTime.now().isBefore(until);
+  }
+
+  Future<DateTime?> getStreakPauseEnd() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pauseUntil = prefs.getString(_keyStreakPauseUntil);
+    if (pauseUntil == null) return null;
+    return DateTime.tryParse(pauseUntil);
   }
 
   /// Migrate from v1 (cumulative) to v2 (wallet) economy.

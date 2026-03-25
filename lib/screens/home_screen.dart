@@ -8,7 +8,7 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
-import '../services/world_service.dart';
+
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
@@ -33,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
-  final _worldService = WorldService();
+
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
   int _totalStars = 0;  // Ranger Rank (lifetime total)
@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   int _evolutionStage = 1;
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
-  WorldData? _currentWorld;
+
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -164,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final evolutionStage = await _heroService.getEvolutionStage(hero.id);
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
-    final world = await _worldService.getCurrentWorld();
+
     final slots = await _streakService.getTodaySlots();
 
     if (mounted) {
@@ -176,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedWeapon = weapon;
         _streak = streak;
         _totalBrushes = totalBrushes;
-        _currentWorld = world;
+
         _morningDone = slots.morningDone;
         _eveningDone = slots.eveningDone;
       });
@@ -567,10 +567,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     AudioService().playSfx('whoosh.mp3');
                     _openSettings();
                   },
-                  icon: Icon(
-                    Icons.settings,
-                    color: Colors.white.withValues(alpha: 0.7),
-                    size: 26,
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.settings,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
               ),
@@ -881,40 +892,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               ),
                                             ),
                                           ),
-                                          // Weapon badge
-                                          Positioned(
-                                            right: 6,
-                                            bottom: 6,
-                                            child: Container(
-                                              width: 52,
-                                              height: 52,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: const Color(0xFF0D0B2E),
-                                                border: Border.all(
-                                                  color: _selectedWeapon
-                                                      .primaryColor,
-                                                  width: 3,
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: _selectedWeapon
-                                                        .primaryColor
-                                                        .withValues(alpha: 0.5),
-                                                    blurRadius: 10,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: ClipOval(
-                                                child: Image.asset(
-                                                  _selectedWeapon.imagePath,
-                                                  width: 46,
-                                                  height: 46,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
                                         ],
                                       ),
                                     ),
@@ -998,42 +975,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   const SizedBox(height: 10),
 
-                  // Today's Mission teaser
-                  if (_currentWorld != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: _currentWorld!.themeColor.withValues(alpha: 0.1),
-                        border: Border.all(
-                          color: _currentWorld!.themeColor.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.public,
-                            color: _currentWorld!.themeColor,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _currentWorld!.name.toUpperCase(),
-                            style: TextStyle(
-                              color: _currentWorld!.themeColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
                   const Spacer(),
 

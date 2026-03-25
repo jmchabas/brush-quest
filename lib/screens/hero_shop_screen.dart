@@ -316,23 +316,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                       letterSpacing: 2,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  // Wallet display
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.star, color: Colors.yellowAccent, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$_wallet',
-                        style: const TextStyle(
-                          color: Colors.yellowAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 16),
                   // "Armor" header
                   Align(
@@ -411,8 +394,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
             setSheetState(() {});
           }
         } else {
-          // Can't afford
+          // Can't afford — describe the evolution first, then tell them they need more stars
           HapticFeedback.lightImpact();
+          _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
           AudioService().playVoice('voice_need_stars.mp3');
           _showCannotAffordSnackBar(
             price: evolution.price,

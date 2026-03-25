@@ -13,7 +13,6 @@ import '../widgets/glass_card.dart';
 import '../widgets/space_background.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
-import 'parent_guide_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1408,66 +1407,112 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   // ── Guide Tab (Tab 3) ──────────────────────────────────
   Widget _buildGuideTab() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      children: [
+        _buildGuideSection(
+          'Our Promise',
+          'Brush Quest is designed to make tooth brushing a habit your '
+              'child looks forward to.\n\n'
+              'There are no ads. No purchase prompts are shown to children. '
+              'Everything is earned through brushing.',
+          Icons.favorite,
+          Colors.red,
+        ),
+        _buildGuideSection(
+          'Streaks',
+          'Brushing every day builds a streak. The longer the streak, '
+              'the better the treasure chest rewards.\n\n'
+              'If a day is missed, there\'s a one-day grace period \u2014 '
+              'your child won\'t lose their streak from a single missed day. '
+              'You can also pause the streak from the parent dashboard for '
+              'vacations or sick days.\n\n'
+              'Their best streak is always remembered and celebrated.',
+          Icons.local_fire_department,
+          Colors.orange,
+        ),
+        _buildGuideSection(
+          'Morning & Evening',
+          'The app supports two brushing sessions per day \u2014 '
+              'morning (before 3pm) and evening (after 3pm). When your child '
+              'brushes both morning and evening, they earn a bonus star.\n\n'
+              'Two teeth icons on the home screen show which sessions are complete.',
+          Icons.wb_twilight,
+          Colors.amber,
+        ),
+        _buildGuideSection(
+          'Treasure Chests',
+          'After each session, your child earns a treasure chest. Better '
+              'streaks mean better chests \u2014 this is structured, not random. '
+              'There are no loot boxes or gambling mechanics.',
+          Icons.card_giftcard,
+          Colors.green,
+        ),
+        _buildGuideSection(
+          'Daily Bonuses',
+          'Each day has a theme that adds variety: extra energy, precision '
+              'focus, treasure boost, or boss encounters. These rotate '
+              'automatically on a 5-day cycle. Your child doesn\'t need to '
+              'track these \u2014 they add variety automatically.',
+          Icons.flash_on,
+          Colors.yellow,
+        ),
+        _buildGuideSection(
+          'Trophy Collecting',
+          'Your child captures monster trophies by brushing. Each trophy '
+              'requires defeating a monster 1\u20133 times. Trophies are earned '
+              'through brushing \u2014 never randomly, never through purchases.',
+          Icons.emoji_events,
+          const Color(0xFFFFD54F),
+        ),
+        _buildGuideSection(
+          'Stars & The Shop',
+          'Stars are earned by brushing (2 per session, plus streak bonuses). '
+              'Stars can be spent in the shop on new heroes and gear.\n\n'
+              'Your child\'s Ranger Rank (lifetime total) never goes down \u2014 '
+              'only the spendable wallet changes when they buy something.',
+          Icons.star,
+          Colors.yellow,
+        ),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  Widget _buildGuideSection(String title, String body, IconData icon, Color iconColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
-              Icons.menu_book,
-              color: Color(0xFF7C4DFF),
-              size: 64,
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Parent Guide',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                letterSpacing: 2,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Learn how Brush Quest helps build your child\'s brushing habit.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 32),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ParentGuideScreen()),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.5),
-                    width: 2,
-                  ),
-                ),
-                child: const Text(
-                  'HOW BRUSH QUEST WORKS',
-                  style: TextStyle(
-                    color: Color(0xFF7C4DFF),
-                    fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                Icon(icon, color: iconColor, size: 22),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 16,
-                    letterSpacing: 2,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              body,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
           ],
@@ -1980,37 +2025,15 @@ class _DayDot extends StatelessWidget {
     }
 
     if (count == 1) {
-      // Half-filled green circle — brushed once
+      // Half-filled green circle — brushed once (bottom half filled via arc)
       return SizedBox(
         width: size,
         height: size,
-        child: Stack(
-          children: [
-            // Bottom half green fill
-            ClipOval(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                heightFactor: 0.5,
-                child: Container(
-                  width: size,
-                  height: size,
-                  color: const Color(0xFF00E676),
-                ),
-              ),
-            ),
-            // Outline circle on top
-            Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF00E676),
-                  width: 2,
-                ),
-              ),
-            ),
-          ],
+        child: CustomPaint(
+          painter: _HalfCirclePainter(
+            fillColor: const Color(0xFF00E676),
+            borderColor: const Color(0xFF00E676),
+          ),
         ),
       );
     }
@@ -2026,6 +2049,44 @@ class _DayDot extends StatelessWidget {
       child: const Icon(Icons.check, color: Colors.white, size: 20),
     );
   }
+}
+
+/// Paints a circle with the bottom half filled and a border around the full circle.
+class _HalfCirclePainter extends CustomPainter {
+  final Color fillColor;
+  final Color borderColor;
+
+  _HalfCirclePainter({required this.fillColor, required this.borderColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 1;
+
+    // Fill the bottom half
+    final fillPaint = Paint()
+      ..color = fillColor
+      ..style = PaintingStyle.fill;
+
+    // Clip to circle, then draw a rect covering bottom half
+    canvas.save();
+    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
+    canvas.drawRect(
+      Rect.fromLTRB(0, size.height / 2, size.width, size.height),
+      fillPaint,
+    );
+    canvas.restore();
+
+    // Draw border around full circle
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(center, radius, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Custom painter for a progress ring.

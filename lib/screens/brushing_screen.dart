@@ -3019,40 +3019,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                 ),
                 // Hero image (transparent PNGs — no ShaderMask needed)
                 child!,
-                // Weapon badge
-                Positioned(
-                  right: -10,
-                  bottom: -10,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: _heroLunging ? 76 : 64,
-                    height: _heroLunging ? 76 : 64,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _weapon.primaryColor.withValues(
-                        alpha: _heroLunging ? 1.0 : 0.85,
-                      ),
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _weapon.primaryColor.withValues(
-                            alpha: _heroLunging ? 0.9 : 0.5,
-                          ),
-                          blurRadius: _heroLunging ? 24 : 10,
-                          spreadRadius: _heroLunging ? 6 : 2,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        _weapon.imagePath,
-                        width: _heroLunging ? 39 : 34,
-                        height: _heroLunging ? 39 : 34,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

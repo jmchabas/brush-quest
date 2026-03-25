@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brush Quest Dashboard</title>
+<meta name="description" content="Live project dashboard for Brush Quest — a kids' toothbrushing app. Workstreams, blockers, dev cycles, and git activity.">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon.png">
+
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        background: #0a0a1a;
+        color: #e0e0e0;
+        min-height: 100vh;
+        padding: 24px;
+    }
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #1a1a3a;
+    }
+    .header h1 {
+        font-size: 28px;
+        background: linear-gradient(135deg, #b388ff, #00e5ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .header .meta {
+        text-align: right;
+        font-size: 13px;
+        color: #666;
+    }
+    .priority-banner {
+        background: linear-gradient(135deg, #1a0a2e, #0a1a2e);
+        border: 1px solid #b388ff44;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        text-align: center;
+    }
+    .priority-banner .label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #b388ff;
+        margin-bottom: 8px;
+    }
+    .priority-banner .text {
+        font-size: 20px;
+        font-weight: 600;
+        color: #fff;
+    }
+    .priority-banner .phase {
+        font-size: 13px;
+        color: #00e5ff;
+        margin-top: 8px;
+    }
+    .section-title {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #b388ff;
+        margin: 24px 0 12px;
+    }
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .card {
+        background: #111128;
+        border: 1px solid #1a1a3a;
+        border-radius: 12px;
+        padding: 20px;
+    }
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .ws-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+    }
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .status-line {
+        font-size: 14px;
+        color: #b0bec5;
+        margin-bottom: 12px;
+    }
+    .blocked {
+        background: #ff525220;
+        border: 1px solid #ff525244;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: #ff8a80;
+        margin-bottom: 12px;
+    }
+    .ceo-need {
+        background: #ffd74020;
+        border: 1px solid #ffd74044;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: #ffd740;
+        margin-top: 12px;
+    }
+    .field {
+        font-size: 13px;
+        color: #999;
+        margin-bottom: 6px;
+        line-height: 1.4;
+    }
+    .field .label { color: #b388ff; }
+    .field code {
+        background: #1a1a3a;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    .decisions {
+        background: #111128;
+        border: 1px solid #1a1a3a;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .decision {
+        padding: 12px 0;
+        border-bottom: 1px solid #1a1a3a;
+    }
+    .decision:last-child { border-bottom: none; }
+    .dec-title {
+        font-weight: 600;
+        color: #fff;
+        font-size: 14px;
+    }
+    .dec-status {
+        font-size: 12px;
+        font-weight: 600;
+        float: right;
+    }
+    .dec-detail {
+        font-size: 13px;
+        color: #999;
+        margin-top: 4px;
+    }
+    .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    @media (max-width: 768px) {
+        .two-col { grid-template-columns: 1fr; }
+    }
+    .blockers-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .blockers-table th {
+        text-align: left;
+        padding: 8px 12px;
+        color: #b388ff;
+        border-bottom: 1px solid #1a1a3a;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .blockers-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #0a0a1a;
+        color: #b0bec5;
+    }
+    .panel {
+        background: #111128;
+        border: 1px solid #1a1a3a;
+        border-radius: 12px;
+        padding: 20px;
+    }
+    .git-entry {
+        padding: 6px 0;
+        font-size: 13px;
+        border-bottom: 1px solid #0a0a1a;
+    }
+    .git-entry:last-child { border-bottom: none; }
+    .git-entry .hash {
+        background: #1a1a3a;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #00e5ff;
+        margin-right: 8px;
+    }
+    .stats-row {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 16px;
+    }
+    .stat {
+        text-align: center;
+    }
+    .stat .num {
+        font-size: 24px;
+        font-weight: 700;
+        color: #00e5ff;
+    }
+    .stat .lbl {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #666;
+    }
+    /* Category headers */
+    .category-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0 8px;
+    }
+    .category-header:first-child {
+        margin-top: 0;
+    }
+    .category-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .category-name {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        white-space: nowrap;
+    }
+    .category-line {
+        flex: 1;
+        height: 1px;
+    }
+    /* Dev Cycle section */
+    .cycle-stats {
+        display: flex;
+        gap: 32px;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #1a1a3a;
+    }
+    .cycle-latest {
+        margin-bottom: 12px;
+    }
+    .cycle-trend {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 12px;
+    }
+    .cycle-trend .trend-point {
+        color: #b0bec5;
+    }
+    .cycle-insight {
+        font-size: 13px;
+        color: #999;
+        background: #0a1a2e;
+        border: 1px solid #00e5ff22;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        line-height: 1.5;
+    }
+    .cycle-deferred {
+        margin-bottom: 12px;
+    }
+    .deferred-title {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #ffd740;
+        margin-bottom: 8px;
+    }
+    .deferred-item {
+        font-size: 13px;
+        color: #b0bec5;
+        padding: 6px 12px;
+        background: #ffd74010;
+        border-left: 3px solid #ffd74044;
+        margin-bottom: 4px;
+        border-radius: 0 6px 6px 0;
+    }
+    .cycle-next {
+        font-size: 13px;
+        color: #666;
+        padding-top: 12px;
+        border-top: 1px solid #1a1a3a;
+    }
+    .cycle-next strong {
+        color: #b388ff;
+    }
+    nav a:hover { color: #fff !important; }
+</style>
+</head>
+<body>
+
+<nav style="display:flex;gap:24px;align-items:center;padding:16px 24px;border-bottom:1px solid #1a1a3a;font-size:14px;">
+    <a href="index.html" style="color:#b388ff;text-decoration:none;">&#8592; Home</a>
+    <a href="victories.html" style="color:#00e5ff;text-decoration:none;">Victories</a>
+    <a href="privacy-policy.html" style="color:#666;text-decoration:none;">Privacy</a>
+</nav>
+<div class="header">
+    <h1>Brush Quest</h1>
+    <div class="meta">
+        <div>Branch: <code>graphics-overhaul</code></div>
+        <div>109 commits</div>
+        <div>Updated: 2026-03-21 01:28</div>
+    </div>
+</div>
+
+<div class="priority-banner">
+    <div class="label">Current #1 Priority</div>
+    <div class="text">Get the app on Google Play Store. Nothing else matters.</div>
+    <div class="phase">Phase: 0 — Pre-Launch</div>
+</div>
+
+<div class="section-title">Workstreams</div>
+
+    <div class="category-header">
+        <span class="category-dot" style="background:#b388ff"></span>
+        <span class="category-name" style="color:#b388ff">PRODUCT</span>
+        <span class="category-line" style="background:#b388ff22"></span>
+    </div>
+    <div class="grid">
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">APP</span>
+                <span class="status-dot" style="background:#00e676"></span>
+            </div>
+            <div class="status-line">Cycle 6 shipped — 30 findings across 9 streams, onboarding overhaul, victory flow, home UX, 4 new voice arcs + 651 tests</div>
+            <div class="blocked">BLOCKED: Google Play org account (need D-U-N-S number first)</div>
+            <div class="field"><span class="label">Last commit:</span> <code>`e9cb7d5` — Cycle 6 implementation (30 findings, 9 streams)</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Kid testing buddy voice with Oliver & Theo, Play Store submission</div>
+            
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">LANDING PAGE</span>
+                <span class="status-dot" style="background:#00e676"></span>
+            </div>
+            <div class="status-line">Live at brushquest.app — email capture LIVE via Buttondown</div>
+            <div class="blocked">BLOCKED: No Play Store link yet (developer account appeal pending)</div>
+            <div class="field"><span class="label">Last commit:</span> <code>`9354055` — Desktop hero: QR code to open on phone, email form secondary</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Play Store badge once approved, monitor first signups</div>
+            
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">PRICING</span>
+                <span class="status-dot" style="background:#b0bec5"></span>
+            </div>
+            <div class="status-line">APPROVED — "Space Ranger Pass" $4.99/mo or $39.99/yr</div>
+            <div class="blocked">BLOCKED: Phase 1 validation needed before implementation (100 users, D7 retention > 35% per D-003)</div>
+            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Implement paywall + RevenueCat after Phase 1 metrics hit</div>
+            <div class="ceo-need">CEO: None — model approved</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">MERCH</span>
+                <span class="status-dot" style="background:#00e676"></span>
+            </div>
+            <div class="status-line">DONE</div>
+            
+            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Order on Printful (Oliver YS/YM black, Theo 4T/5T black)</div>
+            
+        </div>
+    </div>
+    <div class="category-header">
+        <span class="category-dot" style="background:#00e676"></span>
+        <span class="category-name" style="color:#00e676">BUSINESS</span>
+        <span class="category-line" style="background:#00e67622"></span>
+    </div>
+    <div class="grid">
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">LLC</span>
+                <span class="status-dot" style="background:#00e676"></span>
+            </div>
+            <div class="status-line">Nearly complete — LLC approved, EIN obtained, bank open, D-U-N-S pending</div>
+            <div class="blocked">BLOCKED: D-U-N-S processing (expedited, expected ~April 1)</div>
+            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Wait for D-U-N-S → register Google Play org account. Answer unknown calls (D&B verification).</div>
+            
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">ACCOUNTING</span>
+                <span class="status-dot" style="background:#ffd740"></span>
+            </div>
+            <div class="status-line">In progress — QuickBooks + Mercury bank open, need to connect and log expenses</div>
+            
+            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Connect Mercury → QuickBooks, log all existing expenses</div>
+            
+        </div>
+    </div>
+    <div class="category-header">
+        <span class="category-dot" style="background:#00e5ff"></span>
+        <span class="category-name" style="color:#00e5ff">OPS</span>
+        <span class="category-line" style="background:#00e5ff22"></span>
+    </div>
+    <div class="grid">
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">DEV CYCLE</span>
+                <span class="status-dot" style="background:#00e676"></span>
+            </div>
+            <div class="status-line">Cycle 6 complete — 30 findings shipped</div>
+            
+            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Run next cycle when ready</div>
+            
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">STRATEGY</span>
+                <span class="status-dot" style="background:#00e676"></span>
+            </div>
+            <div class="status-line">Phase 0 plan complete, operational system built</div>
+            <div class="blocked">BLOCKED: Nothing — waiting for workstreams to execute</div>
+            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
+            <div class="field"><span class="label">What happened:</span> Created 5-phase master plan (STRATEGY.md). Built cross-session coordination system. Defined operational cadence.</div>
+            <div class="field"><span class="label">Next up:</span> First Monday weekly brief</div>
+            
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="ws-name">MEMORY SYSTEM</span>
+                <span class="status-dot" style="background:#00e676"></span>
+            </div>
+            <div class="status-line">Active — 4-tier architecture built, knowledge graph operational</div>
+            
+            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
+            <div class="field"><span class="label">What happened:</span> —</div>
+            <div class="field"><span class="label">Next up:</span> Refine write gate criteria from real usage, improve cross-project entity linking, session handoff reliability</div>
+            
+        </div>
+    </div>
+
+<div class="section-title">Dev Cycle</div>
+<div class="panel" style="margin-bottom:24px">
+    
+        <div class="cycle-stats">
+            <div class="stat">
+                <div class="num">4</div>
+                <div class="lbl">Last Cycle</div>
+            </div>
+            <div class="stat">
+                <div class="num">4</div>
+                <div class="lbl">Approved</div>
+            </div>
+            <div class="stat">
+                <div class="num">2</div>
+                <div class="lbl">Deferred</div>
+            </div>
+            <div class="stat">
+                <div class="num">588</div>
+                <div class="lbl">Tests</div>
+            </div>
+            <div class="stat">
+                <div class="num">85.7<span style="font-size:12px;color:#666"> MB</span></div>
+                <div class="lbl">APK</div>
+            </div>
+        </div>
+        <div class="cycle-latest">
+            <div class="field"><span class="label">Date:</span> 2026-03-18</div>
+            <div class="field"><span class="label">Mode:</span> full</div>
+            <div class="field"><span class="label">Benchmark:</span> Chomper Chums</div>
+            <div class="field"><span class="label">Commit:</span> <code>8668fab</code></div>
+        </div><div class="cycle-trend"><span class="label">Trend:</span> <span class="trend-point">C1: 618 tests, 84.2MB</span> <span style="color:#333"> → </span> <span class="trend-point">C2: 588 tests, 86.4MB</span> <span style="color:#333"> → </span> <span class="trend-point">C3: 591 tests, 86.6MB</span> <span style="color:#333"> → </span> <span class="trend-point">C4: 588 tests, 85.7MB</span></div>
+        <div class="cycle-insight">
+            <span class="label">Benchmark insight (Chomper Chums):</span> Chomper Chums uses animated character reactions as immediate feedback during brushing — the character visibly reacts to brushing speed with facial expressions (happy/sad/excited). In Brush Quest, mons
+        </div>
+        <div class="cycle-deferred">
+            <div class="deferred-title">Deferred Backlog (1 items)</div>
+            <div class="deferred-item">#2: Companion voice retirement — Jim said no unless strongly needed. Arc suppression (Cycle 3) is working.</div>
+        </div>
+        <div class="cycle-next">
+            Next: <strong>Cycle 5</strong> — Benchmark: <strong>Brush DJ</strong>
+        </div>
+</div>
+
+<div class="section-title">Active Decisions</div>
+<div class="decisions">
+    
+        <div class="decision">
+            <span class="dec-title">D-001: Ship to Play Store before v7 polish (2026-03-14)</span>
+            <span class="dec-status" style="color:#00e676">ACTIVE</span>
+            <div class="dec-detail">Submit to Play Store NOW. Polish in parallel during 3-7 day review wait.</div>
+        </div>
+        <div class="decision">
+            <span class="dec-title">D-002: "Space Ranger Pass" — $4.99/mo or $39.99/yr (2026-03-15, APPROVED)</span>
+            <span class="dec-status" style="color:#b0bec5">APPROVED — implement after Phase 1 validation (100 users, D7 retention > 35%)</span>
+            <div class="dec-detail">Deep research done (see `research/`). Parent-feature subscription rejected — camera "verification" is dishonest. Content-led model approved by Jim.</div>
+        </div>
+        <div class="decision">
+            <span class="dec-title">D-003: Feature freeze until 100 users (2026-03-14)</span>
+            <span class="dec-status" style="color:#00e676">ACTIVE</span>
+            <div class="dec-detail">Zero new features until 100 real (non-Jim) users. Only allowed: bug fixes blocking brush completion, Play Store requirements, analytics instrumentation.</div>
+        </div>
+</div>
+
+<div class="section-title">Blockers</div>
+<div class="panel" style="margin-bottom:24px">
+    <table class="blockers-table">
+        <tr><th>Blocker</th><th>Owner</th><th>Since</th><th>Impact</th><th>Status</th></tr>
+        
+        <tr>
+            <td>D-U-N-S number pending</td>
+            <td>Jim</td>
+            <td>2026-03-20</td>
+            <td>Blocks Google Play org account</td>
+            <td style="color:#b0bec5">APPLIED — Case DFC-507818, expedited $229, expected ~April 1</td>
+        </tr>
+        <tr>
+            <td>Google Play developer account (personal) suspended</td>
+            <td>Jim</td>
+            <td>2026-03-14</td>
+            <td>N/A — going org account route</td>
+            <td style="color:#00e676">ABANDONED — registering org account under AnemosGP LLC instead</td>
+        </tr>
+        <tr>
+            <td>No Firebase Analytics events</td>
+            <td>APP</td>
+            <td>2026-03-14</td>
+            <td>Flying blind on retention</td>
+            <td style="color:#00e676">DONE — COPPA-compliant, 10 events instrumented</td>
+        </tr>
+        <tr>
+            <td>No privacy policy page</td>
+            <td>LANDING</td>
+            <td>2026-03-14</td>
+            <td>Blocks Play Store</td>
+            <td style="color:#00e676">DONE — COPPA 2025 + CCPA compliant, 10 sections, live</td>
+        </tr>
+        <tr>
+            <td>No email capture on landing page</td>
+            <td>LANDING</td>
+            <td>2026-03-14</td>
+            <td>Losing potential early adopters</td>
+            <td style="color:#00e676">DONE — Buttondown, platform-aware forms, QR code for desktop</td>
+        </tr>
+    </table>
+</div>
+
+<div class="section-title">Recent Activity</div>
+<div class="panel">
+    
+        <div class="git-entry">
+            <code class="hash">da8ba84</code>
+            <span>Add memory management system victory + design docs</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">7399d97</code>
+            <span>Update landing page download links to v1.1.0</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">076e28a</code>
+            <span>Fix tests: update camera flow test for picker removal, add unlock voice assets</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">82e33cb</code>
+            <span>Voice: 10 world mission briefings + 10 unlock encouragements (classic + buddy)</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">5c8702e</code>
+            <span>World intro: 10s auto-advance timer with countdown ring</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">d628377</code>
+            <span>Victory: show next unlock name + icon, full card reveal, album highlights card</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">eef5b7c</code>
+            <span>Text variety + performance: encouragement pools, cap popups, reduce particles, fix painters</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">4d76847</code>
+            <span>Remove pre-brush picker — hero tap opens shop, BRUSH button goes straight to battle</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">68ac272</code>
+            <span>Privacy policy: move phone to contact section, simplify legalese</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">f579c22</code>
+            <span>Privacy policy overhaul: COPPA 2025, CCPA, store-ready</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">d0af93f</code>
+            <span>Update status board: Cycle 6 shipped, 99MB APK, 651 tests</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">e9cb7d5</code>
+            <span>Cycle 6: 30 findings — onboarding, victory, home, voice arcs, new tests (99MB APK, 651 tests)</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">def0ded</code>
+            <span>Splash logo, weapon UI, voice latency, auto-sync, mentor voice pack (George)</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">7e22ecf</code>
+            <span>Update status board: Cycle 5 shipped, 98MB APK, 593 tests</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">35ccca1</code>
+            <span>Cycle 5: voice preload, card duplicates, visual progress, audio compression (98MB APK)</span>
+        </div>
+</div>
+
+<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-03-21 01:28 &mdash; <a href="victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
+
+</body>
+</html>
