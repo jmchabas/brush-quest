@@ -107,6 +107,7 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
       glowColor: const Color(0xFFFFF176),
       sourceIcon: Icons.cleaning_services,
       sourceImagePath: 'assets/images/icon_toothbrush.png',
+      label: 'You brushed!',
     ));
 
     // Wave 2: streak bonus.
@@ -118,7 +119,7 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
         glowColor:
             isMega ? const Color(0xFF80D8FF) : const Color(0xFFFFAB91),
         sourceIcon: Icons.local_fire_department,
-        label: isMega ? 'MEGA POWER!' : 'STREAK BONUS!',
+        label: '${widget.currentStreak}-day streak power!',
         hasTrail: true,
       ));
     }
@@ -129,8 +130,8 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
         count: widget.dailyBonus,
         color: const Color(0xFFE0E0E0), // silver-gold
         glowColor: const Color(0xFFFFEE58),
-        sourceIcon: Icons.brightness_6,
-        label: 'FULL CHARGE!',
+        sourceIcon: Icons.wb_twilight,
+        label: 'Brushed twice today!',
       ));
     }
 

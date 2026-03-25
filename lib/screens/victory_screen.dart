@@ -200,7 +200,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   // Contextual tip state
   String? _tipText;
   IconData? _tipIcon;
-  bool _showTip = true;
 
   // Trophy reveal state
   bool _showTrophyReveal = false;
@@ -480,10 +479,10 @@ class _VictoryScreenState extends State<VictoryScreen>
         _tipText = text;
         _tipIcon = icon;
       });
-      // Auto-fade after 4 seconds
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) setState(() => _showTip = false);
-      });
+      // Play voice for streak retention tip
+      if (streak >= 3) {
+        _audio.playVoice('voice_keep_going.mp3');
+      }
     }
   }
 
@@ -1174,6 +1173,36 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     // Buttons (only after full reward sequence)
                     if (_showDoneButton) ...[
+                      // Contextual tip (persistent, above DONE button)
+                      if (_tipText != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(_tipIcon, color: Colors.amber, size: 20),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                  child: Text(
+                                    _tipText!,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       AnimatedBuilder(
                         animation: _doneButtonController,
                         builder: (context, child) => Transform.scale(
@@ -1229,44 +1258,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                 ),
               ),
 
-              // Contextual tip overlay
-              if (_tipText != null)
-                Positioned(
-                  bottom: 16,
-                  left: 16,
-                  right: 16,
-                  child: AnimatedOpacity(
-                    opacity: _showTip ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 500),
-                    child: GestureDetector(
-                      onTap: () => setState(() => _showTip = false),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white24),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(_tipIcon, color: Colors.amber, size: 20),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _tipText!,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

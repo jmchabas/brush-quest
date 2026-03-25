@@ -26,7 +26,7 @@ void main() {
       home: Scaffold(body: StarRain(baseStars: 2, dailyBonus: 1)),
     ));
     await tester.pump();
-    expect(find.byIcon(Icons.brightness_6), findsOneWidget);
+    expect(find.byIcon(Icons.wb_twilight), findsOneWidget);
   });
 
   testWidgets('tap to skip jumps to grand total', (tester) async {
