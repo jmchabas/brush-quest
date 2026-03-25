@@ -4,7 +4,7 @@ import '../services/trophy_service.dart';
 import '../services/world_service.dart';
 import '../services/audio_service.dart';
 import '../widgets/space_background.dart';
-import '../widgets/glass_card.dart';
+
 
 class TrophyWallScreen extends StatefulWidget {
   const TrophyWallScreen({super.key});
@@ -118,12 +118,14 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   }
 
   void _showTrophyDetail(TrophyMonster trophy) {
+    final worldColor = WorldService.getWorldById(_selectedWorldId).themeColor;
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.7),
       builder: (ctx) => _TrophyDetailDialog(
         trophy: trophy,
         defeatCount: _defeatCounts[trophy.id] ?? 0,
+        worldColor: worldColor,
       ),
     );
   }
@@ -371,17 +373,18 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   }
 
   Widget _buildTrophyGrid(List<TrophyMonster> trophies) {
+    final worldColor = WorldService.getWorldById(_selectedWorldId).themeColor;
     // Layout: 2 columns. Rows of 2, last row centered if odd count.
     // For 5 trophies: row1(2), row2(2), row3(1 centered = boss)
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       child: Column(
-        children: _buildTrophyRows(trophies),
+        children: _buildTrophyRows(trophies, worldColor),
       ),
     );
   }
 
-  List<Widget> _buildTrophyRows(List<TrophyMonster> trophies) {
+  List<Widget> _buildTrophyRows(List<TrophyMonster> trophies, Color worldColor) {
     final rows = <Widget>[];
     for (int i = 0; i < trophies.length; i += 2) {
       final isLastSingle = i + 1 >= trophies.length;
@@ -393,7 +396,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
             child: Center(
               child: SizedBox(
                 width: 170,
-                child: _buildTrophyTile(trophies[i]),
+                child: _buildTrophyTile(trophies[i], worldColor),
               ),
             ),
           ),
@@ -404,9 +407,9 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
-                Expanded(child: _buildTrophyTile(trophies[i])),
+                Expanded(child: _buildTrophyTile(trophies[i], worldColor)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildTrophyTile(trophies[i + 1])),
+                Expanded(child: _buildTrophyTile(trophies[i + 1], worldColor)),
               ],
             ),
           ),
@@ -416,10 +419,12 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     return rows;
   }
 
-  Widget _buildTrophyTile(TrophyMonster trophy) {
+  Widget _buildTrophyTile(TrophyMonster trophy, Color worldColor) {
     final isCaptured = _capturedIds.contains(trophy.id);
     final defeatCount = _defeatCounts[trophy.id] ?? 0;
     final inProgress = !isCaptured && defeatCount > 0;
+    // Boss monster (last in each world, highest defeat requirement)
+    final isBoss = trophy.defeatsRequired >= 3;
 
     return GestureDetector(
       onTap: () => _onTrophyTap(trophy),
@@ -429,26 +434,35 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
           return Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isCaptured
-                  ? trophy.tintColor.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.4),
+              // Consistent world color for all cards
+              gradient: isCaptured
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        worldColor.withValues(alpha: 0.12),
+                        worldColor.withValues(alpha: 0.04),
+                      ],
+                    )
+                  : null,
+              color: isCaptured ? null : Colors.black.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isCaptured
-                    ? trophy.tintColor
-                        .withValues(alpha: 0.3 + 0.3 * _glowAnimation.value)
+                    ? worldColor.withValues(
+                        alpha: 0.4 + 0.3 * _glowAnimation.value)
                     : inProgress
-                        ? Colors.white.withValues(alpha: 0.15)
+                        ? worldColor.withValues(alpha: 0.15)
                         : Colors.white.withValues(alpha: 0.06),
-                width: isCaptured ? 2 : 1,
+                width: isCaptured ? (isBoss ? 2.5 : 2) : 1,
               ),
               boxShadow: isCaptured
                   ? [
                       BoxShadow(
-                        color: trophy.tintColor.withValues(
-                            alpha: 0.15 + 0.15 * _glowAnimation.value),
-                        blurRadius: 16,
-                        spreadRadius: 2,
+                        color: worldColor.withValues(
+                            alpha: 0.12 + 0.12 * _glowAnimation.value),
+                        blurRadius: isBoss ? 20 : 14,
+                        spreadRadius: isBoss ? 3 : 1,
                       ),
                     ]
                   : null,
@@ -456,14 +470,14 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Monster image
+                // Monster image — original colors, no tint
                 SizedBox(
                   height: 100,
                   width: 100,
-                  child: _buildMonsterImage(trophy, isCaptured, inProgress),
+                  child: _buildMonsterImage(trophy, isCaptured, inProgress, worldColor),
                 ),
                 const SizedBox(height: 8),
-                // Name
+                // Name — use world color for consistency
                 Text(
                   trophy.name,
                   textAlign: TextAlign.center,
@@ -471,7 +485,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: isCaptured
-                        ? trophy.tintColor
+                        ? worldColor
                         : Colors.white.withValues(alpha: inProgress ? 0.5 : 0.35),
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -489,7 +503,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  _buildProgressDots(trophy, defeatCount),
+                  _buildProgressDots(trophy, defeatCount, worldColor),
                 ],
               ],
             ),
@@ -500,51 +514,40 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   }
 
   Widget _buildMonsterImage(
-      TrophyMonster trophy, bool isCaptured, bool inProgress) {
+      TrophyMonster trophy, bool isCaptured, bool inProgress, Color worldColor) {
     if (isCaptured) {
-      // Full color with tint glow
-      return ColorFiltered(
-        colorFilter: ColorFilter.mode(
-          trophy.tintColor.withValues(alpha: 0.3),
-          BlendMode.srcATop,
-        ),
-        child: Image.asset(
-          trophy.imagePath,
-          fit: BoxFit.contain,
-          errorBuilder: (_, _, _) => Icon(
-            Icons.bug_report,
-            size: 60,
-            color: trophy.tintColor,
-          ),
+      // Show monster in its original colors — no tint overlay
+      return Image.asset(
+        trophy.imagePath,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => Icon(
+          Icons.bug_report,
+          size: 60,
+          color: worldColor,
         ),
       );
     } else if (inProgress) {
       // Dark silhouette — partially visible
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          ColorFiltered(
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF1A1A2E),
-              BlendMode.srcATop,
-            ),
-            child: Opacity(
-              opacity: 0.5,
-              child: Image.asset(
-                trophy.imagePath,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Icon(
-                  Icons.bug_report,
-                  size: 60,
-                  color: Color(0xFF1A1A2E),
-                ),
-              ),
+      return ColorFiltered(
+        colorFilter: const ColorFilter.mode(
+          Color(0xFF1A1A2E),
+          BlendMode.srcATop,
+        ),
+        child: Opacity(
+          opacity: 0.5,
+          child: Image.asset(
+            trophy.imagePath,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => const Icon(
+              Icons.bug_report,
+              size: 60,
+              color: Color(0xFF1A1A2E),
             ),
           ),
-        ],
+        ),
       );
     } else {
-      // Fully locked — slightly brighter silhouette teaser (no ? overlay)
+      // Fully locked — faint silhouette teaser
       return ColorFiltered(
         colorFilter: const ColorFilter.mode(
           Color(0xFF0D0B1A),
@@ -566,7 +569,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     }
   }
 
-  Widget _buildProgressDots(TrophyMonster trophy, int defeatCount) {
+  Widget _buildProgressDots(TrophyMonster trophy, int defeatCount, Color worldColor) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(trophy.defeatsRequired, (i) {
@@ -578,10 +581,10 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: filled
-                ? trophy.tintColor.withValues(alpha: 0.8)
+                ? worldColor.withValues(alpha: 0.8)
                 : Colors.white.withValues(alpha: 0.15),
             border: Border.all(
-              color: trophy.tintColor.withValues(alpha: 0.4),
+              color: worldColor.withValues(alpha: 0.4),
               width: 1,
             ),
           ),
@@ -591,118 +594,202 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   }
 }
 
-// ------- Trophy Detail Dialog -------
+// ------- Monster Detail Dialog -------
 
 class _TrophyDetailDialog extends StatelessWidget {
   final TrophyMonster trophy;
   final int defeatCount;
+  final Color worldColor;
 
   const _TrophyDetailDialog({
     required this.trophy,
     required this.defeatCount,
+    required this.worldColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: GlassCard(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Monster image — large
-            SizedBox(
-              height: 140,
-              width: 140,
-              child: ColorFiltered(
-                colorFilter: ColorFilter.mode(
-                  trophy.tintColor.withValues(alpha: 0.3),
-                  BlendMode.srcATop,
-                ),
-                child: Image.asset(
-                  trophy.imagePath,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, _, _) => Icon(
-                    Icons.bug_report,
-                    size: 80,
-                    color: trophy.tintColor,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Name
-            Text(
-              trophy.name,
-              style: TextStyle(
-                color: trophy.tintColor,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            // Title
-            Text(
-              trophy.title,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 14,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Flavor text
-            Text(
-              trophy.flavorText,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Defeat count
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.flash_on, color: trophy.tintColor, size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  'Defeated $defeatCount times',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // Close button
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-                decoration: BoxDecoration(
-                  color: trophy.tintColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: trophy.tintColor.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Text(
-                  'COOL!',
-                  style: TextStyle(
-                    color: trophy.tintColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-              ),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 320),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF1A1A2E).withValues(alpha: 0.97),
+              const Color(0xFF0D0B1A).withValues(alpha: 0.97),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: worldColor.withValues(alpha: 0.4),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: worldColor.withValues(alpha: 0.2),
+              blurRadius: 30,
+              spreadRadius: 4,
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Monster image with radial glow behind it
+              SizedBox(
+                height: 160,
+                width: 160,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Radial glow
+                    Container(
+                      width: 130,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            worldColor.withValues(alpha: 0.25),
+                            worldColor.withValues(alpha: 0.05),
+                            Colors.transparent,
+                          ],
+                          stops: const [0.0, 0.6, 1.0],
+                        ),
+                      ),
+                    ),
+                    // Monster — original colors, no tint
+                    Image.asset(
+                      trophy.imagePath,
+                      width: 150,
+                      height: 150,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) => Icon(
+                        Icons.bug_report,
+                        size: 80,
+                        color: worldColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Name
+              Text(
+                trophy.name,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                      color: worldColor.withValues(alpha: 0.5),
+                      blurRadius: 12,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Title — as a styled badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                decoration: BoxDecoration(
+                  color: worldColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  trophy.title,
+                  style: TextStyle(
+                    color: worldColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Divider
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                color: worldColor.withValues(alpha: 0.15),
+              ),
+              const SizedBox(height: 16),
+              // Flavor text
+              Text(
+                trophy.flavorText,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Defeat count with star icons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ...List.generate(
+                    defeatCount.clamp(0, 5),
+                    (_) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Icon(Icons.star_rounded, color: worldColor, size: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Defeated $defeatCount ${defeatCount == 1 ? 'time' : 'times'}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              // Close button
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        worldColor.withValues(alpha: 0.3),
+                        worldColor.withValues(alpha: 0.15),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: worldColor.withValues(alpha: 0.5),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: worldColor.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: const Text(
+                    'COOL!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

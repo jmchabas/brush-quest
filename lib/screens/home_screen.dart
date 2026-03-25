@@ -1007,9 +1007,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.emoji_events,
-                              label: 'TROPHY',
-                              color: const Color(0xFFFFD54F),
+                              icon: Icons.catching_pokemon,
+                              label: 'MONSTERS',
+                              color: const Color(0xFFFF80AB),
                               onTap: _openTrophies,
                             ),
                           ),

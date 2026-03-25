@@ -899,19 +899,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _startWorldIntro() async {
-    // Skip intro for worlds the user has already seen
-    final prefs = await SharedPreferences.getInstance();
-    final seenKey = 'world_intro_seen_${_world.id}';
-    if (prefs.getBool(seenKey) == true) {
-      if (!mounted) return;
-      setState(() {
-        _showWorldIntro = false;
-        _sessionStage = SessionStage.countdown;
-      });
-      _startCountdown();
-      return;
-    }
-
+    // Always show world intro — it's the mission briefing moment.
+    // Kid can tap to skip; auto-advances after 10 seconds.
     _worldIntroTimer?.cancel();
     setState(() {
       _showWorldIntro = true;
@@ -929,10 +918,6 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _dismissWorldIntro() async {
     _worldIntroTimer?.cancel();
-
-    // Mark this world's intro as seen so it skips next time
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('world_intro_seen_${_world.id}', true);
 
     if (!mounted) return;
     setState(() {
