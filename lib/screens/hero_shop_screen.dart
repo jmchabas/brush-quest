@@ -110,6 +110,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       // Describe the hero, then tell them they need more stars
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
       AudioService().playVoice('voice_need_stars.mp3');
+      _showCannotAffordSnackBar(
+        price: hero.price,
+        wallet: _wallet,
+        accentColor: hero.primaryColor,
+      );
     }
   }
 
@@ -139,6 +144,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       // Describe the weapon, then tell them they need more stars
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       AudioService().playVoice('voice_need_stars.mp3');
+      _showCannotAffordSnackBar(
+        price: weapon.price,
+        wallet: _wallet,
+        accentColor: weapon.primaryColor,
+      );
     }
   }
 
@@ -183,6 +193,41 @@ class _HeroShopScreenState extends State<HeroShopScreen>
 
   void _playSelectionVoice(String fileName) {
     AudioService().playVoice(fileName, clearQueue: true, interrupt: true);
+  }
+
+  void _showCannotAffordSnackBar({
+    required int price,
+    required int wallet,
+    required Color accentColor,
+  }) {
+    final delta = price - wallet;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF1A1A2E),
+        content: Row(
+          children: [
+            Icon(Icons.star, color: accentColor, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'Need $delta more stars! Keep brushing!',
+              style: TextStyle(
+                color: accentColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: accentColor.withValues(alpha: 0.4)),
+        ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      ),
+    );
   }
 
   void _showHeroUnlockAnimation(HeroCharacter hero) {
@@ -377,6 +422,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           // Can't afford
           HapticFeedback.lightImpact();
           AudioService().playVoice('voice_need_stars.mp3');
+          _showCannotAffordSnackBar(
+            price: skin.price,
+            wallet: _wallet,
+            accentColor: skin.primaryColor,
+          );
         }
       },
       child: Container(
@@ -416,15 +466,34 @@ class _HeroShopScreenState extends State<HeroShopScreen>
               ),
             ),
             const SizedBox(width: 14),
-            // Name
+            // Name + optional flavor text
             Expanded(
-              child: Text(
-                displayName,
-                style: TextStyle(
-                  color: isEquipped ? Colors.white : Colors.white.withValues(alpha: 0.8),
-                  fontSize: 16,
-                  fontWeight: isEquipped ? FontWeight.bold : FontWeight.w500,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      color: isEquipped ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                      fontSize: 16,
+                      fontWeight: isEquipped ? FontWeight.bold : FontWeight.w500,
+                    ),
+                  ),
+                  if (!isDefault)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        skin.description,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 11,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
               ),
             ),
             // Badge

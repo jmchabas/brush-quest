@@ -10,9 +10,9 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('has 5 monsters per world, 5 worlds = 25 total', () {
-      expect(TrophyService.allTrophies.length, 25);
-      expect(TrophyService.worldIds.length, 5);
+    test('has 5 monsters per world, 10 worlds = 50 total', () {
+      expect(TrophyService.allTrophies.length, 50);
+      expect(TrophyService.worldIds.length, 10);
       for (final worldId in TrophyService.worldIds) {
         final worldTrophies = TrophyService.trophiesForWorld(worldId);
         expect(worldTrophies.length, 5, reason: 'World $worldId should have 5 trophies');
@@ -150,6 +150,48 @@ void main() {
 
       await service.recordDefeat('cc_t5');
       expect(await service.getDefeatCount('cc_t5'), 2);
+    });
+
+    test('all trophy ids are unique', () {
+      final ids = TrophyService.allTrophies.map((t) => t.id).toList();
+      expect(ids.toSet().length, ids.length, reason: 'Duplicate trophy IDs found');
+    });
+
+    test('autoGrantClearedWorldTrophies grants all trophies for completed worlds', () async {
+      // Simulate completing candy_crater (needs 5 missions)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('world_progress_candy_crater', 5);
+
+      final service = TrophyService();
+      await service.autoGrantClearedWorldTrophies();
+
+      // All candy_crater trophies should be captured
+      for (final trophy in TrophyService.trophiesForWorld('candy_crater')) {
+        expect(await service.isCaptured(trophy.id), true,
+            reason: '${trophy.id} should be captured after world cleared');
+        expect(await service.getDefeatCount(trophy.id), trophy.defeatsRequired,
+            reason: '${trophy.id} defeat count should match required');
+      }
+
+      // Other worlds should NOT be captured
+      expect(await service.isCaptured('ss_t1'), false);
+    });
+
+    test('autoGrantClearedWorldTrophies skips already-captured trophies', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('world_progress_candy_crater', 5);
+
+      final service = TrophyService();
+      // Pre-capture one trophy with a higher defeat count
+      await prefs.setInt('trophy_defeats_cc_t1', 10);
+      await service.recordCapture('cc_t1');
+
+      await service.autoGrantClearedWorldTrophies();
+
+      // cc_t1 should still have its original defeat count (not overwritten)
+      expect(await service.getDefeatCount('cc_t1'), 10);
+      // But all others should be captured too
+      expect(await service.isCaptured('cc_t5'), true);
     });
   });
 }

@@ -463,30 +463,34 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                   child: _buildMonsterImage(trophy, isCaptured, inProgress),
                 ),
                 const SizedBox(height: 8),
-                // Name or status
-                if (isCaptured)
+                // Name
+                Text(
+                  trophy.name,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isCaptured
+                        ? trophy.tintColor
+                        : Colors.white.withValues(alpha: inProgress ? 0.5 : 0.35),
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                // Defeat requirement + progress dots for uncaptured
+                if (!isCaptured) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    trophy.name,
+                    'Defeat ${trophy.defeatsRequired}x to catch!',
                     textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: trophy.tintColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                else if (inProgress)
-                  _buildProgressDots(trophy, defeatCount)
-                else
-                  Text(
-                    '???',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withValues(alpha: 0.25),
+                      fontSize: 9,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  _buildProgressDots(trophy, defeatCount),
+                ],
               ],
             ),
           );
@@ -540,37 +544,24 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
         ],
       );
     } else {
-      // Fully locked — very dark silhouette with ? overlay
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          ColorFiltered(
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF0D0B1A),
-              BlendMode.srcATop,
-            ),
-            child: Opacity(
-              opacity: 0.3,
-              child: Image.asset(
-                trophy.imagePath,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Icon(
-                  Icons.bug_report,
-                  size: 60,
-                  color: Color(0xFF0D0B1A),
-                ),
-              ),
+      // Fully locked — slightly brighter silhouette teaser (no ? overlay)
+      return ColorFiltered(
+        colorFilter: const ColorFilter.mode(
+          Color(0xFF0D0B1A),
+          BlendMode.srcATop,
+        ),
+        child: Opacity(
+          opacity: 0.45,
+          child: Image.asset(
+            trophy.imagePath,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => const Icon(
+              Icons.bug_report,
+              size: 60,
+              color: Color(0xFF0D0B1A),
             ),
           ),
-          Text(
-            '?',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.15),
-              fontSize: 40,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
+        ),
       );
     }
   }

@@ -19,6 +19,7 @@ import 'world_map_screen.dart';
 import 'settings_screen.dart';
 import 'trophy_wall_screen.dart';
 import '../services/analytics_service.dart';
+import '../services/trophy_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool skipGreeting;
@@ -152,6 +153,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadStats() async {
+    // Auto-grant trophies for worlds already cleared
+    await TrophyService().autoGrantClearedWorldTrophies();
+
     final wallet = await _streakService.getWallet();
     final rank = await _streakService.getRangerRank();
     final hero = await _heroService.getSelectedHero();
