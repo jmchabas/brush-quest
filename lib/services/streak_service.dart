@@ -322,7 +322,7 @@ class StreakService {
   }
 
   BrushSlot _slotForHour(int hour) {
-    return hour < 15 ? BrushSlot.morning : BrushSlot.evening;
+    return hour < 12 ? BrushSlot.morning : BrushSlot.evening;
   }
 
   Future<void> setStreakPause(DateTime until) async {

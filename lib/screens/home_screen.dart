@@ -142,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    AudioService().stopVoice();
     AudioService().stopMusic();
     _pulseController.dispose();
     _floatController.dispose();
@@ -158,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await TrophyService().autoGrantClearedWorldTrophies();
 
     // Claim daily streak bonus (once per calendar day, silent if no streak)
-    await _streakService.claimDailyBonus();
+    final dailyBonus = await _streakService.claimDailyBonus();
 
     final wallet = await _streakService.getWallet();
     final rank = await _streakService.getRangerRank();
@@ -187,6 +188,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Ambient music on home screen (very low volume)
       AudioService().playMusic('battle_music_loop.mp3');
       AudioService().setMusicVolume(0.06);
+
+      // Show daily streak bonus notification (skip for brand-new users)
+      if (dailyBonus > 0 && totalBrushes > 0) {
+        if (!AudioService().isMuted) {
+          AudioService().playVoice('voice_streak_bonus.mp3');
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.star, color: Colors.yellow.shade200, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Daily Streak Bonus: +$dailyBonus \u2b50',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: hero.primaryColor.withValues(alpha: 0.9),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -226,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final result = _greetingService.checkGreeting(
       totalBrushes: totalBrushes,
       brushStreak: _streak,
-      totalStars: _totalStars,
+      wallet: _wallet,
       nextHeroName: nextHero?.name,
       nextHeroUnlockAt: nextHero?.price,
       nextWeaponName: nextWeapon?.name,
@@ -375,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${greeting.totalStars}',
+                              '${greeting.wallet}',
                               style: const TextStyle(
                                 color: Color(0xFFFFD54F),
                                 fontWeight: FontWeight.bold,
@@ -396,7 +424,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(6),
                           child: LinearProgressIndicator(
-                            value: greeting.totalStars / greeting.teaseItemUnlockAt!,
+                            value: greeting.wallet / greeting.teaseItemUnlockAt!,
                             minHeight: 8,
                             backgroundColor: Colors.white.withValues(alpha: 0.1),
                             valueColor: const AlwaysStoppedAnimation<Color>(
@@ -531,24 +559,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _openShop() {
+    AudioService().stopVoice();
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const HeroShopScreen()))
         .then((_) => _loadStats());
   }
 
   void _openWorldMap() {
+    AudioService().stopVoice();
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const WorldMapScreen()))
         .then((_) => _loadStats());
   }
 
   void _openTrophies() {
+    AudioService().stopVoice();
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const TrophyWallScreen()))
         .then((_) => _loadStats());
   }
 
   void _openSettings() {
+    AudioService().stopVoice();
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const SettingsScreen()))
         .then((_) => _loadStats());

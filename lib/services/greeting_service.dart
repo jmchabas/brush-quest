@@ -18,13 +18,13 @@ class GreetingResult {
   final String? teaseItemId;
   final String? teaseItemImagePath;
   final int? teaseItemUnlockAt;
-  final int totalStars;
+  final int wallet;
 
   const GreetingResult({
     required this.state,
     required this.voiceFile,
     required this.brushStreak,
-    required this.totalStars,
+    required this.wallet,
     this.teaseItemName,
     this.teaseStarsAway,
     this.teaseItemId,
@@ -61,6 +61,8 @@ class GreetingService {
     GreetingState.returning: [
       'voice_greet_returning_1.mp3',
       'voice_greet_returning_2.mp3',
+      'voice_greet_returning_excited_1.mp3',
+      'voice_greet_returning_excited_2.mp3',
     ],
   };
 
@@ -70,7 +72,7 @@ class GreetingService {
   GreetingResult? checkGreeting({
     required int totalBrushes,
     required int brushStreak,
-    required int totalStars,
+    required int wallet,
     required String? nextHeroName,
     required int? nextHeroUnlockAt,
     required String? nextWeaponName,
@@ -98,8 +100,8 @@ class GreetingService {
     String? teaseItemId;
     String? teaseItemImagePath;
     int? teaseItemUnlockAt;
-    final heroDistance = (nextHeroUnlockAt != null) ? nextHeroUnlockAt - totalStars : null;
-    final weaponDistance = (nextWeaponUnlockAt != null) ? nextWeaponUnlockAt - totalStars : null;
+    final heroDistance = (nextHeroUnlockAt != null) ? nextHeroUnlockAt - wallet : null;
+    final weaponDistance = (nextWeaponUnlockAt != null) ? nextWeaponUnlockAt - wallet : null;
 
     if (heroDistance != null && heroDistance > 0 && weaponDistance != null && weaponDistance > 0) {
       if (weaponDistance <= heroDistance) {
@@ -133,7 +135,7 @@ class GreetingService {
       state: state,
       voiceFile: voiceFile,
       brushStreak: brushStreak,
-      totalStars: totalStars,
+      wallet: wallet,
       teaseItemName: teaseItemName,
       teaseStarsAway: teaseStarsAway,
       teaseItemId: teaseItemId,

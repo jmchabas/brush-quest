@@ -52,6 +52,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
 
   @override
   void dispose() {
+    AudioService().stopVoice();
     _tabController.dispose();
     super.dispose();
   }
@@ -548,7 +549,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
+                      onTap: () {
+                        AudioService().stopVoice();
+                        Navigator.of(context).pop();
+                      },
                       behavior: HitTestBehavior.opaque,
                       child: const Padding(
                         padding: EdgeInsets.all(12),

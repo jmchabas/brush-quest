@@ -141,6 +141,13 @@ class FakeAudioService extends AudioService {
   }
 
   @override
+  Future<void> stopVoice() async {
+    calls.add(AudioCall('stopVoice'));
+    _clearVoiceQueue();
+    _voicePlaying = false;
+  }
+
+  @override
   Future<void> playMusic(String fileName) async {
     calls.add(AudioCall('playMusic', {'fileName': fileName}));
     if (_muted) return;

@@ -31,13 +31,15 @@ class SyncService {
     'camera_enabled',
     'muted',
     'onboarding_completed',
-    'collected_cards',
     'last_greeting_date',
     'voice_style',
     'star_wallet',
     'trophy_captured',
+    'unlocked_evolutions',
+    'streak_pause_until',
+    'last_daily_bonus_date',
   ];
-  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'card_dup_count_', 'trophy_defeats_'];
+  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'trophy_defeats_', 'evolution_stage_'];
 
   DocumentReference? get _userDoc {
     final user = AuthService().currentUser;

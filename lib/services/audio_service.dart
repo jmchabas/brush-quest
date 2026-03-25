@@ -199,7 +199,6 @@ class AudioService {
     'star_chime.mp3',
     'battle_music_loop.mp3',
     'voice_card_new.mp3',
-    'voice_card_album_intro.mp3',
     'voice_world_map_intro.mp3',
     'voice_greet_just_started_1.mp3',
     'voice_greet_just_started_2.mp3',
@@ -214,6 +213,8 @@ class AudioService {
     'voice_greet_streak_legend_2.mp3',
     'voice_greet_returning_1.mp3',
     'voice_greet_returning_2.mp3',
+    'voice_greet_returning_excited_1.mp3',
+    'voice_greet_returning_excited_2.mp3',
     'voice_onboarding_1.mp3',
     'voice_onboarding_2.mp3',
     'voice_onboarding_3.mp3',
@@ -571,6 +572,20 @@ class AudioService {
       _voicePlaying = false;
       _updateVoicePipelineState();
     }
+  }
+
+  /// Stop any currently playing voice and clear the voice queue.
+  /// Call this before screen transitions to prevent orphaned voice playback.
+  Future<void> stopVoice() async {
+    _clearVoiceQueue();
+    _voicePlaying = false;
+    _updateVoicePipelineState();
+    try {
+      await _voicePlayer.stop();
+    } catch (e) {
+      _reportAudioIssue(operation: 'stop_voice_failed', error: e);
+    }
+    _restoreMusicVolume();
   }
 
   void _clearVoiceQueue() {

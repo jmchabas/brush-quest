@@ -60,7 +60,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () => Navigator.of(context).pop(),
+                        onTap: () {
+                        AudioService().stopVoice();
+                        Navigator.of(context).pop();
+                      },
                         borderRadius: BorderRadius.circular(18),
                         child: Container(
                           width: 56,

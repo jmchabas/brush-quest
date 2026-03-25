@@ -65,6 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   @override
   void dispose() {
+    AudioService().stopVoice();
     _tabController.dispose();
     _mathController.dispose();
     super.dispose();
@@ -628,6 +629,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       'camera_enabled',
       'muted',
       'phase_duration',
+      'star_wallet',
+      'streak_pause_until',
+      'last_daily_bonus_date',
+      'unlocked_evolutions',
+      'trophy_captured',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);
@@ -636,7 +642,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       if (key.startsWith('world_progress_') ||
           key.startsWith('achievement_') ||
           key.startsWith('card_dup_count_') ||
-          key.startsWith('world_intro_seen_')) {
+          key.startsWith('world_intro_seen_') ||
+          key.startsWith('evolution_stage_') ||
+          key.startsWith('trophy_defeats_')) {
         await prefs.remove(key);
       }
     }
@@ -680,9 +688,9 @@ class _SettingsScreenState extends State<SettingsScreen>
         final parts = record.time.split(':');
         if (parts.length == 2) {
           final hour = int.tryParse(parts[0]) ?? 12;
-          if (hour < 15 && morningTime == null) {
+          if (hour < 12 && morningTime == null) {
             morningTime = record.time;
-          } else if (hour >= 15 && eveningTime == null) {
+          } else if (hour >= 12 && eveningTime == null) {
             eveningTime = record.time;
           }
         }
@@ -1677,7 +1685,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                         color: Colors.white,
                         size: 28,
                       ),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        AudioService().stopVoice();
+                        Navigator.pop(context);
+                      },
                     ),
                     const Expanded(
                       child: Text(

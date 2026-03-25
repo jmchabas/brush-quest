@@ -19,7 +19,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 0,
         brushStreak: 0,
-        totalStars: 0,
+        wallet: 0,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -36,7 +36,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 3,
-        totalStars: 5,
+        wallet: 5,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -53,7 +53,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 1,
         brushStreak: 0,
-        totalStars: 1,
+        wallet: 1,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -70,7 +70,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 2,
         brushStreak: 1,
-        totalStars: 2,
+        wallet: 2,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -88,7 +88,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 10,
         brushStreak: 0,
-        totalStars: 10,
+        wallet: 10,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -107,7 +107,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 2,
-        totalStars: 5,
+        wallet: 5,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -122,7 +122,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 10,
         brushStreak: 4,
-        totalStars: 10,
+        wallet: 10,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -137,7 +137,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 10,
         brushStreak: 5,
-        totalStars: 10,
+        wallet: 10,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -152,7 +152,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 20,
         brushStreak: 9,
-        totalStars: 20,
+        wallet: 20,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -167,7 +167,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 20,
         brushStreak: 10,
-        totalStars: 20,
+        wallet: 20,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -182,7 +182,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 40,
         brushStreak: 19,
-        totalStars: 40,
+        wallet: 40,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -197,7 +197,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 40,
         brushStreak: 20,
-        totalStars: 40,
+        wallet: 40,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -212,7 +212,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 200,
         brushStreak: 100,
-        totalStars: 200,
+        wallet: 200,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -227,7 +227,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 1,
-        totalStars: 5,
+        wallet: 5,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -244,7 +244,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 3,
-        totalStars: 5,
+        wallet: 5,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -259,7 +259,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 15,
         brushStreak: 7,
-        totalStars: 15,
+        wallet: 15,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -274,7 +274,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 30,
         brushStreak: 15,
-        totalStars: 30,
+        wallet: 30,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -289,7 +289,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 50,
         brushStreak: 25,
-        totalStars: 50,
+        wallet: 50,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -305,7 +305,7 @@ void main() {
       final result1 = service.checkGreeting(
         totalBrushes: 1,
         brushStreak: 0,
-        totalStars: 1,
+        wallet: 1,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -319,7 +319,7 @@ void main() {
       final result2 = service.checkGreeting(
         totalBrushes: 2,
         brushStreak: 1,
-        totalStars: 2,
+        wallet: 2,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -336,7 +336,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 2,
-        totalStars: 1,
+        wallet: 1,
         nextHeroName: 'FROST',
         nextHeroUnlockAt: 4,
         nextWeaponName: 'FLAME SWORD',
@@ -352,7 +352,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 2,
-        totalStars: 3,
+        wallet: 3,
         nextHeroName: 'FROST',
         nextHeroUnlockAt: 4,
         nextWeaponName: 'ICE HAMMER',
@@ -368,7 +368,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 50,
         brushStreak: 10,
-        totalStars: 50,
+        wallet: 50,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -385,7 +385,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 2,
-        totalStars: 9,
+        wallet: 9,
         nextHeroName: 'FROST',
         nextHeroUnlockAt: 14, // 5 away
         nextWeaponName: 'FLAME SWORD',
@@ -401,7 +401,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 50,
         brushStreak: 25,
-        totalStars: 90,
+        wallet: 90,
         nextHeroName: 'NOVA',
         nextHeroUnlockAt: 98, // 8 away
         nextWeaponName: null,
@@ -417,7 +417,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 50,
         brushStreak: 25,
-        totalStars: 80,
+        wallet: 80,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: 'COSMIC BURST',
@@ -433,7 +433,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 2,
-        totalStars: 10,
+        wallet: 10,
         nextHeroName: 'FROST',
         nextHeroUnlockAt: 4,
         nextWeaponName: 'FLAME SWORD',
@@ -451,7 +451,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 5,
         brushStreak: 3,
-        totalStars: 5,
+        wallet: 5,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,
@@ -471,7 +471,7 @@ void main() {
       final result = service.checkGreeting(
         totalBrushes: 10,
         brushStreak: 7,
-        totalStars: 10,
+        wallet: 10,
         nextHeroName: null,
         nextHeroUnlockAt: null,
         nextWeaponName: null,

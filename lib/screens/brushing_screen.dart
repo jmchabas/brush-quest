@@ -929,6 +929,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _exitWorldIntro() {
     _worldIntroTimer?.cancel();
+    _audio.stopVoice();
     _audio.stopMusic();
     if (!mounted) return;
     setState(() => _isQuitting = true);
@@ -971,6 +972,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _sparkleLottieController.dispose();
     _dustLottieController.dispose();
     _shockwaveController.dispose();
+    _audio.stopVoice();
     _audio.stopMusic();
     super.dispose();
   }
@@ -1423,8 +1425,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   /// Used to suppress companion voice when it would collide with arc beats.
   bool _isArcBeatNearby() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    // Check if an arc beat played within the last 5 seconds
-    if (now - _lastArcBeatTime < 5000) return true;
+    // Check if an arc beat played within the last 6 seconds
+    if (now - _lastArcBeatTime < 6000) return true;
     // Check if an arc beat is scheduled within the next 3 seconds
     final energizeAt = (_phaseDuration * 0.80).round();
     final supportAt = (_phaseDuration * 0.50).round();
@@ -1636,6 +1638,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
+    _audio.stopVoice();
     _audio.stopMusic();
     _clearCheckpoint();
     AnalyticsService().logBrushSessionAbandon(
@@ -1657,6 +1660,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
     _stopMotionDetection();
+    _audio.stopVoice();
     _audio.stopMusic();
     _clearCheckpoint();
     if (!mounted) return;

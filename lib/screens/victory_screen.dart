@@ -795,6 +795,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   void dispose() {
+    _audio.stopVoice();
     _confettiController.dispose();
     _doneButtonController.dispose();
     _chestBounceController.dispose();
@@ -807,6 +808,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
   void _goHome() {
+    AudioService().stopVoice();
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>

@@ -43,6 +43,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
 
   @override
   void dispose() {
+    AudioService().stopVoice();
     _glowController.dispose();
     super.dispose();
   }
@@ -214,6 +215,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
           // Back button
           IconButton(
             onPressed: () {
+              AudioService().stopVoice();
               AudioService().playSfx('whoosh.mp3');
               Navigator.of(context).pop();
             },

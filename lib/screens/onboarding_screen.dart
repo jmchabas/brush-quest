@@ -80,6 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   void dispose() {
+    _audio.stopVoice();
     _pageController.dispose();
     _pulseController.dispose();
     _floatController.dispose();
