@@ -900,7 +900,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         children: [
                           // Ranger Rank (shield)
                           const Icon(
-                            Icons.shield,
+                            Icons.diamond,
                             color: Color(0xFF7C4DFF),
                             size: 28,
                           ),

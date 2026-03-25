@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -53,6 +54,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _tapPulseAnimation;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
+  late AnimationController _idleBounceController;
+  late Animation<double> _idleBounceAnimation;
+  Timer? _idleBounceTimer;
   bool _buttonPressed = false;
   static const _welcomeBackVoices = [
     'voice_welcome_back.mp3',
@@ -115,6 +119,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
     );
 
+    _idleBounceController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _idleBounceAnimation = Tween<double>(begin: 1.0, end: 1.06).animate(
+      CurvedAnimation(parent: _idleBounceController, curve: Curves.elasticOut),
+    );
+
+    _idleBounceTimer = Timer(const Duration(seconds: 3), () {
+      _idleBounceController.forward().then((_) => _idleBounceController.reverse());
+      _idleBounceTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (mounted) {
+          _idleBounceController.forward().then((_) => _idleBounceController.reverse());
+        }
+      });
+    });
+
   }
 
   @override
@@ -125,6 +146,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _auraController.dispose();
     _tapPulseController.dispose();
     _breatheController.dispose();
+    _idleBounceController.dispose();
+    _idleBounceTimer?.cancel();
     super.dispose();
   }
 
@@ -693,7 +716,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.shield,
+                              Icons.diamond,
                               color: Color(0xFF7C4DFF),
                               size: 26,
                             ),

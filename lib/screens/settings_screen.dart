@@ -9,9 +9,11 @@ import '../services/auth_service.dart';
 import '../services/streak_service.dart';
 import '../services/sync_service.dart';
 import '../services/analytics_service.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/space_background.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
+import 'parent_guide_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -33,6 +35,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Brush history stats
   List<BrushRecord> _brushHistory = [];
   bool _historyLoaded = false;
+
+  // Dashboard state
+  bool _streakPaused = false;
+  DateTime? _pauseEnd;
+  int _habitDays = 0;
+  int _currentStreak = 0;
+  TodaySlotsStatus? _todaySlots;
 
   final _auth = AuthService();
   final _sync = SyncService();
@@ -81,7 +90,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final history = await StreakService().getHistory();
+    final streakSvc = StreakService();
+    final history = await streakSvc.getHistory();
+    final todaySlots = await streakSvc.getTodaySlots();
+    final paused = await streakSvc.isStreakPaused();
+    final pauseEnd = await streakSvc.getStreakPauseEnd();
+    final currentStreak = await streakSvc.getStreak();
+
+    // Count unique days with at least one brush in last 14 days
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final Set<String> daysWithBrush = {};
+    for (final record in history) {
+      final parts = record.date.split('-');
+      if (parts.length == 3) {
+        final recordDate = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
+        if (today.difference(recordDate).inDays < 14) {
+          daysWithBrush.add(record.date);
+        }
+      }
+    }
+
     if (mounted) {
       setState(() {
         _phaseDuration = prefs.getInt('phase_duration') ?? 20;
@@ -91,6 +124,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _voiceStyle = AudioService().voiceStyle;
         _brushHistory = history;
         _historyLoaded = true;
+        _todaySlots = todaySlots;
+        _streakPaused = paused;
+        _pauseEnd = pauseEnd;
+        _currentStreak = currentStreak;
+        _habitDays = daysWithBrush.length;
       });
     }
   }
@@ -111,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: const Color(0xFF1A0A3E),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text(
-            'Motion Camera',
+            'Brushing Detection',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
           ),
           content: const Text(
@@ -622,6 +660,271 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ── Today Status card builder ──────────────────────────────
+  Widget _buildTodayStatus() {
+    final morningDone = _todaySlots?.morningDone ?? false;
+    final eveningDone = _todaySlots?.eveningDone ?? false;
+
+    // Find today's timestamps from brush history
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    String? morningTime;
+    String? eveningTime;
+    for (final record in _brushHistory) {
+      if (record.date == todayStr) {
+        final parts = record.time.split(':');
+        if (parts.length == 2) {
+          final hour = int.tryParse(parts[0]) ?? 12;
+          if (hour < 15 && morningTime == null) {
+            morningTime = record.time;
+          } else if (hour >= 15 && eveningTime == null) {
+            eveningTime = record.time;
+          }
+        }
+      }
+    }
+
+    String formatTime(String time24) {
+      final parts = time24.split(':');
+      if (parts.length != 2) return time24;
+      final hour = int.tryParse(parts[0]) ?? 0;
+      final minute = parts[1];
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+      return '$displayHour:$minute $period';
+    }
+
+    return GlassCard(
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.wb_sunny, color: Color(0xFFFFD54F), size: 20),
+              const SizedBox(width: 10),
+              const Text(
+                'Morning',
+                style: TextStyle(color: Colors.white70, fontSize: 15),
+              ),
+              const Spacer(),
+              Text(
+                morningDone
+                    ? 'Done${morningTime != null ? ' (${formatTime(morningTime)})' : ''}'
+                    : '\u2014',
+                style: TextStyle(
+                  color: morningDone ? const Color(0xFF00E676) : Colors.white38,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.nightlight_round, color: Color(0xFF90CAF9), size: 20),
+              const SizedBox(width: 10),
+              const Text(
+                'Evening',
+                style: TextStyle(color: Colors.white70, fontSize: 15),
+              ),
+              const Spacer(),
+              Text(
+                eveningDone
+                    ? 'Done${eveningTime != null ? ' (${formatTime(eveningTime)})' : ''}'
+                    : '\u2014',
+                style: TextStyle(
+                  color: eveningDone ? const Color(0xFF00E676) : Colors.white38,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Habit Strength card builder ──────────────────────────────
+  Widget _buildHabitStrength() {
+    final pct = _habitDays / 14.0;
+    final color = pct > 0.8
+        ? const Color(0xFF00E676)
+        : pct >= 0.5
+            ? const Color(0xFFFFD54F)
+            : Colors.orangeAccent;
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$_habitDays of 14 days',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              Text(
+                '${(pct * 100).round()}%',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'Current streak: $_currentStreak days',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.emoji_events, color: Color(0xFFFFD54F), size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'Best streak: $_bestStreak days',
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Parent Tools card builder ──────────────────────────────
+  Widget _buildParentTools() {
+    return GlassCard(
+      child: Column(
+        children: [
+          // How Brush Quest Works
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ParentGuideScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.menu_book, color: Colors.white54, size: 20),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'How Brush Quest Works',
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.white38, size: 22),
+                ],
+              ),
+            ),
+          ),
+          Divider(color: Colors.white.withValues(alpha: 0.1), height: 20),
+          // Pause Streak
+          Row(
+            children: [
+              const Icon(Icons.pause_circle_outline, color: Colors.white54, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pause Streak',
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _streakPaused && _pauseEnd != null
+                          ? 'Paused until ${_pauseEnd!.month}/${_pauseEnd!.day}'
+                          : 'Streak is active',
+                      style: TextStyle(
+                        color: _streakPaused
+                            ? const Color(0xFFFFD54F)
+                            : Colors.white.withValues(alpha: 0.4),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _streakPaused,
+                onChanged: (value) async {
+                  if (value) {
+                    // Show date picker
+                    final now = DateTime.now();
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: now.add(const Duration(days: 1)),
+                      firstDate: now.add(const Duration(days: 1)),
+                      lastDate: now.add(const Duration(days: 7)),
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: const ColorScheme.dark(
+                              primary: Color(0xFF7C4DFF),
+                              surface: Color(0xFF1A0A3E),
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      await StreakService().setStreakPause(picked);
+                      setState(() {
+                        _streakPaused = true;
+                        _pauseEnd = picked;
+                      });
+                    }
+                  } else {
+                    await StreakService().clearStreakPause();
+                    setState(() {
+                      _streakPaused = false;
+                      _pauseEnd = null;
+                    });
+                  }
+                },
+                activeThumbColor: const Color(0xFFFFD54F),
+                activeTrackColor: const Color(0xFFFFD54F).withValues(alpha: 0.3),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildParentGate() {
     return Center(
       child: Padding(
@@ -807,381 +1110,443 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     vertical: 8,
                   ),
                   children: [
-                    // ACCOUNT section
+                    // ── A. TODAY STATUS ──────────────────────────────
                     _SectionHeader(
-                      icon: Icons.person,
-                      label: 'ACCOUNT',
+                      icon: Icons.today,
+                      label: 'TODAY',
+                      color: const Color(0xFF00E5FF),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTodayStatus(),
+
+                    const SizedBox(height: 24),
+
+                    // ── B. THIS WEEK ────────────────────────────────
+                    _SectionHeader(
+                      icon: Icons.calendar_view_week,
+                      label: 'THIS WEEK',
+                      color: const Color(0xFFFFD54F),
+                    ),
+                    const SizedBox(height: 8),
+                    if (_historyLoaded)
+                      _WeekActivityCard(history: _brushHistory),
+
+                    const SizedBox(height: 24),
+
+                    // ── C. HABIT STRENGTH ────────────────────────────
+                    _SectionHeader(
+                      icon: Icons.fitness_center,
+                      label: 'HABIT STRENGTH',
                       color: const Color(0xFF00E676),
                     ),
                     const SizedBox(height: 8),
+                    _buildHabitStrength(),
 
-                    if (!signedIn) ...[
-                      GestureDetector(
-                        onTap: _signingIn ? null : _handleSignIn,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF1A237E), Color(0xFF283593)],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.15),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                    const SizedBox(height: 24),
+
+                    // ── D. PARENT TOOLS ──────────────────────────────
+                    _SectionHeader(
+                      icon: Icons.build_outlined,
+                      label: 'PARENT TOOLS',
+                      color: const Color(0xFF7C4DFF),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildParentTools(),
+
+                    const SizedBox(height: 24),
+
+                    // ── E. SETTINGS (collapsed) ──────────────────────
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          dividerColor: Colors.transparent,
+                          splashColor: Colors.transparent,
+                        ),
+                        child: ExpansionTile(
+                          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          title: Row(
                             children: [
-                              if (_signingIn)
-                                const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              else ...[
-                                const Icon(
-                                  Icons.login,
+                              const Icon(Icons.settings, color: Colors.white70, size: 20),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Settings',
+                                style: TextStyle(
                                   color: Colors.white,
-                                  size: 22,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Sign in with Google',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ],
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Save your progress to the cloud',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(
-                              0xFF00E676,
-                            ).withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Column(
+                          iconColor: Colors.white54,
+                          collapsedIconColor: Colors.white54,
+                          initiallyExpanded: false,
                           children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor: const Color(0xFF7C4DFF),
-                                  child: const Icon(Icons.person, color: Colors.white, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        user.displayName ?? 'Space Ranger',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
+                            // BRUSHING settings
+                            _SectionHeader(
+                              icon: Icons.cleaning_services,
+                              label: 'BRUSHING',
+                              color: const Color(0xFF00E5FF),
+                            ),
+                            const SizedBox(height: 8),
+                            _SettingCard(
+                              icon: Icons.timer,
+                              title: 'Timer per zone',
+                              child: Row(
+                                children: [
+                                  for (final sec in [10, 15, 20])
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: _DurationChip(
+                                        seconds: sec,
+                                        selected: _phaseDuration == sec,
+                                        onTap: () => _setPhaseDuration(sec),
                                       ),
-                                      if (user.email != null)
-                                        Text(
-                                          user.email!,
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _SettingCard(
+                              icon: Icons.sensors,
+                              title: 'Brushing detection',
+                              child: Switch(
+                                value: _cameraEnabled,
+                                onChanged: _toggleCamera,
+                                activeThumbColor: const Color(0xFF00E5FF),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _SettingCard(
+                              icon: AudioService().isMuted
+                                  ? Icons.volume_off
+                                  : Icons.volume_up,
+                              title: 'Sound',
+                              child: Switch(
+                                value: !AudioService().isMuted,
+                                onChanged: (_) async {
+                                  await AudioService().toggleMute();
+                                  setState(() {});
+                                },
+                                activeThumbColor: const Color(0xFF00E5FF),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _SettingCard(
+                              icon: Icons.record_voice_over,
+                              title: 'Narrator voice',
+                              subtitle: AudioService.voiceStyles[_voiceStyle] ?? '',
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: SegmentedButton<String>(
+                                  showSelectedIcon: false,
+                                  segments: const [
+                                  ButtonSegment<String>(
+                                    value: 'classic',
+                                    label: Text('Classic'),
+                                  ),
+                                  ButtonSegment<String>(
+                                    value: 'buddy',
+                                    label: Text('Buddy'),
+                                  ),
+                                  ButtonSegment<String>(
+                                    value: 'boy',
+                                    label: Text('Boy'),
+                                  ),
+                                ],
+                                selected: {_voiceStyle},
+                                onSelectionChanged: (selected) async {
+                                  final style = selected.first;
+                                  await AudioService().setVoiceStyle(style);
+                                  setState(() => _voiceStyle = style);
+                                  await Future.delayed(const Duration(milliseconds: 200));
+                                  AudioService().playVoice('voice_greet_just_started_1.mp3',
+                                      interrupt: true, clearQueue: true);
+                                },
+                                style: ButtonStyle(
+                                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                                    (states) {
+                                      if (states.contains(WidgetState.selected)) {
+                                        return const Color(0xFF00E5FF).withValues(alpha: 0.3);
+                                      }
+                                      return Colors.white.withValues(alpha: 0.06);
+                                    },
+                                  ),
+                                  foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                                    (states) {
+                                      if (states.contains(WidgetState.selected)) {
+                                        return const Color(0xFF00E5FF);
+                                      }
+                                      return Colors.white54;
+                                    },
+                                  ),
+                                  side: WidgetStateProperty.all(
+                                    BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                                  ),
+                                  textStyle: WidgetStateProperty.all(
+                                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // ACCOUNT settings
+                            _SectionHeader(
+                              icon: Icons.person,
+                              label: 'ACCOUNT',
+                              color: const Color(0xFF00E676),
+                            ),
+                            const SizedBox(height: 8),
+                            if (!signedIn) ...[
+                              GestureDetector(
+                                onTap: _signingIn ? null : _handleSignIn,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF1A237E), Color(0xFF283593)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (_signingIn)
+                                        const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      else ...[
+                                        const Icon(
+                                          Icons.login,
+                                          color: Colors.white,
+                                          size: 22,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        const Text(
+                                          'Sign in with Google',
                                           style: TextStyle(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.5,
-                                            ),
-                                            fontSize: 12,
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
+                                      ],
                                     ],
                                   ),
                                 ),
-                                TextButton(
-                                  onPressed: _handleSignOut,
-                                  child: const Text(
-                                    'Sign out',
-                                    style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Save your progress to the cloud',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ] else ...[
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF00E676,
+                                    ).withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor: Color(0xFF7C4DFF),
+                                          child: Icon(Icons.person, color: Colors.white, size: 20),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                user.displayName ?? 'Space Ranger',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                              if (user.email != null)
+                                                Text(
+                                                  user.email!,
+                                                  style: TextStyle(
+                                                    color: Colors.white.withValues(
+                                                      alpha: 0.5,
+                                                    ),
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: _handleSignOut,
+                                          child: const Text(
+                                            'Sign out',
+                                            style: TextStyle(
+                                              color: Colors.white54,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _ActionButton(
+                                            icon: Icons.cloud_upload,
+                                            label: 'SAVE',
+                                            color: const Color(0xFF00E5FF),
+                                            loading: _syncing,
+                                            onTap: _handleSyncNow,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: _ActionButton(
+                                            icon: Icons.cloud_download,
+                                            label: 'RESTORE',
+                                            color: const Color(0xFF7C4DFF),
+                                            loading: _syncing,
+                                            onTap: _handleRestoreFromCloud,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
+                            ],
+
+                            const SizedBox(height: 24),
+
+                            // DATA MANAGEMENT settings
+                            _SectionHeader(
+                              icon: Icons.settings,
+                              label: 'OTHER',
+                              color: const Color(0xFF7C4DFF),
                             ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _ActionButton(
-                                    icon: Icons.cloud_upload,
-                                    label: 'SAVE',
-                                    color: const Color(0xFF00E5FF),
-                                    loading: _syncing,
-                                    onTap: _handleSyncNow,
-                                  ),
+                            const SizedBox(height: 8),
+                            _SettingCard(
+                              icon: Icons.replay,
+                              title: 'Show tutorial again',
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.replay,
+                                  color: Color(0xFF00E5FF),
+                                  size: 24,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _ActionButton(
-                                    icon: Icons.cloud_download,
-                                    label: 'RESTORE',
-                                    color: const Color(0xFF7C4DFF),
-                                    loading: _syncing,
-                                    onTap: _handleRestoreFromCloud,
-                                  ),
+                                onPressed: _resetOnboarding,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _SettingCard(
+                              icon: Icons.delete_forever,
+                              title: "Delete child's data",
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.redAccent,
+                                  size: 24,
                                 ),
-                              ],
+                                onPressed: _resetProgress,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _SettingCard(
+                              icon: Icons.privacy_tip_outlined,
+                              title: 'Privacy policy',
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.open_in_new,
+                                  color: Color(0xFF7C4DFF),
+                                  size: 24,
+                                ),
+                                onPressed: _openPrivacyPolicy,
+                              ),
                             ),
                           ],
                         ),
                       ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ── F. BRUSH HISTORY ──────────────────────────────
+                    if (_historyLoaded && _brushHistory.isNotEmpty) ...[
+                      _SectionHeader(
+                        icon: Icons.history,
+                        label: 'BRUSH HISTORY',
+                        color: Colors.white54,
+                      ),
+                      const SizedBox(height: 8),
+                      if (_historyLoaded)
+                        _ConsistencyAndPatternCard(
+                          history: _brushHistory,
+                        ),
+                      const SizedBox(height: 8),
+                      _SettingCard(
+                        icon: Icons.cleaning_services,
+                        title: 'Total brushes',
+                        child: Text(
+                          '$_totalBrushes',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _SettingCard(
+                        icon: Icons.schedule,
+                        title: 'Minutes brushed',
+                        child: Text(
+                          '${(_totalBrushes * _phaseDuration * 6 / 60).round()}',
+                          style: const TextStyle(
+                            color: Color(0xFF00E5FF),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
                     ],
-
-                    const SizedBox(height: 24),
-
-                    // BRUSHING section
-                    _SectionHeader(
-                      icon: Icons.cleaning_services,
-                      label: 'BRUSHING',
-                      color: const Color(0xFF00E5FF),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _SettingCard(
-                      icon: Icons.timer,
-                      title: 'Timer per zone',
-                      child: Row(
-                        children: [
-                          for (final sec in [10, 15, 20])
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: _DurationChip(
-                                seconds: sec,
-                                selected: _phaseDuration == sec,
-                                onTap: () => _setPhaseDuration(sec),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _SettingCard(
-                      icon: Icons.sensors,
-                      title: 'Motion camera',
-                      child: Switch(
-                        value: _cameraEnabled,
-                        onChanged: _toggleCamera,
-                        activeThumbColor: const Color(0xFF00E5FF),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _SettingCard(
-                      icon: AudioService().isMuted
-                          ? Icons.volume_off
-                          : Icons.volume_up,
-                      title: 'Sound',
-                      child: Switch(
-                        value: !AudioService().isMuted,
-                        onChanged: (_) async {
-                          await AudioService().toggleMute();
-                          setState(() {});
-                        },
-                        activeThumbColor: const Color(0xFF00E5FF),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _SettingCard(
-                      icon: Icons.record_voice_over,
-                      title: 'Narrator voice',
-                      subtitle: AudioService.voiceStyles[_voiceStyle] ?? '',
-                      child: SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment<String>(
-                            value: 'classic',
-                            label: Text('Classic'),
-                          ),
-                          ButtonSegment<String>(
-                            value: 'buddy',
-                            label: Text('Buddy'),
-                          ),
-                          ButtonSegment<String>(
-                            value: 'boy',
-                            label: Text('Boy'),
-                          ),
-                        ],
-                        selected: {_voiceStyle},
-                        onSelectionChanged: (selected) async {
-                          final style = selected.first;
-                          await AudioService().setVoiceStyle(style);
-                          setState(() => _voiceStyle = style);
-                          // Preview: play a distinctive greeting sample
-                          await Future.delayed(const Duration(milliseconds: 200));
-                          AudioService().playVoice('voice_greet_just_started_1.mp3',
-                              interrupt: true, clearQueue: true);
-                        },
-                        style: ButtonStyle(
-                          backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return const Color(0xFF00E5FF).withValues(alpha: 0.3);
-                              }
-                              return Colors.white.withValues(alpha: 0.06);
-                            },
-                          ),
-                          foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (states) {
-                              if (states.contains(WidgetState.selected)) {
-                                return const Color(0xFF00E5FF);
-                              }
-                              return Colors.white54;
-                            },
-                          ),
-                          side: WidgetStateProperty.all(
-                            BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                          ),
-                          textStyle: WidgetStateProperty.all(
-                            const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // STATS section
-                    _SectionHeader(
-                      icon: Icons.bar_chart,
-                      label: 'STATS',
-                      color: const Color(0xFFFFD54F),
-                    ),
-                    const SizedBox(height: 8),
-
-                    if (_historyLoaded)
-                      _WeekActivityCard(history: _brushHistory),
-                    const SizedBox(height: 8),
-
-                    if (_historyLoaded)
-                      _ConsistencyAndPatternCard(
-                        history: _brushHistory,
-                      ),
-                    const SizedBox(height: 8),
-
-                    _SettingCard(
-                      icon: Icons.cleaning_services,
-                      title: 'Total brushes',
-                      child: Text(
-                        '$_totalBrushes',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _SettingCard(
-                      icon: Icons.local_fire_department,
-                      title: 'Best streak',
-                      child: Text(
-                        '$_bestStreak days',
-                        style: const TextStyle(
-                          color: Colors.orangeAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _SettingCard(
-                      icon: Icons.schedule,
-                      title: 'Minutes brushed',
-                      child: Text(
-                        '${(_totalBrushes * _phaseDuration * 6 / 60).round()}',
-                        style: const TextStyle(
-                          color: Color(0xFF00E5FF),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // OTHER section
-                    _SectionHeader(
-                      icon: Icons.settings,
-                      label: 'OTHER',
-                      color: const Color(0xFF7C4DFF),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _SettingCard(
-                      icon: Icons.replay,
-                      title: 'Show tutorial again',
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.replay,
-                          color: Color(0xFF00E5FF),
-                          size: 24,
-                        ),
-                        onPressed: _resetOnboarding,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _SettingCard(
-                      icon: Icons.delete_forever,
-                      title: "Delete child's data",
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.redAccent,
-                          size: 24,
-                        ),
-                        onPressed: _resetProgress,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _SettingCard(
-                      icon: Icons.privacy_tip_outlined,
-                      title: 'Privacy policy',
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.open_in_new,
-                          color: Color(0xFF7C4DFF),
-                          size: 24,
-                        ),
-                        onPressed: _openPrivacyPolicy,
-                      ),
-                    ),
 
                     const SizedBox(height: 32),
 

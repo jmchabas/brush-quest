@@ -2472,30 +2472,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Phase name (TOP LEFT, BOTTOM RIGHT, etc.)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _world.themeColor.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      child: Text(
-                        _phaseNames[_phase] ?? '',
-                        style: TextStyle(
-                          color: _world.themeColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     // Monster defeated counter
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -2510,7 +2486,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.shield,
+                            Icons.diamond,
                             color: _world.themeColor,
                             size: 14,
                           ),

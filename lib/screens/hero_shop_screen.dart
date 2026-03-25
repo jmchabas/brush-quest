@@ -28,6 +28,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   String _selectedWeaponId = 'star_blaster';
   int _wallet = 0;
   int _rank = 0;
+  List<String> _unlockedSkins = [];
+  Map<String, String?> _equippedSkins = {};
 
   late TabController _tabController;
 
@@ -61,6 +63,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     final selectedWeapon = await _weaponService.getSelectedWeaponId();
     final wallet = await _streakService.getWallet();
     final rank = await _streakService.getRangerRank();
+    final unlockedSkins = await _heroService.getUnlockedSkinIds();
+    final equippedSkins = <String, String?>{};
+    for (final hero in HeroService.allHeroes) {
+      equippedSkins[hero.id] = await _heroService.getEquippedSkinId(hero.id);
+    }
     if (mounted) {
       setState(() {
         _unlockedHeroes = unlockedHeroes;
@@ -69,16 +76,20 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         _selectedWeaponId = selectedWeapon;
         _wallet = wallet;
         _rank = rank;
+        _unlockedSkins = unlockedSkins;
+        _equippedSkins = equippedSkins;
       });
     }
   }
 
   Future<void> _onHeroTap(HeroCharacter hero) async {
     if (_unlockedHeroes.contains(hero.id)) {
+      // Select hero and open the skin bottom sheet
       await _heroService.selectHero(hero.id);
       HapticFeedback.mediumImpact();
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
       await _loadData();
+      if (mounted) _showSkinBottomSheet(hero);
     } else if (_wallet >= hero.price) {
       if (hero.price > 10) {
         final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);
@@ -190,6 +201,293 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     );
   }
 
+  void _showSkinBottomSheet(HeroCharacter hero) {
+    final skins = HeroService.skinsForHero(hero.id);
+    if (skins.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final equippedSkinId = _equippedSkins[hero.id];
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A1A2E),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Hero image with current skin
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: hero.primaryColor.withValues(alpha: 0.6),
+                        width: 3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: hero.primaryColor.withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: HeroService.buildHeroImage(
+                        hero.id,
+                        skinId: equippedSkinId,
+                        size: 100,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    hero.name,
+                    style: TextStyle(
+                      color: hero.primaryColor,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // Wallet display
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.star, color: Colors.yellowAccent, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_wallet',
+                        style: const TextStyle(
+                          color: Colors.yellowAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // "Styles" header
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'STYLES',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Default option
+                  _buildSkinOption(
+                    ctx: ctx,
+                    setSheetState: setSheetState,
+                    hero: hero,
+                    skin: null,
+                    isOwned: true,
+                    isEquipped: equippedSkinId == null,
+                  ),
+                  const SizedBox(height: 8),
+                  // Skin options
+                  ...skins.map((skin) {
+                    final isOwned = _unlockedSkins.contains(skin.id);
+                    final isEquipped = equippedSkinId == skin.id;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _buildSkinOption(
+                        ctx: ctx,
+                        setSheetState: setSheetState,
+                        hero: hero,
+                        skin: skin,
+                        isOwned: isOwned,
+                        isEquipped: isEquipped,
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSkinOption({
+    required BuildContext ctx,
+    required StateSetter setSheetState,
+    required HeroCharacter hero,
+    required HeroSkin? skin,
+    required bool isOwned,
+    required bool isEquipped,
+  }) {
+    final isDefault = skin == null;
+    final displayColor = isDefault ? hero.primaryColor : skin.tintColor;
+    final displayName = isDefault ? 'Default' : skin.name;
+    final canAfford = isDefault || isOwned || _wallet >= skin.price;
+
+    return GestureDetector(
+      onTap: () async {
+        if (isEquipped) return;
+        if (isOwned || isDefault) {
+          // Equip
+          await _heroService.equipSkin(hero.id, skin?.id);
+          HapticFeedback.mediumImpact();
+          _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
+          await _loadData();
+          setSheetState(() {});
+        } else if (canAfford) {
+          // Purchase — skin is non-null here (isDefault branch was handled above)
+          if (skin.price > 10) {
+            final confirmed = await _showPurchaseConfirmation(skin.name, skin.price);
+            if (!confirmed) return;
+          }
+          final success = await _heroService.purchaseSkin(skin.id);
+          if (success) {
+            // Auto-equip after purchase
+            await _heroService.equipSkin(hero.id, skin.id);
+            HapticFeedback.heavyImpact();
+            await _loadData();
+            setSheetState(() {});
+          }
+        } else {
+          // Can't afford
+          HapticFeedback.lightImpact();
+          AudioService().playVoice('voice_need_stars.mp3');
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isEquipped
+              ? displayColor.withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isEquipped
+                ? displayColor.withValues(alpha: 0.6)
+                : Colors.white.withValues(alpha: 0.1),
+            width: isEquipped ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Color circle preview
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: displayColor,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: displayColor.withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Name
+            Expanded(
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  color: isEquipped ? Colors.white : Colors.white.withValues(alpha: 0.8),
+                  fontSize: 16,
+                  fontWeight: isEquipped ? FontWeight.bold : FontWeight.w500,
+                ),
+              ),
+            ),
+            // Badge
+            if (isEquipped)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.greenAccent.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'EQUIPPED',
+                  style: TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              )
+            else if (isOwned || isDefault)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isDefault ? 'DEFAULT' : 'OWNED',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+              )
+            else
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.star,
+                    color: canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.4),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${skin.price}',
+                    style: TextStyle(
+                      color: canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.4),
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -244,7 +542,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.shield,
+                            Icons.diamond,
                             color: Colors.cyanAccent,
                             size: 18,
                           ),
@@ -511,18 +809,16 @@ class _HeroCard extends StatelessWidget {
               child: Column(
                 children: [
                   Expanded(
-                    child: ClipOval(
-                      child: Opacity(
-                        opacity: isUnlocked ? 1.0 : 0.85,
-                        child: ColorFiltered(
-                          colorFilter: isUnlocked
-                              ? const ColorFilter.mode(
-                                  Colors.transparent,
-                                  BlendMode.dst,
-                                )
-                              : ColorFilter.matrix(_partialDesaturationMatrix(0.3)),
-                          child: Image.asset(hero.imagePath, fit: BoxFit.cover),
-                        ),
+                    child: Opacity(
+                      opacity: isUnlocked ? 1.0 : 0.85,
+                      child: ColorFiltered(
+                        colorFilter: isUnlocked
+                            ? const ColorFilter.mode(
+                                Colors.transparent,
+                                BlendMode.dst,
+                              )
+                            : ColorFilter.matrix(_partialDesaturationMatrix(0.3)),
+                        child: Image.asset(hero.imagePath, fit: BoxFit.contain),
                       ),
                     ),
                   ),
