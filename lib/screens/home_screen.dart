@@ -937,41 +937,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 8),
 
                   // BRUSH button
-                  GestureDetector(
-                    onTap: _startBrushing,
-                    child: AnimatedBuilder(
-                      animation: _tapPulseAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: 1.0 + _tapPulseAnimation.value * 0.03,
-                          child: child,
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              _selectedHero.primaryColor,
-                              _selectedHero.primaryColor.withValues(alpha: 0.7),
+                  AnimatedBuilder(
+                    animation: _idleBounceAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _idleBounceAnimation.value,
+                        child: child,
+                      );
+                    },
+                    child: GestureDetector(
+                      onTap: _startBrushing,
+                      child: AnimatedBuilder(
+                        animation: _tapPulseAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: 1.0 + _tapPulseAnimation.value * 0.03,
+                            child: child,
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                _selectedHero.primaryColor,
+                                _selectedHero.primaryColor.withValues(alpha: 0.7),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _selectedHero.primaryColor.withValues(alpha: 0.5),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                              ),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: _selectedHero.primaryColor.withValues(alpha: 0.5),
-                              blurRadius: 20,
-                              spreadRadius: 2,
+                          child: const Text(
+                            'BRUSH!',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 4,
                             ),
-                          ],
-                        ),
-                        child: const Text(
-                          'BRUSH!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 4,
                           ),
                         ),
                       ),
