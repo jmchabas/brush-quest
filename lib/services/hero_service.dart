@@ -30,7 +30,7 @@ class HeroEvolution {
   final int stage;          // 1, 2, or 3
   final String name;        // 'FLAME KNIGHT'
   final String description; // flavor text
-  final int price;          // 0 (base comes free), 25, 45
+  final int price;          // 0 (base comes free), 15-18 (stage 2), 35-40 (stage 3)
   final Color primaryColor;
   final Color attackColor;
 
@@ -54,7 +54,9 @@ class HeroService {
   static bool _purchasing = false;
 
   // Star prices — deducted from wallet on purchase.
-  // Interleaved with weapons for a new unlock every 3-5 days at 2x/day.
+  // Dense price ladder: a new unlock every 1-3 days at 2x/day.
+  // Prevents "poverty trap" where cheap items are exhausted and only
+  // expensive ones remain, leaving the child with nothing achievable.
   static const List<HeroCharacter> allHeroes = [
     HeroCharacter(
       id: 'blaze',
@@ -71,7 +73,7 @@ class HeroService {
       name: 'FROST',
       title: 'Ice Wolf',
       description: 'A brave wolf knight who freezes monsters solid with icy howls!',
-      price: 15,
+      price: 12,
       imagePath: 'assets/images/hero_frost.png',
       primaryColor: Color(0xFF40C4FF),
       attackColor: Color(0xFF80D8FF),
@@ -81,7 +83,7 @@ class HeroService {
       name: 'BOLT',
       title: 'Lightning Robot',
       description: 'A super-charged robot who zaps monsters with electric bolts!',
-      price: 20,
+      price: 18,
       imagePath: 'assets/images/hero_bolt.png',
       primaryColor: Color(0xFFFFD600),
       attackColor: Color(0xFFFFFF00),
@@ -91,7 +93,7 @@ class HeroService {
       name: 'SHADOW',
       title: 'Ninja Cat',
       description: 'A sneaky ninja cat who strikes from the shadows with dark energy!',
-      price: 30,
+      price: 25,
       imagePath: 'assets/images/hero_shadow.png',
       primaryColor: Color(0xFFAA00FF),
       attackColor: Color(0xFFD500F9),
@@ -101,7 +103,7 @@ class HeroService {
       name: 'LEAF',
       title: 'Nature Guardian',
       description: 'A mighty tree guardian who smashes monsters with vine whip attacks!',
-      price: 35,
+      price: 33,
       imagePath: 'assets/images/hero_leaf.png',
       primaryColor: Color(0xFF00E676),
       attackColor: Color(0xFF69F0AE),
@@ -206,12 +208,12 @@ class HeroService {
     HeroEvolution(id: 'blaze_stage2', heroId: 'blaze', stage: 2,
       name: 'FLAME KNIGHT',
       description: 'Upgraded fire armor with glowing flame patterns!',
-      price: 25,
+      price: 15,
       primaryColor: Color(0xFFFF6D00), attackColor: Color(0xFFFF9100)),
     HeroEvolution(id: 'blaze_stage3', heroId: 'blaze', stage: 3,
       name: 'INFERNO LORD',
       description: 'Legendary fire armor — monsters flee in terror!',
-      price: 45,
+      price: 35,
       primaryColor: Color(0xFFFF6D00), attackColor: Color(0xFFFF9100)),
 
     // Frost evolutions (base: blue)
@@ -223,12 +225,12 @@ class HeroService {
     HeroEvolution(id: 'frost_stage2', heroId: 'frost', stage: 2,
       name: 'CRYSTAL KNIGHT',
       description: 'Crystalline armor with frost breath power!',
-      price: 25,
+      price: 15,
       primaryColor: Color(0xFF40C4FF), attackColor: Color(0xFF80D8FF)),
     HeroEvolution(id: 'frost_stage3', heroId: 'frost', stage: 3,
       name: 'BLIZZARD LORD',
       description: 'Ultimate ice armor — freezes everything!',
-      price: 45,
+      price: 35,
       primaryColor: Color(0xFF40C4FF), attackColor: Color(0xFF80D8FF)),
 
     // Bolt evolutions (base: yellow)
@@ -240,12 +242,12 @@ class HeroService {
     HeroEvolution(id: 'bolt_stage2', heroId: 'bolt', stage: 2,
       name: 'THUNDER KNIGHT',
       description: 'Electric coils and crackling lightning power!',
-      price: 25,
+      price: 15,
       primaryColor: Color(0xFFFFD600), attackColor: Color(0xFFFFFF00)),
     HeroEvolution(id: 'bolt_stage3', heroId: 'bolt', stage: 3,
       name: 'STORM LORD',
       description: 'Tesla-powered armor — lightning strikes all!',
-      price: 45,
+      price: 35,
       primaryColor: Color(0xFFFFD600), attackColor: Color(0xFFFFFF00)),
 
     // Shadow evolutions (base: purple)
@@ -257,12 +259,12 @@ class HeroService {
     HeroEvolution(id: 'shadow_stage2', heroId: 'shadow', stage: 2,
       name: 'PHANTOM KNIGHT',
       description: 'Sleek dark armor with shadow energy!',
-      price: 30,
+      price: 18,
       primaryColor: Color(0xFFAA00FF), attackColor: Color(0xFFD500F9)),
     HeroEvolution(id: 'shadow_stage3', heroId: 'shadow', stage: 3,
       name: 'VOID LORD',
       description: 'Legendary void armor — invisible and deadly!',
-      price: 50,
+      price: 40,
       primaryColor: Color(0xFFAA00FF), attackColor: Color(0xFFD500F9)),
 
     // Leaf evolutions (base: green)
@@ -274,12 +276,12 @@ class HeroService {
     HeroEvolution(id: 'leaf_stage2', heroId: 'leaf', stage: 2,
       name: 'FOREST KNIGHT',
       description: 'Living vine armor with nature magic!',
-      price: 30,
+      price: 18,
       primaryColor: Color(0xFF00E676), attackColor: Color(0xFF69F0AE)),
     HeroEvolution(id: 'leaf_stage3', heroId: 'leaf', stage: 3,
       name: 'ANCIENT GUARDIAN',
       description: 'Legendary tree armor — unstoppable!',
-      price: 50,
+      price: 40,
       primaryColor: Color(0xFF00E676), attackColor: Color(0xFF69F0AE)),
 
     // Nova evolutions (base: gold)
@@ -291,12 +293,12 @@ class HeroService {
     HeroEvolution(id: 'nova_stage2', heroId: 'nova', stage: 2,
       name: 'STAR KNIGHT',
       description: 'Golden armor with cosmic star energy!',
-      price: 30,
+      price: 18,
       primaryColor: Color(0xFFFFD54F), attackColor: Color(0xFFFFE082)),
     HeroEvolution(id: 'nova_stage3', heroId: 'nova', stage: 3,
       name: 'CELESTIAL LORD',
       description: 'Legendary cosmic armor — pure starlight!',
-      price: 50,
+      price: 40,
       primaryColor: Color(0xFFFFD54F), attackColor: Color(0xFFFFE082)),
   ];
 

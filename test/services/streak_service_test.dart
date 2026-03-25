@@ -548,6 +548,93 @@ void main() {
     });
   });
 
+  group('Daily streak bonus', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('claimDailyBonus returns 0 when no streak', () async {
+      final service = StreakService();
+      final bonus = await service.claimDailyBonus();
+      expect(bonus, 0);
+    });
+
+    test('claimDailyBonus returns 1 for 3+ day streak', () async {
+      final now = DateTime.now();
+      final yesterday = now.subtract(const Duration(days: 1));
+      final yesterdayStr =
+          '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': yesterdayStr,
+        'current_streak': 4,
+        'total_stars': 10,
+        'star_wallet': 10,
+      });
+      final service = StreakService();
+      final bonus = await service.claimDailyBonus();
+      expect(bonus, 1);
+      expect(await service.getWallet(), 11);
+      expect(await service.getRangerRank(), 11);
+    });
+
+    test('claimDailyBonus returns 2 for 7+ day streak', () async {
+      final now = DateTime.now();
+      final yesterday = now.subtract(const Duration(days: 1));
+      final yesterdayStr =
+          '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': yesterdayStr,
+        'current_streak': 10,
+        'total_stars': 20,
+        'star_wallet': 20,
+      });
+      final service = StreakService();
+      final bonus = await service.claimDailyBonus();
+      expect(bonus, 2);
+      expect(await service.getWallet(), 22);
+    });
+
+    test('claimDailyBonus only awards once per day', () async {
+      final now = DateTime.now();
+      final yesterday = now.subtract(const Duration(days: 1));
+      final yesterdayStr =
+          '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': yesterdayStr,
+        'current_streak': 5,
+        'total_stars': 10,
+        'star_wallet': 10,
+      });
+      final service = StreakService();
+      final first = await service.claimDailyBonus();
+      final second = await service.claimDailyBonus();
+      expect(first, 1);
+      expect(second, 0);
+      expect(await service.getWallet(), 11); // Not 12
+    });
+
+    test('claimDailyBonus returns 0 for streak < 3', () async {
+      final now = DateTime.now();
+      final yesterday = now.subtract(const Duration(days: 1));
+      final yesterdayStr =
+          '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': yesterdayStr,
+        'current_streak': 2,
+        'total_stars': 10,
+        'star_wallet': 10,
+      });
+      final service = StreakService();
+      final bonus = await service.claimDailyBonus();
+      expect(bonus, 0);
+      expect(await service.getWallet(), 10); // Unchanged
+    });
+  });
+
   group('Migration', () {
     test('migrateToWalletEconomy copies total_stars to star_wallet', () async {
       SharedPreferences.setMockInitialValues({'total_stars': 42});

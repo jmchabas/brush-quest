@@ -16,8 +16,8 @@ void main() {
       expect(WeaponService.allWeapons.length, 6);
     });
 
-    test('weapon prices match expected values (0/10/15/18/22/25)', () {
-      final expectedPrices = [0, 10, 15, 18, 22, 25];
+    test('weapon prices match expected values (0/8/14/18/22/25)', () {
+      final expectedPrices = [0, 8, 14, 18, 22, 25];
       for (int i = 0; i < WeaponService.allWeapons.length; i++) {
         expect(WeaponService.allWeapons[i].price, expectedPrices[i],
             reason: 'Weapon ${WeaponService.allWeapons[i].id} should cost ${expectedPrices[i]}');
@@ -67,7 +67,7 @@ void main() {
     test('getWeaponById returns correct weapon', () {
       final weapon = WeaponService.getWeaponById('flame_sword');
       expect(weapon.name, 'FLAME SWORD');
-      expect(weapon.price, 10);
+      expect(weapon.price, 8);
     });
 
     test('getWeaponById returns star_blaster for unknown id', () {
@@ -109,7 +109,7 @@ void main() {
         'total_stars': 15,
       });
       final service = WeaponService();
-      final result = await service.purchaseWeapon('flame_sword'); // price 10
+      final result = await service.purchaseWeapon('flame_sword'); // price 8
       expect(result, true);
 
       final unlocked = await service.getUnlockedWeaponIds();
@@ -117,7 +117,7 @@ void main() {
 
       // Stars deducted from wallet
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('star_wallet'), 5); // 15 - 10
+      expect(prefs.getInt('star_wallet'), 7); // 15 - 8
       expect(prefs.getInt('total_stars'), 15); // Rank unchanged
     });
 
@@ -127,7 +127,7 @@ void main() {
         'total_stars': 50,
       });
       final service = WeaponService();
-      final result = await service.purchaseWeapon('flame_sword'); // price 10
+      final result = await service.purchaseWeapon('flame_sword'); // price 8
       expect(result, false);
 
       final unlocked = await service.getUnlockedWeaponIds();
@@ -209,13 +209,13 @@ void main() {
       });
       final service = WeaponService();
 
-      await service.purchaseWeapon('flame_sword'); // price 10
-      await service.purchaseWeapon('ice_hammer'); // price 15
+      await service.purchaseWeapon('flame_sword'); // price 8
+      await service.purchaseWeapon('ice_hammer'); // price 14
       await service.purchaseWeapon('lightning_wand'); // price 18
 
-      // Wallet: 50 - 10 - 15 - 18 = 7
+      // Wallet: 50 - 8 - 14 - 18 = 10
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('star_wallet'), 7);
+      expect(prefs.getInt('star_wallet'), 10);
 
       final unlocked = await service.getUnlockedWeaponIds();
       expect(unlocked, containsAll(['star_blaster', 'flame_sword', 'ice_hammer', 'lightning_wand']));

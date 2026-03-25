@@ -79,6 +79,7 @@ class StreakService {
   static const _keyEveningDoneDate = 'evening_done_date';
   static const _keyStarWallet = 'star_wallet';
   static const _keyStreakPauseUntil = 'streak_pause_until';
+  static const _keyLastDailyBonusDate = 'last_daily_bonus_date';
 
   /// Calculate bonus stars from streak length and daily slot completion.
   int calculateStreakBonus({required int streak, required bool bothSlotsDone}) {
@@ -348,6 +349,32 @@ class StreakService {
     final pauseUntil = prefs.getString(_keyStreakPauseUntil);
     if (pauseUntil == null) return null;
     return DateTime.tryParse(pauseUntil);
+  }
+
+  /// Claim a daily streak bonus (once per calendar day, on app open).
+  /// Returns the bonus amount awarded (0 if already claimed or no streak).
+  /// 3+ day streak: +1 star. 7+ day streak: +2 stars.
+  Future<int> claimDailyBonus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = _todayString();
+    final lastBonusDate = prefs.getString(_keyLastDailyBonusDate) ?? '';
+
+    if (lastBonusDate == today) return 0; // Already claimed today
+
+    final streak = await getStreak();
+    int bonusAmount = 0;
+    if (streak >= 7) {
+      bonusAmount = 2;
+    } else if (streak >= 3) {
+      bonusAmount = 1;
+    }
+
+    if (bonusAmount > 0) {
+      await addBonusStars(bonusAmount);
+      await prefs.setString(_keyLastDailyBonusDate, today);
+    }
+
+    return bonusAmount;
   }
 
   /// Migrate from v1 (cumulative) to v2 (wallet) economy.

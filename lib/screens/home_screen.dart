@@ -157,6 +157,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Auto-grant trophies for worlds already cleared
     await TrophyService().autoGrantClearedWorldTrophies();
 
+    // Claim daily streak bonus (once per calendar day, silent if no streak)
+    await _streakService.claimDailyBonus();
+
     final wallet = await _streakService.getWallet();
     final rank = await _streakService.getRangerRank();
     final hero = await _heroService.getSelectedHero();
