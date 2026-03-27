@@ -206,6 +206,7 @@ class _MonsterPersonality {
 
 class _MonsterSlot {
   final int imageIndex;
+  final String? customImagePath; // unique trophy monster image
   final _MonsterPersonality personality;
   double health;
   bool alive;
@@ -216,6 +217,7 @@ class _MonsterSlot {
   final List<_MonsterDebris> debris;
   _MonsterSlot({
     required this.imageIndex,
+    this.customImagePath,
     required this.health,
     required this.alive,
     required this.wobblePhase,
@@ -224,6 +226,10 @@ class _MonsterSlot {
        isDefeating = false,
        defeatProgress = 0.0,
        debris = [];
+
+  /// Resolved image path — prefers unique trophy image, falls back to base.
+  String get resolvedImagePath =>
+      customImagePath ?? _BrushingScreenState._monsterImages[imageIndex];
 }
 
 class _BrushingScreenState extends State<BrushingScreen>
@@ -598,10 +604,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   _MonsterSlot _createMonster() {
-    final imageIndex = _currentTrophyTarget?.baseImageIndex
-        ?? _random.nextInt(_monsterImages.length);
+    final imageIndex = _random.nextInt(_monsterImages.length);
     return _MonsterSlot(
       imageIndex: imageIndex,
+      customImagePath: _currentTrophyTarget?.imagePath,
       health: 1.0,
       alive: true,
       wobblePhase: _random.nextDouble() * 2 * pi,
@@ -2536,7 +2542,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                   },
                   blendMode: BlendMode.dstIn,
                   child: Image.asset(
-                    _monsterImages[_monster.imageIndex],
+                    _monster.resolvedImagePath,
                     width: size,
                     height: size,
                     fit: BoxFit.contain,
@@ -2547,7 +2553,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                 Opacity(
                   opacity: (1.0 - _monster.defeatProgress).clamp(0.0, 1.0),
                   child: Image.asset(
-                    _monsterImages[_monster.imageIndex],
+                    _monster.resolvedImagePath,
                     width: size,
                     height: size,
                     fit: BoxFit.contain,
@@ -2594,7 +2600,7 @@ class _BrushingScreenState extends State<BrushingScreen>
               BlendMode.overlay,
             ),
       child: Image.asset(
-        _monsterImages[_monster.imageIndex],
+        _monster.resolvedImagePath,
         width: effectiveSize,
         height: effectiveSize,
         fit: BoxFit.contain,

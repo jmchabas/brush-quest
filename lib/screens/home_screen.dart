@@ -283,7 +283,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _showGreetingPopup(GreetingResult greeting) {
     AudioService().playVoice(greeting.voiceFile);
-    // Queue unlock tease voice AFTER the greeting voice finishes
+    // Queue streak bonus explanation voice if applicable
+    if (greeting.brushStreak >= 7) {
+      AudioService().playVoice('voice_streak_bonus_explain_high.mp3');
+    } else if (greeting.brushStreak >= 3) {
+      AudioService().playVoice('voice_streak_bonus_explain_low.mp3');
+    }
+    // Queue unlock tease voice AFTER the greeting + bonus voice
     if (greeting.teaseItemId != null) {
       final unlockVoice = _unlockVoices[greeting.teaseItemId];
       if (unlockVoice != null) {
@@ -354,6 +360,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                       letterSpacing: 1,
+                    ),
+                  ),
+                ],
+                // Bonus star badge — explain the reward for streaks
+                if (greeting.brushStreak >= 3) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFFFD54F).withValues(alpha: 0.25),
+                          const Color(0xFFFF6D00).withValues(alpha: 0.25),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.star,
+                          color: Color(0xFFFFD54F),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '+${greeting.brushStreak >= 7 ? 2 : 1} BONUS STAR${greeting.brushStreak >= 7 ? "S" : ""} PER BRUSH!',
+                          style: const TextStyle(
+                            color: Color(0xFFFFD54F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

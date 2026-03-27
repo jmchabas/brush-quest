@@ -19,9 +19,10 @@ void main() {
       }
     });
 
-    test('every trophy has a valid baseImageIndex (0-3)', () {
+    test('every trophy has a valid unique image path', () {
       for (final t in TrophyService.allTrophies) {
-        expect(t.baseImageIndex, inInclusiveRange(0, 3), reason: '${t.id} baseImageIndex out of range');
+        expect(t.imagePath, startsWith('assets/images/monsters/'), reason: '${t.id} imagePath should be in monsters dir');
+        expect(t.imagePath, endsWith('.png'), reason: '${t.id} imagePath should end with .png');
       }
     });
 
