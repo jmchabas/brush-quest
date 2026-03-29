@@ -172,6 +172,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   // Bonus breakdown for star rain waves
   int _dailyBonus = 0;
   int _streakMultiplierBonus = 0;
+  int _comebackBonus = 0;
   List<Achievement> _newAchievements = [];
   // Next unlock: whichever of hero/weapon is closer
   String? _nextUnlockName;
@@ -300,6 +301,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     _starsEarnedThisSession = outcome.starsEarned;
     _dailyBonus = outcome.breakdown.dailyBonus;
     _streakMultiplierBonus = outcome.breakdown.streakMultiplierBonus;
+    _comebackBonus = outcome.comebackBonus;
     if (outcome.starsEarned > 0) {
       await _worldService.recordMission();
     }
@@ -884,6 +886,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                         baseStars: 2,
                         streakBonus: _streakMultiplierBonus,
                         dailyBonus: _dailyBonus,
+                        comebackBonus: _comebackBonus,
                         currentStreak: _newStreak,
                       ),
                     const SizedBox(height: 12),

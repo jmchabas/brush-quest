@@ -92,7 +92,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       await _loadData();
       if (mounted) _showArmorBottomSheet(hero);
     } else if (_wallet >= hero.price) {
-      if (hero.price > 10) {
+      if (hero.price > 0) {
         final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);
         if (!confirmed) return;
       }
@@ -126,7 +126,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       await _loadData();
     } else if (_wallet >= weapon.price) {
-      if (weapon.price > 10) {
+      if (weapon.price > 0) {
         final confirmed = await _showPurchaseConfirmation(weapon.name, weapon.price);
         if (!confirmed) return;
       }
@@ -382,7 +382,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           setSheetState(() {});
         } else if (canAfford) {
           // Purchase evolution
-          if (evolution.price > 10) {
+          if (evolution.price > 0) {
             final confirmed = await _showPurchaseConfirmation(evolution.name, evolution.price);
             if (!confirmed) return;
           }

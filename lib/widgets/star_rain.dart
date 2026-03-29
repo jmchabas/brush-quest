@@ -35,6 +35,7 @@ class StarRain extends StatefulWidget {
   final int baseStars;
   final int streakBonus;
   final int dailyBonus;
+  final int comebackBonus;
   final int currentStreak;
   final VoidCallback? onComplete;
 
@@ -43,6 +44,7 @@ class StarRain extends StatefulWidget {
     required this.baseStars,
     this.streakBonus = 0,
     this.dailyBonus = 0,
+    this.comebackBonus = 0,
     this.currentStreak = 0,
     this.onComplete,
   });
@@ -132,6 +134,18 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
         glowColor: const Color(0xFFFFEE58),
         sourceIcon: Icons.wb_twilight,
         label: 'Brushed twice today!',
+      ));
+    }
+
+    // Wave 4: comeback bonus.
+    if (widget.comebackBonus > 0) {
+      waves.add(_StarWave(
+        count: widget.comebackBonus,
+        color: const Color(0xFF69F0AE), // green
+        glowColor: const Color(0xFFA5D6A7),
+        sourceIcon: Icons.emoji_events,
+        label: 'Welcome back, Ranger!',
+        hasTrail: true,
       ));
     }
 

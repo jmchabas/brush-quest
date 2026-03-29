@@ -15,7 +15,8 @@ class BonusBreakdown {
 class BrushOutcome {
   final int baseStars;
   final int streakBonus;
-  final int starsEarned; // baseStars + streakBonus
+  final int comebackBonus; // +3 on first brush after streak break
+  final int starsEarned; // baseStars + streakBonus + comebackBonus
   final BrushSlot slot;
   final bool newSlotCompleted;
   final BonusBreakdown breakdown;
@@ -23,6 +24,7 @@ class BrushOutcome {
   const BrushOutcome({
     required this.baseStars,
     required this.streakBonus,
+    this.comebackBonus = 0,
     required this.starsEarned,
     required this.slot,
     required this.newSlotCompleted,
@@ -131,6 +133,7 @@ class StreakService {
 
     // Update streak (once per day, on first brush of the day)
     int streak = prefs.getInt(_keyCurrentStreak) ?? 0;
+    int comebackBonus = 0;
     if (lastDate != today) {
       if (lastDate == _yesterdayString() || lastDate == _twoDaysAgoString()) {
         streak++;
@@ -144,6 +147,7 @@ class StreakService {
           streak++; // Paused — continue streak
         } else {
           streak = 1; // Streak broken (2+ days missed, not paused)
+          comebackBonus = 3; // Welcome back bonus to soften restart
         }
       }
       await prefs.setInt(_keyCurrentStreak, streak);
@@ -166,7 +170,7 @@ class StreakService {
       bothSlotsDone: updatedSlots.morningDone && updatedSlots.eveningDone,
     );
     final streakBonus = breakdown.total;
-    final totalEarned = starsEarned + streakBonus;
+    final totalEarned = starsEarned + streakBonus + comebackBonus;
 
     // Update total stars
     int totalStars = prefs.getInt(_keyTotalStars) ?? 0;
@@ -208,6 +212,7 @@ class StreakService {
     return BrushOutcome(
       baseStars: starsEarned,
       streakBonus: streakBonus,
+      comebackBonus: comebackBonus,
       starsEarned: totalEarned,
       slot: slot,
       newSlotCompleted: newSlotCompleted,

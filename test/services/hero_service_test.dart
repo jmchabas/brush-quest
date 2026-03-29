@@ -16,8 +16,8 @@ void main() {
       expect(HeroService.allHeroes.length, 6);
     });
 
-    test('hero prices match expected values (0/12/18/25/33/40)', () {
-      final expectedPrices = [0, 12, 18, 25, 33, 40];
+    test('hero prices match expected values (0/8/18/25/33/40)', () {
+      final expectedPrices = [0, 8, 18, 25, 33, 40];
       for (int i = 0; i < HeroService.allHeroes.length; i++) {
         expect(HeroService.allHeroes[i].price, expectedPrices[i],
             reason: 'Hero ${HeroService.allHeroes[i].id} should cost ${expectedPrices[i]}');
@@ -60,7 +60,7 @@ void main() {
     test('getHeroById returns correct hero', () {
       final hero = HeroService.getHeroById('frost');
       expect(hero.name, 'FROST');
-      expect(hero.price, 12);
+      expect(hero.price, 8);
     });
 
     test('getHeroById returns blaze for unknown id', () {
@@ -102,7 +102,7 @@ void main() {
         'total_stars': 20,
       });
       final service = HeroService();
-      final result = await service.purchaseHero('frost'); // price 12
+      final result = await service.purchaseHero('frost'); // price 8
       expect(result, true);
 
       final unlocked = await service.getUnlockedHeroIds();
@@ -110,7 +110,7 @@ void main() {
 
       // Stars deducted from wallet
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('star_wallet'), 8); // 20 - 12
+      expect(prefs.getInt('star_wallet'), 12); // 20 - 8
       expect(prefs.getInt('total_stars'), 20); // Rank unchanged
     });
 

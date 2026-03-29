@@ -140,6 +140,42 @@ Note: JDK 17 required. JDK 25 is incompatible with AGP 8.11.1.
 7. **Story sections center the child, not the parent.** The parent is the buyer but the child is the user. The child's transformation is the story.
 8. **Self-review checklist before done:** (a) Every factual claim true given the codebase? (b) Would I cringe reading this copy on someone else's site? (c) Tested every image at 3 viewport widths? (d) Does each section say something the previous didn't?
 
+## Autonomous Iteration Tiers
+
+### Tier 1 — Full Autonomy (no approval needed)
+- Dart analyze fixes (lint, unused imports, missing const)
+- Adding new test files for untested code paths
+- Code comments and documentation improvements
+- Test infrastructure fixes (not app logic)
+
+### Tier 2 — Do It, Open a PR (Jim reviews after)
+- Economy simulation/modeling (read-only analysis, NEVER change values)
+- Code quality review (findings reports)
+- Test gap analysis
+- GTM artifact generation (store listings, screenshot captions)
+- Internal refactoring that doesn't change behavior
+
+### Tier 3 — Propose Only (wait for Jim's approval)
+- ANY user-facing change (UI, UX, layout, colors, copy)
+- Economy values, unlock thresholds, star earning rates
+- Audio, voice, music changes
+- Onboarding flow modifications
+- New features
+- Monetization implementation
+- COPPA/privacy/legal changes
+
+### Hard Blocks (always require Jim + Oliver)
+- Anything requiring physical testing with a child
+- Brand/tone decisions
+- Monetization model changes
+- Anything affecting existing user data/saves
+
+### Remote Triggers (claude.ai/code/scheduled)
+- **Weekly Code Review + Economy Audit**: Mondays 8:17am PT — opens PR with analysis
+- **Weekly GTM Prep**: Wednesdays 8:43am PT — opens PR with marketing copy drafts
+- Remote agents cannot run flutter test/dart analyze (no SDK in cloud)
+- Local `/health` skill handles build verification (requires Jim to run it)
+
 ## Next Steps / Ideas
 - Morning/evening detection (sun/moon icon)
 - Unlockable spaceship upgrades for long streaks

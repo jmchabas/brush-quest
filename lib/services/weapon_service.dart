@@ -57,7 +57,7 @@ class WeaponService {
       id: 'flame_sword',
       name: 'FLAME SWORD',
       description: 'Fiery slashes that burn through cavity monsters!',
-      price: 8,
+      price: 5,
       effectType: AttackEffectType.flameSword,
       primaryColor: Color(0xFFFF6D00),
       secondaryColor: Color(0xFFFFAB40),

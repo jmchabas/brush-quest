@@ -99,6 +99,31 @@
 - **Next up**: Wait for D-U-N-S → register Google Play org account. Answer unknown calls (D&B verification).
 - **Estimated cost**: ~$1,015 year 1, ~$935/year ongoing (CA franchise tax is $800/yr)
 
+### AMAZON APPSTORE
+- **Status**: Developer account registration — identity verification pending
+- **Last session**: 2026-03-28
+- **What happened**:
+  - Registered Amazon Developer account (jmchabas@gmail.com)
+  - Completed US tax interview (W-9 with AnemosGP LLC / EIN 41-5007192)
+  - Completed Canada tax interview
+  - Company profile, payment, tax identity all set up
+  - Identity verification failed on auto-check — submitted support case with passport
+  - Support case **19804300171** — status: "In Process: pending Amazon action"
+  - W-9 saved: `anemosgp-business/legal/amazon/W9_amazon-developer_2026-03-21.pdf`
+  - Customer support email: support@brushquest.app
+- **Checklist**:
+  - [x] Register Amazon Developer account
+  - [x] Complete US tax interview (W-9)
+  - [x] Complete Canada tax interview
+  - [x] Set up company profile + payment
+  - [ ] Identity verification approved (case 19804300171)
+  - [ ] Submit Brush Quest APK
+  - [ ] App published on Amazon Appstore
+- **Blocked on**: Identity verification (support case pending)
+- **Next up**: Wait for Amazon to verify identity → submit APK
+- **Why**: Plan B distribution while waiting for D-U-N-S / Google Play org account
+- **Needs CEO decision**: None
+
 ### ACCOUNTING
 - **Status**: In progress — QuickBooks + Mercury bank open, need to connect and log expenses
 - **Last session**: 2026-03-20
@@ -169,6 +194,27 @@
   - Cross-project orchestration in ~/Projects/CLAUDE.md
 - **Blocked on**: Nothing
 - **Next up**: Refine write gate criteria from real usage, improve cross-project entity linking, session handoff reliability
+- **Needs CEO decision**: None
+
+### AUTOMATION
+- **Status**: Active — 2 remote triggers, 2 local skills, tiered autonomy model
+- **Last session**: 2026-03-27
+- **What happened**:
+  - Created tiered autonomy model (Tier 1: full auto, Tier 2: do+show, Tier 3: propose+wait)
+  - Created `/health` local skill — daily build verification (dart analyze + flutter test + economy sim)
+  - Created `/gtm-prep` local skill — generates app store listing drafts for Jim to review
+  - Set up 2 remote triggers on claude.ai:
+    1. **Weekly Code Review + Economy Audit** — Mondays 8:17am PT (trig_01PxsVcosU8Y5ps8BGBkLMMk). Opens PR with ECONOMY_AUDIT.md + CODE_REVIEW.md + Tier 1 lint fixes.
+    2. **Weekly GTM Prep** — Wednesdays 8:43am PT (trig_01RacAcnw7VecbELYRQp7QvD). Opens PR with marketing/ directory (Play Store listing, Amazon listing, screenshot captions).
+  - Remote triggers run in Anthropic cloud against GitHub repo, survive restarts
+  - Local `/health` requires Jim to run it (needs Flutter SDK)
+- **Manage triggers**: https://claude.ai/code/scheduled
+- **Autonomy tiers**:
+  - Tier 1 (full auto): lint fixes, test additions, unused imports, code comments
+  - Tier 2 (do + PR for review): economy analysis, code review, GTM copy drafts
+  - Tier 3 (propose only, wait for Jim): ANY user-facing change, economy values, UI, audio, onboarding
+- **Blocked on**: Nothing
+- **Next up**: Review first round of PRs from remote triggers, adjust prompts based on quality
 - **Needs CEO decision**: None
 
 ---

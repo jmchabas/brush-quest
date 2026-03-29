@@ -548,6 +548,70 @@ void main() {
     });
   });
 
+  group('Comeback bonus', () {
+    test('comeback bonus awards +3 stars when streak breaks', () async {
+      // Simulate a streak that broke (last brush was 5 days ago)
+      final fiveDaysAgo = DateTime.now().subtract(const Duration(days: 5));
+      final fiveDaysAgoStr =
+          '${fiveDaysAgo.year}-${fiveDaysAgo.month.toString().padLeft(2, '0')}-${fiveDaysAgo.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': fiveDaysAgoStr,
+        'current_streak': 10,
+        'total_stars': 50,
+        'star_wallet': 20,
+      });
+      final service = StreakService();
+      final outcome = await service.recordBrush();
+      // Base 2 + comeback 3 = 5 (no streak bonus since streak reset to 1)
+      expect(outcome.comebackBonus, 3);
+      expect(outcome.starsEarned, 5);
+      expect(await service.getWallet(), 25); // 20 + 5
+    });
+
+    test('no comeback bonus when streak continues', () async {
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+      final yesterdayStr =
+          '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': yesterdayStr,
+        'current_streak': 5,
+        'total_stars': 50,
+        'star_wallet': 20,
+      });
+      final service = StreakService();
+      final outcome = await service.recordBrush();
+      expect(outcome.comebackBonus, 0);
+    });
+
+    test('no comeback bonus on very first brush', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StreakService();
+      final outcome = await service.recordBrush();
+      expect(outcome.comebackBonus, 0);
+      expect(outcome.starsEarned, 2); // Just base stars
+    });
+
+    test('comeback bonus only awarded on first brush of the day', () async {
+      final fiveDaysAgo = DateTime.now().subtract(const Duration(days: 5));
+      final fiveDaysAgoStr =
+          '${fiveDaysAgo.year}-${fiveDaysAgo.month.toString().padLeft(2, '0')}-${fiveDaysAgo.day.toString().padLeft(2, '0')}';
+
+      SharedPreferences.setMockInitialValues({
+        'last_brush_date': fiveDaysAgoStr,
+        'current_streak': 8,
+        'total_stars': 50,
+        'star_wallet': 20,
+      });
+      final service = StreakService();
+      final first = await service.recordBrush();
+      final second = await service.recordBrush();
+      expect(first.comebackBonus, 3);
+      expect(second.comebackBonus, 0);
+    });
+  });
+
   group('Daily streak bonus', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});

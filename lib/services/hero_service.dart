@@ -73,7 +73,7 @@ class HeroService {
       name: 'FROST',
       title: 'Ice Wolf',
       description: 'A brave wolf knight who freezes monsters solid with icy howls!',
-      price: 12,
+      price: 8,
       imagePath: 'assets/images/hero_frost.png',
       primaryColor: Color(0xFF40C4FF),
       attackColor: Color(0xFF80D8FF),
