@@ -1418,6 +1418,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
+        _buildStarGuide(),
+        const SizedBox(height: 24),
         _buildGuideSection(
           'Our Promise',
           'Brush Quest is designed to make tooth brushing a habit your '
@@ -1484,6 +1486,154 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 32),
       ],
+    );
+  }
+
+  // ── How Stars Work section ─────────────────────────────
+  Widget _buildStarGuide() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          icon: Icons.star,
+          label: 'HOW STARS WORK',
+          color: const Color(0xFFFFD54F),
+        ),
+        const SizedBox(height: 12),
+        _buildStarGuideCard(
+          icon: Icons.star,
+          iconColor: const Color(0xFFFFD54F),
+          title: 'Every brush',
+          body: 'Earns 2 stars.',
+        ),
+        _buildStarGuideCard(
+          icon: Icons.local_fire_department,
+          iconColor: Colors.deepOrange,
+          title: 'Streak Bonus',
+          body: '3+ days streak: +1 per brush. 7+ days streak: +2 per brush.',
+          tip: 'Brush tonight so you keep your streak going!',
+        ),
+        _buildStarGuideCard(
+          icon: Icons.wb_twilight,
+          iconColor: Colors.purple,
+          title: 'Daily Pair Bonus',
+          body: 'Brush both morning AND evening: +1 bonus star.',
+          tip: 'You already brushed this morning \u2014 brush tonight for a bonus star!',
+        ),
+        _buildStarGuideCard(
+          icon: Icons.favorite,
+          iconColor: Colors.green,
+          title: 'Comeback Bonus',
+          body: 'First brush after a break: +3 stars.',
+          tip: 'The app welcomes them back warmly. No guilt!',
+        ),
+        _buildStarGuideCard(
+          icon: Icons.redeem,
+          iconColor: Colors.blue,
+          title: 'Chest Rewards',
+          body: 'Random bonus of 0\u20135 stars per chest. Longer streaks = better odds.',
+        ),
+        _buildStarGuideCard(
+          icon: Icons.account_balance_wallet,
+          iconColor: Colors.amber,
+          title: 'Wallet vs Ranger Rank',
+          body:
+              'Wallet is spendable \u2014 it goes down when they buy something. '
+              'Ranger Rank is lifetime total and never decreases.',
+        ),
+        const SizedBox(height: 8),
+        // Example calculation
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: const Text(
+            'Example: 7-day streak, brushed morning + evening \u2192 '
+            '2 (base) + 2 (streak) + 1 (pair) = 5 stars per session, '
+            '10 stars for the day before chests.',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 13,
+              height: 1.5,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStarGuideCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String body,
+    String? tip,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(12),
+          border: Border(
+            left: BorderSide(color: iconColor.withValues(alpha: 0.6), width: 3),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: iconColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              body,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            if (tip != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.tips_and_updates, color: iconColor.withValues(alpha: 0.7), size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      tip,
+                      style: TextStyle(
+                        color: iconColor.withValues(alpha: 0.85),
+                        fontSize: 12,
+                        height: 1.4,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
