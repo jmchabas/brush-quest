@@ -82,6 +82,10 @@ class StreakService {
   static const _keyStarWallet = 'star_wallet';
   static const _keyStreakPauseUntil = 'streak_pause_until';
   static const _keyLastDailyBonusDate = 'last_daily_bonus_date';
+  static const _keyHasSeenFirstStreak3 = 'has_seen_first_streak_3';
+  static const _keyHasSeenFirstStreak7 = 'has_seen_first_streak_7';
+  static const _keyHasSeenFirstDailyPair = 'has_seen_first_daily_pair';
+  static const _keyHasSeenFirstComeback = 'has_seen_first_comeback';
 
   /// Calculate bonus stars from streak length and daily slot completion.
   int calculateStreakBonus({required int streak, required bool bothSlotsDone}) {
@@ -380,6 +384,71 @@ class StreakService {
     }
 
     return bonusAmount;
+  }
+
+  // ── First-time celebration flags ────────────────────────────────────────────
+
+  Future<bool> hasSeenFirstStreak3() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyHasSeenFirstStreak3) ?? false;
+  }
+
+  Future<void> markFirstStreak3Seen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHasSeenFirstStreak3, true);
+  }
+
+  Future<bool> hasSeenFirstStreak7() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyHasSeenFirstStreak7) ?? false;
+  }
+
+  Future<void> markFirstStreak7Seen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHasSeenFirstStreak7, true);
+  }
+
+  Future<bool> hasSeenFirstDailyPair() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyHasSeenFirstDailyPair) ?? false;
+  }
+
+  Future<void> markFirstDailyPairSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHasSeenFirstDailyPair, true);
+  }
+
+  Future<bool> hasSeenFirstComeback() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyHasSeenFirstComeback) ?? false;
+  }
+
+  Future<void> markFirstComebackSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyHasSeenFirstComeback, true);
+  }
+
+  /// Reset all user progress (stars, streak, slots, flags).
+  /// Used by the settings screen "Reset all progress" action.
+  Future<void> resetProgress() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyLastBrushDate);
+    await prefs.remove(_keyCurrentStreak);
+    await prefs.remove(_keyTotalStars);
+    await prefs.remove(_keyTodayBrushCount);
+    await prefs.remove(_keyTodayDate);
+    await prefs.remove(_keyTotalBrushes);
+    await prefs.remove(_keyBestStreak);
+    await prefs.remove(_keyHistory);
+    await prefs.remove(_keyMorningDoneDate);
+    await prefs.remove(_keyEveningDoneDate);
+    await prefs.remove(_keyStarWallet);
+    await prefs.remove(_keyStreakPauseUntil);
+    await prefs.remove(_keyLastDailyBonusDate);
+    await prefs.remove(_keyHasSeenFirstStreak3);
+    await prefs.remove(_keyHasSeenFirstStreak7);
+    await prefs.remove(_keyHasSeenFirstDailyPair);
+    await prefs.remove(_keyHasSeenFirstComeback);
   }
 
   /// Migrate from v1 (cumulative) to v2 (wallet) economy.

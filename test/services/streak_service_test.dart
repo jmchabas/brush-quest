@@ -722,6 +722,119 @@ void main() {
     });
   });
 
+  group('First-time celebration flags', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    // ── Default values ────────────────────────────────────────────
+
+    test('hasSeenFirstStreak3 defaults to false', () async {
+      final service = StreakService();
+      expect(await service.hasSeenFirstStreak3(), false);
+    });
+
+    test('hasSeenFirstStreak7 defaults to false', () async {
+      final service = StreakService();
+      expect(await service.hasSeenFirstStreak7(), false);
+    });
+
+    test('hasSeenFirstDailyPair defaults to false', () async {
+      final service = StreakService();
+      expect(await service.hasSeenFirstDailyPair(), false);
+    });
+
+    test('hasSeenFirstComeback defaults to false', () async {
+      final service = StreakService();
+      expect(await service.hasSeenFirstComeback(), false);
+    });
+
+    // ── Setters flip to true ──────────────────────────────────────
+
+    test('markFirstStreak3Seen sets flag to true', () async {
+      final service = StreakService();
+      await service.markFirstStreak3Seen();
+      expect(await service.hasSeenFirstStreak3(), true);
+    });
+
+    test('markFirstStreak7Seen sets flag to true', () async {
+      final service = StreakService();
+      await service.markFirstStreak7Seen();
+      expect(await service.hasSeenFirstStreak7(), true);
+    });
+
+    test('markFirstDailyPairSeen sets flag to true', () async {
+      final service = StreakService();
+      await service.markFirstDailyPairSeen();
+      expect(await service.hasSeenFirstDailyPair(), true);
+    });
+
+    test('markFirstComebackSeen sets flag to true', () async {
+      final service = StreakService();
+      await service.markFirstComebackSeen();
+      expect(await service.hasSeenFirstComeback(), true);
+    });
+
+    // ── resetProgress clears all flags ───────────────────────────
+
+    test('resetProgress clears has_seen_first_streak_3', () async {
+      final service = StreakService();
+      await service.markFirstStreak3Seen();
+      expect(await service.hasSeenFirstStreak3(), true);
+      await service.resetProgress();
+      expect(await service.hasSeenFirstStreak3(), false);
+    });
+
+    test('resetProgress clears has_seen_first_streak_7', () async {
+      final service = StreakService();
+      await service.markFirstStreak7Seen();
+      expect(await service.hasSeenFirstStreak7(), true);
+      await service.resetProgress();
+      expect(await service.hasSeenFirstStreak7(), false);
+    });
+
+    test('resetProgress clears has_seen_first_daily_pair', () async {
+      final service = StreakService();
+      await service.markFirstDailyPairSeen();
+      expect(await service.hasSeenFirstDailyPair(), true);
+      await service.resetProgress();
+      expect(await service.hasSeenFirstDailyPair(), false);
+    });
+
+    test('resetProgress clears has_seen_first_comeback', () async {
+      final service = StreakService();
+      await service.markFirstComebackSeen();
+      expect(await service.hasSeenFirstComeback(), true);
+      await service.resetProgress();
+      expect(await service.hasSeenFirstComeback(), false);
+    });
+
+    test('resetProgress clears all four flags together', () async {
+      final service = StreakService();
+      await service.markFirstStreak3Seen();
+      await service.markFirstStreak7Seen();
+      await service.markFirstDailyPairSeen();
+      await service.markFirstComebackSeen();
+
+      await service.resetProgress();
+
+      expect(await service.hasSeenFirstStreak3(), false);
+      expect(await service.hasSeenFirstStreak7(), false);
+      expect(await service.hasSeenFirstDailyPair(), false);
+      expect(await service.hasSeenFirstComeback(), false);
+    });
+
+    test('resetProgress also clears stars and streak', () async {
+      final service = StreakService();
+      await service.recordBrush();
+      await service.resetProgress();
+
+      expect(await service.getTotalStars(), 0);
+      expect(await service.getStreak(), 0);
+      expect(await service.getWallet(), 0);
+    });
+  });
+
   group('BonusBreakdown', () {
     setUp(() {
       SharedPreferences.setMockInitialValues({});
