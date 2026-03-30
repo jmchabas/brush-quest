@@ -83,6 +83,21 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     }
   }
 
+  Future<String> _selectNudgeVoice() async {
+    final slots = await _streakService.getTodaySlots();
+    if (slots.morningDone && !slots.eveningDone) {
+      return 'voice_shop_nudge_tonight.mp3';
+    }
+    final streak = await _streakService.getStreak();
+    if (streak >= 1 && streak <= 2) {
+      return 'voice_shop_nudge_streak3.mp3';
+    }
+    if (streak >= 5 && streak <= 6) {
+      return 'voice_shop_nudge_streak7.mp3';
+    }
+    return 'voice_shop_nudge_default.mp3';
+  }
+
   Future<void> _onHeroTap(HeroCharacter hero) async {
     if (_unlockedHeroes.contains(hero.id)) {
       // Select hero and open the armor/evolution bottom sheet
@@ -108,9 +123,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     } else {
       HapticFeedback.lightImpact();
-      // Describe the hero, then tell them they need more stars
+      // Describe the hero, then give a context-aware nudge
       _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-      AudioService().playVoice('voice_need_stars.mp3');
+      AudioService().playVoice(await _selectNudgeVoice());
       _showCannotAffordSnackBar(
         price: hero.price,
         wallet: _wallet,
@@ -142,9 +157,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     } else {
       HapticFeedback.lightImpact();
-      // Describe the weapon, then tell them they need more stars
+      // Describe the weapon, then give a context-aware nudge
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
-      AudioService().playVoice('voice_need_stars.mp3');
+      AudioService().playVoice(await _selectNudgeVoice());
       _showCannotAffordSnackBar(
         price: weapon.price,
         wallet: _wallet,
@@ -395,10 +410,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
             setSheetState(() {});
           }
         } else {
-          // Can't afford — describe the evolution first, then tell them they need more stars
+          // Can't afford — describe the evolution first, then give a context-aware nudge
           HapticFeedback.lightImpact();
           _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-          AudioService().playVoice('voice_need_stars.mp3');
+          AudioService().playVoice(await _selectNudgeVoice());
           _showCannotAffordSnackBar(
             price: evolution.price,
             wallet: _wallet,
