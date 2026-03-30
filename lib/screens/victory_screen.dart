@@ -483,30 +483,55 @@ class _VictoryScreenState extends State<VictoryScreen>
   Future<void> _revealBonusStars() async {
     if (!mounted) return;
 
-    // Streak bonus reveal
     if (_streakMultiplierBonus > 0) {
       setState(() => _showStreakBonus = true);
       if (_newStreak >= 7) {
-        await _audio.playVoice('voice_chest_mega_streak.mp3');
+        final seenBefore = await _streakService.hasSeenFirstStreak7();
+        if (!seenBefore) {
+          await _streakService.markFirstStreak7Seen();
+          HapticFeedback.heavyImpact();
+          await _audio.playVoice('voice_first_streak_7.mp3');
+        } else {
+          await _audio.playVoice('voice_chest_mega_streak.mp3');
+        }
       } else {
-        await _audio.playVoice('voice_chest_streak_bonus.mp3');
+        final seenBefore = await _streakService.hasSeenFirstStreak3();
+        if (!seenBefore) {
+          await _streakService.markFirstStreak3Seen();
+          HapticFeedback.heavyImpact();
+          await _audio.playVoice('voice_first_streak_3.mp3');
+        } else {
+          await _audio.playVoice('voice_chest_streak_bonus.mp3');
+        }
       }
       if (!mounted) return;
       await Future.delayed(const Duration(milliseconds: 300));
     }
 
-    // Daily pair bonus reveal
     if (_dailyBonus > 0) {
       setState(() => _showDailyBonus = true);
-      await _audio.playVoice('voice_chest_daily_pair.mp3');
+      final seenBefore = await _streakService.hasSeenFirstDailyPair();
+      if (!seenBefore) {
+        await _streakService.markFirstDailyPairSeen();
+        HapticFeedback.heavyImpact();
+        await _audio.playVoice('voice_first_daily_pair.mp3');
+      } else {
+        await _audio.playVoice('voice_chest_daily_pair.mp3');
+      }
       if (!mounted) return;
       await Future.delayed(const Duration(milliseconds: 300));
     }
 
-    // Comeback bonus reveal
     if (_comebackBonus > 0) {
       setState(() => _showComebackBonus = true);
-      await _audio.playVoice('voice_chest_comeback.mp3');
+      final seenBefore = await _streakService.hasSeenFirstComeback();
+      if (!seenBefore) {
+        await _streakService.markFirstComebackSeen();
+        HapticFeedback.heavyImpact();
+        await _audio.playVoice('voice_first_comeback.mp3');
+      } else {
+        await _audio.playVoice('voice_chest_comeback.mp3');
+      }
       if (!mounted) return;
       await Future.delayed(const Duration(milliseconds: 300));
     }
