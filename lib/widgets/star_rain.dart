@@ -10,7 +10,6 @@ class _StarWave {
   final IconData sourceIcon;
   final String? sourceImagePath;
   final String? label;
-  final bool hasTrail;
 
   const _StarWave({
     required this.count,
@@ -19,33 +18,23 @@ class _StarWave {
     required this.sourceIcon,
     this.sourceImagePath,
     this.label,
-    this.hasTrail = false,
   });
 }
 
-/// Displays earned stars in sequential animated waves.
+/// Displays earned base stars in an animated wave.
 ///
-/// Shows up to three waves:
-///   1. Base stars (brushing, always shown)
-///   2. Streak bonus (shown when [streakBonus] > 0)
-///   3. Daily bonus (shown when [dailyBonus] > 0)
+/// Shows a single wave for the base brushing stars.
+/// Bonus stars (streak, daily, comeback) are now revealed post-chest
+/// in the victory screen.
 ///
-/// Tapping anywhere skips to the grand total and calls [onComplete].
+/// Tapping anywhere skips to the total and calls [onComplete].
 class StarRain extends StatefulWidget {
   final int baseStars;
-  final int streakBonus;
-  final int dailyBonus;
-  final int comebackBonus;
-  final int currentStreak;
   final VoidCallback? onComplete;
 
   const StarRain({
     super.key,
     required this.baseStars,
-    this.streakBonus = 0,
-    this.dailyBonus = 0,
-    this.comebackBonus = 0,
-    this.currentStreak = 0,
     this.onComplete,
   });
 
@@ -100,56 +89,17 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
   }
 
   List<_StarWave> _buildWaves() {
-    final waves = <_StarWave>[];
-
-    // Wave 1: base brush stars — always present.
-    waves.add(_StarWave(
-      count: widget.baseStars,
-      color: const Color(0xFFFFD54F), // gold
-      glowColor: const Color(0xFFFFF176),
-      sourceIcon: Icons.cleaning_services,
-      sourceImagePath: 'assets/images/icon_toothbrush.png',
-      label: 'You brushed!',
-    ));
-
-    // Wave 2: streak bonus.
-    if (widget.streakBonus > 0) {
-      final isMega = widget.currentStreak >= 7;
-      waves.add(_StarWave(
-        count: widget.streakBonus,
-        color: isMega ? const Color(0xFF40C4FF) : const Color(0xFFFF7043),
-        glowColor:
-            isMega ? const Color(0xFF80D8FF) : const Color(0xFFFFAB91),
-        sourceIcon: Icons.local_fire_department,
-        label: '${widget.currentStreak}-day streak power!',
-        hasTrail: true,
-      ));
-    }
-
-    // Wave 3: daily bonus.
-    if (widget.dailyBonus > 0) {
-      waves.add(_StarWave(
-        count: widget.dailyBonus,
-        color: const Color(0xFFE0E0E0), // silver-gold
-        glowColor: const Color(0xFFFFEE58),
-        sourceIcon: Icons.wb_twilight,
-        label: 'Brushed twice today!',
-      ));
-    }
-
-    // Wave 4: comeback bonus.
-    if (widget.comebackBonus > 0) {
-      waves.add(_StarWave(
-        count: widget.comebackBonus,
-        color: const Color(0xFF69F0AE), // green
-        glowColor: const Color(0xFFA5D6A7),
-        sourceIcon: Icons.emoji_events,
-        label: 'Welcome back, Ranger!',
-        hasTrail: true,
-      ));
-    }
-
-    return waves;
+    return [
+      // Base brush stars — always present.
+      _StarWave(
+        count: widget.baseStars,
+        color: const Color(0xFFFFD54F), // gold
+        glowColor: const Color(0xFFFFF176),
+        sourceIcon: Icons.cleaning_services,
+        sourceImagePath: 'assets/images/icon_toothbrush.png',
+        label: 'You brushed!',
+      ),
+    ];
   }
 
   void _startSequence() {

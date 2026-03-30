@@ -198,6 +198,11 @@ class _VictoryScreenState extends State<VictoryScreen>
   _ChestReward? _reward;
   bool _showDoneButton = false;
 
+  // Post-chest bonus reveal state
+  bool _showStreakBonus = false;
+  bool _showDailyBonus = false;
+  bool _showComebackBonus = false;
+
   // Contextual tip state
   String? _tipText;
   IconData? _tipIcon;
@@ -375,19 +380,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     // Arc beat 2 (star earned) — queued via voice pipeline
     await _audio.playVoice(arc[1]); // "+1 star!"
 
-    // Play bonus-specific voice lines
-    if (_streakMultiplierBonus > 0 && _newStreak == 3) {
-      _audio.playVoice('voice_super_power.mp3');
-    } else if (_streakMultiplierBonus > 0 && _newStreak == 7) {
-      _audio.playVoice('voice_mega_power.mp3');
-    } else if (_streakMultiplierBonus > 0) {
-      _audio.playVoice('voice_streak_bonus.mp3');
-    }
-
-    if (_dailyBonus > 0) {
-      _audio.playVoice('voice_full_charge.mp3');
-    }
-
     // Show DONE button early so the user can exit before the chest sequence.
     // The reward chain continues to play, but the child is never trapped.
     if (!mounted) return;
@@ -488,6 +480,38 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
   }
 
+  Future<void> _revealBonusStars() async {
+    if (!mounted) return;
+
+    // Streak bonus reveal
+    if (_streakMultiplierBonus > 0) {
+      setState(() => _showStreakBonus = true);
+      if (_newStreak >= 7) {
+        await _audio.playVoice('voice_chest_mega_streak.mp3');
+      } else {
+        await _audio.playVoice('voice_chest_streak_bonus.mp3');
+      }
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    // Daily pair bonus reveal
+    if (_dailyBonus > 0) {
+      setState(() => _showDailyBonus = true);
+      await _audio.playVoice('voice_chest_daily_pair.mp3');
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    // Comeback bonus reveal
+    if (_comebackBonus > 0) {
+      setState(() => _showComebackBonus = true);
+      await _audio.playVoice('voice_chest_comeback.mp3');
+      if (!mounted) return;
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+  }
+
   void _openChest() {
     if (_chestOpened) return;
     setState(() => _chestOpened = true);
@@ -520,6 +544,9 @@ class _VictoryScreenState extends State<VictoryScreen>
             });
           }
         }
+
+        // ── Post-chest bonus star reveals ──
+        await _revealBonusStars();
 
         // ── Trophy defeat/capture ──
         if (widget.trophyTargetId != null) {
@@ -882,12 +909,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                     const SizedBox(height: 10),
                     // Star rain wave animation
                     if (_starsEarnedThisSession > 0)
-                      StarRain(
+                      const StarRain(
                         baseStars: 2,
-                        streakBonus: _streakMultiplierBonus,
-                        dailyBonus: _dailyBonus,
-                        comebackBonus: _comebackBonus,
-                        currentStreak: _newStreak,
                       ),
                     const SizedBox(height: 12),
 
@@ -958,6 +981,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     // TREASURE CHEST
                     if (_showChest) _buildChest(),
+
+                    // Post-chest bonus star reveals
+                    if (_chestOpened) _buildBonusReveal(),
 
                     // Next unlock progress — hero or weapon, whichever is closer
                     if (_chestOpened &&
@@ -1790,6 +1816,120 @@ class _VictoryScreenState extends State<VictoryScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildBonusReveal() {
+    final bonuses = <Widget>[];
+
+    if (_showStreakBonus && _streakMultiplierBonus > 0) {
+      bonuses.add(_BonusStar(
+        icon: Icons.local_fire_department,
+        count: _streakMultiplierBonus,
+        color: _newStreak >= 7
+            ? const Color(0xFF40C4FF)
+            : Colors.deepOrange,
+      ));
+    }
+
+    if (_showDailyBonus && _dailyBonus > 0) {
+      bonuses.add(_BonusStar(
+        icon: Icons.wb_twilight,
+        count: _dailyBonus,
+        color: const Color(0xFF7C4DFF),
+      ));
+    }
+
+    if (_showComebackBonus && _comebackBonus > 0) {
+      bonuses.add(_BonusStar(
+        icon: Icons.favorite,
+        count: _comebackBonus,
+        color: const Color(0xFF69F0AE),
+      ));
+    }
+
+    if (bonuses.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: bonuses,
+      ),
+    );
+  }
+}
+
+class _BonusStar extends StatefulWidget {
+  final IconData icon;
+  final int count;
+  final Color color;
+
+  const _BonusStar({
+    required this.icon,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  State<_BonusStar> createState() => _BonusStarState();
+}
+
+class _BonusStarState extends State<_BonusStar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _scaleAnim = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnim,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(widget.icon, color: widget.color, size: 24),
+            const SizedBox(width: 6),
+            Text(
+              '+${widget.count}',
+              style: TextStyle(
+                color: widget.color,
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                shadows: [
+                  Shadow(
+                    color: widget.color.withValues(alpha: 0.6),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.star, color: widget.color, size: 20),
+          ],
+        ),
+      ),
     );
   }
 }
