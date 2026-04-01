@@ -66,19 +66,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'voice_go_go_go.mp3',
   ];
 
-  static const Map<String, String> _unlockVoices = {
-    'frost': 'voice_unlock_next_frost.mp3',
-    'bolt': 'voice_unlock_next_bolt.mp3',
-    'shadow': 'voice_unlock_next_shadow.mp3',
-    'leaf': 'voice_unlock_next_leaf.mp3',
-    'nova': 'voice_unlock_next_nova.mp3',
-    'flame_sword': 'voice_unlock_next_flame_sword.mp3',
-    'ice_hammer': 'voice_unlock_next_ice_hammer.mp3',
-    'lightning_wand': 'voice_unlock_next_lightning_wand.mp3',
-    'vine_whip': 'voice_unlock_next_vine_whip.mp3',
-    'cosmic_burst': 'voice_unlock_next_cosmic_shield.mp3',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -289,13 +276,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } else if (greeting.brushStreak >= 3) {
       AudioService().playVoice('voice_streak_bonus_explain_low.mp3');
     }
-    // Queue unlock tease voice AFTER the greeting + bonus voice
-    if (greeting.teaseItemId != null) {
-      final unlockVoice = _unlockVoices[greeting.teaseItemId];
-      if (unlockVoice != null) {
-        AudioService().playVoice(unlockVoice);
-      }
-    }
     HapticFeedback.mediumImpact();
 
     final title = switch (greeting.state) {
@@ -363,13 +343,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
-                // Bonus star badge — explain the reward for streaks
+                // Bonus star badge — icon-only, no text (kid can't read)
                 if (greeting.brushStreak >= 3) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 16,
+                      vertical: 8,
                     ),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -378,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const Color(0xFFFF6D00).withValues(alpha: 0.25),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
                       ),
@@ -386,130 +366,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.star,
-                          color: Color(0xFFFFD54F),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 4),
                         Text(
-                          '+${greeting.brushStreak >= 7 ? 2 : 1} BONUS STAR${greeting.brushStreak >= 7 ? "S" : ""} PER BRUSH!',
+                          '+${greeting.brushStreak >= 7 ? 2 : 1}',
                           style: const TextStyle(
                             color: Color(0xFFFFD54F),
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            letterSpacing: 0.5,
+                            fontSize: 22,
                           ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.star,
+                          color: Color(0xFFFFD54F),
+                          size: 24,
                         ),
                       ],
                     ),
                   ),
                 ],
-                if (greeting.teaseItemImagePath != null &&
-                    greeting.teaseItemUnlockAt != null &&
-                    greeting.teaseStarsAway != null &&
-                    greeting.teaseStarsAway! > 0) ...[
-                  const SizedBox(height: 16),
-                  // Next unlock item icon
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD54F).withValues(alpha: 0.3),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        greeting.teaseItemImagePath!,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Progress bar toward unlock
-                  SizedBox(
-                    width: 160,
-                    child: Column(
-                      children: [
-                        // Star icons showing progress
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: Color(0xFFFFD54F),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${greeting.wallet}',
-                              style: const TextStyle(
-                                color: Color(0xFFFFD54F),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              ' / ${greeting.teaseItemUnlockAt}',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        // Progress bar
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: greeting.wallet / greeting.teaseItemUnlockAt!,
-                            minHeight: 8,
-                            backgroundColor: Colors.white.withValues(alpha: 0.1),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFFFFD54F),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                GestureDetector(
-                  onTap: () => Navigator.of(dialogContext).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF69F0AE).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: const Text(
-                      "LET'S GO!",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

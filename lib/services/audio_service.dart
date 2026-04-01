@@ -181,6 +181,8 @@ class AudioService {
     'voice_super_power.mp3',
     'voice_mega_power.mp3',
     'voice_streak_bonus.mp3',
+    'voice_streak_bonus_explain_high.mp3',
+    'voice_streak_bonus_explain_low.mp3',
     'voice_intro_hero_blaze.mp3',
     'voice_intro_hero_frost.mp3',
     'voice_intro_hero_bolt.mp3',
