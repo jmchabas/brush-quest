@@ -117,10 +117,44 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('BRUSH button is visible', (tester) async {
+  testWidgets('BRUSH button is removed (hero tap starts brushing)', (tester) async {
     await pumpHome(tester);
 
-    expect(find.text('BRUSH!'), findsOneWidget);
+    expect(find.text('BRUSH!'), findsNothing);
+
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('first launch plays voice_tap_hero voice', (tester) async {
+    // First launch: totalBrushes = 0, skipGreeting = false
+    SharedPreferences.setMockInitialValues({
+      'selected_hero': 'blaze',
+      'selected_weapon': 'star_blaster',
+      'total_stars': 0,
+      'current_streak': 0,
+      'total_brushes': 0,
+      'today_brush_count': 0,
+      'muted': false,
+    });
+
+    await tester.binding.setSurfaceSize(const Size(430, 932));
+    await tester.pumpWidget(
+      const MaterialApp(home: HomeScreen()),
+    );
+    // Allow _loadStats + _checkGreeting to complete
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // Verify voice_tap_hero.mp3 was played
+    final voiceCalls = fakeAudio.callsFor('playVoice');
+    final tapHeroPlayed = voiceCalls.any(
+      (c) => c.args['fileName'] == 'voice_tap_hero.mp3',
+    );
+    expect(tapHeroPlayed, isTrue,
+        reason: 'First launch should play voice_tap_hero.mp3');
 
     await tester.binding.setSurfaceSize(null);
   });

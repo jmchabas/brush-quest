@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -52,13 +51,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
   late AnimationController _auraController;
-  late AnimationController _tapPulseController;
-  late Animation<double> _tapPulseAnimation;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
-  late AnimationController _idleBounceController;
-  late Animation<double> _idleBounceAnimation;
-  Timer? _idleBounceTimer;
   bool _buttonPressed = false;
   static const _welcomeBackVoices = [
     'voice_welcome_back.mp3',
@@ -92,14 +86,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
     )..repeat(reverse: true);
 
-    _tapPulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-    _tapPulseAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _tapPulseController, curve: Curves.easeInOut),
-    );
-
     _breatheController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -107,23 +93,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _breatheAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
     );
-
-    _idleBounceController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _idleBounceAnimation = Tween<double>(begin: 1.0, end: 1.06).animate(
-      CurvedAnimation(parent: _idleBounceController, curve: Curves.elasticOut),
-    );
-
-    _idleBounceTimer = Timer(const Duration(seconds: 3), () {
-      _idleBounceController.forward().then((_) => _idleBounceController.reverse());
-      _idleBounceTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-        if (mounted) {
-          _idleBounceController.forward().then((_) => _idleBounceController.reverse());
-        }
-      });
-    });
 
   }
 
@@ -134,10 +103,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pulseController.dispose();
     _floatController.dispose();
     _auraController.dispose();
-    _tapPulseController.dispose();
     _breatheController.dispose();
-    _idleBounceController.dispose();
-    _idleBounceTimer?.cancel();
     super.dispose();
   }
 
@@ -768,7 +734,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       onTapDown: (_) => setState(() => _buttonPressed = true),
                       onTapUp: (_) {
                         setState(() => _buttonPressed = false);
-                        _openShop();
+                        _startBrushing();
                       },
                       onTapCancel: () => setState(() => _buttonPressed = false),
                       child: Column(
@@ -868,60 +834,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 8),
 
-                  // BRUSH button
-                  AnimatedBuilder(
-                    animation: _idleBounceAnimation,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _idleBounceAnimation.value,
-                        child: child,
-                      );
-                    },
-                    child: GestureDetector(
-                      onTap: _startBrushing,
-                      child: AnimatedBuilder(
-                        animation: _tapPulseAnimation,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: 1.0 + _tapPulseAnimation.value * 0.03,
-                            child: child,
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                _selectedHero.primaryColor,
-                                _selectedHero.primaryColor.withValues(alpha: 0.7),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _selectedHero.primaryColor.withValues(alpha: 0.5),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            'BRUSH!',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 4,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-
                   const Spacer(),
 
                   // Secondary nav row — hidden until first brush
@@ -941,7 +853,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.shield,
+                              icon: Icons.auto_awesome,
                               label: 'HEROES',
                               color: const Color(0xFF7C4DFF),
                               onTap: _openShop,
@@ -950,7 +862,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.catching_pokemon,
+                              icon: Icons.bug_report,
                               label: 'MONSTERS',
                               color: const Color(0xFFFF80AB),
                               onTap: _openTrophies,
