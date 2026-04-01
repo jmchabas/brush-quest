@@ -146,6 +146,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         final prevId = '${hero.id}_stage${evolution.stage - 1}';
         if (!_unlockedEvolutions.contains(prevId)) {
           HapticFeedback.lightImpact();
+          _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
+          AudioService().playVoice(await _selectNudgeVoice());
           return;
         }
       }

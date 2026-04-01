@@ -308,6 +308,7 @@ class StreakService {
         } else {
           hadEvening = true;
         }
+        if (hadMorning && hadEvening) break;
       }
     }
     return TodaySlotsStatus(morningDone: hadMorning, eveningDone: hadEvening);
