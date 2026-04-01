@@ -9,9 +9,7 @@ import '../services/achievement_service.dart';
 import '../services/world_service.dart';
 import '../services/trophy_service.dart';
 import '../widgets/space_background.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/achievement_popup.dart';
-import '../widgets/star_rain.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
@@ -198,14 +196,28 @@ class _VictoryScreenState extends State<VictoryScreen>
   _ChestReward? _reward;
   bool _showDoneButton = false;
 
+  // Top bar state
+  final _walletPillKey = GlobalKey();
+  late AnimationController _walletBumpController;
+  int _previousStreak = 0;
+  HeroCharacter _selectedHero = HeroService.allHeroes[0];
+
+  // Star flight animation state
+  bool _showStarFlight = false;
+  Offset _starFlightSource = Offset.zero;
+  Offset _starFlightTarget = Offset.zero;
+
+  // Hero celebration state
+  late AnimationController _heroCelebrationController;
+  late Animation<double> _heroScaleAnim;
+  late AnimationController _heroGlowController;
+  int _heroEvolutionStage = 1;
+  String _heroWeaponId = 'star_blaster';
+
   // Post-chest bonus reveal state
   bool _showStreakBonus = false;
   bool _showDailyBonus = false;
   bool _showComebackBonus = false;
-
-  // Contextual tip state
-  String? _tipText;
-  IconData? _tipIcon;
 
   // Trophy reveal state
   bool _showTrophyReveal = false;
@@ -289,12 +301,35 @@ class _VictoryScreenState extends State<VictoryScreen>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
+    _walletBumpController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    _heroCelebrationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _heroScaleAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _heroCelebrationController,
+        curve: Curves.elasticOut,
+      ),
+    );
+    _heroGlowController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
 
     _recordAndAnimate();
   }
 
   Future<void> _recordAndAnimate() async {
     final hero = await _heroService.getSelectedHero();
+    _selectedHero = hero;
+    _heroEvolutionStage = await _heroService.getEvolutionStage(hero.id);
+    _heroWeaponId = await _weaponService.getSelectedWeaponId();
+    _previousStreak = await _streakService.getStreak();
     _world = await _worldService.getCurrentWorld();
     _dailyModifier = _worldService.getDailyModifier();
     _previousStars = await _streakService.getTotalStars();
@@ -354,9 +389,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     if (mounted) setState(() {});
 
-    // Calculate contextual tip (non-blocking, runs after data is ready)
-    _calculateTip();
-
     // Auto-sync progress to cloud if signed in (fire-and-forget)
     if (AuthService().currentUser != null) {
       SyncService().uploadProgress().catchError((e) {
@@ -365,7 +397,9 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
 
     // ── NEW TIMING SEQUENCE ──
-    // t=0       Victory SFX + confetti
+    // t=0       Hero celebration + Victory SFX + confetti
+    _heroCelebrationController.forward();
+    _heroGlowController.repeat(reverse: true);
     _audio.playSfx('victory.mp3');
     _confettiController.repeat();
 
@@ -379,6 +413,11 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     // Arc beat 2 (star earned) — queued via voice pipeline
     await _audio.playVoice(arc[1]); // "+1 star!"
+
+    // Trigger star flight ~400ms after victory voice
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+    _triggerStarFlight();
 
     // Show DONE button early so the user can exit before the chest sequence.
     // The reward chain continues to play, but the child is never trapped.
@@ -431,53 +470,26 @@ class _VictoryScreenState extends State<VictoryScreen>
     if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
   }
 
-  Future<void> _calculateTip() async {
-    final streak = await _streakService.getStreak();
-    final slots = await _streakService.getTodaySlots();
-    final totalBrushes = await _streakService.getTotalBrushes();
+  void _triggerStarFlight() {
+    // Read wallet pill position from its GlobalKey
+    final box = _walletPillKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
 
-    String? text;
-    IconData? icon;
+    final screenSize = MediaQuery.of(context).size;
+    final pillPos = box.localToGlobal(Offset.zero);
+    final pillCenter = pillPos + Offset(box.size.width / 2, box.size.height / 2);
 
-    // Priority 1: Streak at risk (streak >= 3, encourage return)
-    if (streak >= 3) {
-      text = 'Come back tomorrow to keep your $streak-day streak going!';
-      icon = Icons.local_fire_department;
-    }
-    // Priority 2: AM/PM nudge (one slot done, other not, user is experienced)
-    else if (totalBrushes >= 5) {
-      if (slots.morningDone && !slots.eveningDone) {
-        text = 'Brush tonight too for a bonus star!';
-        icon = Icons.nightlight_round;
-      } else if (slots.eveningDone && !slots.morningDone) {
-        text = 'Brush tomorrow morning for a bonus star!';
-        icon = Icons.wb_sunny;
-      }
-    }
+    setState(() {
+      _showStarFlight = true;
+      _starFlightSource = Offset(screenSize.width / 2, screenSize.height / 2);
+      _starFlightTarget = pillCenter;
+    });
+  }
 
-    // Priority 3: Achievement approaching (only if no tip yet)
-    if (text == null) {
-      for (final milestone in [10, 25, 50, 100]) {
-        final remaining = milestone - totalBrushes;
-        if (remaining > 0 && remaining <= 3) {
-          text = '$remaining more brushes to your next badge!';
-          icon = Icons.emoji_events;
-          break;
-        }
-      }
-    }
-
-    // Apply tip if one was selected
-    if (text != null && mounted) {
-      setState(() {
-        _tipText = text;
-        _tipIcon = icon;
-      });
-      // Play voice for streak retention tip
-      if (streak >= 3) {
-        _audio.playVoice('voice_keep_going.mp3');
-      }
-    }
+  void _onStarLanded() {
+    HapticFeedback.lightImpact();
+    _walletBumpController.forward(from: 0.0);
+    _audio.playSfx('star_chime.mp3');
   }
 
   Future<void> _revealBonusStars() async {
@@ -858,6 +870,9 @@ class _VictoryScreenState extends State<VictoryScreen>
     _cardFlyController.dispose();
     _cardGlowController.dispose();
     _newBadgeController.dispose();
+    _walletBumpController.dispose();
+    _heroCelebrationController.dispose();
+    _heroGlowController.dispose();
     super.dispose();
   }
 
@@ -911,7 +926,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                     child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(height: 24),
+                    // Extra top padding to clear the fixed top bar
+                    const SizedBox(height: 48),
 
                     Text(
                       'GREAT JOB!',
@@ -931,75 +947,117 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ),
                     ),
 
-                    const SizedBox(height: 10),
-                    // Star rain wave animation
-                    if (_starsEarnedThisSession > 0)
-                      const StarRain(
-                        baseStars: 2,
-                      ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                    // Wallet + Rank display
-                    GlassCard(
-                      margin: const EdgeInsets.symmetric(horizontal: 32),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Ranger Rank (shield)
-                          const Icon(
-                            Icons.diamond,
-                            color: Color(0xFF7C4DFF),
-                            size: 28,
-                          ),
-                          const SizedBox(width: 4),
-                          TweenAnimationBuilder<int>(
-                            tween: IntTween(begin: _previousStars, end: _newStars),
-                            duration: const Duration(milliseconds: 1500),
-                            builder: (context, val, _) => Text(
-                              '$val',
-                              style: Theme.of(context).textTheme.headlineLarge
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 28,
+                    // Hero celebration (replaces StarRain)
+                    AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _heroScaleAnim,
+                        _heroGlowController,
+                      ]),
+                      builder: (context, _) {
+                        final glowPulse = _heroGlowController.value;
+                        return Transform.scale(
+                          scale: _heroScaleAnim.value.clamp(0.0, 1.0),
+                          child: SizedBox(
+                            width: 160,
+                            height: 160,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // Pulsing glow in hero's primary color
+                                Container(
+                                  width: 140,
+                                  height: 140,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _selectedHero.primaryColor
+                                            .withValues(alpha: 0.3 + glowPulse * 0.3),
+                                        blurRadius: 30 + glowPulse * 15,
+                                        spreadRadius: 5 + glowPulse * 5,
+                                      ),
+                                    ],
                                   ),
+                                ),
+                                // Hero image
+                                Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: _selectedHero.primaryColor
+                                          .withValues(alpha: 0.6 + glowPulse * 0.4),
+                                      width: 3,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _selectedHero.primaryColor
+                                            .withValues(alpha: 0.4),
+                                        blurRadius: 16,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: HeroService.buildHeroImage(
+                                      _selectedHero.id,
+                                      stage: _heroEvolutionStage,
+                                      weaponId: _heroWeaponId,
+                                      size: 120,
+                                    ),
+                                  ),
+                                ),
+                                // Sparkle icons at different positions
+                                Positioned(
+                                  top: 4,
+                                  right: 12,
+                                  child: Opacity(
+                                    opacity: (glowPulse * 1.2).clamp(0.0, 1.0),
+                                    child: Icon(
+                                      Icons.auto_awesome,
+                                      color: _selectedHero.primaryColor
+                                          .withValues(alpha: 0.8),
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 8,
+                                  left: 8,
+                                  child: Opacity(
+                                    opacity: ((1.0 - glowPulse) * 1.2).clamp(0.0, 1.0),
+                                    child: Icon(
+                                      Icons.auto_awesome,
+                                      color: _selectedHero.primaryColor
+                                          .withValues(alpha: 0.8),
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 20,
+                                  left: 4,
+                                  child: Opacity(
+                                    opacity: ((glowPulse - 0.3).abs() < 0.5
+                                        ? glowPulse
+                                        : 1.0 - glowPulse)
+                                        .clamp(0.0, 1.0),
+                                    child: Icon(
+                                      Icons.auto_awesome,
+                                      color: _selectedHero.primaryColor
+                                          .withValues(alpha: 0.6),
+                                      size: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          // Divider
-                          Container(
-                            width: 1,
-                            height: 28,
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                          const SizedBox(width: 16),
-                          // Star Wallet
-                          const Icon(
-                            Icons.star,
-                            color: Color(0xFFFFD54F),
-                            size: 24,
-                          ),
-                          const SizedBox(width: 4),
-                          TweenAnimationBuilder<int>(
-                            tween: IntTween(begin: _previousWallet, end: _newWallet),
-                            duration: const Duration(milliseconds: 1500),
-                            builder: (context, val, _) => Text(
-                              '$val',
-                              style: Theme.of(context).textTheme.headlineLarge
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 24,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 20),
@@ -1229,36 +1287,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     // Buttons (only after full reward sequence)
                     if (_showDoneButton) ...[
-                      // Contextual tip (persistent, above DONE button)
-                      if (_tipText != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(_tipIcon, color: Colors.amber, size: 20),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Text(
-                                    _tipText!,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       AnimatedBuilder(
                         animation: _doneButtonController,
                         builder: (context, child) => Transform.scale(
@@ -1313,6 +1341,186 @@ class _VictoryScreenState extends State<VictoryScreen>
                 ),
                 ),
               ),
+
+              // Fixed top bar with streak, rank, and wallet pills
+              Positioned(
+                top: 8,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Streak pill (fire icon + streak count, orange)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.orangeAccent.withValues(alpha: 0.6),
+                          width: 2,
+                        ),
+                        color: Colors.orangeAccent.withValues(alpha: 0.12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.local_fire_department,
+                            color: Colors.orangeAccent,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 4),
+                          TweenAnimationBuilder<int>(
+                            tween: IntTween(
+                              begin: _previousStreak,
+                              end: _newStreak,
+                            ),
+                            duration: const Duration(milliseconds: 1500),
+                            builder: (context, val, _) => Text(
+                              '$val',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x80FF9800),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Rank pill (diamond icon + total stars, purple)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFF7C4DFF).withValues(alpha: 0.6),
+                          width: 2,
+                        ),
+                        color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.diamond,
+                            color: Color(0xFF7C4DFF),
+                            size: 22,
+                          ),
+                          const SizedBox(width: 4),
+                          TweenAnimationBuilder<int>(
+                            tween: IntTween(
+                              begin: _previousStars,
+                              end: _newStars,
+                            ),
+                            duration: const Duration(milliseconds: 1500),
+                            builder: (context, val, _) => Text(
+                              '$val',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x807C4DFF),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Wallet pill (star icon + wallet count, yellow) with GlobalKey
+                    AnimatedBuilder(
+                      animation: _walletBumpController,
+                      builder: (context, child) {
+                        final bump = Curves.elasticOut.transform(
+                          _walletBumpController.value,
+                        );
+                        return Transform.scale(
+                          scale: 1.0 + bump * 0.15,
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        key: _walletPillKey,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFD54F),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 4),
+                            TweenAnimationBuilder<int>(
+                              tween: IntTween(
+                                begin: _previousWallet,
+                                end: _newWallet,
+                              ),
+                              duration: const Duration(milliseconds: 1500),
+                              builder: (context, val, _) => Text(
+                                '$val',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  shadows: [
+                                    Shadow(
+                                      color: Color(0x80FFD54F),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Star flight animation overlay
+              if (_showStarFlight)
+                _StarFlightOverlay(
+                  starCount: _starsEarnedThisSession.clamp(1, 5),
+                  source: _starFlightSource,
+                  target: _starFlightTarget,
+                  onStarLanded: _onStarLanded,
+                  onComplete: () {
+                    if (mounted) setState(() => _showStarFlight = false);
+                  },
+                ),
 
             ],
           ),
@@ -1517,29 +1725,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                             Icons.auto_awesome,
                             color: Color(0xFFFFF59D),
                             size: 14,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: Colors.black.withValues(alpha: 0.28),
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: const Text(
-                              'TAP TO OPEN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                fontSize: 10,
-                              ),
-                            ),
                           ),
                         ),
                       ],
@@ -2013,4 +2198,159 @@ class _ConfettiPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ConfettiPainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+/// Quadratic bezier tween that interpolates between [begin] and [end]
+/// via a randomized control point for a curved arc effect.
+class _BezierOffsetTween extends Tween<Offset> {
+  final Offset controlPoint;
+
+  _BezierOffsetTween({
+    required Offset begin,
+    required Offset end,
+    required this.controlPoint,
+  }) : super(begin: begin, end: end);
+
+  @override
+  Offset lerp(double t) {
+    final u = 1.0 - t;
+    return begin! * (u * u) + controlPoint * (2 * u * t) + end! * (t * t);
+  }
+}
+
+/// Overlay widget that animates golden stars bursting from [source] and arcing
+/// UP into the wallet pill at [target] using quadratic bezier paths.
+class _StarFlightOverlay extends StatefulWidget {
+  final int starCount;
+  final Offset source;
+  final Offset target;
+  final VoidCallback onStarLanded;
+  final VoidCallback onComplete;
+
+  const _StarFlightOverlay({
+    required this.starCount,
+    required this.source,
+    required this.target,
+    required this.onStarLanded,
+    required this.onComplete,
+  });
+
+  @override
+  State<_StarFlightOverlay> createState() => _StarFlightOverlayState();
+}
+
+class _StarFlightOverlayState extends State<_StarFlightOverlay>
+    with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<Offset>> _positionAnims;
+  late final List<Animation<double>> _opacityAnims;
+  final _random = Random();
+  int _landedCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controllers = List.generate(widget.starCount, (i) {
+      return AnimationController(
+        duration: const Duration(milliseconds: 600),
+        vsync: this,
+      );
+    });
+
+    _positionAnims = List.generate(widget.starCount, (i) {
+      // Randomize control point for unique arc per star
+      final dx = ((_random.nextDouble() - 0.5) * 200);
+      final dy = -100 - _random.nextDouble() * 100; // arc upward
+      final controlPoint = Offset(
+        (widget.source.dx + widget.target.dx) / 2 + dx,
+        widget.source.dy + dy,
+      );
+
+      return _BezierOffsetTween(
+        begin: widget.source,
+        end: widget.target,
+        controlPoint: controlPoint,
+      ).animate(CurvedAnimation(
+        parent: _controllers[i],
+        curve: Curves.easeInOutCubic,
+      ));
+    });
+
+    _opacityAnims = _controllers.map((c) {
+      return Tween<double>(begin: 1.0, end: 0.6).animate(
+        CurvedAnimation(parent: c, curve: Curves.easeIn),
+      );
+    }).toList();
+
+    // Stagger the launches
+    _launchStars();
+  }
+
+  Future<void> _launchStars() async {
+    for (int i = 0; i < widget.starCount; i++) {
+      if (!mounted) return;
+      _controllers[i].forward().then((_) {
+        if (!mounted) return;
+        widget.onStarLanded();
+        _landedCount++;
+        if (_landedCount >= widget.starCount) {
+          widget.onComplete();
+        }
+      });
+      if (i < widget.starCount - 1) {
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: SizedBox.expand(
+        child: Stack(
+          children: List.generate(widget.starCount, (i) {
+            return AnimatedBuilder(
+              animation: _controllers[i],
+              builder: (context, _) {
+                if (_controllers[i].value == 0) return const SizedBox.shrink();
+                final pos = _positionAnims[i].value;
+                final opacity = _opacityAnims[i].value;
+                final scale = 1.0 - _controllers[i].value * 0.4; // shrink as it lands
+                return Positioned(
+                  left: pos.dx - 14,
+                  top: pos.dy - 14,
+                  child: Opacity(
+                    opacity: opacity,
+                    child: Transform.scale(
+                      scale: scale.clamp(0.4, 1.0),
+                      child: const Icon(
+                        Icons.star,
+                        color: Color(0xFFFFD54F),
+                        size: 28,
+                        shadows: [
+                          Shadow(
+                            color: Color(0xCCFFD54F),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+        ),
+      ),
+    );
+  }
 }

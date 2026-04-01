@@ -9,7 +9,6 @@ class _StarWave {
   final Color glowColor;
   final IconData sourceIcon;
   final String? sourceImagePath;
-  final String? label;
 
   const _StarWave({
     required this.count,
@@ -17,7 +16,6 @@ class _StarWave {
     required this.glowColor,
     required this.sourceIcon,
     this.sourceImagePath,
-    this.label,
   });
 }
 
@@ -97,7 +95,6 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
         glowColor: const Color(0xFFFFF176),
         sourceIcon: Icons.cleaning_services,
         sourceImagePath: 'assets/images/icon_toothbrush.png',
-        label: 'You brushed!',
       ),
     ];
   }
@@ -178,15 +175,6 @@ class _StarRainState extends State<StarRain> with TickerProviderStateMixin {
                   blurRadius: 16,
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'STARS EARNED',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-              letterSpacing: 2,
             ),
           ),
           const SizedBox(height: 24),
@@ -271,19 +259,6 @@ class _WaveIndicator extends StatelessWidget {
               (_) => Icon(Icons.star, color: wave.color, size: 18),
             ),
           ),
-          // Optional label.
-          if (wave.label != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              wave.label!,
-              style: TextStyle(
-                fontSize: 9,
-                color: wave.color,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
         ],
       ),
     );

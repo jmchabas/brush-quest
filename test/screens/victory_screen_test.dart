@@ -1,5 +1,4 @@
 import 'package:brush_quest/screens/victory_screen.dart';
-import 'package:brush_quest/widgets/star_rain.dart';
 import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
@@ -76,9 +75,13 @@ void main() {
         ),
       ),
     );
-    // Pump past all internal timers (4s Future.delayed in _recordAndAnimate)
+    // Pump past all internal timers (Future.delayed in _recordAndAnimate,
+    // star flight staggered launches, etc.)
     await tester.pump();
     await tester.pump(const Duration(seconds: 5));
+    // Drain remaining star flight timers
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(seconds: 1));
   }
 
   testWidgets('victory screen shows GREAT JOB text', (tester) async {
@@ -87,9 +90,10 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('victory screen shows StarRain widget', (tester) async {
+  testWidgets('victory screen shows hero celebration image', (tester) async {
     await pumpVictory(tester);
-    expect(find.byType(StarRain), findsOneWidget);
+    // Hero celebration replaces StarRain — look for a ClipOval in the build
+    expect(find.byType(ClipOval), findsWidgets);
     await tester.binding.setSurfaceSize(null);
   });
 
