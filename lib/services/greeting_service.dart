@@ -14,12 +14,14 @@ class GreetingResult {
   final String voiceFile;
   final int brushStreak;
   final int wallet;
+  final bool yesterdayBothDone;
 
   const GreetingResult({
     required this.state,
     required this.voiceFile,
     required this.brushStreak,
     required this.wallet,
+    required this.yesterdayBothDone,
   });
 }
 
@@ -65,6 +67,7 @@ class GreetingService {
     required int wallet,
     required String todayDate,
     required String? lastGreetingDate,
+    required bool yesterdayBothDone,
   }) {
     // Already greeted today
     if (lastGreetingDate == todayDate) return null;
@@ -81,6 +84,7 @@ class GreetingService {
       voiceFile: voiceFile,
       brushStreak: brushStreak,
       wallet: wallet,
+      yesterdayBothDone: yesterdayBothDone,
     );
   }
 

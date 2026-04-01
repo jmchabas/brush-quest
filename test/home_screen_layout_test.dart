@@ -59,14 +59,9 @@ void main() {
       final streakText = tester.widget<Text>(find.text('3'));
       expect(streakText.style?.fontSize, 28);
 
-      // Settings is an IconButton with gear icon (no text label)
-      expect(
-        find.ancestor(
-          of: find.byIcon(Icons.settings),
-          matching: find.byType(IconButton),
-        ),
-        findsOneWidget,
-      );
+      // Parent area uses shield icon with PARENTS label
+      expect(find.byIcon(Icons.shield), findsOneWidget);
+      expect(find.text('PARENTS'), findsOneWidget);
       // MuteButton shows volume_up when not muted
       expect(find.byIcon(Icons.volume_up), findsOneWidget);
 

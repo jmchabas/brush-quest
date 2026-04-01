@@ -1054,7 +1054,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) { timer.cancel(); return; }
       if (_isPaused) return;
-      setState(() => _phaseSecondsLeft--);
+      setState(() {
+        _phaseSecondsLeft--;
+        if (_phaseSecondsLeft < 0) _phaseSecondsLeft = 0;
+      });
       _saveCheckpoint();
 
       final energizeAt = (_phaseDuration * 0.80).round();
@@ -1761,36 +1764,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                         stage: _evolutionStage,
                         weaponId: _weapon.id,
                         size: 130,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF0D0B2E),
-                        border: Border.all(
-                          color: _weapon.primaryColor,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _weapon.primaryColor.withValues(alpha: 0.4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          _weapon.imagePath,
-                          width: 22,
-                          height: 22,
-                          fit: BoxFit.cover,
-                        ),
                       ),
                     ),
                   ),

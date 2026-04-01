@@ -11,7 +11,6 @@ import '../services/weapon_service.dart';
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
-import '../widgets/sun_moon_tracker.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
 import 'world_map_screen.dart';
@@ -36,8 +35,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
   int _totalStars = 0;  // Ranger Rank (lifetime total)
-  bool _morningDone = false;
-  bool _eveningDone = false;
   int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
@@ -122,8 +119,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
 
-    final slots = await _streakService.getTodaySlots();
-
     if (mounted) {
       setState(() {
         _totalStars = rank;
@@ -133,9 +128,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedWeapon = weapon;
         _streak = streak;
         _totalBrushes = totalBrushes;
-
-        _morningDone = slots.morningDone;
-        _eveningDone = slots.eveningDone;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -200,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final now = DateTime.now();
     final todayDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final lastGreetingDate = await _greetingService.getLastGreetingDate();
+    final yesterdaySlots = await _streakService.getYesterdaySlots();
 
     final result = _greetingService.checkGreeting(
       totalBrushes: totalBrushes,
@@ -207,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       wallet: _wallet,
       todayDate: todayDate,
       lastGreetingDate: lastGreetingDate,
+      yesterdayBothDone: yesterdaySlots.morningDone && yesterdaySlots.eveningDone,
     );
 
     if (result != null && mounted) {
@@ -226,8 +220,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _showGreetingPopup(GreetingResult greeting) {
     AudioService().playVoice(greeting.voiceFile);
     // Queue streak bonus explanation voice if applicable
-    if (greeting.brushStreak >= 7) {
+    if (greeting.brushStreak >= 7 && greeting.yesterdayBothDone) {
+      AudioService().playVoice('voice_streak_pair_bonus_high.mp3');
+    } else if (greeting.brushStreak >= 7) {
       AudioService().playVoice('voice_streak_bonus_explain_high.mp3');
+    } else if (greeting.brushStreak >= 3 && greeting.yesterdayBothDone) {
+      AudioService().playVoice('voice_streak_pair_bonus_low.mp3');
     } else if (greeting.brushStreak >= 3) {
       AudioService().playVoice('voice_streak_bonus_explain_low.mp3');
     }
@@ -299,45 +297,51 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ],
                 // Bonus star badge — icon-only, no text (kid can't read)
+                // Combined bonus: streak bonus + daily pair bonus
                 if (greeting.brushStreak >= 3) ...[
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFFFFD54F).withValues(alpha: 0.25),
-                          const Color(0xFFFF6D00).withValues(alpha: 0.25),
+                  Builder(builder: (context) {
+                    final streakBonus = greeting.brushStreak >= 7 ? 2 : 1;
+                    final pairBonus = greeting.yesterdayBothDone ? 1 : 0;
+                    final totalBonus = streakBonus + pairBonus;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFFFD54F).withValues(alpha: 0.25),
+                            const Color(0xFFFF6D00).withValues(alpha: 0.25),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '+$totalBonus',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD54F),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.star,
+                            color: Color(0xFFFFD54F),
+                            size: 24,
+                          ),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '+${greeting.brushStreak >= 7 ? 2 : 1}',
-                          style: const TextStyle(
-                            color: Color(0xFFFFD54F),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.star,
-                          color: Color(0xFFFFD54F),
-                          size: 24,
-                        ),
-                      ],
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ],
             ),
@@ -470,29 +474,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: SafeArea(
           child: Stack(
             children: [
-              // Top-left settings gear
+              // Top-left parent area button
               Positioned(
                 top: 8,
                 left: 8,
-                child: IconButton(
-                  onPressed: () {
+                child: GestureDetector(
+                  onTap: () {
                     AudioService().playSfx('whoosh.mp3');
                     _openSettings();
                   },
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(16),
                       color: Colors.white.withValues(alpha: 0.12),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.25),
                         width: 1.5,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.settings,
-                      color: Colors.white,
-                      size: 22,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.shield, color: Colors.white, size: 20),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'PARENTS',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -827,12 +845,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                  const SizedBox(height: 12),
-                  SunMoonTracker(
-                    morningDone: _morningDone,
-                    eveningDone: _eveningDone,
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 20),
 
                   const Spacer(),
 
@@ -844,7 +857,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         children: [
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.rocket_launch,
+                              icon: Icons.public,
                               label: 'MAP',
                               color: const Color(0xFF00E5FF),
                               onTap: _openWorldMap,
@@ -853,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.auto_awesome,
+                              icon: Icons.military_tech,
                               label: 'HEROES',
                               color: const Color(0xFF7C4DFF),
                               onTap: _openShop,
@@ -862,7 +875,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.bug_report,
+                              icon: Icons.pest_control,
                               label: 'MONSTERS',
                               color: const Color(0xFFFF80AB),
                               onTap: _openTrophies,

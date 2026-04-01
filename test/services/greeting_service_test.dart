@@ -22,6 +22,7 @@ void main() {
         wallet: 0,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result, isNull);
     });
@@ -35,6 +36,7 @@ void main() {
         wallet: 5,
         todayDate: '2026-03-16',
         lastGreetingDate: '2026-03-16',
+        yesterdayBothDone: false,
       );
       expect(result, isNull);
     });
@@ -48,6 +50,7 @@ void main() {
         wallet: 1,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result, isNotNull);
       expect(result!.state, GreetingState.justStarted);
@@ -61,6 +64,7 @@ void main() {
         wallet: 2,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result, isNotNull);
       expect(result!.state, GreetingState.justStarted);
@@ -75,6 +79,7 @@ void main() {
         wallet: 10,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result, isNotNull);
       expect(result!.state, GreetingState.returning);
@@ -90,6 +95,7 @@ void main() {
         wallet: 5,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak2to4);
     });
@@ -101,6 +107,7 @@ void main() {
         wallet: 10,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak2to4);
     });
@@ -112,6 +119,7 @@ void main() {
         wallet: 10,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak5to9);
     });
@@ -123,6 +131,7 @@ void main() {
         wallet: 20,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak5to9);
     });
@@ -134,6 +143,7 @@ void main() {
         wallet: 20,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak10to19);
     });
@@ -145,6 +155,7 @@ void main() {
         wallet: 40,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak10to19);
     });
@@ -156,6 +167,7 @@ void main() {
         wallet: 40,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak20plus);
     });
@@ -167,6 +179,7 @@ void main() {
         wallet: 200,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.streak20plus);
     });
@@ -178,6 +191,7 @@ void main() {
         wallet: 5,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.state, GreetingState.returning);
     });
@@ -191,6 +205,7 @@ void main() {
         wallet: 5,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.voiceFile, startsWith('voice_greet_streak_low_'));
     });
@@ -202,6 +217,7 @@ void main() {
         wallet: 15,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.voiceFile, startsWith('voice_greet_streak_mid_'));
     });
@@ -213,6 +229,7 @@ void main() {
         wallet: 30,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.voiceFile, startsWith('voice_greet_streak_high_'));
     });
@@ -224,6 +241,7 @@ void main() {
         wallet: 50,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result!.voiceFile, startsWith('voice_greet_streak_legend_'));
     });
@@ -236,6 +254,7 @@ void main() {
         wallet: 1,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result1!.voiceFile, 'voice_greet_just_started_2.mp3');
 
@@ -246,6 +265,7 @@ void main() {
         wallet: 2,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result2!.voiceFile, 'voice_greet_just_started_3.mp3');
     });
@@ -259,6 +279,7 @@ void main() {
         wallet: 5,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result, isNotNull);
       // GreetingResult has no 'reward' or 'bonusStar' or 'amount' fields
@@ -275,6 +296,7 @@ void main() {
         wallet: 10,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
+        yesterdayBothDone: false,
       );
       expect(result, isNotNull);
       expect(result!.brushStreak, 7);

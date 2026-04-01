@@ -211,6 +211,8 @@ class AudioService {
     'voice_streak_bonus.mp3',
     'voice_streak_bonus_explain_high.mp3',
     'voice_streak_bonus_explain_low.mp3',
+    'voice_streak_pair_bonus_high.mp3',
+    'voice_streak_pair_bonus_low.mp3',
     'voice_intro_hero_blaze.mp3',
     'voice_intro_hero_frost.mp3',
     'voice_intro_hero_bolt.mp3',
@@ -573,7 +575,19 @@ class AudioService {
         try {
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
-          await _voicePlayer.play(AssetSource(_voiceAssetPath(request.fileName)));
+          try {
+            await _voicePlayer.play(AssetSource(_voiceAssetPath(request.fileName)));
+          } catch (e) {
+            if (_voiceStyle != 'classic') {
+              try {
+                await _voicePlayer.play(AssetSource('audio/voices/classic/${request.fileName}'));
+              } catch (_) {
+                // Both styles failed — skip this voice
+              }
+            } else {
+              rethrow;
+            }
+          }
           final completed = await Future.any<bool>([
             _voicePlayer.onPlayerComplete.first.then((_) => true),
             _voicePlayer.onPlayerStateChanged

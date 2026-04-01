@@ -295,6 +295,24 @@ class StreakService {
     return TodaySlotsStatus(morningDone: morningDone, eveningDone: eveningDone);
   }
 
+  Future<TodaySlotsStatus> getYesterdaySlots() async {
+    final history = await getHistory();
+    final yesterday = _yesterdayString();
+    bool hadMorning = false;
+    bool hadEvening = false;
+    for (final record in history) {
+      if (record.date == yesterday) {
+        final hour = int.parse(record.time.split(':')[0]);
+        if (hour < 12) {
+          hadMorning = true;
+        } else {
+          hadEvening = true;
+        }
+      }
+    }
+    return TodaySlotsStatus(morningDone: hadMorning, eveningDone: hadEvening);
+  }
+
   Future<int> getTotalBrushes() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt(_keyTotalBrushes) ?? 0;

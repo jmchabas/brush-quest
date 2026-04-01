@@ -81,16 +81,11 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('settings gear icon is present', (tester) async {
+  testWidgets('parent area shield icon is present', (tester) async {
     await pumpHome(tester);
 
-    expect(
-      find.ancestor(
-        of: find.byIcon(Icons.settings),
-        matching: find.byType(IconButton),
-      ),
-      findsOneWidget,
-    );
+    expect(find.byIcon(Icons.shield), findsOneWidget);
+    expect(find.text('PARENTS'), findsOneWidget);
 
     await tester.binding.setSurfaceSize(null);
   });

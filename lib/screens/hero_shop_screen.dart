@@ -691,11 +691,15 @@ class _EvolutionCell extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      HeroService.buildHeroImage(
-                        hero.id,
-                        stage: evolution.stage,
-                        weaponId: weaponId,
-                        size: 200,
+                      Image.asset(
+                        'assets/images/heroes/hero_${hero.id}_stage${evolution.stage}_$weaponId.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset(
+                            'assets/images/hero_${hero.id}.png',
+                            fit: BoxFit.contain,
+                          );
+                        },
                       ),
                       if (showLock)
                         Icon(
