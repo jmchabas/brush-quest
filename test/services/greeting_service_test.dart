@@ -20,10 +20,6 @@ void main() {
         totalBrushes: 0,
         brushStreak: 0,
         wallet: 0,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -37,10 +33,6 @@ void main() {
         totalBrushes: 5,
         brushStreak: 3,
         wallet: 5,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: '2026-03-16',
       );
@@ -54,10 +46,6 @@ void main() {
         totalBrushes: 1,
         brushStreak: 0,
         wallet: 1,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -71,10 +59,6 @@ void main() {
         totalBrushes: 2,
         brushStreak: 1,
         wallet: 2,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -89,10 +73,6 @@ void main() {
         totalBrushes: 10,
         brushStreak: 0,
         wallet: 10,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -108,10 +88,6 @@ void main() {
         totalBrushes: 5,
         brushStreak: 2,
         wallet: 5,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -123,10 +99,6 @@ void main() {
         totalBrushes: 10,
         brushStreak: 4,
         wallet: 10,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -138,10 +110,6 @@ void main() {
         totalBrushes: 10,
         brushStreak: 5,
         wallet: 10,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -153,10 +121,6 @@ void main() {
         totalBrushes: 20,
         brushStreak: 9,
         wallet: 20,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -168,10 +132,6 @@ void main() {
         totalBrushes: 20,
         brushStreak: 10,
         wallet: 20,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -183,10 +143,6 @@ void main() {
         totalBrushes: 40,
         brushStreak: 19,
         wallet: 40,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -198,10 +154,6 @@ void main() {
         totalBrushes: 40,
         brushStreak: 20,
         wallet: 40,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -213,10 +165,6 @@ void main() {
         totalBrushes: 200,
         brushStreak: 100,
         wallet: 200,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -228,10 +176,6 @@ void main() {
         totalBrushes: 5,
         brushStreak: 1,
         wallet: 5,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -245,10 +189,6 @@ void main() {
         totalBrushes: 5,
         brushStreak: 3,
         wallet: 5,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -260,10 +200,6 @@ void main() {
         totalBrushes: 15,
         brushStreak: 7,
         wallet: 15,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -275,10 +211,6 @@ void main() {
         totalBrushes: 30,
         brushStreak: 15,
         wallet: 30,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -290,10 +222,6 @@ void main() {
         totalBrushes: 50,
         brushStreak: 25,
         wallet: 50,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -306,10 +234,6 @@ void main() {
         totalBrushes: 1,
         brushStreak: 0,
         wallet: 1,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -320,129 +244,10 @@ void main() {
         totalBrushes: 2,
         brushStreak: 1,
         wallet: 2,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
       expect(result2!.voiceFile, 'voice_greet_just_started_3.mp3');
-    });
-
-    // ── Tease logic ──
-
-    test('tease shows weapon when weapon is closer', () {
-      final result = service.checkGreeting(
-        totalBrushes: 5,
-        brushStreak: 2,
-        wallet: 1,
-        nextHeroName: 'FROST',
-        nextHeroUnlockAt: 4,
-        nextWeaponName: 'FLAME SWORD',
-        nextWeaponUnlockAt: 2,
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-      );
-      expect(result!.teaseItemName, 'FLAME SWORD');
-      expect(result.teaseStarsAway, 1);
-    });
-
-    test('tease shows hero when hero is closer', () {
-      final result = service.checkGreeting(
-        totalBrushes: 5,
-        brushStreak: 2,
-        wallet: 3,
-        nextHeroName: 'FROST',
-        nextHeroUnlockAt: 4,
-        nextWeaponName: 'ICE HAMMER',
-        nextWeaponUnlockAt: 5,
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-      );
-      expect(result!.teaseItemName, 'FROST');
-      expect(result.teaseStarsAway, 1);
-    });
-
-    test('no tease when all items unlocked', () {
-      final result = service.checkGreeting(
-        totalBrushes: 50,
-        brushStreak: 10,
-        wallet: 50,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-      );
-      expect(result!.teaseItemName, isNull);
-      expect(result.teaseStarsAway, isNull);
-    });
-
-    test('tease shows weapon when distances are equal', () {
-      // When distances are equal, weapon wins (weaponDistance <= heroDistance)
-      final result = service.checkGreeting(
-        totalBrushes: 5,
-        brushStreak: 2,
-        wallet: 9,
-        nextHeroName: 'FROST',
-        nextHeroUnlockAt: 14, // 5 away
-        nextWeaponName: 'FLAME SWORD',
-        nextWeaponUnlockAt: 14, // 5 away (same)
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-      );
-      expect(result!.teaseItemName, 'FLAME SWORD');
-      expect(result.teaseStarsAway, 5);
-    });
-
-    test('tease shows hero when only hero unlock remains', () {
-      final result = service.checkGreeting(
-        totalBrushes: 50,
-        brushStreak: 25,
-        wallet: 90,
-        nextHeroName: 'NOVA',
-        nextHeroUnlockAt: 98, // 8 away
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-      );
-      expect(result!.teaseItemName, 'NOVA');
-      expect(result.teaseStarsAway, 8);
-    });
-
-    test('tease shows weapon when only weapon unlock remains', () {
-      final result = service.checkGreeting(
-        totalBrushes: 50,
-        brushStreak: 25,
-        wallet: 80,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: 'COSMIC BURST',
-        nextWeaponUnlockAt: 88, // 8 away
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-      );
-      expect(result!.teaseItemName, 'COSMIC BURST');
-      expect(result.teaseStarsAway, 8);
-    });
-
-    test('no tease when already have enough stars for next item', () {
-      final result = service.checkGreeting(
-        totalBrushes: 5,
-        brushStreak: 2,
-        wallet: 10,
-        nextHeroName: 'FROST',
-        nextHeroUnlockAt: 4,
-        nextWeaponName: 'FLAME SWORD',
-        nextWeaponUnlockAt: 2,
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-      );
-      // Both distances are <= 0, so no tease
-      expect(result!.teaseItemName, isNull);
     });
 
     // ── No material reward ──
@@ -452,10 +257,6 @@ void main() {
         totalBrushes: 5,
         brushStreak: 3,
         wallet: 5,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );
@@ -472,10 +273,6 @@ void main() {
         totalBrushes: 10,
         brushStreak: 7,
         wallet: 10,
-        nextHeroName: null,
-        nextHeroUnlockAt: null,
-        nextWeaponName: null,
-        nextWeaponUnlockAt: null,
         todayDate: '2026-03-16',
         lastGreetingDate: null,
       );

@@ -235,23 +235,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final todayDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final lastGreetingDate = await _greetingService.getLastGreetingDate();
 
-    final nextHero = await _heroService.getNextLockedHero();
-    final nextWeapon = await _weaponService.getNextLockedWeapon();
-
     final result = _greetingService.checkGreeting(
       totalBrushes: totalBrushes,
       brushStreak: _streak,
       wallet: _wallet,
-      nextHeroName: nextHero?.name,
-      nextHeroUnlockAt: nextHero?.price,
-      nextWeaponName: nextWeapon?.name,
-      nextWeaponUnlockAt: nextWeapon?.price,
       todayDate: todayDate,
       lastGreetingDate: lastGreetingDate,
-      nextHeroId: nextHero?.id,
-      nextHeroImagePath: nextHero?.imagePath,
-      nextWeaponId: nextWeapon?.id,
-      nextWeaponImagePath: nextWeapon?.imagePath,
     );
 
     if (result != null && mounted) {
