@@ -110,6 +110,21 @@ class AudioService {
     'nova': 'voice_picker_hero_nova.mp3',
   };
 
+  static const Map<String, String> evolutionPickerVoices = {
+    'blaze_stage2': 'voice_picker_evo_blaze_stage2.mp3',
+    'blaze_stage3': 'voice_picker_evo_blaze_stage3.mp3',
+    'frost_stage2': 'voice_picker_evo_frost_stage2.mp3',
+    'frost_stage3': 'voice_picker_evo_frost_stage3.mp3',
+    'bolt_stage2': 'voice_picker_evo_bolt_stage2.mp3',
+    'bolt_stage3': 'voice_picker_evo_bolt_stage3.mp3',
+    'shadow_stage2': 'voice_picker_evo_shadow_stage2.mp3',
+    'shadow_stage3': 'voice_picker_evo_shadow_stage3.mp3',
+    'leaf_stage2': 'voice_picker_evo_leaf_stage2.mp3',
+    'leaf_stage3': 'voice_picker_evo_leaf_stage3.mp3',
+    'nova_stage2': 'voice_picker_evo_nova_stage2.mp3',
+    'nova_stage3': 'voice_picker_evo_nova_stage3.mp3',
+  };
+
   static const Map<String, String> heroIntroVoices = {
     'blaze': 'voice_intro_hero_blaze.mp3',
     'frost': 'voice_intro_hero_frost.mp3',
@@ -164,6 +179,19 @@ class AudioService {
     'voice_picker_hero_shadow.mp3',
     'voice_picker_hero_leaf.mp3',
     'voice_picker_hero_nova.mp3',
+    // Evolution picker voices
+    'voice_picker_evo_blaze_stage2.mp3',
+    'voice_picker_evo_blaze_stage3.mp3',
+    'voice_picker_evo_frost_stage2.mp3',
+    'voice_picker_evo_frost_stage3.mp3',
+    'voice_picker_evo_bolt_stage2.mp3',
+    'voice_picker_evo_bolt_stage3.mp3',
+    'voice_picker_evo_shadow_stage2.mp3',
+    'voice_picker_evo_shadow_stage3.mp3',
+    'voice_picker_evo_leaf_stage2.mp3',
+    'voice_picker_evo_leaf_stage3.mp3',
+    'voice_picker_evo_nova_stage2.mp3',
+    'voice_picker_evo_nova_stage3.mp3',
     'voice_picker_weapon_star_blaster.mp3',
     'voice_picker_weapon_flame_sword.mp3',
     'voice_picker_weapon_ice_hammer.mp3',
@@ -387,6 +415,12 @@ class AudioService {
 
   String heroPickerVoiceFor(String heroId) {
     return heroPickerVoices[heroId] ?? 'voice_great_choice.mp3';
+  }
+
+  String evolutionPickerVoiceFor(String heroId, int stage) {
+    if (stage <= 1) return heroPickerVoiceFor(heroId);
+    final key = '${heroId}_stage$stage';
+    return evolutionPickerVoices[key] ?? heroPickerVoiceFor(heroId);
   }
 
   String weaponPickerVoiceFor(String weaponId) {

@@ -98,39 +98,71 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     return 'voice_shop_nudge_default.mp3';
   }
 
-  Future<void> _onHeroTap(HeroCharacter hero) async {
-    if (_unlockedHeroes.contains(hero.id)) {
-      // Select hero and open the armor/evolution bottom sheet
-      await _heroService.selectHero(hero.id);
-      HapticFeedback.mediumImpact();
-      _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-      await _loadData();
-      if (mounted) _showArmorBottomSheet(hero);
-    } else if (_wallet >= hero.price) {
-      if (hero.price > 0) {
-        final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);
-        if (!confirmed) return;
+  Future<void> _onEvolutionTap(HeroCharacter hero, HeroEvolution evolution) async {
+    final isHeroOwned = _unlockedHeroes.contains(hero.id);
+    final isEvoOwned = evolution.stage == 1
+        ? isHeroOwned
+        : _unlockedEvolutions.contains(evolution.id);
+    final currentStage = _evolutionStages[hero.id] ?? 1;
+    final isEquipped = _selectedHeroId == hero.id && currentStage == evolution.stage;
+
+    if (isEquipped) return;
+
+    if (!isHeroOwned) {
+      // Hero not purchased — only stage 1 is tappable for purchase
+      if (evolution.stage != 1) return;
+      if (_wallet >= hero.price) {
+        if (hero.price > 0) {
+          final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);
+          if (!confirmed) return;
+        }
+        final success = await _heroService.purchaseHero(hero.id);
+        if (success) {
+          await _heroService.selectHero(hero.id);
+          HapticFeedback.heavyImpact();
+          AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _rank);
+          if (mounted) _showHeroUnlockAnimation(hero);
+          await _loadData();
+        }
+      } else {
+        HapticFeedback.lightImpact();
+        _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
+        AudioService().playVoice(await _selectNudgeVoice());
+        _showCannotAffordSnackBar(price: hero.price, wallet: _wallet, accentColor: hero.primaryColor);
       }
-      final success = await _heroService.purchaseHero(hero.id);
+      return;
+    }
+
+    if (isEvoOwned) {
+      // Equip this evolution + select hero
+      await _heroService.selectHero(hero.id);
+      await _heroService.setEvolutionStage(hero.id, evolution.stage);
+      HapticFeedback.mediumImpact();
+      _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
+      await _loadData();
+    } else if (_wallet >= evolution.price) {
+      // Check sequential gating: stage 3 needs stage 2
+      if (evolution.stage >= 3) {
+        final prevId = '${hero.id}_stage${evolution.stage - 1}';
+        if (!_unlockedEvolutions.contains(prevId)) {
+          HapticFeedback.lightImpact();
+          return;
+        }
+      }
+      final confirmed = await _showPurchaseConfirmation(evolution.name, evolution.price);
+      if (!confirmed) return;
+      final success = await _heroService.purchaseEvolution(evolution.id);
       if (success) {
         await _heroService.selectHero(hero.id);
+        await _heroService.setEvolutionStage(hero.id, evolution.stage);
         HapticFeedback.heavyImpact();
-        AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _rank);
-        // Finding #8: Don't play voice here — the unlock dialog's initState
-        // plays the intro voice. Playing it here too causes an audible stutter.
-        if (mounted) _showHeroUnlockAnimation(hero);
         await _loadData();
       }
     } else {
       HapticFeedback.lightImpact();
-      // Describe the hero, then give a context-aware nudge
-      _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
+      _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
       AudioService().playVoice(await _selectNudgeVoice());
-      _showCannotAffordSnackBar(
-        price: hero.price,
-        wallet: _wallet,
-        accentColor: hero.primaryColor,
-      );
+      _showCannotAffordSnackBar(price: evolution.price, wallet: _wallet, accentColor: hero.primaryColor);
     }
   }
 
@@ -262,294 +294,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     );
   }
 
-  void _showArmorBottomSheet(HeroCharacter hero) {
-    final evolutions = HeroService.evolutionsForHero(hero.id);
-    if (evolutions.isEmpty) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            final currentStage = _evolutionStages[hero.id] ?? 1;
-            final currentWeaponId = _selectedWeaponId;
-
-            return Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Drag handle
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Hero image with current evolution + weapon
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: hero.primaryColor.withValues(alpha: 0.6),
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: hero.primaryColor.withValues(alpha: 0.3),
-                          blurRadius: 16,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: HeroService.buildHeroImage(
-                        hero.id,
-                        stage: currentStage,
-                        weaponId: currentWeaponId,
-                        size: 100,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    HeroService.getEvolutionForHero(hero.id, currentStage).name,
-                    style: TextStyle(
-                      color: hero.primaryColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // "Armor" header
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'ARMOR',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Evolution options
-                  ...evolutions.map((evo) {
-                    final isOwned = evo.stage == 1 || _unlockedEvolutions.contains(evo.id);
-                    final isEquipped = currentStage == evo.stage;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _buildEvolutionOption(
-                        ctx: ctx,
-                        setSheetState: setSheetState,
-                        hero: hero,
-                        evolution: evo,
-                        isOwned: isOwned,
-                        isEquipped: isEquipped,
-                        currentWeaponId: currentWeaponId,
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildEvolutionOption({
-    required BuildContext ctx,
-    required StateSetter setSheetState,
-    required HeroCharacter hero,
-    required HeroEvolution evolution,
-    required bool isOwned,
-    required bool isEquipped,
-    required String currentWeaponId,
-  }) {
-    final displayColor = hero.primaryColor;
-    final canAfford = isOwned || _wallet >= evolution.price;
-
-    return GestureDetector(
-      onTap: () async {
-        if (isEquipped) return;
-        if (isOwned) {
-          // Equip this evolution stage
-          await _heroService.setEvolutionStage(hero.id, evolution.stage);
-          HapticFeedback.mediumImpact();
-          _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-          await _loadData();
-          setSheetState(() {});
-        } else if (canAfford) {
-          // Purchase evolution
-          if (evolution.price > 0) {
-            final confirmed = await _showPurchaseConfirmation(evolution.name, evolution.price);
-            if (!confirmed) return;
-          }
-          final success = await _heroService.purchaseEvolution(evolution.id);
-          if (success) {
-            // Auto-equip after purchase
-            await _heroService.setEvolutionStage(hero.id, evolution.stage);
-            HapticFeedback.heavyImpact();
-            await _loadData();
-            setSheetState(() {});
-          }
-        } else {
-          // Can't afford — describe the evolution first, then give a context-aware nudge
-          HapticFeedback.lightImpact();
-          _playSelectionVoice(AudioService().heroPickerVoiceFor(hero.id));
-          AudioService().playVoice(await _selectNudgeVoice());
-          _showCannotAffordSnackBar(
-            price: evolution.price,
-            wallet: _wallet,
-            accentColor: hero.primaryColor,
-          );
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isEquipped
-              ? displayColor.withValues(alpha: 0.15)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isEquipped
-                ? displayColor.withValues(alpha: 0.6)
-                : Colors.white.withValues(alpha: 0.1),
-            width: isEquipped ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Hero evolution preview thumbnail
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isEquipped
-                      ? displayColor.withValues(alpha: 0.6)
-                      : Colors.white.withValues(alpha: 0.2),
-                  width: 2,
-                ),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: HeroService.buildHeroImage(
-                  hero.id,
-                  stage: evolution.stage,
-                  weaponId: currentWeaponId,
-                  size: 48,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Name + description
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    evolution.name,
-                    style: TextStyle(
-                      color: isEquipped ? Colors.white : Colors.white.withValues(alpha: 0.8),
-                      fontSize: 15,
-                      fontWeight: isEquipped ? FontWeight.bold : FontWeight.w500,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      evolution.description,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.45),
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Badge
-            if (isEquipped)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.greenAccent.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'EQUIPPED',
-                  style: TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
-              )
-            else if (isOwned)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'OWNED',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
-              )
-            else
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.star,
-                    color: canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.4),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${evolution.price}',
-                    style: TextStyle(
-                      color: canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.4),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -717,7 +461,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                   controller: _tabController,
                   children: [
                     // Heroes tab
-                    _buildHeroGrid(),
+                    _buildEvolutionGrid(),
                     // Weapons tab
                     _buildWeaponGrid(),
                   ],
@@ -730,49 +474,29 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     );
   }
 
-  Widget _buildHeroGrid() {
-    final selectedHero = HeroService.allHeroes.firstWhere(
-      (h) => h.id == _selectedHeroId,
-      orElse: () => HeroService.allHeroes.first,
-    );
+  Widget _buildEvolutionGrid() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      itemCount: HeroService.allHeroes.length,
+      itemBuilder: (context, index) {
+        final hero = HeroService.allHeroes[index];
+        final isHeroOwned = _unlockedHeroes.contains(hero.id);
+        final isSelected = _selectedHeroId == hero.id;
+        final currentStage = _evolutionStages[hero.id] ?? 1;
+        final evolutions = HeroService.evolutionsForHero(hero.id);
 
-    return CustomScrollView(
-      slivers: [
-        // Featured selected hero display
-        SliverToBoxAdapter(
-          child: _FeaturedHeroDisplay(hero: selectedHero),
-        ),
-        // Hero grid
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.68,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final hero = HeroService.allHeroes[index];
-                final isUnlocked = _unlockedHeroes.contains(hero.id);
-                final isSelected = _selectedHeroId == hero.id;
-                final canAfford = _wallet >= hero.price;
-
-                return _HeroCard(
-                  hero: hero,
-                  isUnlocked: isUnlocked,
-                  isSelected: isSelected,
-                  canAfford: canAfford,
-                  currentStars: _wallet,
-                  onTap: () => _onHeroTap(hero),
-                );
-              },
-              childCount: HeroService.allHeroes.length,
-            ),
-          ),
-        ),
-      ],
+        return _HeroEvolutionRow(
+          hero: hero,
+          evolutions: evolutions,
+          isHeroOwned: isHeroOwned,
+          isSelected: isSelected,
+          currentStage: currentStage,
+          wallet: _wallet,
+          selectedWeaponId: _selectedWeaponId,
+          unlockedEvolutions: _unlockedEvolutions,
+          onEvolutionTap: (evo) => _onEvolutionTap(hero, evo),
+        );
+      },
     );
   }
 
@@ -824,130 +548,200 @@ class _HeroShopScreenState extends State<HeroShopScreen>
 
 }
 
-class _HeroCard extends StatelessWidget {
+class _HeroEvolutionRow extends StatelessWidget {
   final HeroCharacter hero;
-  final bool isUnlocked;
+  final List<HeroEvolution> evolutions;
+  final bool isHeroOwned;
   final bool isSelected;
-  final bool canAfford;
-  final int currentStars;
-  final VoidCallback onTap;
+  final int currentStage;
+  final int wallet;
+  final String selectedWeaponId;
+  final List<String> unlockedEvolutions;
+  final ValueChanged<HeroEvolution> onEvolutionTap;
 
-  const _HeroCard({
+  const _HeroEvolutionRow({
     required this.hero,
-    required this.isUnlocked,
+    required this.evolutions,
+    required this.isHeroOwned,
     required this.isSelected,
-    required this.canAfford,
-    required this.currentStars,
-    required this.onTap,
+    required this.currentStage,
+    required this.wallet,
+    required this.selectedWeaponId,
+    required this.unlockedEvolutions,
+    required this.onEvolutionTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? hero.primaryColor.withValues(alpha: 0.6)
+                : Colors.white.withValues(alpha: 0.1),
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [BoxShadow(
+                  color: hero.primaryColor.withValues(alpha: 0.2),
+                  blurRadius: 12,
+                )]
+              : null,
+        ),
+        child: Row(
+          children: [
+            for (int i = 0; i < evolutions.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: _EvolutionCell(
+                  hero: hero,
+                  evolution: evolutions[i],
+                  isHeroOwned: isHeroOwned,
+                  isOwned: evolutions[i].stage == 1
+                      ? isHeroOwned
+                      : unlockedEvolutions.contains(evolutions[i].id),
+                  isEquipped: isSelected && currentStage == evolutions[i].stage,
+                  isGated: evolutions[i].stage >= 3 &&
+                      !unlockedEvolutions.contains('${hero.id}_stage${evolutions[i].stage - 1}'),
+                  wallet: wallet,
+                  weaponId: selectedWeaponId,
+                  onTap: () => onEvolutionTap(evolutions[i]),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EvolutionCell extends StatelessWidget {
+  final HeroCharacter hero;
+  final HeroEvolution evolution;
+  final bool isHeroOwned;
+  final bool isOwned;
+  final bool isEquipped;
+  final bool isGated;
+  final int wallet;
+  final String weaponId;
+  final VoidCallback onTap;
+
+  const _EvolutionCell({
+    required this.hero,
+    required this.evolution,
+    required this.isHeroOwned,
+    required this.isOwned,
+    required this.isEquipped,
+    required this.isGated,
+    required this.wallet,
+    required this.weaponId,
+    required this.onTap,
+  });
+
+  int get _displayPrice {
+    if (evolution.stage == 1 && !isHeroOwned) return hero.price;
+    return evolution.price;
+  }
+
+  bool get _canAfford => wallet >= _displayPrice;
+
+  @override
+  Widget build(BuildContext context) {
+    final locked = !isOwned;
+    final showPrice = locked && _displayPrice > 0;
+    final showLock = locked && (isGated || (!isHeroOwned && evolution.stage > 1));
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(20),
+          color: isEquipped
+              ? hero.primaryColor.withValues(alpha: 0.15)
+              : Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected
-                ? hero.primaryColor
-                : isUnlocked
-                ? Colors.white.withValues(alpha: 0.2)
-                : Colors.white.withValues(alpha: 0.1),
-            width: isSelected ? 3 : 1,
+            color: isEquipped
+                ? hero.primaryColor.withValues(alpha: 0.7)
+                : locked
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.15),
+            width: isEquipped ? 2 : 1,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: hero.primaryColor.withValues(alpha: 0.4),
-                    blurRadius: 15,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : null,
         ),
-        child: Stack(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Opacity(
-                      opacity: isUnlocked ? 1.0 : 0.85,
-                      child: ColorFiltered(
-                        colorFilter: isUnlocked
-                            ? const ColorFilter.mode(
-                                Colors.transparent,
-                                BlendMode.dst,
-                              )
-                            : ColorFilter.matrix(_partialDesaturationMatrix(0.3)),
-                        child: Image.asset(hero.imagePath, fit: BoxFit.contain),
+            // Hero evolution image
+            AspectRatio(
+              aspectRatio: 1,
+              child: Opacity(
+                opacity: locked ? 0.4 : 1.0,
+                child: ColorFiltered(
+                  colorFilter: locked
+                      ? ColorFilter.matrix(_partialDesaturationMatrix(0.4))
+                      : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      HeroService.buildHeroImage(
+                        hero.id,
+                        stage: evolution.stage,
+                        weaponId: weaponId,
+                        size: 200,
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  if (!isUnlocked && hero.price > 0)
-                    _PriceTag(
-                      price: hero.price,
-                      wallet: currentStars,
-                      canAfford: canAfford,
-                    ),
-                ],
-              ),
-            ),
-            if (!isUnlocked)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
+                      if (showLock)
+                        Icon(
+                          Icons.lock,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          size: 24,
+                        ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.lock,
-                    color: Colors.white.withValues(alpha: 0.8),
-                    size: 24,
-                  ),
                 ),
               ),
-            if (isSelected)
-              Positioned(
-                bottom: 8,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withValues(alpha: 0.6),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 20,
+            ),
+            const SizedBox(height: 4),
+            // Status indicator
+            if (isEquipped)
+              Icon(Icons.check_circle, color: hero.primaryColor, size: 18)
+            else if (showPrice)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.star,
+                    color: _canAfford
+                        ? const Color(0xFFFFD54F)
+                        : Colors.white.withValues(alpha: 0.3),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '$_displayPrice',
+                    style: TextStyle(
+                      color: _canAfford
+                          ? const Color(0xFFFFD54F)
+                          : Colors.white.withValues(alpha: 0.3),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
+                ],
+              )
+            else if (isOwned && !isEquipped)
+              Icon(
+                Icons.check_circle_outline,
+                color: Colors.white.withValues(alpha: 0.3),
+                size: 16,
               ),
           ],
         ),
@@ -1106,94 +900,6 @@ List<double> _partialDesaturationMatrix(double saturation) {
     lumR * invSat,               lumG * invSat,               lumB * invSat + saturation, 0, 0,
     0,                           0,                           0,                           1, 0,
   ];
-}
-
-class _FeaturedHeroDisplay extends StatelessWidget {
-  final HeroCharacter hero;
-
-  const _FeaturedHeroDisplay({required this.hero});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        child: Row(
-          children: [
-            // Hero image
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: hero.primaryColor.withValues(alpha: 0.6),
-                  width: 3,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: hero.primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: ClipOval(
-                child: Image.asset(hero.imagePath, fit: BoxFit.cover),
-              ),
-            ),
-            const SizedBox(width: 20),
-            // Hero info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    hero.name,
-                    style: TextStyle(
-                      color: hero.primaryColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    hero.title,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.greenAccent.withValues(alpha: 0.8),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'SELECTED',
-                        style: TextStyle(
-                          color: Colors.greenAccent.withValues(alpha: 0.8),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _FeaturedWeaponDisplay extends StatelessWidget {
