@@ -30,7 +30,7 @@ class HeroEvolution {
   final int stage;          // 1, 2, or 3
   final String name;        // 'FLAME KNIGHT'
   final String description; // flavor text
-  final int price;          // 0 (base comes free), 15-18 (stage 2), 35-40 (stage 3)
+  final int price;          // 0 (base comes free), 15-18 (stage 2), 25 (stage 3)
   final Color primaryColor;
   final Color attackColor;
 
@@ -213,7 +213,7 @@ class HeroService {
     HeroEvolution(id: 'blaze_stage3', heroId: 'blaze', stage: 3,
       name: 'INFERNO LORD',
       description: 'Legendary fire armor — monsters flee in terror!',
-      price: 35,
+      price: 25,
       primaryColor: Color(0xFFFF6D00), attackColor: Color(0xFFFF9100)),
 
     // Frost evolutions (base: blue)
@@ -230,7 +230,7 @@ class HeroService {
     HeroEvolution(id: 'frost_stage3', heroId: 'frost', stage: 3,
       name: 'BLIZZARD LORD',
       description: 'Ultimate ice armor — freezes everything!',
-      price: 35,
+      price: 25,
       primaryColor: Color(0xFF40C4FF), attackColor: Color(0xFF80D8FF)),
 
     // Bolt evolutions (base: yellow)
@@ -247,7 +247,7 @@ class HeroService {
     HeroEvolution(id: 'bolt_stage3', heroId: 'bolt', stage: 3,
       name: 'STORM LORD',
       description: 'Tesla-powered armor — lightning strikes all!',
-      price: 35,
+      price: 25,
       primaryColor: Color(0xFFFFD600), attackColor: Color(0xFFFFFF00)),
 
     // Shadow evolutions (base: purple)
@@ -264,7 +264,7 @@ class HeroService {
     HeroEvolution(id: 'shadow_stage3', heroId: 'shadow', stage: 3,
       name: 'VOID LORD',
       description: 'Legendary void armor — invisible and deadly!',
-      price: 40,
+      price: 25,
       primaryColor: Color(0xFFAA00FF), attackColor: Color(0xFFD500F9)),
 
     // Leaf evolutions (base: green)
@@ -281,7 +281,7 @@ class HeroService {
     HeroEvolution(id: 'leaf_stage3', heroId: 'leaf', stage: 3,
       name: 'ANCIENT GUARDIAN',
       description: 'Legendary tree armor — unstoppable!',
-      price: 40,
+      price: 25,
       primaryColor: Color(0xFF00E676), attackColor: Color(0xFF69F0AE)),
 
     // Nova evolutions (base: gold)
@@ -298,7 +298,7 @@ class HeroService {
     HeroEvolution(id: 'nova_stage3', heroId: 'nova', stage: 3,
       name: 'CELESTIAL LORD',
       description: 'Legendary cosmic armor — pure starlight!',
-      price: 40,
+      price: 25,
       primaryColor: Color(0xFFFFD54F), attackColor: Color(0xFFFFE082)),
   ];
 
@@ -345,6 +345,12 @@ class HeroService {
       final prefs = await SharedPreferences.getInstance();
       final unlocked = prefs.getStringList(_unlockedEvolutionsKey) ?? [];
       if (unlocked.contains(evolutionId)) return true;
+
+      // Sequential gating: stage 3 requires stage 2 to be owned
+      if (evo.stage >= 3) {
+        final prevId = '${evo.heroId}_stage${evo.stage - 1}';
+        if (!unlocked.contains(prevId)) return false;
+      }
 
       final success = await StreakService().spendStars(evo.price);
       if (!success) return false;

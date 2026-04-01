@@ -221,5 +221,43 @@ void main() {
       expect(next, isNotNull);
       expect(next!.id, 'shadow');
     });
+
+    // ── Evolution gating ──────────────────────────────────────────
+
+    group('evolution gating', () {
+      test('cannot purchase stage 3 without owning stage 2', () async {
+        SharedPreferences.setMockInitialValues({
+          'unlocked_heroes': ['blaze'],
+          'star_wallet': 100,
+          'total_stars': 100,
+        });
+        final service = HeroService();
+        final result = await service.purchaseEvolution('blaze_stage3');
+        expect(result, false);
+      });
+
+      test('can purchase stage 3 after owning stage 2', () async {
+        SharedPreferences.setMockInitialValues({
+          'unlocked_heroes': ['blaze'],
+          'unlocked_evolutions': ['blaze_stage2'],
+          'star_wallet': 100,
+          'total_stars': 100,
+        });
+        final service = HeroService();
+        final result = await service.purchaseEvolution('blaze_stage3');
+        expect(result, true);
+      });
+
+      test('stage 2 can be purchased without gating', () async {
+        SharedPreferences.setMockInitialValues({
+          'unlocked_heroes': ['blaze'],
+          'star_wallet': 100,
+          'total_stars': 100,
+        });
+        final service = HeroService();
+        final result = await service.purchaseEvolution('blaze_stage2');
+        expect(result, true);
+      });
+    });
   });
 }
