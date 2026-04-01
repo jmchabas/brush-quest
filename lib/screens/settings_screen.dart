@@ -58,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _generateMathChallenge();
     _loadSettings();
   }
@@ -907,37 +907,20 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    children: [
-                      const ImageIcon(
-                        AssetImage('assets/images/icon_toothbrush.png'),
-                        size: 18,
-                        color: Colors.white54,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '$_totalBrushes brushes',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                  const ImageIcon(
+                    AssetImage('assets/images/icon_toothbrush.png'),
+                    size: 18,
+                    color: Colors.white54,
                   ),
-                  Row(
-                    children: [
-                      const Icon(Icons.schedule, color: Colors.white54, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${(_totalBrushes * _phaseDuration * 6 / 60).round()} min',
-                        style: const TextStyle(
-                          color: Color(0xFF00E5FF),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Text(
+                    '$_totalBrushes brushes',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
@@ -1024,9 +1007,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
                 const SizedBox(height: 2),
                 Text(
+                  'Protect streak during vacation or sick days',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
                   _streakPaused && _pauseEnd != null
-                      ? 'Paused until ${_pauseEnd!.month}/${_pauseEnd!.day}'
-                      : 'Streak is active',
+                      ? 'Protected until ${_pauseEnd!.month}/${_pauseEnd!.day}'
+                      : 'No pause scheduled',
                   style: TextStyle(
                     color: _streakPaused
                         ? const Color(0xFFFFD54F)
@@ -1279,32 +1270,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 8),
         _SettingCard(
-          icon: Icons.sensors,
-          title: 'Brushing detection',
-          child: Switch(
-            value: _cameraEnabled,
-            onChanged: _toggleCamera,
-            activeThumbColor: const Color(0xFF00E5FF),
-          ),
-        ),
-        const SizedBox(height: 8),
-        _SettingCard(
-          icon: AudioService().isMuted ? Icons.volume_off : Icons.volume_up,
-          title: 'Sound',
-          child: Switch(
-            value: !AudioService().isMuted,
-            onChanged: (_) async {
-              await AudioService().toggleMute();
-              setState(() {});
-            },
-            activeThumbColor: const Color(0xFF00E5FF),
-          ),
-        ),
-        const SizedBox(height: 8),
-        _SettingCard(
           icon: Icons.record_voice_over,
           title: 'Narrator voice',
-          subtitle: AudioService.voiceStyles[_voiceStyle] ?? '',
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: SegmentedButton<String>(
@@ -1358,6 +1325,29 @@ class _SettingsScreenState extends State<SettingsScreen>
                 visualDensity: VisualDensity.compact,
               ),
             ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.sensors,
+          title: 'Brushing detection',
+          child: Switch(
+            value: _cameraEnabled,
+            onChanged: _toggleCamera,
+            activeThumbColor: const Color(0xFF00E5FF),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: AudioService().isMuted ? Icons.volume_off : Icons.volume_up,
+          title: 'Sound',
+          child: Switch(
+            value: !AudioService().isMuted,
+            onChanged: (_) async {
+              await AudioService().toggleMute();
+              setState(() {});
+            },
+            activeThumbColor: const Color(0xFF00E5FF),
           ),
         ),
 
@@ -1418,8 +1408,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        _buildStarGuide(),
-        const SizedBox(height: 24),
         _buildGuideSection(
           'Our Promise',
           'Brush Quest is designed to make tooth brushing a habit your '
@@ -1870,6 +1858,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   tabs: const [
                     Tab(icon: Icon(Icons.dashboard), text: 'Dashboard'),
                     Tab(icon: Icon(Icons.settings), text: 'Settings'),
+                    Tab(icon: Icon(Icons.star), text: 'Stars'),
                     Tab(icon: Icon(Icons.menu_book), text: 'Guide'),
                   ],
                 ),
@@ -1882,7 +1871,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                       _buildDashboardTab(),
                       // ═══ TAB 2: SETTINGS ═══
                       _buildSettingsTab(signedIn, user),
-                      // ═══ TAB 3: GUIDE ═══
+                      // ═══ TAB 3: STARS ═══
+                      ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        children: [
+                          _buildStarGuide(),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                      // ═══ TAB 4: GUIDE ═══
                       _buildGuideTab(),
                     ],
                   ),
@@ -1938,13 +1935,11 @@ class _SectionHeader extends StatelessWidget {
 class _SettingCard extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String? subtitle;
   final Widget child;
 
   const _SettingCard({
     required this.icon,
     required this.title,
-    this.subtitle,
     required this.child,
   });
 
@@ -1962,29 +1957,13 @@ class _SettingCard extends StatelessWidget {
           Icon(icon, color: Colors.white54, size: 22),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (subtitle != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      subtitle!,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ],
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           child,
