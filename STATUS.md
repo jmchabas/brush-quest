@@ -32,9 +32,9 @@
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [x] P2.2: Privacy policy overhauled — COPPA 2025 + CCPA + data security program
-  - [ ] P2.1: Google Play Console families policy config — BLOCKED on org account
-- **Blocked on**: Google Play org account (need D-U-N-S number first)
-- **Next up**: Kid testing buddy voice with Oliver & Theo, Play Store submission
+  - [ ] P2.1: Google Play Console families policy config — org account READY
+- **Blocked on**: Nothing — Google Play org account is live!
+- **Next up**: Identity verification (CP 575 + passport uploaded), then create app listing + upload AAB
 - **Needs CEO decision**: None
 
 ### LANDING PAGE
@@ -68,10 +68,11 @@
 - **Needs CEO decision**: None — model approved
 
 ### LLC
-- **Status**: Nearly complete — LLC approved, EIN obtained, bank open, D-U-N-S pending
-- **Last session**: 2026-03-20
+- **Status**: DONE — LLC approved, EIN obtained, bank open, D-U-N-S received, Google Play registered
+- **Last session**: 2026-04-01
 - **Entity name**: AnemosGP LLC (California), DBA Brush Quest (filing TBD)
 - **EIN**: 41-5007192
+- **D-U-N-S**: 144980774 (received 2026-03-29)
 - **Command**: `/llc` — dedicated session command with full checklist
 - **What happened**:
   - LLC approved by SoS on 03/19/2026
@@ -81,6 +82,12 @@
   - Privacy policy overhauled (COPPA 2025 + CCPA, phone number, 10 sections)
   - Data security program document created (COPPA 312.8)
   - DBA "Brush Quest" form pre-filled (not yet filed)
+  - D-U-N-S 144980774 received (2026-03-29)
+  - Google Play org developer account registered (2026-04-01, Account ID: 5965081279664275195)
+  - Signed up with jim@anemosgp.com, developer name "Brush Quest"
+  - support@anemosgp.com alias created in Google Workspace
+  - anemosgp.com verified in Google Search Console (DNS TXT record)
+  - Website + identity verification in progress
 - **Checklist**:
   - [x] Choose state: California
   - [x] Registered agent: Northwest ($125/yr, active 03/15/2026 - 03/15/2027)
@@ -92,12 +99,14 @@
   - [x] Update privacy policy with LLC info + phone (510) 214-6383
   - [ ] File Statement of Information (CA Form LLC-12, $20) — within 90 days of formation (due ~06/13/2026)
   - [ ] File DBA "Brush Quest" (FBN form pre-filled)
-  - [x] D-U-N-S applied (03/20/2026, Case # DFC-507818 / D&B # 10170423, expedited $229)
-  - [ ] D-U-N-S number received (expedited 8 biz days, expected ~April 1)
-  - [ ] Register Google Play organization account — BLOCKED on D-U-N-S
-- **Blocked on**: D-U-N-S processing (expedited, expected ~April 1)
-- **Next up**: Wait for D-U-N-S → register Google Play org account. Answer unknown calls (D&B verification).
-- **Estimated cost**: ~$1,015 year 1, ~$935/year ongoing (CA franchise tax is $800/yr)
+  - [x] D-U-N-S received (144980774, 2026-03-29)
+  - [x] Register Google Play organization account (Account ID: 5965081279664275195, 2026-04-01)
+  - [x] Website verified (anemosgp.com via Search Console)
+  - [x] Identity verification (CP 575 + passport, 2026-04-01)
+  - [x] Phone number verification (2026-04-01)
+- **Blocked on**: Nothing
+- **Next up**: Complete identity + phone verification, then create app listing
+- **Estimated cost**: ~$1,040 year 1, ~$935/year ongoing (CA franchise tax is $800/yr, Play Store $25 one-time)
 
 ### AMAZON APPSTORE
 - **Status**: Developer account registration — identity verification pending
@@ -245,8 +254,8 @@
 
 | Blocker | Owner | Since | Impact | Status |
 |---------|-------|-------|--------|--------|
-| D-U-N-S number pending | Jim | 2026-03-20 | Blocks Google Play org account | APPLIED — Case DFC-507818, expedited $229, expected ~April 1 |
-| Google Play developer account (personal) suspended | Jim | 2026-03-14 | N/A — going org account route | ABANDONED — registering org account under AnemosGP LLC instead |
+| D-U-N-S number pending | Jim | 2026-03-20 | Blocks Google Play org account | DONE — 144980774 received 2026-03-29 |
+| Google Play developer account (personal) suspended | Jim | 2026-03-14 | N/A — going org account route | DONE — org account registered under AnemosGP LLC (jim@anemosgp.com) 2026-04-01 |
 | No Firebase Analytics events | APP | 2026-03-14 | Flying blind on retention | DONE — COPPA-compliant, 10 events instrumented |
 | No privacy policy page | LANDING | 2026-03-14 | Blocks Play Store | DONE — COPPA 2025 + CCPA compliant, 10 sections, live |
 | No email capture on landing page | LANDING | 2026-03-14 | Losing potential early adopters | DONE — Buttondown, platform-aware forms, QR code for desktop |
