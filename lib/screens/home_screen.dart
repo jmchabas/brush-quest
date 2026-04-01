@@ -469,7 +469,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) SystemNavigator.pop();
+      },
+      child: Scaffold(
       body: SpaceBackground(
         child: SafeArea(
           child: Stack(
@@ -527,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
               Column(
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 70),
 
                   // Title (36px, strokeWidth 3)
                   Stack(
@@ -866,7 +871,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.military_tech,
+                              imagePath: 'assets/images/icon_heroes.png',
                               label: 'HEROES',
                               color: const Color(0xFF7C4DFF),
                               onTap: _openShop,
@@ -875,7 +880,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _SmallNavButton(
-                              icon: Icons.pest_control,
+                              imagePath: 'assets/images/icon_monsters.png',
                               label: 'MONSTERS',
                               color: const Color(0xFFFF80AB),
                               onTap: _openTrophies,
@@ -891,18 +896,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
+      ),
     );
   }
 }
 
 class _SmallNavButton extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final String? imagePath;
   final String label;
   final Color color;
   final VoidCallback onTap;
 
   const _SmallNavButton({
-    required this.icon,
+    this.icon,
+    this.imagePath,
     required this.label,
     required this.color,
     required this.onTap,
@@ -931,7 +939,10 @@ class _SmallNavButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 28),
+            if (imagePath != null)
+              Image.asset(imagePath!, width: 28, height: 28)
+            else
+              Icon(icon, color: color, size: 28),
             const SizedBox(height: 4),
             Text(
               label,
