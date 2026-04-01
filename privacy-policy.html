@@ -241,257 +241,314 @@
     <header>
       <h1><span>Brush Quest</span></h1>
       <p class="subtitle">Privacy Policy</p>
-      <p class="effective-date">Effective Date: March 20, 2026</p>
+      <p class="effective-date">Effective Date: April 1, 2026</p>
     </header>
 
     <div class="highlight-box">
-      <p><strong>Operator:</strong> AnemosGP LLC, doing business as Brush Quest<br>
+      <p><strong>Publisher:</strong> AnemosGP LLC, doing business as Brush Quest<br>
       <strong>Address:</strong> 2108 N St, Ste N, Sacramento, CA 95816<br>
-      <strong>Email:</strong> <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a></p>
+      <strong>Email:</strong> <a href="mailto:jim@anemosgp.com">jim@anemosgp.com</a></p>
     </div>
 
     <!-- TL;DR for scanning parents -->
     <div class="tldr">
       <h2>The short version (for busy parents)</h2>
       <ul>
-        <li><strong>No ads.</strong> We don't use advertising SDKs or show ads of any kind.</li>
-        <li><strong>No data selling.</strong> We don't sell, share, or trade your child's data with anyone.</li>
-        <li><strong>No tracking.</strong> No advertising IDs, no behavioral profiling, no location tracking.</li>
-        <li><strong>No account required.</strong> The app works fully offline. Cloud save is optional and parent-controlled.</li>
-        <li><strong>Camera is off by default.</strong> If you turn it on, it detects motion only &mdash; no images are stored or sent anywhere.</li>
-        <li><strong>You're in control.</strong> You can delete all data from Settings at any time.</li>
+        <li><strong>No ads.</strong> Zero advertising SDKs. No ads of any kind, ever.</li>
+        <li><strong>No data selling.</strong> We never sell, rent, or trade your child's information with anyone.</li>
+        <li><strong>No behavioral tracking.</strong> No advertising IDs, no profiling, no location tracking.</li>
+        <li><strong>No account required.</strong> The app works fully offline. Cloud backup is optional and parent-controlled.</li>
+        <li><strong>Camera stays off.</strong> If a parent turns it on, it detects motion only &mdash; no images are stored or sent anywhere.</li>
+        <li><strong>You're in control.</strong> Delete all data from the app's Settings at any time.</li>
       </ul>
     </div>
 
-    <p>Brush Quest is a toothbrushing game for kids aged 5 and up, built by a dad for his own kids and shared with other families. We designed it to be the kind of app we'd want on our own children's devices. This policy explains what data we handle, how we protect it, and your rights as a parent.</p>
+    <p>Brush Quest is a toothbrushing game for children ages 4&ndash;8, built by a dad for his own kids and shared with other families. We designed it to be the kind of app we'd want on our own children's devices &mdash; safe, simple, and private by default.</p>
 
-    <p>This policy complies with the Children's Online Privacy Protection Act (COPPA), including the 2025 amendments, and the California Consumer Privacy Act (CCPA/CPRA).</p>
+    <p>This policy explains what data we handle, how we protect it, and your rights as a parent. It complies with the Children's Online Privacy Protection Act (<strong>COPPA</strong>), including the 2025 amendments, the California Consumer Privacy Act (<strong>CCPA/CPRA</strong>), and Google Play's <strong>Families Policy</strong>.</p>
 
     <!-- Section 1 -->
     <h2><span class="section-number">1.</span> What We Collect</h2>
 
     <h3>Game Progress (stored on your device)</h3>
-    <p>The app stores gameplay data locally to track your child's brushing habits and in-game progress:</p>
+    <p>Brush Quest saves gameplay data locally using your device's built-in storage (SharedPreferences) so your child's progress is kept between sessions:</p>
     <ul>
-      <li>Brush count, brush history (dates only), and streaks</li>
+      <li>Brush count, brushing history (dates only), and streak data</li>
       <li>Stars earned, unlocked heroes and weapons</li>
       <li>Settings preferences (timer duration, sound, camera toggle)</li>
     </ul>
-    <p>This data stays on the device unless a parent opts in to cloud saving.</p>
+    <p>This data never leaves the device unless a parent opts in to cloud backup.</p>
 
-    <h3>Cloud Save (optional, parent-controlled)</h3>
-    <p>A parent may sign in with Google to back up game progress. This feature is behind a parental gate (math verification) and requires you to tap "I Consent" before any data is sent. When signed in, we access:</p>
+    <h3>Cloud Backup (optional, parent-controlled)</h3>
+    <p>A parent may choose to sign in with Google to back up game progress to the cloud. This is entirely optional &mdash; the app works fully without it. Cloud backup is behind a <strong>parental gate</strong> (math verification) and requires the parent to tap "I Consent" before any data leaves the device.</p>
+    <p>When cloud backup is enabled, we store:</p>
     <ul>
-      <li><strong>Your email address</strong> &mdash; to identify your cloud save</li>
-      <li><strong>Your display name</strong> &mdash; shown in Settings so you know which account is connected</li>
+      <li><strong>Parent's email address</strong> &mdash; to identify the cloud save account</li>
+      <li><strong>Parent's display name</strong> &mdash; shown in Settings so you know which account is connected</li>
+      <li><strong>Firebase UID</strong> &mdash; a unique identifier assigned by Google to secure your cloud save</li>
+      <li><strong>Game progress data</strong> &mdash; the same brushing history, stars, and unlocks stored locally</li>
     </ul>
-    <p>No profile photo, contacts, or other Google data is accessed. Google Sign-In is for parents only &mdash; children cannot sign in without passing the parental gate.</p>
+    <p>No profile photos, contacts, or other Google account data is accessed. The child's name and age are never collected. Cloud data is stored in Google Cloud Firestore (US region) under strict security rules that ensure each user can only access their own data.</p>
 
     <h3>Camera (optional, off by default)</h3>
-    <p>Brush Quest can use the front camera to detect brushing motion during gameplay. This feature is <strong>disabled by default</strong> and requires a parent to enable it in Settings.</p>
+    <p>Brush Quest can use the front camera to detect brushing motion during gameplay. This feature is <strong>disabled by default</strong> and must be enabled by a parent in Settings (behind the parental gate).</p>
     <ul>
       <li>Camera frames are processed <strong>entirely on the device</strong> in real time</li>
-      <li>Each frame is reduced to a tiny grid and produces a single motion score &mdash; <strong>no facial recognition, no biometrics, no identification</strong></li>
-      <li>No images or video are ever stored, recorded, or sent anywhere</li>
+      <li>Each frame is reduced to a small pixel grid and produces a single motion score &mdash; a number, not an image</li>
+      <li><strong>No facial recognition, no biometrics, no identification of any kind</strong></li>
+      <li>No images or video are ever stored, recorded, uploaded, or sent anywhere</li>
+      <li>The camera is only active during the brushing session and stops immediately when brushing ends</li>
     </ul>
 
     <h3>Crash Reports (automatic, anonymous)</h3>
-    <p>We collect anonymous crash reports via Firebase Crashlytics to fix bugs. These include device model, OS version, and technical error details. No personal information is included.</p>
-
-    <h3>Usage Analytics (anonymous)</h3>
-    <p>We collect anonymous usage data via Firebase Analytics, configured for <strong>child-directed treatment</strong> under COPPA. This data is sent to Google's servers as a <strong>service provider</strong> acting on our behalf &mdash; not as an independent third party. Google is contractually prohibited from using this data for its own purposes.</p>
+    <p>The app includes Firebase Crashlytics, which automatically sends anonymous crash reports when the app encounters an error. These reports contain:</p>
     <ul>
-      <li>Events like brush completion, onboarding progress, and shop visits</li>
-      <li><strong>No advertising IDs</strong> are collected (explicitly disabled)</li>
+      <li>Device model and operating system version</li>
+      <li>Technical error details (stack traces)</li>
+      <li>App version number</li>
+    </ul>
+    <p>Crash reports contain <strong>no personal information</strong> &mdash; no names, no email addresses, no gameplay data. They help us find and fix bugs.</p>
+
+    <h3>Anonymous Usage Analytics (automatic)</h3>
+    <p>The app uses Firebase Analytics, configured for <strong>child-directed treatment</strong> under COPPA, to understand how the app is used in aggregate. This helps us improve the brushing experience for all families.</p>
+    <ul>
+      <li>Events like brush session completion, onboarding progress, and feature usage</li>
+      <li><strong>No advertising IDs</strong> are collected (explicitly disabled in code)</li>
       <li><strong>No ad personalization, remarketing, or profiling</strong></li>
       <li>Data is anonymous and aggregated &mdash; it cannot identify any individual child</li>
-      <li>Firebase uses installation IDs solely for <strong>internal operations</strong> as permitted under COPPA (16 CFR 312.5(c)(7)) &mdash; not for contacting individuals or building profiles</li>
-      <li>We do <strong>not</strong> share children's data with third parties for commercial, advertising, or AI training purposes</li>
+      <li>Google processes this data as a <strong>service provider</strong> acting on our behalf &mdash; not as an independent third party</li>
+      <li>Google is contractually prohibited from using this data for its own commercial purposes</li>
+      <li>Firebase may use installation identifiers solely for <strong>internal operations</strong> as permitted under COPPA (16 CFR 312.5(c)(7))</li>
     </ul>
-
-    <h3>Website Email List (optional)</h3>
-    <p>On our website (brushquest.app), visitors may provide their email to receive launch notifications and occasional updates. This is voluntary, not part of the app, and managed by <a href="https://buttondown.com" target="_blank" rel="noopener">Buttondown</a> (a privacy-focused email service with no tracking pixels or cookies). Every email includes an unsubscribe link.</p>
 
     <!-- Section 2 -->
     <h2><span class="section-number">2.</span> What We Don't Collect</h2>
 
     <div class="no-collect">
-      <p>Brush Quest does <strong>not</strong> collect:</p>
+      <p>Brush Quest does <strong>not</strong> collect any of the following:</p>
     </div>
     <ul>
-      <li><strong>Names or ages</strong> of children</li>
-      <li><strong>Location data</strong> (GPS, IP-based, or otherwise)</li>
+      <li><strong>Children's names, ages, or birthdates</strong></li>
+      <li><strong>Location data</strong> (no GPS, no IP-based geolocation, no approximate location)</li>
       <li><strong>Contacts, phone numbers, or messages</strong></li>
       <li><strong>Photos, videos, or audio recordings</strong> (camera motion detection produces a number, not an image)</li>
       <li><strong>Advertising IDs</strong> or any identifiers used for ad targeting</li>
       <li><strong>Browsing history</strong> or activity outside the app</li>
+      <li><strong>Purchase or financial information</strong> (there are no in-app purchases)</li>
     </ul>
-    <p>We do not use any advertising SDKs, social media integrations, or third-party tracking services.</p>
+    <p>We do not use any advertising SDKs, social media integrations, or third-party behavioral tracking tools. We do not share children's data with third parties for commercial, advertising, or AI training purposes.</p>
 
     <!-- Section 3 -->
-    <h2><span class="section-number">3.</span> How We Protect Your Data</h2>
+    <h2><span class="section-number">3.</span> How We Use the Data We Collect</h2>
 
     <table>
       <thead>
         <tr>
           <th>Data</th>
-          <th>Where It's Stored</th>
-          <th>How It's Protected</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Local game progress</td>
+          <td>Save your child's brushing streaks, unlocked heroes, and settings so they persist between sessions</td>
+        </tr>
+        <tr>
+          <td>Cloud backup data</td>
+          <td>Let parents back up and restore game progress across devices or after reinstalling the app</td>
+        </tr>
+        <tr>
+          <td>Parent's email and name</td>
+          <td>Identify the cloud save account and display it in Settings</td>
+        </tr>
+        <tr>
+          <td>Camera motion score</td>
+          <td>Adjust in-game attack frequency based on brushing movement during gameplay</td>
+        </tr>
+        <tr>
+          <td>Crash reports</td>
+          <td>Find and fix bugs to keep the app working reliably</td>
+        </tr>
+        <tr>
+          <td>Usage analytics</td>
+          <td>Understand how the app is used in aggregate so we can improve it for all families</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>We do not use any collected data for advertising, profiling, or any purpose other than operating and improving Brush Quest.</p>
+
+    <!-- Section 4 -->
+    <h2><span class="section-number">4.</span> How We Protect Your Data</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Where Stored</th>
+          <th>Protection</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td>Game progress</td>
           <td>On your device</td>
-          <td>Protected by your device's lock screen and encryption</td>
+          <td>Protected by your device's lock screen and built-in encryption</td>
         </tr>
         <tr>
-          <td>Cloud save</td>
-          <td>Google Firebase (US)</td>
-          <td>Encrypted in transit (TLS) and at rest. Firestore rules ensure each user can only access their own data</td>
+          <td>Cloud backup</td>
+          <td>Google Cloud Firestore (US)</td>
+          <td>Encrypted in transit (TLS) and at rest. Security rules ensure each user can only read/write their own data</td>
         </tr>
         <tr>
           <td>Crash reports</td>
           <td>Google Firebase (US)</td>
-          <td>Anonymous, no personal data. Google infrastructure security</td>
+          <td>Anonymous &mdash; no personal data included. Protected by Google infrastructure security</td>
         </tr>
         <tr>
-          <td>Usage analytics</td>
+          <td>Analytics</td>
           <td>Google Firebase (US)</td>
-          <td>Anonymous, child-directed mode. No advertising IDs</td>
+          <td>Anonymous, child-directed mode. No advertising IDs. Cannot identify individuals</td>
         </tr>
         <tr>
           <td>Camera frames</td>
-          <td>Not stored</td>
-          <td>Processed in device memory only, discarded immediately</td>
-        </tr>
-        <tr>
-          <td>Email list</td>
-          <td>Buttondown (US)</td>
-          <td>Privacy-focused service, no tracking pixels</td>
+          <td>Not stored anywhere</td>
+          <td>Processed in device memory only, discarded immediately after producing a motion score</td>
         </tr>
       </tbody>
     </table>
 
-    <h3>Data Security Program</h3>
-    <p>In compliance with COPPA (16 CFR 312.8), we maintain a written children's personal information security program that includes:</p>
+    <h3>Data Security Practices</h3>
+    <p>In compliance with COPPA (16 CFR 312.8), we maintain reasonable procedures to protect the confidentiality, security, and integrity of children's personal information, including:</p>
     <ul>
       <li>Designated personnel responsible for data protection</li>
-      <li>Risk assessments for internal and external threats to children's data</li>
-      <li>Safeguards appropriate to the sensitivity of the data (encryption, access controls, Firestore security rules)</li>
-      <li>Annual review and updates to the security program</li>
+      <li>Risk assessment for internal and external threats to children's data</li>
+      <li>Encryption in transit and at rest for all cloud-stored data</li>
+      <li>Firestore security rules that enforce per-user data isolation</li>
+      <li>Annual review and updates to our security practices</li>
     </ul>
 
-    <!-- Section 4 -->
-    <h2><span class="section-number">4.</span> Third-Party Services</h2>
+    <!-- Section 5 -->
+    <h2><span class="section-number">5.</span> Third-Party Services</h2>
 
-    <p>Brush Quest uses a small number of third-party services. Here's exactly what they are and why:</p>
+    <p>Brush Quest uses a small number of Google Firebase services to operate. These are the only third parties that process any data:</p>
 
     <table>
       <thead>
         <tr>
           <th>Service</th>
-          <th>Why We Use It</th>
-          <th>What It Sees</th>
+          <th>Purpose</th>
+          <th>What It Processes</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td>Firebase Authentication</td>
-          <td>Optional Google Sign-In for cloud saves</td>
-          <td>Parent's email and display name</td>
+          <td>Optional Google Sign-In for cloud backup</td>
+          <td>Parent's email address, display name, and UID</td>
         </tr>
         <tr>
           <td>Cloud Firestore</td>
-          <td>Cloud save backup (optional)</td>
-          <td>Game progress data</td>
+          <td>Cloud backup storage (optional)</td>
+          <td>Game progress data (brushing history, stars, unlocks)</td>
         </tr>
         <tr>
           <td>Firebase Crashlytics</td>
-          <td>Crash reporting so we can fix bugs</td>
-          <td>Device info and error details (anonymous)</td>
+          <td>Automatic crash reporting</td>
+          <td>Device info and error details (anonymous, no personal data)</td>
         </tr>
         <tr>
           <td>Firebase Analytics</td>
-          <td>Understanding how kids use the app</td>
-          <td>Anonymous events (brush completions, engagement). No ad IDs. Child-directed mode enabled</td>
-        </tr>
-        <tr>
-          <td>Buttondown</td>
-          <td>Website email list</td>
-          <td>Email address and platform interest (website only, not the app)</td>
+          <td>Anonymous usage understanding</td>
+          <td>Aggregated app events. No ad IDs. Child-directed mode enabled</td>
         </tr>
       </tbody>
     </table>
 
-    <p>All Firebase services act as <strong>service providers</strong> under our direction &mdash; they process data on our behalf and are contractually prohibited from using it for independent purposes. No children's personal information is shared with third parties for commercial gain, advertising, or profiling.</p>
+    <p>All Firebase services act as <strong>service providers</strong> under our direction. They process data on our behalf and are contractually prohibited from using it for their own independent commercial purposes. No children's personal information is shared with third parties for advertising, profiling, or sale.</p>
 
-    <p>Google's privacy policy: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a><br>
-    Buttondown's privacy policy: <a href="https://buttondown.com/legal/privacy" target="_blank" rel="noopener">buttondown.com/legal/privacy</a></p>
+    <p>Google's privacy policy: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a></p>
 
-    <!-- Section 5 -->
-    <h2><span class="section-number">5.</span> Children's Privacy (COPPA)</h2>
+    <!-- Section 6 -->
+    <h2><span class="section-number">6.</span> Children's Privacy (COPPA Compliance)</h2>
 
-    <p>Brush Quest is designed for children and complies with the Children's Online Privacy Protection Act (COPPA), including the 2025 amendments.</p>
+    <p>Brush Quest is designed for children ages 4&ndash;8 and fully complies with the Children's Online Privacy Protection Act (COPPA), including the 2025 amendments (16 CFR Part 312).</p>
 
     <h3>How we protect children</h3>
     <ul>
-      <li>We do <strong>not</strong> collect personal information from children</li>
-      <li>All data collection features (cloud save, camera) require explicit parental consent</li>
+      <li>We do <strong>not</strong> collect personal information directly from children</li>
+      <li>The app works fully offline with no account, no sign-in, and no personal data collection</li>
+      <li>All optional data collection features (cloud backup, camera) require a parent to enable them</li>
       <li>The camera is disabled by default and produces only a motion score &mdash; not biometric data</li>
       <li>Children cannot make their information publicly available</li>
-      <li>We never condition a child's participation on disclosing more data than necessary</li>
-      <li>There are no social features, no chat, no links to external sites within the app</li>
+      <li>We never condition a child's participation in the app on disclosing more data than necessary</li>
+      <li>There are no social features, no chat, no user-generated content, and no links to external websites within the app</li>
+      <li>There are no in-app purchases</li>
     </ul>
 
-    <h3>How we get parental consent</h3>
+    <h3>Parental consent</h3>
+    <p>We obtain verifiable parental consent before collecting any personal information:</p>
     <ul>
-      <li><strong>Parental gate:</strong> Settings (including cloud save and camera) are behind a math verification problem that deters unsupervised access by children</li>
-      <li><strong>Consent dialog:</strong> Before enabling cloud save, a dialog explains what data will be stored and links to this privacy policy. You must tap "I Consent" to proceed</li>
-      <li><strong>Camera notice:</strong> Before enabling the motion camera, a notice explains its function and confirms no images are stored</li>
-      <li><strong>Third-party sharing:</strong> We do not share your child's data with independent third parties. Our service providers (Google Firebase, Buttondown) process data on our behalf only. If you do not enable cloud save, no personal data leaves the device. Anonymous crash reports and usage analytics are collected under COPPA's internal operations exception (16 CFR 312.5(c)(7))</li>
+      <li><strong>Parental gate:</strong> The Settings screen (where cloud backup and camera options live) is protected by a math verification problem designed to prevent unsupervised child access</li>
+      <li><strong>Consent dialog:</strong> Before enabling cloud backup, a clear dialog explains what data will be stored, where it will be stored, and links to this privacy policy. The parent must actively tap "I Consent" to proceed</li>
+      <li><strong>Camera notice:</strong> Before enabling motion detection, a notice explains how it works and confirms no images are stored</li>
     </ul>
+    <p>Anonymous crash reports and usage analytics are collected under COPPA's <strong>internal operations exception</strong> (16 CFR 312.5(c)(7)) &mdash; they support the app's internal operations and do not involve collecting personal information from children.</p>
 
     <h3>Your rights as a parent</h3>
     <p>Under COPPA, you have the right to:</p>
     <ul>
-      <li><strong>Review your child's data</strong> &mdash; Game progress is visible on the home screen and in Settings. Cloud data is accessible by signing in. You can also email us for a full summary</li>
-      <li><strong>Delete all data</strong> &mdash; Use "Delete child's data" in the app's Settings. This erases all local data and all cloud data. You can also request deletion by email</li>
-      <li><strong>Refuse further collection</strong> &mdash; Sign out of Google to stop cloud syncing. Disable the camera in Settings. The app works fully offline</li>
-      <li><strong>Opt out of analytics</strong> &mdash; Email us at <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a> to request opt-out</li>
+      <li><strong>Review your child's information</strong> &mdash; Game progress is visible on the home screen and in Settings. Cloud data is accessible by signing in to your Google account. You can also email us for a complete summary</li>
+      <li><strong>Delete all data</strong> &mdash; Use "Delete child's data" in the app's Settings to erase all local data and all cloud data simultaneously. You can also request deletion by email</li>
+      <li><strong>Refuse further collection</strong> &mdash; Sign out of Google to stop cloud syncing. Disable the camera in Settings. The app continues to work fully offline with no data collection</li>
+      <li><strong>Withdraw consent</strong> &mdash; You can withdraw consent at any time by signing out and/or deleting data. We will not penalize your child's experience &mdash; the app works the same with or without cloud backup</li>
+    </ul>
+    <p>We respond to all parental requests within <strong>30 days</strong>. Email us at <a href="mailto:jim@anemosgp.com">jim@anemosgp.com</a>.</p>
+
+    <!-- Section 7 -->
+    <h2><span class="section-number">7.</span> Google Play Families Policy</h2>
+
+    <p>Brush Quest participates in Google Play's Designed for Families program and complies with the <a href="https://support.google.com/googleplay/android-developer/answer/9893335" target="_blank" rel="noopener">Families Policy</a> requirements:</p>
+    <ul>
+      <li>The app is appropriate for children ages 4&ndash;8</li>
+      <li>All content is suitable for the target age group</li>
+      <li>The app does not contain ads</li>
+      <li>The app does not use advertising IDs or commercial profiling</li>
+      <li>APIs and SDKs used are approved for child-directed services</li>
+      <li>The app does not include social features, user-generated content, or links to external content not managed by the developer</li>
+      <li>This privacy policy is linked in the Google Play Store listing and within the app</li>
     </ul>
 
-    <p>We respond to all parental requests within <strong>30 days</strong>.</p>
+    <!-- Section 8 -->
+    <h2><span class="section-number">8.</span> California Privacy Rights (CCPA/CPRA)</h2>
 
-    <!-- Section 6 -->
-    <h2><span class="section-number">6.</span> California Privacy Rights (CCPA/CPRA)</h2>
-
-    <p>AnemosGP LLC is a California company. While we may not currently meet the CCPA revenue thresholds, we provide these disclosures in the spirit of transparency.</p>
+    <p>AnemosGP LLC is a California company. While we may not meet current CCPA revenue thresholds, we voluntarily provide these disclosures for transparency.</p>
 
     <h3>Categories of personal information collected in the past 12 months</h3>
     <ul>
-      <li><strong>Identifiers:</strong> Parent email address and display name (cloud save only, with consent)</li>
-      <li><strong>Internet/electronic activity:</strong> Anonymous app usage events, crash reports</li>
+      <li><strong>Identifiers:</strong> Parent's email address, display name, and Firebase UID (cloud backup only, with explicit consent)</li>
+      <li><strong>Internet/electronic activity:</strong> Anonymous crash reports and app usage events</li>
     </ul>
-    <p>We do <strong>not</strong> collect: real names or ages of children, geolocation, financial information, biometric data, browsing history outside the app, or protected classifications.</p>
+    <p>We do <strong>not</strong> collect: children's names or ages, geolocation, financial information, biometric data, browsing history, or protected classifications.</p>
 
     <h3>Your California rights</h3>
     <ul>
-      <li><strong>Right to know</strong> &mdash; You can request what personal information we've collected about you</li>
-      <li><strong>Right to delete</strong> &mdash; You can request deletion of your personal information (in-app via Settings, or by email)</li>
+      <li><strong>Right to know</strong> &mdash; Request what personal information we've collected about you</li>
+      <li><strong>Right to delete</strong> &mdash; Request deletion of your personal information (in-app via Settings, or by email)</li>
+      <li><strong>Right to correct</strong> &mdash; Request correction of inaccurate personal information</li>
       <li><strong>Right to opt-out of sale/sharing</strong> &mdash; We do <strong>not sell or share</strong> personal information as defined by the CCPA. There is nothing to opt out of</li>
       <li><strong>Right to non-discrimination</strong> &mdash; We will not treat you differently for exercising your privacy rights</li>
     </ul>
-    <p>To exercise any of these rights, email <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a>. We will verify your identity and respond within 45 days.</p>
+    <p>To exercise any right, email <a href="mailto:jim@anemosgp.com">jim@anemosgp.com</a>. We will verify your identity and respond within 45 days.</p>
 
-    <!-- Section 7 -->
-    <h2><span class="section-number">7.</span> How Long We Keep Data</h2>
+    <!-- Section 9 -->
+    <h2><span class="section-number">9.</span> How Long We Keep Data</h2>
 
     <table>
       <thead>
         <tr>
           <th>Data</th>
-          <th>Retention</th>
+          <th>Retention Period</th>
         </tr>
       </thead>
       <tbody>
@@ -500,63 +557,64 @@
           <td>Until the app is uninstalled or you delete it in Settings</td>
         </tr>
         <tr>
-          <td>Cloud save (Firestore)</td>
-          <td>While your account is active. Auto-deleted after 12 months of inactivity</td>
+          <td>Cloud backup (Firestore)</td>
+          <td>While your account is active. Automatically deleted after 12 months of inactivity</td>
+        </tr>
+        <tr>
+          <td>Parent email and name</td>
+          <td>While cloud backup is active. Deleted when you sign out or delete data</td>
         </tr>
         <tr>
           <td>Crash reports</td>
-          <td>90 days (Firebase default)</td>
+          <td>90 days (Firebase Crashlytics default)</td>
         </tr>
         <tr>
           <td>Usage analytics</td>
-          <td>14 months (Firebase default)</td>
+          <td>14 months (Firebase Analytics default)</td>
         </tr>
         <tr>
           <td>Camera frames</td>
-          <td>Not retained &mdash; processed in memory and discarded immediately</td>
-        </tr>
-        <tr>
-          <td>Email list</td>
-          <td>Until you unsubscribe or request deletion</td>
+          <td>Not retained &mdash; processed in device memory and discarded immediately</td>
         </tr>
       </tbody>
     </table>
 
-    <p>You can delete cloud data at any time using "Delete child's data" in Settings or by emailing <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a>. We will process email deletion requests within 30 days.</p>
+    <p>You can delete all cloud data at any time using "Delete child's data" in the app's Settings, or by emailing <a href="mailto:jim@anemosgp.com">jim@anemosgp.com</a>. We process email deletion requests within 30 days.</p>
 
-    <p>We retain children's personal information only as long as reasonably necessary to fulfill the purpose for which it was collected, as required by COPPA (16 CFR 312.10).</p>
+    <p>We retain children's personal information only as long as reasonably necessary to fulfill the purpose for which it was collected, in accordance with COPPA (16 CFR 312.10).</p>
 
-    <!-- Section 8 -->
-    <h2><span class="section-number">8.</span> Changes to This Policy</h2>
+    <!-- Section 10 -->
+    <h2><span class="section-number">10.</span> Changes to This Policy</h2>
 
-    <p>If we make material changes to this policy, we will:</p>
+    <p>If we make material changes to this privacy policy, we will:</p>
     <ul>
       <li>Update the effective date at the top of this page</li>
       <li>Describe what changed in a summary below the date</li>
-      <li>Notify parents through the app's update notes on the app store</li>
+      <li>Notify parents through the app's update notes on the Google Play Store</li>
     </ul>
-    <p>If a change affects how we handle children's personal information, we will obtain new parental consent before applying the change. We encourage parents to review this policy periodically.</p>
+    <p>If a change affects how we handle children's personal information, we will obtain new verifiable parental consent before applying the change. We encourage parents to review this policy periodically.</p>
 
-    <!-- Section 9 -->
-    <h2><span class="section-number">9.</span> Governing Law</h2>
+    <!-- Section 11 -->
+    <h2><span class="section-number">11.</span> Governing Law</h2>
 
     <p>This policy is governed by the laws of the State of California and applicable federal law, including COPPA (16 CFR Part 312). Any disputes arising from this policy will be subject to the jurisdiction of the courts in Sacramento County, California.</p>
 
-    <!-- Section 10 -->
-    <h2><span class="section-number">10.</span> Contact Us</h2>
+    <!-- Section 12 -->
+    <h2><span class="section-number">12.</span> Contact Us</h2>
 
-    <p>Questions about this policy? Want to review or delete your data? We're happy to help.</p>
+    <p>Have questions about this policy? Want to review or delete your child's data? We're happy to help.</p>
 
     <div class="highlight-box">
       <p><strong>AnemosGP LLC</strong> (Brush Quest)<br>
       2108 N St, Ste N, Sacramento, CA 95816<br>
-      <a href="mailto:privacy@brushquest.app">privacy@brushquest.app</a><br>
-      (510) 214-6383</p>
+      <a href="mailto:jim@anemosgp.com">jim@anemosgp.com</a></p>
     </div>
+
+    <p>We aim to respond to all inquiries within 30 days. For urgent data deletion requests, we will process them as quickly as possible.</p>
 
     <footer>
       <p>&copy; 2026 AnemosGP LLC. All rights reserved.</p>
-      <p style="margin-top: 8px;">Last updated: March 20, 2026</p>
+      <p style="margin-top: 8px;">Last updated: April 1, 2026</p>
     </footer>
   </div>
 </body>
