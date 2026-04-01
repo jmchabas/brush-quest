@@ -16,8 +16,8 @@ void main() {
       expect(HeroService.allHeroes.length, 6);
     });
 
-    test('hero prices match expected values (0/8/18/25/33/40)', () {
-      final expectedPrices = [0, 8, 18, 25, 33, 40];
+    test('hero prices match expected values (0/5/8/12/15/20)', () {
+      final expectedPrices = [0, 5, 8, 12, 15, 20];
       for (int i = 0; i < HeroService.allHeroes.length; i++) {
         expect(HeroService.allHeroes[i].price, expectedPrices[i],
             reason: 'Hero ${HeroService.allHeroes[i].id} should cost ${expectedPrices[i]}');
@@ -60,7 +60,7 @@ void main() {
     test('getHeroById returns correct hero', () {
       final hero = HeroService.getHeroById('frost');
       expect(hero.name, 'FROST');
-      expect(hero.price, 8);
+      expect(hero.price, 5);
     });
 
     test('getHeroById returns blaze for unknown id', () {
@@ -102,7 +102,7 @@ void main() {
         'total_stars': 20,
       });
       final service = HeroService();
-      final result = await service.purchaseHero('frost'); // price 8
+      final result = await service.purchaseHero('frost'); // price 5
       expect(result, true);
 
       final unlocked = await service.getUnlockedHeroIds();
@@ -110,17 +110,17 @@ void main() {
 
       // Stars deducted from wallet
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('star_wallet'), 12); // 20 - 8
+      expect(prefs.getInt('star_wallet'), 15); // 20 - 5
       expect(prefs.getInt('total_stars'), 20); // Rank unchanged
     });
 
     test('purchaseHero fails when wallet has insufficient stars', () async {
       SharedPreferences.setMockInitialValues({
-        'star_wallet': 10,
+        'star_wallet': 5,
         'total_stars': 50,
       });
       final service = HeroService();
-      final result = await service.purchaseHero('bolt'); // price 18
+      final result = await service.purchaseHero('bolt'); // price 8
       expect(result, false);
 
       final unlocked = await service.getUnlockedHeroIds();
@@ -128,7 +128,7 @@ void main() {
 
       // Wallet unchanged
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getInt('star_wallet'), 10);
+      expect(prefs.getInt('star_wallet'), 5);
     });
 
     test('purchaseHero succeeds without deducting if already owned', () async {
