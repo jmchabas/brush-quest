@@ -940,9 +940,9 @@ class _SmallNavButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (imagePath != null)
-              Image.asset(imagePath!, width: 28, height: 28)
+              Image.asset(imagePath!, width: 36, height: 36)
             else
-              Icon(icon, color: color, size: 28),
+              Icon(icon, color: color, size: 36),
             const SizedBox(height: 4),
             Text(
               label,
