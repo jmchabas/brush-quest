@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'streak_service.dart';
 
 class HeroCharacter {
   final String id;
@@ -143,6 +142,10 @@ class HeroService {
   /// Purchase a hero by spending stars from the wallet.
   /// Returns true if purchase succeeds or hero already owned.
   /// Returns false if insufficient stars or invalid hero ID.
+  ///
+  /// Wallet deduction and unlock list update are written in the same
+  /// synchronous batch (no await between them) so a crash can't lose stars
+  /// without granting the hero.
   Future<bool> purchaseHero(String heroId) async {
     if (_purchasing) return false;
     _purchasing = true;
@@ -160,12 +163,13 @@ class HeroService {
         return true;
       }
 
-      // Deduct from wallet
-      final success = await StreakService().spendStars(hero.price);
-      if (!success) return false;
+      // Read wallet directly — atomic write of both values below
+      final wallet = prefs.getInt('star_wallet') ?? 0;
+      if (wallet < hero.price) return false;
 
-      unlocked.add(heroId);
-      await prefs.setStringList(_unlockedKey, unlocked);
+      // Write both atomically (no await between writes)
+      await prefs.setInt('star_wallet', wallet - hero.price);
+      await prefs.setStringList(_unlockedKey, [...unlocked, heroId]);
       return true;
     } finally {
       _purchasing = false;
@@ -332,6 +336,11 @@ class HeroService {
     return unlocked.contains(evolutionId);
   }
 
+  /// Purchase an evolution by spending stars from the wallet.
+  ///
+  /// Wallet deduction and unlock list update are written in the same
+  /// synchronous batch (no await between them) so a crash can't lose stars
+  /// without granting the evolution.
   Future<bool> purchaseEvolution(String evolutionId) async {
     if (_purchasing) return false;
     _purchasing = true;
@@ -352,11 +361,13 @@ class HeroService {
         if (!unlocked.contains(prevId)) return false;
       }
 
-      final success = await StreakService().spendStars(evo.price);
-      if (!success) return false;
+      // Read wallet directly — atomic write of both values below
+      final wallet = prefs.getInt('star_wallet') ?? 0;
+      if (wallet < evo.price) return false;
 
-      unlocked.add(evolutionId);
-      await prefs.setStringList(_unlockedEvolutionsKey, unlocked);
+      // Write both atomically (no await between writes)
+      await prefs.setInt('star_wallet', wallet - evo.price);
+      await prefs.setStringList(_unlockedEvolutionsKey, [...unlocked, evolutionId]);
       return true;
     } finally {
       _purchasing = false;

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'streak_service.dart';
 
 enum AttackEffectType {
   defaultBeam,
@@ -133,6 +132,10 @@ class WeaponService {
   /// Purchase a weapon by spending stars from the wallet.
   /// Returns true if purchase succeeds or weapon already owned.
   /// Returns false if insufficient stars or invalid weapon ID.
+  ///
+  /// Wallet deduction and unlock list update are written in the same
+  /// synchronous batch (no await between them) so a crash can't lose stars
+  /// without granting the weapon.
   Future<bool> purchaseWeapon(String weaponId) async {
     if (_purchasing) return false;
     _purchasing = true;
@@ -150,12 +153,13 @@ class WeaponService {
         return true;
       }
 
-      // Deduct from wallet
-      final success = await StreakService().spendStars(weapon.price);
-      if (!success) return false;
+      // Read wallet directly — atomic write of both values below
+      final wallet = prefs.getInt('star_wallet') ?? 0;
+      if (wallet < weapon.price) return false;
 
-      unlocked.add(weaponId);
-      await prefs.setStringList(_unlockedKey, unlocked);
+      // Write both atomically (no await between writes)
+      await prefs.setInt('star_wallet', wallet - weapon.price);
+      await prefs.setStringList(_unlockedKey, [...unlocked, weaponId]);
       return true;
     } finally {
       _purchasing = false;

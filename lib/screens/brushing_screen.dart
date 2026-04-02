@@ -233,7 +233,7 @@ class _MonsterSlot {
 }
 
 class _BrushingScreenState extends State<BrushingScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final _audio = AudioService();
   final _heroService = HeroService();
   final _worldService = WorldService();
@@ -331,14 +331,10 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _showEntranceDust = false; // Tier 2: dust cloud on monster landing
   late AnimationController _dustLottieController;
 
-  // Companion speech bubbles (icon-only for non-readers)
-  IconData? _companionIcon;
-  bool _showCompanionBubble = false;
-  Timer? _companionTimer;
   Timer? _microRewardTimer;
   Timer? _musicHealthTimer;
-  int _encouragementIndex = 0;
-  String? _lastEncouragementVoice;
+  bool _musicWasPlaying = false; // track music state for app lifecycle restore
+  bool _showCameraPrompt = false; // first-brush camera prompt
   bool _showWorldIntro = true;
   Timer? _worldIntroTimer;
   SessionStage _sessionStage = SessionStage.worldIntro;
@@ -408,16 +404,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     'HIT!',
   ];
 
-  static const _companionIcons = [
-    Icons.star,
-    Icons.bolt,
-    Icons.whatshot,
-    Icons.rocket_launch,
-    Icons.auto_awesome,
-    Icons.emoji_events,
-    Icons.flash_on,
-    Icons.favorite,
-  ];
   static const _microRewardTexts = [
     'GREAT RHYTHM!',
     'SUPER BRUSHING!',
@@ -436,9 +422,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _playedEncouragement = false;
   bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
-
-  // Track last arc beat timestamp for companion voice collision avoidance
-  int _lastArcBeatTime = 0;
 
   // Encouragement arcs: each arc is a 3-beat connected micro-story
   // [beat1 = energizing @80%, beat2 = supportive @50%, beat3 = almost-there @20%]
@@ -460,6 +443,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _sessionId = DateTime.now().millisecondsSinceEpoch.toString();
     WakelockPlus.enable();
     // Briefly show edge-to-edge, then switch to immersive after 1.5s
@@ -928,8 +912,44 @@ class _BrushingScreenState extends State<BrushingScreen>
     if (!mounted) return;
     setState(() {
       _showWorldIntro = false;
-      _sessionStage = SessionStage.countdown;
     });
+
+    // Check if this is the first ever brush and camera prompt hasn't been shown
+    final prefs = await SharedPreferences.getInstance();
+    final totalBrushes = prefs.getInt('total_brushes') ?? 0;
+    final cameraPromptShown = prefs.getBool('camera_prompt_shown') ?? false;
+    final cameraAlreadyEnabled = prefs.getBool('camera_enabled') ?? false;
+
+    if (totalBrushes == 0 && !cameraPromptShown && !cameraAlreadyEnabled) {
+      if (!mounted) return;
+      setState(() {
+        _showCameraPrompt = true;
+        _sessionStage = SessionStage.countdown;
+      });
+      return; // Wait for user to respond to camera prompt
+    }
+
+    setState(() => _sessionStage = SessionStage.countdown);
+    _startCountdown();
+  }
+
+  Future<void> _onCameraPromptAccept() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('camera_prompt_shown', true);
+    await prefs.setBool('camera_enabled', true);
+    if (!mounted) return;
+    setState(() => _showCameraPrompt = false);
+    // Initialize camera now that it's been enabled
+    final ready = await _cameraService.initialize();
+    if (mounted) setState(() => _cameraReady = ready);
+    _startCountdown();
+  }
+
+  Future<void> _onCameraPromptSkip() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('camera_prompt_shown', true);
+    if (!mounted) return;
+    setState(() => _showCameraPrompt = false);
     _startCountdown();
   }
 
@@ -949,13 +969,27 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // App backgrounded — stop all audio
+      _musicWasPlaying = _audio.isMusicPlaying;
+      _audio.stopAllAudio();
+    } else if (state == AppLifecycleState.resumed) {
+      // App foregrounded — resume music if it was playing before
+      if (_musicWasPlaying && !_isPaused && _sessionStage == SessionStage.brushing) {
+        _audio.playMusic('battle_music_loop.mp3');
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _timer?.cancel();
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
-    _companionTimer?.cancel();
     _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
     _worldIntroTimer?.cancel();
@@ -1035,15 +1069,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       },
     );
 
-    // Companion speech bubbles every 8 seconds
-    _companionTimer?.cancel();
-    _companionTimer = Timer.periodic(
-      const Duration(seconds: 8),
-      (_) {
-        if (!mounted) return;
-        _showNextCompanionMessage();
-      },
-    );
     _scheduleNextMicroReward();
 
     if (!resumeFromCheckpoint) {
@@ -1065,17 +1090,14 @@ class _BrushingScreenState extends State<BrushingScreen>
       final almostAt = (_phaseDuration * 0.20).round();
       if (_phaseSecondsLeft == energizeAt && !_playedEncouragement) {
         _playedEncouragement = true;
-        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
         _audio.playVoice(_encouragementArcs[_currentArcIndex][0]);
       }
       if (_phaseSecondsLeft == supportAt && !_playedMidEncouragement) {
         _playedMidEncouragement = true;
-        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
         _audio.playVoice(_encouragementArcs[_currentArcIndex][1]);
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
-        _lastArcBeatTime = DateTime.now().millisecondsSinceEpoch;
         _audio.playVoice(_encouragementArcs[_currentArcIndex][2]);
       }
 
@@ -1286,9 +1308,6 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _switchToPhase(BrushPhase newPhase) {
     _phaseTransitioning = false;
-    // Cancel companion timer to prevent stale encouragement from queuing
-    // during the phase transition voice. Restart it after transition.
-    _companionTimer?.cancel();
     setState(() {
       _phase = newPhase;
       _phaseSecondsLeft = _phaseDuration;
@@ -1300,19 +1319,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
         _audio.playVoice(_phaseVoiceFiles[newPhase]!);
-      }
-    });
-    // Restart companion timer after phase voice plays
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        _companionTimer?.cancel();
-        _companionTimer = Timer.periodic(
-          const Duration(seconds: 8),
-          (_) {
-            if (!mounted) return;
-            _showNextCompanionMessage();
-          },
-        );
       }
     });
     Future.delayed(const Duration(milliseconds: 3000), () {
@@ -1430,41 +1436,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
-  /// Check if an arc beat recently played or is about to play (within 3s window).
-  /// Used to suppress companion voice when it would collide with arc beats.
-  bool _isArcBeatNearby() {
-    final now = DateTime.now().millisecondsSinceEpoch;
-    // Check if an arc beat played within the last 6 seconds
-    if (now - _lastArcBeatTime < 6000) return true;
-    // Check if an arc beat is scheduled within the next 3 seconds
-    final energizeAt = (_phaseDuration * 0.80).round();
-    final supportAt = (_phaseDuration * 0.50).round();
-    final almostAt = (_phaseDuration * 0.20).round();
-    for (final target in [energizeAt, supportAt, almostAt]) {
-      final secondsUntilBeat = _phaseSecondsLeft - target;
-      if (secondsUntilBeat >= 0 && secondsUntilBeat <= 3) return true;
-    }
-    return false;
-  }
-
-  void _showNextCompanionMessage() {
-    if (!mounted || _isPaused || _phase == BrushPhase.done) return;
-    final icon = _companionIcons[_random.nextInt(_companionIcons.length)];
-    setState(() {
-      _companionIcon = icon;
-      _showCompanionBubble = true;
-    });
-
-    // Suppress companion voice when an arc beat is nearby to avoid voice pileup
-    if (!_isArcBeatNearby()) {
-      _playNextEncouragementVoice();
-    }
-
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) setState(() => _showCompanionBubble = false);
-    });
-  }
-
   void _scheduleNextMicroReward() {
     _microRewardTimer?.cancel();
     final delaySecs = 8 + _random.nextInt(5); // 8-12s cadence
@@ -1512,27 +1483,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     _lastArcIndex = next;
     _currentArcIndex = next;
     _encouragementTextVariant = _random.nextInt(4);
-  }
-
-  void _playNextEncouragementVoice() {
-    final voices = _audio.encouragementVoices;
-    if (voices.isEmpty) return;
-    if (voices.length == 1) {
-      _audio.playVoice(voices.first);
-      _lastEncouragementVoice = voices.first;
-      return;
-    }
-
-    String selected = voices[_encouragementIndex % voices.length];
-    var safety = 0;
-    while (selected == _lastEncouragementVoice && safety < voices.length + 2) {
-      _encouragementIndex++;
-      selected = voices[_encouragementIndex % voices.length];
-      safety++;
-    }
-    _audio.playVoice(selected);
-    _lastEncouragementVoice = selected;
-    _encouragementIndex++;
   }
 
   void _spawnDamagePopup() {
@@ -1617,11 +1567,23 @@ class _BrushingScreenState extends State<BrushingScreen>
       _heroIdleController.stop();
       _baseAttackTimer?.cancel();
       _stallTimer?.cancel();
-      _companionTimer?.cancel();
       _microRewardTimer?.cancel();
+      _musicHealthTimer?.cancel();
       // Audio cue: whoosh SFX signals the game is paused
       _audio.playSfx('whoosh.mp3');
+      _audio.pauseMusic();
     } else {
+      // Resume music before voice so ducking works correctly
+      _audio.resumeMusic();
+      // Restart music health check
+      _musicHealthTimer?.cancel();
+      _musicHealthTimer = Timer.periodic(
+        const Duration(seconds: 5),
+        (_) {
+          if (!mounted) return;
+          _audio.ensureMusicPlaying();
+        },
+      );
       // Audio cue: encouraging voice on resume
       _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
       _monsterBreathController.repeat(reverse: true);
@@ -1631,13 +1593,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       } else {
         _startBaseAttackTimer();
       }
-      _companionTimer = Timer.periodic(
-        const Duration(seconds: 8),
-        (_) {
-          if (!mounted) return;
-          _showNextCompanionMessage();
-        },
-      );
       _scheduleNextMicroReward();
     }
   }
@@ -1665,7 +1620,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   void _finishBrushing() {
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
-    _companionTimer?.cancel();
     _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
     _stopMotionDetection();
@@ -1712,9 +1666,130 @@ class _BrushingScreenState extends State<BrushingScreen>
       },
       child: _showWorldIntro
           ? _buildWorldIntro()
+          : _showCameraPrompt
+          ? _buildCameraPrompt()
           : _sessionStage == SessionStage.countdown
           ? _buildCountdown()
           : _buildBrushing(),
+    );
+  }
+
+  // ==================== CAMERA PROMPT UI ====================
+
+  Widget _buildCameraPrompt() {
+    return Scaffold(
+      body: SpaceBackground(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Hero image with camera icon overlay
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 130,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _hero.primaryColor,
+                          width: 3,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(17),
+                        child: HeroService.buildHeroImage(
+                          _hero.id,
+                          stage: _evolutionStage,
+                          weaponId: _weapon.id,
+                          size: 130,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF7C4DFF),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.videocam,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
+                // Two big buttons: enable (green check) and skip (gray X)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Enable camera button
+                    GestureDetector(
+                      onTap: _onCameraPromptAccept,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF69F0AE).withValues(alpha: 0.25),
+                          border: Border.all(
+                            color: const Color(0xFF69F0AE),
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF69F0AE).withValues(alpha: 0.4),
+                              blurRadius: 20,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Color(0xFF69F0AE),
+                          size: 44,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 40),
+                    // Skip camera button
+                    GestureDetector(
+                      onTap: _onCameraPromptSkip,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.1),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            width: 3,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.white.withValues(alpha: 0.6),
+                          size: 44,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -2257,57 +2332,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                               ),
                             ),
                           ),
-
-                          // Companion encouragement (icon burst, no text)
-                          if (_showCompanionBubble && _companionIcon != null)
-                            Positioned(
-                              bottom: 210,
-                              child: TweenAnimationBuilder<double>(
-                                key: ValueKey(
-                                  _companionIcon.hashCode +
-                                      DateTime.now().millisecondsSinceEpoch,
-                                ),
-                                tween: Tween(begin: 0.0, end: 1.0),
-                                duration: const Duration(milliseconds: 400),
-                                curve: Curves.elasticOut,
-                                builder: (context, value, child) => Opacity(
-                                  opacity: value.clamp(0.0, 1.0),
-                                  child: Transform.scale(
-                                    scale: 0.3 + value * 0.7,
-                                    child: child,
-                                  ),
-                                ),
-                                child: Container(
-                                  width: 56,
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _hero.primaryColor.withValues(
-                                      alpha: 0.25,
-                                    ),
-                                    border: Border.all(
-                                      color: _hero.primaryColor.withValues(
-                                        alpha: 0.6,
-                                      ),
-                                      width: 2,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _hero.primaryColor.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                        blurRadius: 16,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    _companionIcon!,
-                                    color: Colors.white,
-                                    size: 30,
-                                  ),
-                                ),
-                              ),
-                            ),
 
                           // Mouth guide overlay at phase transitions
                           if (_showMouthGuideOverlay &&

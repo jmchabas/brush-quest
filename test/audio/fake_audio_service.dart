@@ -53,6 +53,7 @@ class FakeAudioService extends AudioService {
   @override
   bool get isVoicePipelineActive => _voicePlaying || _voiceQueue.isNotEmpty;
 
+  @override
   bool get isMusicPlaying => _musicPlaying;
   double get musicVolume => _musicVolume;
   String? get currentMusicFile => _currentMusicFile;

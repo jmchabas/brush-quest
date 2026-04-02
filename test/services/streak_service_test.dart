@@ -424,7 +424,7 @@ void main() {
       final service = StreakService();
       final outcome = await service.recordBrush();
       final hour = DateTime.now().hour;
-      if (hour < 15) {
+      if (hour < 12) {
         expect(outcome.slot, BrushSlot.morning);
       } else {
         expect(outcome.slot, BrushSlot.evening);
@@ -459,7 +459,7 @@ void main() {
       await service.recordBrush();
       final slots = await service.getTodaySlots();
       final hour = DateTime.now().hour;
-      if (hour < 15) {
+      if (hour < 12) {
         expect(slots.morningDone, true);
       } else {
         expect(slots.eveningDone, true);

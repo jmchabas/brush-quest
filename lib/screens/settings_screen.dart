@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,7 +37,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   // Dashboard state
   bool _streakPaused = false;
   DateTime? _pauseEnd;
-  int _habitDays = 0;
   int _currentStreak = 0;
   TodaySlotsStatus? _todaySlots;
 
@@ -102,24 +99,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     final pauseEnd = await streakSvc.getStreakPauseEnd();
     final currentStreak = await streakSvc.getStreak();
 
-    // Count unique days with at least one brush in last 14 days
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final Set<String> daysWithBrush = {};
-    for (final record in history) {
-      final parts = record.date.split('-');
-      if (parts.length == 3) {
-        final recordDate = DateTime(
-          int.parse(parts[0]),
-          int.parse(parts[1]),
-          int.parse(parts[2]),
-        );
-        if (today.difference(recordDate).inDays < 14) {
-          daysWithBrush.add(record.date);
-        }
-      }
-    }
-
     if (mounted) {
       setState(() {
         _phaseDuration = prefs.getInt('phase_duration') ?? 20;
@@ -133,7 +112,6 @@ class _SettingsScreenState extends State<SettingsScreen>
         _streakPaused = paused;
         _pauseEnd = pauseEnd;
         _currentStreak = currentStreak;
-        _habitDays = daysWithBrush.length;
       });
     }
   }
@@ -212,7 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             const SizedBox(height: 12),
             const Text(
-              'No personal information about your child is collected. You can delete all cloud data at any time from Settings.',
+              'No personal information about your child is collected. You can delete all data, including cloud data, by resetting progress in Settings.',
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 16),
@@ -297,6 +275,42 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _handleSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: Colors.white70, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Sign Out?',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Cloud sync will stop until you sign in again. Your local data is safe.',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'SIGN OUT',
+              style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     await _auth.signOut();
     if (mounted) setState(() {});
   }
@@ -644,7 +658,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           key.startsWith('card_dup_count_') ||
           key.startsWith('world_intro_seen_') ||
           key.startsWith('evolution_stage_') ||
-          key.startsWith('trophy_defeats_')) {
+          key.startsWith('trophy_defeats_') ||
+          key.startsWith('has_seen_first_')) {
         await prefs.remove(key);
       }
     }
@@ -667,8 +682,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   void _resetOnboarding() {
-    Navigator.of(context).push(
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      (_) => false,
     );
   }
 
@@ -758,174 +774,80 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  // ── Unified Habit Strength card (ring + stats + totals) ──────
+  // ── Tracked Stats card (real data only, no calculated metrics) ──────
   Widget _buildHabitStrength() {
-    final pct = _habitDays / 14.0;
-    final color = pct > 0.8
-        ? const Color(0xFF00E676)
-        : pct >= 0.5
-            ? const Color(0xFFFFD54F)
-            : Colors.orangeAccent;
-
-    // Morning vs evening pattern from brush history
-    int morningCount = 0;
-    int eveningCount = 0;
-    for (final record in _brushHistory) {
-      final timeParts = record.time.split(':');
-      if (timeParts.length == 2) {
-        final hour = int.tryParse(timeParts[0]) ?? 12;
-        if (hour < 12) {
-          morningCount++;
-        } else {
-          eveningCount++;
-        }
-      }
-    }
-    final totalSlots = morningCount + eveningCount;
-    final morningPct = totalSlots == 0 ? 0.0 : morningCount / totalSlots;
-    final eveningPct = totalSlots == 0 ? 0.0 : eveningCount / totalSlots;
-
     return GlassCard(
       child: Column(
         children: [
-          // Top row: Consistency ring + stats column
+          // Current Streak
           Row(
             children: [
-              SizedBox(
-                width: 64,
-                height: 64,
-                child: CustomPaint(
-                  painter: _ConsistencyRingPainter(
-                    progress: pct,
-                    color: color,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${(pct * 100).round()}%',
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
+              const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 22),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Current Streak',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$_habitDays of 14 days',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    // Morning / Evening split bar
-                    if (totalSlots > 0) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.wb_sunny, color: Color(0xFFFFD54F), size: 14),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: SizedBox(
-                                height: 6,
-                                child: Row(
-                                  children: [
-                                    if (morningPct > 0)
-                                      Expanded(
-                                        flex: (morningPct * 100).round().clamp(1, 100),
-                                        child: Container(color: const Color(0xFFFFD54F)),
-                                      ),
-                                    if (eveningPct > 0)
-                                      Expanded(
-                                        flex: (eveningPct * 100).round().clamp(1, 100),
-                                        child: Container(color: const Color(0xFF7C4DFF)),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.nightlight_round, color: Color(0xFF7C4DFF), size: 14),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${(morningPct * 100).round()}%',
-                            style: const TextStyle(color: Color(0xFFFFD54F), fontSize: 11),
-                          ),
-                          Text(
-                            '${(eveningPct * 100).round()}%',
-                            style: const TextStyle(color: Color(0xFF7C4DFF), fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    // Streak info
-                    Row(
-                      children: [
-                        const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$_currentStreak days',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                        const SizedBox(width: 12),
-                        const Icon(Icons.emoji_events, color: Color(0xFFFFD54F), size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$_bestStreak days',
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
-                        ),
-                      ],
-                    ),
-                  ],
+              Text(
+                '$_currentStreak ${_currentStreak == 1 ? 'day' : 'days'}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
             ],
           ),
-          // Bottom row: Total brushes + Minutes brushed
-          if (_totalBrushes > 0) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          const SizedBox(height: 14),
+          // Best Streak
+          Row(
+            children: [
+              const Icon(Icons.emoji_events, color: Color(0xFFFFD54F), size: 22),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Best Streak',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const ImageIcon(
-                    AssetImage('assets/images/icon_toothbrush.png'),
-                    size: 18,
-                    color: Colors.white54,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$_totalBrushes brushes',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+              Text(
+                '$_bestStreak ${_bestStreak == 1 ? 'day' : 'days'}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Total Brushes
+          Row(
+            children: [
+              const ImageIcon(
+                AssetImage('assets/images/icon_toothbrush.png'),
+                size: 22,
+                color: Color(0xFF00E5FF),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Total Brushes',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
+                ),
+              ),
+              Text(
+                '$_totalBrushes',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -937,10 +859,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       children: [
-        // ── HABIT STRENGTH (top of dashboard) ────────────────
+        // ── STATS (top of dashboard) ────────────────
         _SectionHeader(
-          icon: Icons.fitness_center,
-          label: 'HABIT STRENGTH',
+          icon: Icons.bar_chart,
+          label: 'STATS',
           color: const Color(0xFF00E676),
         ),
         const SizedBox(height: 8),
@@ -1432,7 +1354,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         _buildGuideSection(
           'Morning & Evening',
           'The app supports two brushing sessions per day \u2014 '
-              'morning (before 3pm) and evening (after 3pm). When your child '
+              'morning (before noon) and evening (after noon). When your child '
               'brushes both morning and evening, they earn a bonus star.\n\n'
               'Two teeth icons on the home screen show which sessions are complete.',
           Icons.wb_twilight,
@@ -2229,45 +2151,3 @@ class _HalfCirclePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Custom painter for a progress ring.
-class _ConsistencyRingPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-
-  _ConsistencyRingPainter({required this.progress, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 4;
-    const strokeWidth = 5.0;
-
-    // Background ring
-    final bgPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.1)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-    canvas.drawCircle(center, radius, bgPaint);
-
-    // Progress arc
-    if (progress > 0) {
-      final fgPaint = Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2,
-        2 * math.pi * progress,
-        false,
-        fgPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ConsistencyRingPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.color != color;
-}

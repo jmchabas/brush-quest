@@ -11,30 +11,27 @@
 ## Workstream Status
 
 ### APP
-- **Status**: Cycle 8 shipped — 17 findings, 10 streams, 6-zone brushing, victory safety, parent stats + 623 tests
-- **Last session**: 2026-03-23
-- **Last commit**: `606c40b` — Cycle 8 (17 findings, 10 streams)
-- **What happened**:
-  - **6-zone brushing**: TL/TF/TR/BL/BF/BR, default 20s/zone, visual mouth guide (no text labels)
-  - **Victory safety**: try/catch prevents dead-end trap, early DONE button
-  - **Voice timeout**: 5s→15s (fixed 47+ truncated voice files)
-  - **Parent gate**: hardened math floor (min 4×3=12)
-  - **Onboarding P2**: animated battle scene replacing abstract diagram
-  - **Greeting tease**: item icon + progress bar + voice (replaces text-only)
-  - **Parent stats**: 7-day activity, consistency ring, morning/evening, minutes brushed
-  - **World intro**: skips after first visit per world
-  - **Pause voice**: whoosh on pause, "Let's fight!" on resume
-  - **Reset**: added onboarding_completed, camera_enabled, muted, phase_duration
-  - **Fix**: cosmic_burst unlock voice key
-  - APK **90.3MB** (-8.8%), uploaded to Google Drive
-  - 623 tests passing, dart analyze clean
+- **Status**: UX feedback round shipped — hero-tap, victory overhaul, settings improvements, bug fixes
+- **Last session**: 2026-04-01
+- **Last commit**: `3e8ced4` — Settings screen improvements (latest in a series of 6 commits)
+- **What happened (2026-04-01)**:
+  - **Hero tap starts brushing**: Hero GestureDetector rewired from `_openShop()` to `_startBrushing()`. BRUSH! button removed. HEROES nav = only shop path.
+  - **Nav icons**: HEROES `Icons.shield` → `Icons.auto_awesome`, MONSTERS `Icons.catching_pokemon` → `Icons.bug_report`
+  - **Brushing timer fix**: `_phaseSecondsLeft` clamped to 0 (was showing -1)
+  - **Victory screen overhaul**: Removed all unnecessary text (STARS EARNED, You brushed!, TAP TO OPEN, Come back tomorrow). Moved counters to fixed top bar (matching home screen pills). Added star flight animation (bezier arc into wallet counter). Replaced yellow badge with hero celebration (elastic entrance + pulsing glow + sparkles).
+  - **Settings: fake minutes removed**: "Total minutes" was `brushes * phaseDuration * 6 / 60` — not real data, removed.
+  - **Settings: pause streak clarified**: Added subtitle "Protect streak during vacation or sick days"
+  - **Settings: narrator voice moved**: Right below Timer per zone, removed description text
+  - **Settings: Guide tab split**: Stars tab (How Stars Work) + Guide tab (parent info). 3→4 tabs.
+  - APK **133.3MB**, uploaded to Google Drive
+  - 665+ tests passing, dart analyze clean
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [x] P2.2: Privacy policy overhauled — COPPA 2025 + CCPA + data security program
   - [ ] P2.1: Google Play Console families policy config — org account READY
 - **Blocked on**: Nothing — Google Play org account is live!
-- **Next up**: Identity verification (CP 575 + passport uploaded), then create app listing + upload AAB
+- **Next up**: Create app listing + upload AAB
 - **Needs CEO decision**: None
 
 ### LANDING PAGE

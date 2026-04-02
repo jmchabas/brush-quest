@@ -31,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
+  final _trophyService = TrophyService();
 
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
@@ -38,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
+  int _trophyCount = 0;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   int _evolutionStage = 1;
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
@@ -50,6 +52,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _auraController;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
+  late AnimationController _tapHereController;
+  late Animation<double> _tapHereAnimation;
   bool _buttonPressed = false;
   static const _welcomeBackVoices = [
     'voice_welcome_back.mp3',
@@ -91,6 +95,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
     );
 
+    // Bouncing arrow animation for first-brush affordance
+    _tapHereController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
+    _tapHereAnimation = Tween<double>(begin: 0, end: 12).animate(
+      CurvedAnimation(parent: _tapHereController, curve: Curves.easeInOut),
+    );
+
   }
 
   @override
@@ -101,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _floatController.dispose();
     _auraController.dispose();
     _breatheController.dispose();
+    _tapHereController.dispose();
     super.dispose();
   }
 
@@ -118,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final evolutionStage = await _heroService.getEvolutionStage(hero.id);
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
+    final trophyCount = await _trophyService.getTotalCaptured();
 
     if (mounted) {
       setState(() {
@@ -128,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _selectedWeapon = weapon;
         _streak = streak;
         _totalBrushes = totalBrushes;
+        _trophyCount = trophyCount;
       });
       _checkGreeting();
       // Ambient music on home screen (very low volume)
@@ -572,9 +588,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 16),
 
-                  // Stats row: streak pill + star pill
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Stats row: streak, rank, wallet, trophies
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
                       // Streak pill
                       Container(
@@ -650,7 +668,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
                       // Ranger Rank pill (shield — the "pride number")
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -691,7 +708,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
                       // Star Wallet pill (spendable stars)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -724,6 +740,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 shadows: [
                                   Shadow(
                                     color: Color(0x80FFD54F),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Trophy count pill (monsters captured)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFFF80AB).withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: const Color(0xFFFF80AB).withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset(
+                              'assets/images/icon_monsters.png',
+                              width: 22,
+                              height: 22,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_trophyCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 22,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x80FF80AB),
                                     blurRadius: 8,
                                   ),
                                 ],
@@ -835,6 +891,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               );
                             },
                           ),
+                          // Bouncing arrow for first-brush affordance
+                          if (_totalBrushes == 0)
+                            AnimatedBuilder(
+                              animation: _tapHereAnimation,
+                              builder: (context, child) {
+                                return Transform.translate(
+                                  offset: Offset(0, -_tapHereAnimation.value),
+                                  child: child,
+                                );
+                              },
+                              child: ShaderMask(
+                                shaderCallback: (bounds) => const LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Color(0xFF00E5FF),
+                                    Color(0xFF7C4DFF),
+                                  ],
+                                ).createShader(bounds),
+                                child: const Icon(
+                                  Icons.arrow_downward_rounded,
+                                  color: Colors.white,
+                                  size: 48,
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 10),
                           Text(
                             _selectedHero.name,
@@ -854,9 +936,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                   const Spacer(),
 
-                  // Secondary nav row — hidden until first brush
-                  if (_totalBrushes > 0)
-                    Padding(
+                  // Secondary nav row — always visible
+                  Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
@@ -884,6 +965,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               label: 'MONSTERS',
                               color: const Color(0xFFFF80AB),
                               onTap: _openTrophies,
+                              badgeCount: _trophyCount > 0 ? _trophyCount : null,
                             ),
                           ),
                         ],
@@ -907,6 +989,7 @@ class _SmallNavButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
+  final int? badgeCount;
 
   const _SmallNavButton({
     this.icon,
@@ -914,6 +997,7 @@ class _SmallNavButton extends StatelessWidget {
     required this.label,
     required this.color,
     required this.onTap,
+    this.badgeCount,
   });
 
   @override
@@ -939,10 +1023,44 @@ class _SmallNavButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (imagePath != null)
-              Image.asset(imagePath!, width: 36, height: 36)
-            else
-              Icon(icon, color: color, size: 36),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                if (imagePath != null)
+                  Image.asset(imagePath!, width: 36, height: 36)
+                else
+                  Icon(icon, color: color, size: 36),
+                if (badgeCount != null)
+                  Positioned(
+                    top: -6,
+                    right: -10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.5),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               label,

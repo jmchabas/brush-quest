@@ -410,6 +410,19 @@ class AudioService {
     'voice_unlock_next_lightning_wand.mp3',
     'voice_unlock_next_vine_whip.mp3',
     'voice_unlock_next_cosmic_shield.mp3',
+    // Streak & comeback voice lines (Cycle 9)
+    'voice_first_streak_3.mp3',
+    'voice_first_streak_7.mp3',
+    'voice_first_daily_pair.mp3',
+    'voice_first_comeback.mp3',
+    'voice_chest_mega_streak.mp3',
+    'voice_chest_streak_bonus.mp3',
+    'voice_chest_daily_pair.mp3',
+    'voice_chest_comeback.mp3',
+    'voice_shop_nudge_default.mp3',
+    'voice_shop_nudge_streak3.mp3',
+    'voice_shop_nudge_streak7.mp3',
+    'voice_shop_nudge_tonight.mp3',
   ];
 
   List<String> get encouragementVoices =>
@@ -725,6 +738,28 @@ class AudioService {
     } catch (_) {}
   }
 
+  /// Pause music playback (keeps player state so it can resume).
+  Future<void> pauseMusic() async {
+    if (_musicTransitioning || !_musicPlaying) return;
+    try {
+      await _musicPlayer.pause();
+    } catch (e) {
+      _reportAudioIssue(operation: 'music_pause_failed', error: e);
+    }
+  }
+
+  /// Resume music after a pause. Does nothing if music was not playing.
+  Future<void> resumeMusic() async {
+    if (_musicTransitioning || !_musicPlaying || _muted) return;
+    try {
+      final vol = _voicePlaying ? _musicDuckedVolume : _musicVolume;
+      await _musicPlayer.setVolume(vol);
+      await _musicPlayer.resume();
+    } catch (e) {
+      _reportAudioIssue(operation: 'music_resume_failed', error: e);
+    }
+  }
+
   Future<void> stopMusic() async {
     if (_musicTransitioning) return;
     _musicPlaying = false;
@@ -735,6 +770,30 @@ class AudioService {
       _reportAudioIssue(operation: 'music_stop_failed', error: e);
     }
   }
+
+  /// Stop ALL audio: music, voice, and SFX. Used for app lifecycle events.
+  Future<void> stopAllAudio() async {
+    _clearVoiceQueue();
+    _voicePlaying = false;
+    _updateVoicePipelineState();
+    try {
+      await _voicePlayer.stop();
+    } catch (_) {}
+    for (final p in _sfxPool) {
+      try {
+        await p.stop();
+      } catch (_) {}
+    }
+    if (!_musicTransitioning) {
+      try {
+        await _musicPlayer.stop();
+      } catch (_) {}
+    }
+    _musicPlaying = false;
+  }
+
+  /// Whether music was actively playing (for lifecycle save/restore).
+  bool get isMusicPlaying => _musicPlaying;
 
   void _reportAudioIssue({
     required String operation,

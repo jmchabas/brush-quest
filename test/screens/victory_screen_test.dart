@@ -79,8 +79,8 @@ void main() {
     // star flight staggered launches, etc.)
     await tester.pump();
     await tester.pump(const Duration(seconds: 5));
-    // Drain remaining star flight timers
-    await tester.pump(const Duration(seconds: 2));
+    // Drain remaining star flight timers + 10s DONE-button fallback
+    await tester.pump(const Duration(seconds: 6));
     await tester.pump(const Duration(seconds: 1));
   }
 

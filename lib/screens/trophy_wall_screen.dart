@@ -76,6 +76,12 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
 
     if (mounted) {
       setState(() => _loading = false);
+      // Play entry voice explaining the monster collection
+      AudioService().playVoice(
+        'voice_card_album_intro.mp3',
+        clearQueue: true,
+        interrupt: true,
+      );
     }
   }
 
@@ -481,30 +487,21 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                 const SizedBox(height: 8),
                 // Name — use world color for consistency
                 Text(
-                  trophy.name,
+                  isCaptured ? trophy.name : '???',
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: isCaptured
                         ? worldColor
-                        : Colors.white.withValues(alpha: inProgress ? 0.5 : 0.35),
+                        : Colors.white.withValues(alpha: inProgress ? 0.4 : 0.2),
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                // Defeat requirement + progress dots for uncaptured
+                // Progress dots for uncaptured (visual only — no text)
                 if (!isCaptured) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    'Defeat ${trophy.defeatsRequired}x to catch!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      fontSize: 9,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   _buildProgressDots(trophy, defeatCount, worldColor),
                 ],
               ],
@@ -529,44 +526,66 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
         ),
       );
     } else if (inProgress) {
-      // Dark silhouette — partially visible
-      return ColorFiltered(
-        colorFilter: const ColorFilter.mode(
-          Color(0xFF1A1A2E),
-          BlendMode.srcATop,
-        ),
-        child: Opacity(
-          opacity: 0.5,
-          child: Image.asset(
-            trophy.imagePath,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const Icon(
-              Icons.bug_report,
-              size: 60,
-              color: Color(0xFF1A1A2E),
+      // Dark silhouette with world-color tint — shape visible, identity hidden
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              worldColor.withValues(alpha: 0.8),
+              BlendMode.srcATop,
+            ),
+            child: Opacity(
+              opacity: 0.35,
+              child: Image.asset(
+                trophy.imagePath,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Icon(
+                  Icons.bug_report,
+                  size: 60,
+                  color: worldColor.withValues(alpha: 0.3),
+                ),
+              ),
             ),
           ),
-        ),
+          // Subtle question mark overlay to hint at mystery
+          Icon(
+            Icons.help_outline_rounded,
+            size: 32,
+            color: worldColor.withValues(alpha: 0.25),
+          ),
+        ],
       );
     } else {
-      // Fully locked — faint silhouette teaser
-      return ColorFiltered(
-        colorFilter: const ColorFilter.mode(
-          Color(0xFF0D0B1A),
-          BlendMode.srcATop,
-        ),
-        child: Opacity(
-          opacity: 0.45,
-          child: Image.asset(
-            trophy.imagePath,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => const Icon(
-              Icons.bug_report,
-              size: 60,
-              color: Color(0xFF0D0B1A),
+      // Fully locked — dark silhouette showing monster shape
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          ColorFiltered(
+            colorFilter: const ColorFilter.mode(
+              Color(0xFF2A2040),
+              BlendMode.srcATop,
+            ),
+            child: Opacity(
+              opacity: 0.3,
+              child: Image.asset(
+                trophy.imagePath,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.bug_report,
+                  size: 60,
+                  color: Color(0xFF2A2040),
+                ),
+              ),
             ),
           ),
-        ),
+          // Lock icon for fully locked monsters
+          Icon(
+            Icons.lock_rounded,
+            size: 28,
+            color: Colors.white.withValues(alpha: 0.15),
+          ),
+        ],
       );
     }
   }
@@ -577,19 +596,36 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
       children: List.generate(trophy.defeatsRequired, (i) {
         final filled = i < defeatCount;
         return Container(
-          width: 10,
-          height: 10,
+          width: 14,
+          height: 14,
           margin: const EdgeInsets.symmetric(horizontal: 3),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: filled
                 ? worldColor.withValues(alpha: 0.8)
-                : Colors.white.withValues(alpha: 0.15),
+                : Colors.white.withValues(alpha: 0.08),
             border: Border.all(
-              color: worldColor.withValues(alpha: 0.4),
-              width: 1,
+              color: filled
+                  ? worldColor.withValues(alpha: 0.9)
+                  : worldColor.withValues(alpha: 0.25),
+              width: 1.5,
             ),
+            boxShadow: filled
+                ? [
+                    BoxShadow(
+                      color: worldColor.withValues(alpha: 0.4),
+                      blurRadius: 4,
+                    ),
+                  ]
+                : null,
           ),
+          child: filled
+              ? Icon(
+                  Icons.flash_on_rounded,
+                  size: 9,
+                  color: Colors.white.withValues(alpha: 0.9),
+                )
+              : null,
         );
       }),
     );

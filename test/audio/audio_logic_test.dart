@@ -459,19 +459,7 @@ void main() {
       }
     });
 
-    test('post-chest encouragement variants exist in source', () {
-      const encouragements = [
-        'voice_chest_encourage_1.mp3',
-        'voice_chest_encourage_2.mp3',
-        'voice_chest_encourage_3.mp3',
-      ];
-      for (final f in encouragements) {
-        expect(victoryScreenSrc.contains("'$f'"), isTrue,
-            reason: '$f should be in _chestEncouragements');
-        expect(audioServiceSrc.contains("'$f'"), isTrue,
-            reason: '$f should be in _allAudioFiles');
-      }
-    });
+    // post-chest encouragement variants removed in Cycle 9 (#24: remove next-unlock system)
   });
 
   // ===========================================================================

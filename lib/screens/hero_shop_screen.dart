@@ -30,6 +30,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   int _rank = 0;
   List<String> _unlockedEvolutions = [];
   Map<String, int> _evolutionStages = {};
+  bool _isPurchaseDialogOpen = false;
 
   late TabController _tabController;
 
@@ -203,42 +204,48 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   }
 
   Future<bool> _showPurchaseConfirmation(String itemName, int price) async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Get $itemName?',
-              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.star, color: Colors.amber, size: 32),
-              const SizedBox(width: 8),
-              Text('$price', style: const TextStyle(color: Colors.amber, fontSize: 32, fontWeight: FontWeight.bold)),
-            ]),
-            const SizedBox(height: 24),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Not yet', style: TextStyle(color: Colors.white54, fontSize: 18)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF00E676),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    if (_isPurchaseDialogOpen) return false;
+    _isPurchaseDialogOpen = true;
+    try {
+      return await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Get $itemName?',
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.star, color: Colors.amber, size: 32),
+                const SizedBox(width: 8),
+                Text('$price', style: const TextStyle(color: Colors.amber, fontSize: 32, fontWeight: FontWeight.bold)),
+              ]),
+              const SizedBox(height: 24),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Not yet', style: TextStyle(color: Colors.white54, fontSize: 18)),
                 ),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('YES!', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)),
-              ),
-            ]),
-          ],
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00E676),
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('YES!', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
+              ]),
+            ],
+          ),
         ),
-      ),
-    ) ?? false;
+      ) ?? false;
+    } finally {
+      _isPurchaseDialogOpen = false;
+    }
   }
 
   void _playSelectionVoice(String fileName) {
@@ -623,7 +630,7 @@ class _HeroEvolutionRow extends StatelessWidget {
   }
 }
 
-class _EvolutionCell extends StatelessWidget {
+class _EvolutionCell extends StatefulWidget {
   final HeroCharacter hero;
   final HeroEvolution evolution;
   final bool isHeroOwned;
@@ -646,37 +653,91 @@ class _EvolutionCell extends StatelessWidget {
     required this.onTap,
   });
 
+  @override
+  State<_EvolutionCell> createState() => _EvolutionCellState();
+}
+
+class _EvolutionCellState extends State<_EvolutionCell>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _pulseController;
+
   int get _displayPrice {
-    if (evolution.stage == 1 && !isHeroOwned) return hero.price;
-    return evolution.price;
+    if (widget.evolution.stage == 1 && !widget.isHeroOwned) return widget.hero.price;
+    return widget.evolution.price;
   }
 
-  bool get _canAfford => wallet >= _displayPrice;
+  bool get _canAfford => widget.wallet >= _displayPrice;
+
+  bool get _showBuyIndicator =>
+      !widget.isOwned && _canAfford && _displayPrice > 0 && !widget.isGated &&
+      !(widget.evolution.stage > 1 && !widget.isHeroOwned);
+
+  @override
+  void initState() {
+    super.initState();
+    _setupPulse();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EvolutionCell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _setupPulse();
+  }
+
+  void _setupPulse() {
+    if (_showBuyIndicator && _pulseController == null) {
+      _pulseController = AnimationController(
+        duration: const Duration(milliseconds: 1500),
+        vsync: this,
+      )..repeat(reverse: true);
+    } else if (!_showBuyIndicator && _pulseController != null) {
+      _pulseController!.dispose();
+      _pulseController = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final locked = !isOwned;
+    final locked = !widget.isOwned;
     final showPrice = locked && _displayPrice > 0;
-    final showLock = locked && (isGated || (!isHeroOwned && evolution.stage > 1));
+    final showLock = locked && !_showBuyIndicator &&
+        (widget.isGated || (!widget.isHeroOwned && widget.evolution.stage > 1));
 
-    return GestureDetector(
-      onTap: onTap,
+    Widget cell = GestureDetector(
+      onTap: widget.onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: isEquipped
-              ? hero.primaryColor.withValues(alpha: 0.15)
-              : Colors.white.withValues(alpha: 0.03),
+          color: widget.isEquipped
+              ? widget.hero.primaryColor.withValues(alpha: 0.15)
+              : _showBuyIndicator
+                  ? const Color(0xFF00E676).withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isEquipped
-                ? hero.primaryColor.withValues(alpha: 0.7)
-                : locked
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.white.withValues(alpha: 0.15),
-            width: isEquipped ? 2 : 1,
+            color: widget.isEquipped
+                ? widget.hero.primaryColor.withValues(alpha: 0.7)
+                : _showBuyIndicator
+                    ? const Color(0xFF00E676).withValues(alpha: 0.6)
+                    : locked
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.white.withValues(alpha: 0.15),
+            width: widget.isEquipped ? 2 : _showBuyIndicator ? 2 : 1,
           ),
+          boxShadow: _showBuyIndicator
+              ? [BoxShadow(
+                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                )]
+              : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -685,21 +746,21 @@ class _EvolutionCell extends StatelessWidget {
             AspectRatio(
               aspectRatio: 1,
               child: Opacity(
-                opacity: locked ? 0.4 : 1.0,
+                opacity: locked ? 0.45 : 1.0,
                 child: ColorFiltered(
                   colorFilter: locked
-                      ? ColorFilter.matrix(_partialDesaturationMatrix(0.4))
+                      ? ColorFilter.matrix(_partialDesaturationMatrix(0.5))
                       : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       Positioned.fill(
                         child: Image.asset(
-                          'assets/images/heroes/hero_${hero.id}_stage${evolution.stage}_$weaponId.png',
+                          'assets/images/heroes/hero_${widget.hero.id}_stage${widget.evolution.stage}_${widget.weaponId}.png',
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) {
                             return Image.asset(
-                              'assets/images/hero_${hero.id}.png',
+                              'assets/images/hero_${widget.hero.id}.png',
                               fit: BoxFit.contain,
                             );
                           },
@@ -711,6 +772,26 @@ class _EvolutionCell extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.7),
                           size: 24,
                         ),
+                      if (_showBuyIndicator)
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF00E676).withValues(alpha: 0.85),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.shopping_cart,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -718,8 +799,29 @@ class _EvolutionCell extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             // Status indicator
-            if (isEquipped)
-              Icon(Icons.check_circle, color: hero.primaryColor, size: 18)
+            if (widget.isEquipped)
+              Icon(Icons.check_circle, color: widget.hero.primaryColor, size: 18)
+            else if (_showBuyIndicator)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.star,
+                    color: Color(0xFF00E676),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '$_displayPrice',
+                    style: const TextStyle(
+                      color: Color(0xFF00E676),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              )
             else if (showPrice)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -727,25 +829,21 @@ class _EvolutionCell extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.star,
-                    color: _canAfford
-                        ? const Color(0xFFFFD54F)
-                        : Colors.white.withValues(alpha: 0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     size: 14,
                   ),
                   const SizedBox(width: 2),
                   Text(
                     '$_displayPrice',
                     style: TextStyle(
-                      color: _canAfford
-                          ? const Color(0xFFFFD54F)
-                          : Colors.white.withValues(alpha: 0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               )
-            else if (isOwned && !isEquipped)
+            else if (widget.isOwned && !widget.isEquipped)
               Icon(
                 Icons.check_circle_outline,
                 color: Colors.white.withValues(alpha: 0.3),
@@ -755,10 +853,36 @@ class _EvolutionCell extends StatelessWidget {
         ),
       ),
     );
+
+    // Wrap affordable items with a subtle pulsing glow
+    if (_showBuyIndicator && _pulseController != null) {
+      cell = AnimatedBuilder(
+        animation: _pulseController!,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00E676)
+                      .withValues(alpha: 0.15 + _pulseController!.value * 0.2),
+                  blurRadius: 8 + _pulseController!.value * 6,
+                  spreadRadius: _pulseController!.value * 2,
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: cell,
+      );
+    }
+
+    return cell;
   }
 }
 
-class _WeaponCard extends StatelessWidget {
+class _WeaponCard extends StatefulWidget {
   final WeaponItem weapon;
   final bool isUnlocked;
   final bool isSelected;
@@ -776,31 +900,82 @@ class _WeaponCard extends StatelessWidget {
   });
 
   @override
+  State<_WeaponCard> createState() => _WeaponCardState();
+}
+
+class _WeaponCardState extends State<_WeaponCard>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _pulseController;
+
+  bool get _showBuyIndicator =>
+      !widget.isUnlocked && widget.canAfford && widget.weapon.price > 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupPulse();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WeaponCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _setupPulse();
+  }
+
+  void _setupPulse() {
+    if (_showBuyIndicator && _pulseController == null) {
+      _pulseController = AnimationController(
+        duration: const Duration(milliseconds: 1500),
+        vsync: this,
+      )..repeat(reverse: true);
+    } else if (!_showBuyIndicator && _pulseController != null) {
+      _pulseController!.dispose();
+      _pulseController = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    Widget card = GestureDetector(
+      onTap: widget.onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? weapon.primaryColor
-                : isUnlocked
-                ? Colors.white.withValues(alpha: 0.2)
-                : Colors.white.withValues(alpha: 0.1),
-            width: isSelected ? 3 : 1,
+            color: widget.isSelected
+                ? widget.weapon.primaryColor
+                : _showBuyIndicator
+                    ? const Color(0xFF00E676).withValues(alpha: 0.6)
+                    : widget.isUnlocked
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.1),
+            width: widget.isSelected ? 3 : _showBuyIndicator ? 2 : 1,
           ),
-          boxShadow: isSelected
+          boxShadow: widget.isSelected
               ? [
                   BoxShadow(
-                    color: weapon.primaryColor.withValues(alpha: 0.4),
+                    color: widget.weapon.primaryColor.withValues(alpha: 0.4),
                     blurRadius: 15,
                     spreadRadius: 2,
                   ),
                 ]
-              : null,
+              : _showBuyIndicator
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
         ),
         child: Stack(
           children: [
@@ -812,30 +987,55 @@ class _WeaponCard extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Opacity(
-                        opacity: isUnlocked ? 1.0 : 0.85,
+                        opacity: widget.isUnlocked ? 1.0 : 0.5,
                         child: ColorFiltered(
-                          colorFilter: isUnlocked
+                          colorFilter: widget.isUnlocked
                               ? const ColorFilter.mode(
                                   Colors.transparent,
                                   BlendMode.dst,
                                 )
-                              : ColorFilter.matrix(_partialDesaturationMatrix(0.3)),
-                          child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
+                              : ColorFilter.matrix(_partialDesaturationMatrix(0.45)),
+                          child: Image.asset(widget.weapon.imagePath, fit: BoxFit.cover),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (!isUnlocked && weapon.price > 0)
+                  if (!widget.isUnlocked && widget.weapon.price > 0)
                     _PriceTag(
-                      price: weapon.price,
-                      wallet: currentStars,
-                      canAfford: canAfford,
+                      price: widget.weapon.price,
+                      wallet: widget.currentStars,
+                      canAfford: widget.canAfford,
                     ),
                 ],
               ),
             ),
-            if (!isUnlocked)
+            // Top-right indicator: shopping cart for affordable, lock for unaffordable
+            if (!widget.isUnlocked && _showBuyIndicator)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.85),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.shopping_cart,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              )
+            else if (!widget.isUnlocked)
               Positioned(
                 top: 8,
                 right: 8,
@@ -859,7 +1059,7 @@ class _WeaponCard extends StatelessWidget {
                   ),
                 ),
               ),
-            if (isSelected)
+            if (widget.isSelected)
               Positioned(
                 bottom: 8,
                 left: 0,
@@ -890,6 +1090,32 @@ class _WeaponCard extends StatelessWidget {
         ),
       ),
     );
+
+    // Wrap affordable items with a subtle pulsing glow
+    if (_showBuyIndicator && _pulseController != null) {
+      card = AnimatedBuilder(
+        animation: _pulseController!,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00E676)
+                      .withValues(alpha: 0.15 + _pulseController!.value * 0.2),
+                  blurRadius: 8 + _pulseController!.value * 6,
+                  spreadRadius: _pulseController!.value * 2,
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: card,
+      );
+    }
+
+    return card;
   }
 }
 

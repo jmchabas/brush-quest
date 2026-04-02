@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -172,14 +173,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _streakMultiplierBonus = 0;
   int _comebackBonus = 0;
   List<Achievement> _newAchievements = [];
-  // Next unlock: whichever of hero/weapon is closer
-  String? _nextUnlockName;
-  String? _nextUnlockImagePath;
-  Color _nextUnlockColor = Colors.white;
-  int _nextUnlockAt = 0;
-  int _starsToNextUnlock = 0;
-  bool _nextUnlockIsHero = true;
-  String? _nextUnlockId;
   WorldData _world = WorldService.allWorlds[0];
   DailyModifier _dailyModifier = const DailyModifier(
     type: DailyModifierType.none,
@@ -243,26 +236,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3'],
   ];
 
-  static const Map<String, String> _unlockVoices = {
-    'frost': 'voice_unlock_next_frost.mp3',
-    'bolt': 'voice_unlock_next_bolt.mp3',
-    'shadow': 'voice_unlock_next_shadow.mp3',
-    'leaf': 'voice_unlock_next_leaf.mp3',
-    'nova': 'voice_unlock_next_nova.mp3',
-    'flame_sword': 'voice_unlock_next_flame_sword.mp3',
-    'ice_hammer': 'voice_unlock_next_ice_hammer.mp3',
-    'lightning_wand': 'voice_unlock_next_lightning_wand.mp3',
-    'vine_whip': 'voice_unlock_next_vine_whip.mp3',
-    'cosmic_burst': 'voice_unlock_next_cosmic_shield.mp3',
-  };
-
-  // Post-chest encouragement variants (replaces single voice_keep_going)
-  static const _chestEncouragements = [
-    'voice_chest_encourage_1.mp3',
-    'voice_chest_encourage_2.mp3',
-    'voice_chest_encourage_3.mp3',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -321,6 +294,15 @@ class _VictoryScreenState extends State<VictoryScreen>
       vsync: this,
     );
 
+    // Safety net: guarantee DONE button appears after 10s even if animations fail.
+    Timer(const Duration(seconds: 10), () {
+      if (mounted && !_showDoneButton) {
+        _audio.playSfx('whoosh.mp3');
+        setState(() => _showDoneButton = true);
+        _doneButtonController.repeat(reverse: true);
+      }
+    });
+
     _recordAndAnimate();
   }
 
@@ -366,10 +348,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       _newWallet = await _streakService.getWallet();
     }
 
-    // Pick whichever of next hero / next weapon unlocks sooner
-    final nextHero = await _heroService.getNextLockedHero();
-    final nextWeapon = await _weaponService.getNextLockedWeapon();
-    _computeNextUnlock(nextHero, nextWeapon);
     _totalTrophies = await _trophyService.getTotalCaptured();
 
     // Analytics: log completion + update user properties
@@ -432,42 +410,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     _audio.playVoice(arc[2]); // chest prompt
     // NOTE: Achievements are now shown AFTER the chest/card sequence,
     // not concurrently. See _openChest for the scheduling.
-  }
-
-  /// Compare next locked hero and weapon; pick whichever unlocks sooner.
-  void _computeNextUnlock(HeroCharacter? nextHero, WeaponItem? nextWeapon) {
-    if (nextHero == null && nextWeapon == null) {
-      // Everything unlocked — no progress bar.
-      _nextUnlockName = null;
-      _nextUnlockId = null;
-      return;
-    }
-
-    final bool pickHero;
-    if (nextHero != null && nextWeapon != null) {
-      // Pick whichever has the lower (cheaper) price.
-      pickHero = nextHero.price <= nextWeapon.price;
-    } else {
-      pickHero = nextHero != null;
-    }
-
-    if (pickHero) {
-      _nextUnlockName = nextHero!.name;
-      _nextUnlockImagePath = nextHero.imagePath;
-      _nextUnlockColor = nextHero.primaryColor;
-      _nextUnlockAt = nextHero.price;
-      _nextUnlockIsHero = true;
-      _nextUnlockId = nextHero.id;
-    } else {
-      _nextUnlockName = nextWeapon!.name;
-      _nextUnlockImagePath = nextWeapon.imagePath;
-      _nextUnlockColor = nextWeapon.primaryColor;
-      _nextUnlockAt = nextWeapon.price;
-      _nextUnlockIsHero = false;
-      _nextUnlockId = nextWeapon.id;
-    }
-    _starsToNextUnlock = _nextUnlockAt - _newWallet;
-    if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
   }
 
   void _triggerStarFlight() {
@@ -572,14 +514,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           await _streakService.addBonusStars(totalBonus);
           _newStars = await _streakService.getTotalStars();
           _newWallet = await _streakService.getWallet();
-          if (mounted) {
-            setState(() {
-              if (_nextUnlockName != null) {
-                _starsToNextUnlock = _nextUnlockAt - _newWallet;
-                if (_starsToNextUnlock < 0) _starsToNextUnlock = 0;
-              }
-            });
-          }
+          if (mounted) setState(() {});
         }
 
         // ── Post-chest bonus star reveals ──
@@ -675,18 +610,9 @@ class _VictoryScreenState extends State<VictoryScreen>
           await Future.delayed(const Duration(milliseconds: 1000));
         }
 
-        // Legendary ranger voice or next-unlock encouragement
-        if (_nextUnlockName == null && _totalTrophies >= TrophyService.allTrophies.length && mounted) {
+        // Legendary ranger voice (all heroes/weapons/trophies unlocked)
+        if (_totalTrophies >= TrophyService.allTrophies.length && mounted) {
           await _audio.playVoice('voice_legend.mp3');
-        } else if (_nextUnlockName != null && _starsToNextUnlock > 0 && mounted) {
-          final unlockVoice = _nextUnlockId != null ? _unlockVoices[_nextUnlockId] : null;
-          if (unlockVoice != null) {
-            _audio.playVoice(unlockVoice);
-          } else {
-            _audio.playVoice(
-              _chestEncouragements[_random.nextInt(_chestEncouragements.length)],
-            );
-          }
         }
       } catch (e) {
         debugPrint('Victory chest sequence error: $e');
@@ -1068,132 +994,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                     // Post-chest bonus star reveals
                     if (_chestOpened) _buildBonusReveal(),
 
-                    // Next unlock progress — hero or weapon, whichever is closer
+                    // LEGENDARY RANGER badge (all trophies collected)
                     if (_chestOpened &&
-                        _nextUnlockName != null &&
-                        _starsToNextUnlock > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: 16,
-                          left: 40,
-                          right: 40,
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                shape: _nextUnlockIsHero
-                                    ? BoxShape.circle
-                                    : BoxShape.rectangle,
-                                borderRadius: _nextUnlockIsHero
-                                    ? null
-                                    : BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _nextUnlockColor,
-                                  width: 2.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _nextUnlockColor.withValues(alpha: 0.4),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                  _nextUnlockIsHero ? 28 : 12,
-                                ),
-                                child: Image.asset(
-                                  _nextUnlockImagePath!,
-                                  width: 52,
-                                  height: 52,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(7),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _nextUnlockColor.withValues(alpha: 0.35),
-                                      blurRadius: 10,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(7),
-                                  child: SizedBox(
-                                    height: 14,
-                                    child: LinearProgressIndicator(
-                                      value: (_newWallet / _nextUnlockAt).clamp(
-                                        0.0,
-                                        1.0,
-                                      ),
-                                      backgroundColor: Colors.white.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      valueColor: AlwaysStoppedAnimation(
-                                        _nextUnlockColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.star,
-                              color: Colors.yellowAccent,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              '$_starsToNextUnlock',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                shadows: [
-                                  Shadow(
-                                    color: _nextUnlockColor.withValues(alpha: 0.8),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (_chestOpened &&
-                        _nextUnlockName != null &&
-                        _starsToNextUnlock > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6, left: 54, right: 40),
-                        child: Text(
-                          '$_starsToNextUnlock more to get $_nextUnlockName!',
-                          style: TextStyle(
-                            color: _nextUnlockColor.withValues(alpha: 0.9),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            shadows: [
-                              Shadow(
-                                color: _nextUnlockColor.withValues(alpha: 0.5),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    // LEGENDARY RANGER badge (all heroes/weapons/trophies)
-                    if (_chestOpened &&
-                        _nextUnlockName == null &&
                         _totalTrophies >= TrophyService.allTrophies.length)
                       Padding(
                         padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
@@ -1232,9 +1034,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
 
-                    // Trophy collection progress (shown when all heroes/weapons unlocked)
+                    // Trophy collection progress
                     if (_chestOpened &&
-                        _nextUnlockName == null &&
                         _totalTrophies < TrophyService.allTrophies.length)
                       Padding(
                         padding: const EdgeInsets.only(
