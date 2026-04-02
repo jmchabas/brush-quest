@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "722700244830-92o3j3k7f2kj5pdalmr331ml1mbu982f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.brushquest.brush_quest",
+            "certificate_hash": "68990da174c77c71b822be058cee471abbd11be6"
+          }
+        },
+        {
           "client_id": "722700244830-o7c3i0p6tft2nbv7rrfbnvd6n7c93avl.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

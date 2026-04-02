@@ -56,3 +56,5 @@ build
 *.jks
 *.keystore
 android/key.properties
+.playwright-mcp/
+.superpowers/
