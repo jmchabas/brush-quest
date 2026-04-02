@@ -52,8 +52,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _auraController;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
-  late AnimationController _tapHereController;
-  late Animation<double> _tapHereAnimation;
   bool _buttonPressed = false;
   static const _welcomeBackVoices = [
     'voice_welcome_back.mp3',
@@ -95,15 +93,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
     );
 
-    // Bouncing arrow animation for first-brush affordance
-    _tapHereController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    )..repeat(reverse: true);
-    _tapHereAnimation = Tween<double>(begin: 0, end: 12).animate(
-      CurvedAnimation(parent: _tapHereController, curve: Curves.easeInOut),
-    );
-
   }
 
   @override
@@ -114,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _floatController.dispose();
     _auraController.dispose();
     _breatheController.dispose();
-    _tapHereController.dispose();
     super.dispose();
   }
 
@@ -589,6 +577,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 16),
 
                   // Stats row: streak, rank, wallet, trophies
+                  // Use fixed-width pills so all 4 are same size
                   Wrap(
                     alignment: WrapAlignment.center,
                     spacing: 8,
@@ -596,6 +585,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       // Streak pill
                       Container(
+                        constraints: const BoxConstraints(minWidth: 80),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 6,
@@ -670,6 +660,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       // Ranger Rank pill (shield — the "pride number")
                       Container(
+                        constraints: const BoxConstraints(minWidth: 80),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 6,
@@ -710,6 +701,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       // Star Wallet pill (spendable stars)
                       Container(
+                        constraints: const BoxConstraints(minWidth: 80),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
@@ -750,6 +742,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       // Trophy count pill (monsters captured)
                       Container(
+                        constraints: const BoxConstraints(minWidth: 80),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
@@ -891,32 +884,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               );
                             },
                           ),
-                          // Bouncing arrow for first-brush affordance
-                          if (_totalBrushes == 0)
-                            AnimatedBuilder(
-                              animation: _tapHereAnimation,
-                              builder: (context, child) {
-                                return Transform.translate(
-                                  offset: Offset(0, -_tapHereAnimation.value),
-                                  child: child,
-                                );
-                              },
-                              child: ShaderMask(
-                                shaderCallback: (bounds) => const LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Color(0xFF00E5FF),
-                                    Color(0xFF7C4DFF),
-                                  ],
-                                ).createShader(bounds),
-                                child: const Icon(
-                                  Icons.arrow_downward_rounded,
-                                  color: Colors.white,
-                                  size: 48,
-                                ),
-                              ),
-                            ),
+                          // Voice prompt guides first-time users to tap hero
                           const SizedBox(height: 10),
                           Text(
                             _selectedHero.name,
@@ -965,7 +933,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               label: 'MONSTERS',
                               color: const Color(0xFFFF80AB),
                               onTap: _openTrophies,
-                              badgeCount: _trophyCount > 0 ? _trophyCount : null,
+                              // Trophy count shown in top stats row
                             ),
                           ),
                         ],
@@ -989,15 +957,12 @@ class _SmallNavButton extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  final int? badgeCount;
-
   const _SmallNavButton({
     this.icon,
     this.imagePath,
     required this.label,
     required this.color,
     required this.onTap,
-    this.badgeCount,
   });
 
   @override
@@ -1023,44 +988,10 @@ class _SmallNavButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                if (imagePath != null)
-                  Image.asset(imagePath!, width: 36, height: 36)
-                else
-                  Icon(icon, color: color, size: 36),
-                if (badgeCount != null)
-                  Positioned(
-                    top: -6,
-                    right: -10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        '$badgeCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            if (imagePath != null)
+              Image.asset(imagePath!, width: 36, height: 36)
+            else
+              Icon(icon, color: color, size: 36),
             const SizedBox(height: 4),
             Text(
               label,

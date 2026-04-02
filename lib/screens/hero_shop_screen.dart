@@ -344,51 +344,18 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                             ),
                       ),
                     ),
-                    // Ranger Rank
+                    // Star Wallet (only counter that matters in shop)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                        horizontal: 14,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.cyanAccent.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.diamond,
-                            color: Colors.cyanAccent,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$_rank',
-                            style: const TextStyle(
-                              color: Colors.cyanAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Wallet
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.yellowAccent.withValues(alpha: 0.3),
+                          color: Colors.yellowAccent.withValues(alpha: 0.4),
+                          width: 2,
                         ),
                       ),
                       child: Row(
@@ -397,15 +364,15 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                           const Icon(
                             Icons.star,
                             color: Colors.yellowAccent,
-                            size: 18,
+                            size: 24,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Text(
                             '$_wallet',
                             style: const TextStyle(
                               color: Colors.yellowAccent,
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 22,
                             ),
                           ),
                         ],
