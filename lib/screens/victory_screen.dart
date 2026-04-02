@@ -234,6 +234,10 @@ class _VictoryScreenState extends State<VictoryScreen>
     ['voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3', 'voice_victory_arc2_beat3.mp3'],
     ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3'],
     ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3'],
+    ['voice_victory_arc5_beat1.mp3', 'voice_victory_arc5_beat2.mp3', 'voice_victory_arc5_beat3.mp3'],
+    ['voice_victory_arc6_beat1.mp3', 'voice_victory_arc6_beat2.mp3', 'voice_victory_arc6_beat3.mp3'],
+    ['voice_victory_arc7_beat1.mp3', 'voice_victory_arc7_beat2.mp3', 'voice_victory_arc7_beat3.mp3'],
+    ['voice_victory_arc8_beat1.mp3', 'voice_victory_arc8_beat2.mp3', 'voice_victory_arc8_beat3.mp3'],
   ];
 
   @override
