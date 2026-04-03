@@ -44,7 +44,7 @@ class AudioService {
   bool _musicPlaying = false;
   bool _musicTransitioning = false;
   String? _currentMusicFile;
-  String _voiceStyle = 'classic';
+  String _voiceStyle = 'buddy';
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
   final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
     false,
@@ -59,9 +59,7 @@ class AudioService {
 
   /// Available voice styles.
   static const voiceStyles = {
-    'classic': 'Jessica — warm & clear',
     'buddy': 'George — friendly guide',
-    'boy': 'Liam — excited adventurer',
   };
 
   /// Current voice narrator style ('classic', 'buddy', or 'boy').
@@ -70,14 +68,9 @@ class AudioService {
   /// Base path for voice files under assets/audio/.
   String get voiceBasePath => 'voices/$_voiceStyle';
 
-  /// Set the voice narrator style, persist to SharedPreferences, and
-  /// re-preload all voice assets for the new style in the background.
+  /// Voice style is locked to 'buddy' for launch.
   Future<void> setVoiceStyle(String style) async {
-    _voiceStyle = style;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('voice_style', style);
-    // Fire-and-forget: preload in background so the UI stays responsive.
-    unawaited(preloadAll());
+    // Locked to buddy for v1 launch — other styles remain on disk.
   }
 
   /// Returns the asset path for a voice file, routing through the active
@@ -231,6 +224,7 @@ class AudioService {
     'star_chime.mp3',
     'battle_music_loop.mp3',
     'voice_card_new.mp3',
+    'voice_card_album_intro.mp3',
     'voice_world_map_intro.mp3',
     'voice_greet_just_started_1.mp3',
     'voice_greet_just_started_2.mp3',
@@ -435,6 +429,7 @@ class AudioService {
     'voice_shop_nudge_streak3.mp3',
     'voice_shop_nudge_streak7.mp3',
     'voice_shop_nudge_tonight.mp3',
+    'voice_entry_hero_shop.mp3',
   ];
 
   List<String> get encouragementVoices =>
@@ -476,7 +471,7 @@ class AudioService {
 
     final prefs = await SharedPreferences.getInstance();
     _muted = prefs.getBool('muted') ?? false;
-    _voiceStyle = prefs.getString('voice_style') ?? 'classic';
+    _voiceStyle = 'buddy';
     int failures = 0;
 
     for (final file in _allAudioFiles) {
@@ -600,19 +595,7 @@ class AudioService {
         try {
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
-          try {
-            await _voicePlayer.play(AssetSource(_voiceAssetPath(request.fileName)));
-          } catch (e) {
-            if (_voiceStyle != 'classic') {
-              try {
-                await _voicePlayer.play(AssetSource('audio/voices/classic/${request.fileName}'));
-              } catch (_) {
-                // Both styles failed — skip this voice
-              }
-            } else {
-              rethrow;
-            }
-          }
+          await _voicePlayer.play(AssetSource(_voiceAssetPath(request.fileName)));
           final completed = await Future.any<bool>([
             _voicePlayer.onPlayerComplete.first.then((_) => true),
             _voicePlayer.onPlayerStateChanged

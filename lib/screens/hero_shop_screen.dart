@@ -48,6 +48,15 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     });
     _loadData();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        AudioService().playVoice(
+          'voice_entry_hero_shop.mp3',
+          clearQueue: true,
+          interrupt: true,
+        );
+      }
+    });
     AnalyticsService().logShopVisit();
   }
 

@@ -28,7 +28,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _signingIn = false;
   bool _syncing = false;
   bool _parentUnlocked = false;
-  String _voiceStyle = 'classic';
 
   // Brush history stats
   List<BrushRecord> _brushHistory = [];
@@ -105,7 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen>
         _cameraEnabled = prefs.getBool('camera_enabled') ?? false;
         _totalBrushes = prefs.getInt('total_brushes') ?? 0;
         _bestStreak = prefs.getInt('best_streak') ?? 0;
-        _voiceStyle = AudioService().voiceStyle;
         _brushHistory = history;
         _historyLoaded = true;
         _todaySlots = todaySlots;
@@ -1188,65 +1186,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        _SettingCard(
-          icon: Icons.record_voice_over,
-          title: 'Narrator voice',
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: SegmentedButton<String>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment<String>(
-                  value: 'classic',
-                  label: Text('Classic'),
-                ),
-                ButtonSegment<String>(
-                  value: 'buddy',
-                  label: Text('Buddy'),
-                ),
-                ButtonSegment<String>(
-                  value: 'boy',
-                  label: Text('Boy'),
-                ),
-              ],
-              selected: {_voiceStyle},
-              onSelectionChanged: (selected) async {
-                final style = selected.first;
-                await AudioService().setVoiceStyle(style);
-                setState(() => _voiceStyle = style);
-                await Future.delayed(const Duration(milliseconds: 200));
-                AudioService().playVoice('voice_greet_just_started_1.mp3',
-                    interrupt: true, clearQueue: true);
-              },
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                  (states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return const Color(0xFF00E5FF).withValues(alpha: 0.3);
-                    }
-                    return Colors.white.withValues(alpha: 0.06);
-                  },
-                ),
-                foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                  (states) {
-                    if (states.contains(WidgetState.selected)) {
-                      return const Color(0xFF00E5FF);
-                    }
-                    return Colors.white54;
-                  },
-                ),
-                side: WidgetStateProperty.all(
-                  BorderSide(color: Colors.white.withValues(alpha: 0.15)),
-                ),
-                textStyle: WidgetStateProperty.all(
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
           ),
         ),
         const SizedBox(height: 8),
