@@ -177,8 +177,8 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 AudioService().playVoice('voice_need_stars.mp3');
                 return;
               }
-              if (!isCurrent && !isCompleted) {
-                // Unlocked but not current — set as current world
+              if (!isCurrent) {
+                // Unlocked but not current — set as current world (completed worlds can be revisited)
                 _setCurrentWorld(world);
               }
             },

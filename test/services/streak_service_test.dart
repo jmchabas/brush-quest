@@ -775,64 +775,6 @@ void main() {
       expect(await service.hasSeenFirstComeback(), true);
     });
 
-    // ── resetProgress clears all flags ───────────────────────────
-
-    test('resetProgress clears has_seen_first_streak_3', () async {
-      final service = StreakService();
-      await service.markFirstStreak3Seen();
-      expect(await service.hasSeenFirstStreak3(), true);
-      await service.resetProgress();
-      expect(await service.hasSeenFirstStreak3(), false);
-    });
-
-    test('resetProgress clears has_seen_first_streak_7', () async {
-      final service = StreakService();
-      await service.markFirstStreak7Seen();
-      expect(await service.hasSeenFirstStreak7(), true);
-      await service.resetProgress();
-      expect(await service.hasSeenFirstStreak7(), false);
-    });
-
-    test('resetProgress clears has_seen_first_daily_pair', () async {
-      final service = StreakService();
-      await service.markFirstDailyPairSeen();
-      expect(await service.hasSeenFirstDailyPair(), true);
-      await service.resetProgress();
-      expect(await service.hasSeenFirstDailyPair(), false);
-    });
-
-    test('resetProgress clears has_seen_first_comeback', () async {
-      final service = StreakService();
-      await service.markFirstComebackSeen();
-      expect(await service.hasSeenFirstComeback(), true);
-      await service.resetProgress();
-      expect(await service.hasSeenFirstComeback(), false);
-    });
-
-    test('resetProgress clears all four flags together', () async {
-      final service = StreakService();
-      await service.markFirstStreak3Seen();
-      await service.markFirstStreak7Seen();
-      await service.markFirstDailyPairSeen();
-      await service.markFirstComebackSeen();
-
-      await service.resetProgress();
-
-      expect(await service.hasSeenFirstStreak3(), false);
-      expect(await service.hasSeenFirstStreak7(), false);
-      expect(await service.hasSeenFirstDailyPair(), false);
-      expect(await service.hasSeenFirstComeback(), false);
-    });
-
-    test('resetProgress also clears stars and streak', () async {
-      final service = StreakService();
-      await service.recordBrush();
-      await service.resetProgress();
-
-      expect(await service.getTotalStars(), 0);
-      expect(await service.getStreak(), 0);
-      expect(await service.getWallet(), 0);
-    });
   });
 
   group('BonusBreakdown', () {

@@ -447,29 +447,6 @@ class StreakService {
     await prefs.setBool(_keyHasSeenFirstComeback, true);
   }
 
-  /// Reset all user progress (stars, streak, slots, flags).
-  /// Used by the settings screen "Reset all progress" action.
-  Future<void> resetProgress() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyLastBrushDate);
-    await prefs.remove(_keyCurrentStreak);
-    await prefs.remove(_keyTotalStars);
-    await prefs.remove(_keyTodayBrushCount);
-    await prefs.remove(_keyTodayDate);
-    await prefs.remove(_keyTotalBrushes);
-    await prefs.remove(_keyBestStreak);
-    await prefs.remove(_keyHistory);
-    await prefs.remove(_keyMorningDoneDate);
-    await prefs.remove(_keyEveningDoneDate);
-    await prefs.remove(_keyStarWallet);
-    await prefs.remove(_keyStreakPauseUntil);
-    await prefs.remove(_keyLastDailyBonusDate);
-    await prefs.remove(_keyHasSeenFirstStreak3);
-    await prefs.remove(_keyHasSeenFirstStreak7);
-    await prefs.remove(_keyHasSeenFirstDailyPair);
-    await prefs.remove(_keyHasSeenFirstComeback);
-  }
-
   /// Migrate from v1 (cumulative) to v2 (wallet) economy.
   /// Credits existing total_stars to star_wallet if wallet key doesn't exist.
   /// Run once on app startup.

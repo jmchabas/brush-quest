@@ -143,26 +143,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (!AudioService().isMuted) {
           AudioService().playVoice('voice_streak_bonus.mp3');
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.star, color: Colors.yellow.shade200, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Daily Streak Bonus: +$dailyBonus \u2b50',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+        // Delay snackbar so it doesn't overlap with greeting dialog
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.star, color: Colors.yellow.shade200, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Daily Streak Bonus: +$dailyBonus \u2b50',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            backgroundColor: hero.primaryColor.withValues(alpha: 0.9),
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+                backgroundColor: hero.primaryColor.withValues(alpha: 0.9),
+                duration: const Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        });
       }
     }
   }

@@ -145,44 +145,58 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SpaceBackground(
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 6, right: 14),
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    onPressed: () =>
-                        _playPageNarration(_currentPage, force: true),
-                    icon: const Icon(
-                      Icons.volume_up_rounded,
-                      color: Color(0xFF00E5FF),
-                      size: 30,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_currentPage > 0) {
+          _pageController.animateToPage(
+            _currentPage - 1,
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+          );
+        }
+        // On page 0, block back entirely (canPop: false already prevents it)
+      },
+      child: Scaffold(
+        body: SpaceBackground(
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, right: 14),
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: IconButton(
+                      onPressed: () =>
+                          _playPageNarration(_currentPage, force: true),
+                      icon: const Icon(
+                        Icons.volume_up_rounded,
+                        color: Color(0xFF00E5FF),
+                        size: 30,
+                      ),
+                      tooltip: 'Repeat voice',
                     ),
-                    tooltip: 'Repeat voice',
                   ),
                 ),
-              ),
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  onPageChanged: (i) {
-                    setState(() => _currentPage = i);
-                    _playPageNarration(i);
-                  },
-                  children: [
-                    _buildWelcomePage(),
-                    _buildHowToPlayPage(),
-                    _buildMouthGuidePage(),
-                  ],
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (i) {
+                      setState(() => _currentPage = i);
+                      _playPageNarration(i);
+                    },
+                    children: [
+                      _buildWelcomePage(),
+                      _buildHowToPlayPage(),
+                      _buildMouthGuidePage(),
+                    ],
+                  ),
                 ),
-              ),
-              _buildBottomNav(),
-              const SizedBox(height: 24),
-            ],
+                _buildBottomNav(),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

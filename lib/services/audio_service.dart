@@ -405,17 +405,7 @@ class AudioService {
     'voice_milestone_80.mp3',
     'voice_milestone_90.mp3',
     'voice_legend.mp3',
-    // Unlock encouragement voices (Cycle 7)
-    'voice_unlock_next_frost.mp3',
-    'voice_unlock_next_bolt.mp3',
-    'voice_unlock_next_shadow.mp3',
-    'voice_unlock_next_leaf.mp3',
-    'voice_unlock_next_nova.mp3',
-    'voice_unlock_next_flame_sword.mp3',
-    'voice_unlock_next_ice_hammer.mp3',
-    'voice_unlock_next_lightning_wand.mp3',
-    'voice_unlock_next_vine_whip.mp3',
-    'voice_unlock_next_cosmic_shield.mp3',
+    // (Dead entries removed: voice_unlock_next_* files no longer used)
     // Streak & comeback voice lines (Cycle 9)
     'voice_first_streak_3.mp3',
     'voice_first_streak_7.mp3',
@@ -430,6 +420,7 @@ class AudioService {
     'voice_shop_nudge_streak7.mp3',
     'voice_shop_nudge_tonight.mp3',
     'voice_entry_hero_shop.mp3',
+    'voice_camera_prompt.mp3',
   ];
 
   List<String> get encouragementVoices =>

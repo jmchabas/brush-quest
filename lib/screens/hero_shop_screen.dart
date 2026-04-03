@@ -57,12 +57,16 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         );
       }
     });
+    // Ambient music — low volume so voice lines stay clear
+    AudioService().playMusic('battle_music_loop.mp3');
+    AudioService().setMusicVolume(0.05);
     AnalyticsService().logShopVisit();
   }
 
   @override
   void dispose() {
     AudioService().stopVoice();
+    AudioService().stopMusic();
     _tabController.dispose();
     super.dispose();
   }
@@ -158,6 +162,22 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           HapticFeedback.lightImpact();
           _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
           AudioService().playVoice(await _selectNudgeVoice());
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.lock, color: Colors.amber, size: 20),
+                    const SizedBox(width: 8),
+                    Text('Unlock the previous evolution first!'),
+                  ],
+                ),
+                backgroundColor: hero.primaryColor.withValues(alpha: 0.9),
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
           return;
         }
       }

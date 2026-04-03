@@ -636,6 +636,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       'session_checkpoint_world',
       'card_dup_bonus_threshold',
       'camera_mode_configured',
+      'camera_prompt_shown',
       'voice_style',
       'onboarding_completed',
       'camera_enabled',

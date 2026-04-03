@@ -926,6 +926,7 @@ class _BrushingScreenState extends State<BrushingScreen>
         _showCameraPrompt = true;
         _sessionStage = SessionStage.countdown;
       });
+      _audio.playVoice('voice_camera_prompt.mp3');
       return; // Wait for user to respond to camera prompt
     }
 
@@ -934,6 +935,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Future<void> _onCameraPromptAccept() async {
+    _audio.stopVoice();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_prompt_shown', true);
     await prefs.setBool('camera_enabled', true);
@@ -946,6 +948,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Future<void> _onCameraPromptSkip() async {
+    _audio.stopVoice();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_prompt_shown', true);
     if (!mounted) return;
@@ -1662,7 +1665,16 @@ class _BrushingScreenState extends State<BrushingScreen>
     return PopScope(
       canPop: _isQuitting,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) _togglePause();
+        if (didPop) return;
+        if (_showCameraPrompt) {
+          _onCameraPromptSkip();
+          return;
+        }
+        if (_showWorldIntro) {
+          _exitWorldIntro();
+          return;
+        }
+        _togglePause();
       },
       child: _showWorldIntro
           ? _buildWorldIntro()
