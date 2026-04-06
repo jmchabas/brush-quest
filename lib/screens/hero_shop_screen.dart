@@ -131,7 +131,19 @@ class _HeroShopScreenState extends State<HeroShopScreen>
 
     if (!isHeroOwned) {
       // Hero not purchased — only stage 1 is tappable for purchase
-      if (evolution.stage != 1) return;
+      if (evolution.stage != 1) {
+        HapticFeedback.lightImpact();
+        AudioService().playVoice('voice_need_stars.mp3');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Get ${hero.name} first!'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
       if (_wallet >= hero.price) {
         if (hero.price > 0) {
           final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);

@@ -22,6 +22,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   int _currentPage = 0;
   int _lastNarratedPage = -1;
 
+  /// True when replaying tutorial from settings (user has brushed before).
+  bool _isReplay = false;
+
   late AnimationController _pulseController;
   late AnimationController _floatController;
   late AnimationController _glowController;
@@ -44,6 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void initState() {
     super.initState();
+    _checkIfReplay();
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -76,6 +80,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     Future.delayed(const Duration(milliseconds: 450), () {
       if (mounted) _playPageNarration(0, force: true);
     });
+  }
+
+  Future<void> _checkIfReplay() async {
+    final prefs = await SharedPreferences.getInstance();
+    final totalBrushes = prefs.getInt('total_brushes') ?? 0;
+    if (mounted && totalBrushes > 0) {
+      setState(() => _isReplay = true);
+    }
   }
 
   @override
@@ -146,7 +158,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _isReplay,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (_currentPage > 0) {
@@ -156,7 +168,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             curve: Curves.easeOutCubic,
           );
         }
-        // On page 0, block back entirely (canPop: false already prevents it)
+        // On page 0 during first launch, block back entirely
       },
       child: Scaffold(
         body: SpaceBackground(

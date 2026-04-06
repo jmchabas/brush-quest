@@ -123,7 +123,7 @@ class AchievementService {
       bool earned = false;
       switch (milestone.id) {
         case 'first_brush':
-          earned = totalStars >= 1;
+          earned = totalBrushes >= 1;
         case 'streak_3':
           earned = streak >= 3;
         case 'streak_7':

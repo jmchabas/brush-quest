@@ -16,6 +16,7 @@ class GreetingResult {
   final int brushStreak;
   final int wallet;
   final bool yesterdayBothDone;
+  final int totalBrushes;
 
   const GreetingResult({
     required this.state,
@@ -23,7 +24,11 @@ class GreetingResult {
     required this.brushStreak,
     required this.wallet,
     required this.yesterdayBothDone,
+    required this.totalBrushes,
   });
+
+  /// True when user is returning after a broken streak (eligible for +3 comeback bonus).
+  bool get isComeback => brushStreak == 0 && totalBrushes > 2;
 }
 
 class GreetingService {
@@ -89,6 +94,7 @@ class GreetingService {
       brushStreak: brushStreak,
       wallet: wallet,
       yesterdayBothDone: yesterdayBothDone,
+      totalBrushes: totalBrushes,
     );
   }
 

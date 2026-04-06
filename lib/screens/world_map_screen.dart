@@ -12,6 +12,8 @@ class WorldMapScreen extends StatefulWidget {
 }
 
 class _WorldMapScreenState extends State<WorldMapScreen> {
+  static bool _introPlayedThisSession = false;
+
   final _worldService = WorldService();
   String _currentWorldId = 'candy_crater';
   final Map<String, int> _progress = {};
@@ -39,9 +41,14 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         _progress.addAll(progress);
         _unlocked.addAll(unlocked);
       });
-      // Play intro voice first, then world description
-      AudioService().playVoice('voice_world_map_intro.mp3', clearQueue: true, interrupt: true);
-      AudioService().playVoice('voice_world_$currentId.mp3');
+      // Play intro voice only once per app session, then world description
+      if (!_introPlayedThisSession) {
+        _introPlayedThisSession = true;
+        AudioService().playVoice('voice_world_map_intro.mp3', clearQueue: true, interrupt: true);
+        AudioService().playVoice('voice_world_$currentId.mp3');
+      } else {
+        AudioService().playVoice('voice_world_$currentId.mp3', clearQueue: true, interrupt: true);
+      }
     }
   }
 

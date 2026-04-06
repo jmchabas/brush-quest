@@ -305,7 +305,12 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
           final isUnlocked = _worldUnlocked[worldId] ?? false;
 
           return GestureDetector(
-            onTap: isUnlocked ? () => _selectWorld(worldId) : null,
+            onTap: isUnlocked
+                ? () => _selectWorld(worldId)
+                : () {
+                    HapticFeedback.lightImpact();
+                    AudioService().playSfx('whoosh.mp3');
+                  },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -567,7 +572,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
               BlendMode.srcATop,
             ),
             child: Opacity(
-              opacity: 0.3,
+              opacity: 0.45,
               child: Image.asset(
                 trophy.imagePath,
                 fit: BoxFit.contain,

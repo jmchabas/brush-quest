@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -67,7 +69,17 @@ class SyncService {
     data['last_sync'] = FieldValue.serverTimestamp();
     data['sync_version'] = 2;
 
-    await doc.set(data, SetOptions(merge: true));
+    try {
+      await doc
+          .set(data, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 10));
+      // Persist last sync timestamp locally for UI display
+      final prefs2 = await SharedPreferences.getInstance();
+      await prefs2.setString(
+          'last_cloud_save', DateTime.now().toIso8601String());
+    } on TimeoutException {
+      throw Exception('Cloud save timed out. Please check your connection.');
+    }
   }
 
   /// Download cloud progress and overwrite local data.
@@ -75,7 +87,13 @@ class SyncService {
     final doc = _userDoc;
     if (doc == null) return false;
 
-    final snap = await doc.get();
+    final DocumentSnapshot snap;
+    try {
+      snap = await doc.get().timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      throw Exception(
+          'Cloud restore timed out. Please check your connection.');
+    }
     if (!snap.exists) return false;
 
     final data = snap.data() as Map<String, dynamic>?;

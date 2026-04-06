@@ -101,7 +101,7 @@ _ChestReward _rollChestReward(Random rng, int streak) {
   } else if (roll < doubleCeil) {
     return const _ChestReward(
       type: _ChestRewardType.doubleStar,
-      bonusStars: 1,
+      bonusStars: 2,
       voiceFile: 'voice_chest_double.mp3',
       color: Color(0xFF69F0AE),
       icon: Icons.auto_awesome,
@@ -129,14 +129,12 @@ _ChestReward _rollChestReward(Random rng, int streak) {
 }
 
 class VictoryScreen extends StatefulWidget {
-  final int starsCollected;
   final int totalHits;
   final int monstersDefeated;
   final String? sessionId;
   final String? trophyTargetId;
   const VictoryScreen({
     super.key,
-    this.starsCollected = 1,
     this.totalHits = 0,
     this.monstersDefeated = 4,
     this.sessionId,
@@ -184,6 +182,8 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   final _trophyService = TrophyService();
 
+  bool _brushRecorded = false;
+  bool _achievementVoicePlayed = false;
   bool _showChest = false;
   bool _chestOpened = false;
   _ChestReward? _reward;
@@ -312,6 +312,9 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
   Future<void> _recordAndAnimate() async {
+    if (_brushRecorded) return;
+    _brushRecorded = true;
+
     final hero = await _heroService.getSelectedHero();
     _selectedHero = hero;
     _heroEvolutionStage = await _heroService.getEvolutionStage(hero.id);
@@ -644,6 +647,11 @@ class _VictoryScreenState extends State<VictoryScreen>
         if (!mounted) return;
 
         // ── Achievements (AFTER card reveal) ──
+        if (_newAchievements.isNotEmpty && !_achievementVoicePlayed) {
+          _achievementVoicePlayed = true;
+          await _audio.playVoice('voice_awesome.mp3');
+          if (!mounted) return;
+        }
         for (int i = 0; i < _newAchievements.length; i++) {
           if (!mounted) break;
           if (i > 0) {

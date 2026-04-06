@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,11 +35,15 @@ class _SettingsScreenState extends State<SettingsScreen>
   List<BrushRecord> _brushHistory = [];
   bool _historyLoaded = false;
 
+  String? _lastCloudSave;
+
   // Dashboard state
   bool _streakPaused = false;
   DateTime? _pauseEnd;
   int _currentStreak = 0;
   TodaySlotsStatus? _todaySlots;
+
+  Timer? _inactivityTimer;
 
   final _auth = AuthService();
   final _sync = SyncService();
@@ -55,16 +61,37 @@ class _SettingsScreenState extends State<SettingsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_resetInactivityTimer);
     _generateMathChallenge();
     _loadSettings();
   }
 
   @override
   void dispose() {
+    _inactivityTimer?.cancel();
     AudioService().stopVoice();
     _tabController.dispose();
     _mathController.dispose();
     super.dispose();
+  }
+
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(const Duration(seconds: 60), () {
+      if (mounted) {
+        setState(() {
+          _parentUnlocked = false;
+          _mathController.clear();
+          _generateMathChallenge();
+        });
+      }
+    });
+  }
+
+  void _resetInactivityTimer() {
+    if (_parentUnlocked) {
+      _startInactivityTimer();
+    }
   }
 
   void _generateMathChallenge() {
@@ -79,7 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         _parentUnlocked = true;
         _mathError = null;
       });
-      // No entry voice — the parent gate already established this is a grown-up area
+      _startInactivityTimer();
     } else {
       setState(() {
         _mathError = 'Try again!';
@@ -110,11 +137,13 @@ class _SettingsScreenState extends State<SettingsScreen>
         _streakPaused = paused;
         _pauseEnd = pauseEnd;
         _currentStreak = currentStreak;
+        _lastCloudSave = prefs.getString('last_cloud_save');
       });
     }
   }
 
   Future<void> _setPhaseDuration(int seconds) async {
+    _resetInactivityTimer();
     final clamped = seconds.clamp(5, 120);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('phase_duration', clamped);
@@ -122,6 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _toggleCamera(bool value) async {
+    _resetInactivityTimer();
     // Show consent notice when enabling camera
     if (value) {
       final confirmed = await showDialog<bool>(
@@ -224,6 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _handleSignIn() async {
+    _resetInactivityTimer();
     final consented = await _showDataConsentDialog();
     if (!consented || !mounted) return;
 
@@ -273,6 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _handleSignOut() async {
+    _resetInactivityTimer();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -309,15 +341,38 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
     if (confirmed != true || !mounted) return;
 
-    await _auth.signOut();
-    if (mounted) setState(() {});
+    try {
+      await _auth.signOut();
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Sign-out failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Sign-out didn\'t work. Please try again.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleSyncNow() async {
+    _resetInactivityTimer();
     setState(() => _syncing = true);
     try {
       await _sync.uploadProgress();
       if (mounted) {
+        setState(() {
+          _lastCloudSave = DateTime.now().toIso8601String();
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
@@ -355,6 +410,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _handleRestoreFromCloud() async {
+    _resetInactivityTimer();
     if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -678,6 +734,21 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+
+  String _formatRelativeTime(String iso8601) {
+    final saved = DateTime.tryParse(iso8601);
+    if (saved == null) return iso8601;
+    final diff = DateTime.now().difference(saved);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) {
+      return '${diff.inHours} ${diff.inHours == 1 ? 'hour' : 'hours'} ago';
+    }
+    if (diff.inDays < 7) {
+      return '${diff.inDays} ${diff.inDays == 1 ? 'day' : 'days'} ago';
+    }
+    return '${saved.month}/${saved.day}/${saved.year}';
   }
 
   void _resetOnboarding() {
@@ -1143,6 +1214,16 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                   ],
                 ),
+                if (_lastCloudSave != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Last saved: ${_formatRelativeTime(_lastCloudSave!)}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1234,17 +1315,25 @@ class _SettingsScreenState extends State<SettingsScreen>
             onPressed: _resetOnboarding,
           ),
         ),
-        const SizedBox(height: 8),
-        _SettingCard(
-          icon: Icons.delete_forever,
-          title: "Delete child's data",
-          child: IconButton(
-            icon: const Icon(
-              Icons.delete_outline,
-              color: Colors.redAccent,
-              size: 24,
+        const SizedBox(height: 24),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.2)),
+          ),
+          child: _SettingCard(
+            icon: Icons.delete_forever,
+            title: "Delete child's data",
+            child: IconButton(
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Colors.redAccent,
+                size: 24,
+              ),
+              onPressed: _resetProgress,
             ),
-            onPressed: _resetProgress,
           ),
         ),
         const SizedBox(height: 8),
@@ -1375,7 +1464,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           iconColor: Colors.green,
           title: 'Comeback Bonus',
           body: 'First brush after a break: +3 stars.',
-          tip: 'The app welcomes them back warmly. No guilt!',
+          tip: 'If your child misses a few days, the app welcomes them back with extra stars so they feel excited to return.',
         ),
         _buildStarGuideCard(
           icon: Icons.redeem,
@@ -1403,7 +1492,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           child: const Text(
             'Example: 7-day streak, brushed morning + evening \u2192 '
             '2 (base) + 2 (streak) + 1 (pair) = 5 stars per session, '
-            '10 stars for the day before chests.',
+            '10 stars for 2 sessions + 2 daily login bonus = 12/day before chests.',
             style: TextStyle(
               color: Colors.white54,
               fontSize: 13,
@@ -1950,7 +2039,7 @@ class _WeekActivityCard extends StatelessWidget {
     }
 
     // Day abbreviations starting from 6 days ago through today
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

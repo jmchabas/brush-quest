@@ -973,12 +973,17 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       // App backgrounded — stop all audio
       _musicWasPlaying = _audio.isMusicPlaying;
       _audio.stopAllAudio();
+      // Pause the brushing session so the timer doesn't run in the background
+      if (!_isPaused && _sessionStage == SessionStage.brushing && !_isQuitting) {
+        _togglePause();
+      }
     } else if (state == AppLifecycleState.resumed) {
       // App foregrounded — resume music if it was playing before
+      // Don't auto-resume: the child will tap RESUME themselves
       if (_musicWasPlaying && !_isPaused && _sessionStage == SessionStage.brushing) {
         _audio.playMusic('battle_music_loop.mp3');
       }
@@ -1321,7 +1326,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     HapticFeedback.mediumImpact();
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
-        _audio.playVoice(_phaseVoiceFiles[newPhase]!);
+        _audio.playVoice(_phaseVoiceFiles[newPhase]!, clearQueue: true, interrupt: true);
       }
     });
     Future.delayed(const Duration(milliseconds: 3000), () {
@@ -1417,6 +1422,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     HapticFeedback.heavyImpact();
     _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
     _spawnDefeatSparks();
+
+    // Celebration voice after early kill — queued (not interrupting) with a small delay
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _audio.playVoice('voice_awesome.mp3');
+      }
+    });
 
     // Tier 3: Shockwave + slow-motion on K.O.
     _shockwaveController.forward(from: 0);
@@ -1587,8 +1599,14 @@ class _BrushingScreenState extends State<BrushingScreen>
           _audio.ensureMusicPlaying();
         },
       );
-      // Audio cue: encouraging voice on resume
-      _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
+      // Audio cue: random encouraging voice on resume
+      const resumeVoices = [
+        'voice_lets_fight.mp3',
+        'voice_keep_going.mp3',
+        'voice_go_go_go.mp3',
+      ];
+      final resumeVoice = resumeVoices[Random().nextInt(resumeVoices.length)];
+      _audio.playVoice(resumeVoice, clearQueue: true, interrupt: true);
       _monsterBreathController.repeat(reverse: true);
       _heroIdleController.repeat(reverse: true);
       if (_cameraReady) {
@@ -1633,11 +1651,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     setState(() {
       _phase = BrushPhase.done;
       _sessionStage = SessionStage.done;
+      _isQuitting = true;
     });
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => VictoryScreen(
-          starsCollected: 1,
           totalHits: _totalHits,
           monstersDefeated: _monstersDefeated,
           sessionId: _sessionId,

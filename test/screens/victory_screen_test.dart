@@ -69,7 +69,6 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: VictoryScreen(
-          starsCollected: 1,
           totalHits: 10,
           monstersDefeated: 4,
         ),

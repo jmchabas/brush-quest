@@ -22,14 +22,14 @@ void main() {
 
     // ── first_brush milestone ──
 
-    test('first_brush unlocks at 1 star', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 1);
+    test('first_brush unlocks at 1 brush', () async {
+      final result = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
       final ids = result.map((a) => a.id).toList();
       expect(ids, contains('first_brush'));
     });
 
-    test('first_brush does not unlock at 0 stars', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0);
+    test('first_brush does not unlock at 0 brushes', () async {
+      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 0);
       final ids = result.map((a) => a.id).toList();
       expect(ids, isNot(contains('first_brush')));
     });
@@ -175,7 +175,7 @@ void main() {
     });
 
     test('first_brush gives 0 bonus stars', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 1);
+      final result = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
       final first = result.firstWhere((a) => a.id == 'first_brush');
       expect(first.bonusStars, 0);
     });
@@ -191,7 +191,7 @@ void main() {
     // ── Multiple achievements in one call ──
 
     test('multiple achievements unlock together when conditions are met', () async {
-      final result = await service.checkAndUnlock(streak: 7, totalStars: 25);
+      final result = await service.checkAndUnlock(streak: 7, totalStars: 25, totalBrushes: 25);
       final ids = result.map((a) => a.id).toSet();
       expect(ids, containsAll(['first_brush', 'streak_3', 'streak_7', 'stars_10', 'stars_25']));
     });
@@ -204,17 +204,17 @@ void main() {
     // ── Already-unlocked achievements don't re-trigger ──
 
     test('already unlocked achievements are not returned again', () async {
-      final first = await service.checkAndUnlock(streak: 0, totalStars: 1);
+      final first = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
       expect(first.map((a) => a.id), contains('first_brush'));
 
-      final second = await service.checkAndUnlock(streak: 0, totalStars: 1);
+      final second = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
       expect(second, isEmpty);
     });
 
     test('only newly earned achievements are returned on progressive unlock', () async {
-      await service.checkAndUnlock(streak: 0, totalStars: 1);
+      await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
 
-      final result = await service.checkAndUnlock(streak: 3, totalStars: 3);
+      final result = await service.checkAndUnlock(streak: 3, totalStars: 3, totalBrushes: 3);
       final ids = result.map((a) => a.id).toList();
       expect(ids, contains('streak_3'));
       expect(ids, isNot(contains('first_brush')));
@@ -225,7 +225,7 @@ void main() {
         'achievement_first_brush': true,
       });
       final svc = AchievementService();
-      final result = await svc.checkAndUnlock(streak: 0, totalStars: 5);
+      final result = await svc.checkAndUnlock(streak: 0, totalStars: 5, totalBrushes: 5);
       final ids = result.map((a) => a.id).toList();
       expect(ids, isNot(contains('first_brush')));
     });
@@ -252,13 +252,13 @@ void main() {
     // ── Persists to SharedPreferences ──
 
     test('unlocked achievements are persisted in SharedPreferences', () async {
-      await service.checkAndUnlock(streak: 0, totalStars: 1);
+      await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool('achievement_first_brush'), true);
     });
 
     test('non-unlocked achievements are not persisted', () async {
-      await service.checkAndUnlock(streak: 0, totalStars: 1);
+      await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool('achievement_streak_3'), isNull);
     });

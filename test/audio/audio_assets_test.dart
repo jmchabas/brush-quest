@@ -8,57 +8,36 @@ import 'package:flutter_test/flutter_test.dart';
 /// non-trivially sized, and that the preload list is free of duplicates.
 
 // ---------------------------------------------------------------------------
-// Mirror of AudioService._allAudioFiles (lib/services/audio_service.dart:97)
+// Mirror of AudioService._allPreloadFiles (lib/services/audio_service.dart).
+// Built the same way: core list + named const lists merged together.
 // ---------------------------------------------------------------------------
-const _allAudioFiles = [
+const _audioFilesCore = [
   'countdown_beep.mp3',
   'monster_defeat.mp3',
   'victory.mp3',
+  'voice_bottom_front.mp3',
   'voice_bottom_left.mp3',
   'voice_bottom_right.mp3',
   'voice_countdown.mp3',
+  'voice_top_front.mp3',
   'voice_top_left.mp3',
   'voice_top_right.mp3',
-  'voice_keep_going.mp3',
-  'voice_youre_doing_great.mp3',
-  'voice_nice_combo.mp3',
-  'voice_keep_it_up.mp3',
-  'voice_so_strong.mp3',
-  'voice_super.mp3',
-  'voice_go_go_go.mp3',
-  'voice_awesome.mp3',
-  'voice_wow_amazing.mp3',
   'voice_welcome_back.mp3',
-  'voice_picker_hero_blaze.mp3',
-  'voice_picker_hero_frost.mp3',
-  'voice_picker_hero_bolt.mp3',
-  'voice_picker_hero_shadow.mp3',
-  'voice_picker_hero_leaf.mp3',
-  'voice_picker_hero_nova.mp3',
-  'voice_picker_weapon_star_blaster.mp3',
-  'voice_picker_weapon_flame_sword.mp3',
-  'voice_picker_weapon_ice_hammer.mp3',
-  'voice_picker_weapon_lightning_wand.mp3',
-  'voice_picker_weapon_vine_whip.mp3',
-  'voice_picker_weapon_cosmic_burst.mp3',
   'voice_lets_fight.mp3',
   'voice_chest_wow.mp3',
   'voice_chest_dance.mp3',
   'voice_chest_bonus_star.mp3',
   'voice_chest_double.mp3',
   'voice_chest_jackpot.mp3',
-  'voice_intro_hero_blaze.mp3',
-  'voice_intro_hero_frost.mp3',
-  'voice_intro_hero_bolt.mp3',
-  'voice_intro_hero_shadow.mp3',
-  'voice_intro_hero_leaf.mp3',
-  'voice_intro_hero_nova.mp3',
-  'voice_intro_weapon_star_blaster.mp3',
-  'voice_intro_weapon_flame_sword.mp3',
-  'voice_intro_weapon_ice_hammer.mp3',
-  'voice_intro_weapon_lightning_wand.mp3',
-  'voice_intro_weapon_vine_whip.mp3',
-  'voice_intro_weapon_cosmic_burst.mp3',
+  'voice_full_charge.mp3',
+  'voice_super_power.mp3',
+  'voice_mega_power.mp3',
+  'voice_streak_bonus.mp3',
+  'voice_streak_bonus_explain_high.mp3',
+  'voice_streak_bonus_explain_low.mp3',
+  'voice_streak_pair_bonus_high.mp3',
+  'voice_streak_pair_bonus_low.mp3',
+  'voice_great_choice.mp3',
   'whoosh.mp3',
   'zap.mp3',
   'star_chime.mp3',
@@ -79,10 +58,16 @@ const _allAudioFiles = [
   'voice_greet_streak_legend_2.mp3',
   'voice_greet_returning_1.mp3',
   'voice_greet_returning_2.mp3',
+  'voice_greet_returning_excited_1.mp3',
+  'voice_greet_returning_excited_2.mp3',
   'voice_onboarding_1.mp3',
   'voice_onboarding_2.mp3',
   'voice_onboarding_3.mp3',
   'voice_need_stars.mp3',
+  'voice_world_complete.mp3',
+  'voice_tab_heroes.mp3',
+  'voice_tab_weapons.mp3',
+  'voice_greet_fresh_start.mp3',
   'voice_card_mystery.mp3',
   // Per-world description voices
   'voice_world_candy_crater.mp3',
@@ -95,76 +80,174 @@ const _allAudioFiles = [
   'voice_world_crystal_cave.mp3',
   'voice_world_storm_citadel.mp3',
   'voice_world_dark_dimension.mp3',
-  // Unlock encouragement voices (heroes + weapons)
-  'voice_unlock_next_frost.mp3',
-  'voice_unlock_next_bolt.mp3',
-  'voice_unlock_next_shadow.mp3',
-  'voice_unlock_next_leaf.mp3',
-  'voice_unlock_next_nova.mp3',
-  'voice_unlock_next_flame_sword.mp3',
-  'voice_unlock_next_ice_hammer.mp3',
-  'voice_unlock_next_lightning_wand.mp3',
-  'voice_unlock_next_vine_whip.mp3',
-  'voice_unlock_next_cosmic_shield.mp3',
-  // Monster card voice-overs (World 1-10)
+  // Monster card voice-overs (5 per world)
   'voice_card_cc_01.mp3', 'voice_card_cc_02.mp3', 'voice_card_cc_03.mp3',
-  'voice_card_cc_04.mp3', 'voice_card_cc_05.mp3', 'voice_card_cc_06.mp3',
-  'voice_card_cc_07.mp3',
+  'voice_card_cc_04.mp3', 'voice_card_cc_05.mp3',
   'voice_card_ss_01.mp3', 'voice_card_ss_02.mp3', 'voice_card_ss_03.mp3',
-  'voice_card_ss_04.mp3', 'voice_card_ss_05.mp3', 'voice_card_ss_06.mp3',
-  'voice_card_ss_07.mp3',
+  'voice_card_ss_04.mp3', 'voice_card_ss_05.mp3',
   'voice_card_sv_01.mp3', 'voice_card_sv_02.mp3', 'voice_card_sv_03.mp3',
-  'voice_card_sv_04.mp3', 'voice_card_sv_05.mp3', 'voice_card_sv_06.mp3',
-  'voice_card_sv_07.mp3',
+  'voice_card_sv_04.mp3', 'voice_card_sv_05.mp3',
   'voice_card_sn_01.mp3', 'voice_card_sn_02.mp3', 'voice_card_sn_03.mp3',
-  'voice_card_sn_04.mp3', 'voice_card_sn_05.mp3', 'voice_card_sn_06.mp3',
-  'voice_card_sn_07.mp3',
+  'voice_card_sn_04.mp3', 'voice_card_sn_05.mp3',
   'voice_card_cf_01.mp3', 'voice_card_cf_02.mp3', 'voice_card_cf_03.mp3',
-  'voice_card_cf_04.mp3', 'voice_card_cf_05.mp3', 'voice_card_cf_06.mp3',
-  'voice_card_cf_07.mp3',
+  'voice_card_cf_04.mp3', 'voice_card_cf_05.mp3',
   'voice_card_ft_01.mp3', 'voice_card_ft_02.mp3', 'voice_card_ft_03.mp3',
-  'voice_card_ft_04.mp3', 'voice_card_ft_05.mp3', 'voice_card_ft_06.mp3',
-  'voice_card_ft_07.mp3',
+  'voice_card_ft_04.mp3', 'voice_card_ft_05.mp3',
   'voice_card_tj_01.mp3', 'voice_card_tj_02.mp3', 'voice_card_tj_03.mp3',
-  'voice_card_tj_04.mp3', 'voice_card_tj_05.mp3', 'voice_card_tj_06.mp3',
-  'voice_card_tj_07.mp3',
-  'voice_card_cr_01.mp3', 'voice_card_cr_02.mp3', 'voice_card_cr_03.mp3',
-  'voice_card_cr_04.mp3', 'voice_card_cr_05.mp3', 'voice_card_cr_06.mp3',
-  'voice_card_cr_07.mp3',
+  'voice_card_tj_04.mp3', 'voice_card_tj_05.mp3',
+  'voice_card_cc2_01.mp3', 'voice_card_cc2_02.mp3', 'voice_card_cc2_03.mp3',
+  'voice_card_cc2_04.mp3', 'voice_card_cc2_05.mp3',
   'voice_card_sc_01.mp3', 'voice_card_sc_02.mp3', 'voice_card_sc_03.mp3',
-  'voice_card_sc_04.mp3', 'voice_card_sc_05.mp3', 'voice_card_sc_06.mp3',
-  'voice_card_sc_07.mp3',
+  'voice_card_sc_04.mp3', 'voice_card_sc_05.mp3',
   'voice_card_dd_01.mp3', 'voice_card_dd_02.mp3', 'voice_card_dd_03.mp3',
-  'voice_card_dd_04.mp3', 'voice_card_dd_05.mp3', 'voice_card_dd_06.mp3',
-  'voice_card_dd_07.mp3',
+  'voice_card_dd_04.mp3', 'voice_card_dd_05.mp3',
+  // Encouragement arc voice lines (10 arcs x 3 beats)
+  'voice_arc1_beat1.mp3', 'voice_arc1_beat2.mp3', 'voice_arc1_beat3.mp3',
+  'voice_arc2_beat1.mp3', 'voice_arc2_beat2.mp3', 'voice_arc2_beat3.mp3',
+  'voice_arc3_beat1.mp3', 'voice_arc3_beat2.mp3', 'voice_arc3_beat3.mp3',
+  'voice_arc4_beat1.mp3', 'voice_arc4_beat2.mp3', 'voice_arc4_beat3.mp3',
+  'voice_arc5_beat1.mp3', 'voice_arc5_beat2.mp3', 'voice_arc5_beat3.mp3',
+  'voice_arc6_beat1.mp3', 'voice_arc6_beat2.mp3', 'voice_arc6_beat3.mp3',
+  'voice_arc7_beat1.mp3', 'voice_arc7_beat2.mp3', 'voice_arc7_beat3.mp3',
+  'voice_arc8_beat1.mp3', 'voice_arc8_beat2.mp3', 'voice_arc8_beat3.mp3',
+  'voice_arc9_beat1.mp3', 'voice_arc9_beat2.mp3', 'voice_arc9_beat3.mp3',
+  'voice_arc10_beat1.mp3', 'voice_arc10_beat2.mp3', 'voice_arc10_beat3.mp3',
+  // Victory celebration arc voice lines (8 arcs x 3 beats)
+  'voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3', 'voice_victory_arc1_beat3.mp3',
+  'voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3', 'voice_victory_arc2_beat3.mp3',
+  'voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3',
+  'voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3',
+  'voice_victory_arc5_beat1.mp3', 'voice_victory_arc5_beat2.mp3', 'voice_victory_arc5_beat3.mp3',
+  'voice_victory_arc6_beat1.mp3', 'voice_victory_arc6_beat2.mp3', 'voice_victory_arc6_beat3.mp3',
+  'voice_victory_arc7_beat1.mp3', 'voice_victory_arc7_beat2.mp3', 'voice_victory_arc7_beat3.mp3',
+  'voice_victory_arc8_beat1.mp3', 'voice_victory_arc8_beat2.mp3', 'voice_victory_arc8_beat3.mp3',
+  // Post-chest encouragement variants
+  'voice_chest_encourage_1.mp3', 'voice_chest_encourage_2.mp3', 'voice_chest_encourage_3.mp3',
+  // Milestones and special voices
+  'voice_tap_hero.mp3',
+  'voice_card_power_up.mp3',
+  'voice_milestone_70.mp3',
+  'voice_milestone_80.mp3',
+  'voice_milestone_90.mp3',
+  'voice_legend.mp3',
+  // Streak & comeback voice lines
+  'voice_first_streak_3.mp3',
+  'voice_first_streak_7.mp3',
+  'voice_first_daily_pair.mp3',
+  'voice_first_comeback.mp3',
+  'voice_chest_mega_streak.mp3',
+  'voice_chest_streak_bonus.mp3',
+  'voice_chest_daily_pair.mp3',
+  'voice_chest_comeback.mp3',
+  'voice_shop_nudge_default.mp3',
+  'voice_shop_nudge_streak3.mp3',
+  'voice_shop_nudge_streak7.mp3',
+  'voice_shop_nudge_tonight.mp3',
+  'voice_entry_hero_shop.mp3',
+  'voice_camera_prompt.mp3',
+];
+
+// Named const lists (mirrors of AudioService named maps/lists).
+const _encouragementVoices = [
+  'voice_keep_going.mp3',
+  'voice_youre_doing_great.mp3',
+  'voice_nice_combo.mp3',
+  'voice_keep_it_up.mp3',
+  'voice_so_strong.mp3',
+  'voice_super.mp3',
+  'voice_go_go_go.mp3',
+  'voice_awesome.mp3',
+  'voice_wow_amazing.mp3',
+];
+
+const _heroPickerVoices = [
+  'voice_picker_hero_blaze.mp3',
+  'voice_picker_hero_frost.mp3',
+  'voice_picker_hero_bolt.mp3',
+  'voice_picker_hero_shadow.mp3',
+  'voice_picker_hero_leaf.mp3',
+  'voice_picker_hero_nova.mp3',
+];
+
+const _evolutionPickerVoices = [
+  'voice_picker_evo_blaze_stage2.mp3',
+  'voice_picker_evo_blaze_stage3.mp3',
+  'voice_picker_evo_frost_stage2.mp3',
+  'voice_picker_evo_frost_stage3.mp3',
+  'voice_picker_evo_bolt_stage2.mp3',
+  'voice_picker_evo_bolt_stage3.mp3',
+  'voice_picker_evo_shadow_stage2.mp3',
+  'voice_picker_evo_shadow_stage3.mp3',
+  'voice_picker_evo_leaf_stage2.mp3',
+  'voice_picker_evo_leaf_stage3.mp3',
+  'voice_picker_evo_nova_stage2.mp3',
+  'voice_picker_evo_nova_stage3.mp3',
+];
+
+const _weaponPickerVoices = [
+  'voice_picker_weapon_star_blaster.mp3',
+  'voice_picker_weapon_flame_sword.mp3',
+  'voice_picker_weapon_ice_hammer.mp3',
+  'voice_picker_weapon_lightning_wand.mp3',
+  'voice_picker_weapon_vine_whip.mp3',
+  'voice_picker_weapon_cosmic_burst.mp3',
+];
+
+const _heroIntroVoices = [
+  'voice_intro_hero_blaze.mp3',
+  'voice_intro_hero_frost.mp3',
+  'voice_intro_hero_bolt.mp3',
+  'voice_intro_hero_shadow.mp3',
+  'voice_intro_hero_leaf.mp3',
+  'voice_intro_hero_nova.mp3',
+];
+
+const _weaponIntroVoices = [
+  'voice_intro_weapon_star_blaster.mp3',
+  'voice_intro_weapon_flame_sword.mp3',
+  'voice_intro_weapon_ice_hammer.mp3',
+  'voice_intro_weapon_lightning_wand.mp3',
+  'voice_intro_weapon_vine_whip.mp3',
+  'voice_intro_weapon_cosmic_burst.mp3',
+];
+
+/// Complete preload list, matching AudioService._allPreloadFiles.
+final _allAudioFiles = [
+  ..._audioFilesCore,
+  ..._encouragementVoices,
+  ..._heroPickerVoices,
+  ..._evolutionPickerVoices,
+  ..._weaponPickerVoices,
+  ..._heroIntroVoices,
+  ..._weaponIntroVoices,
 ];
 
 // ---------------------------------------------------------------------------
 // Dynamic voice file expectations derived from service source code.
 // ---------------------------------------------------------------------------
 
-/// 70 card IDs from CardService.allCards (card_service.dart).
+/// 50 card IDs (5 per world) from CardService.allCards (card_service.dart).
 const _allCardIds = [
   // World 1: Candy Crater
-  'cc_01', 'cc_02', 'cc_03', 'cc_04', 'cc_05', 'cc_06', 'cc_07',
+  'cc_01', 'cc_02', 'cc_03', 'cc_04', 'cc_05',
   // World 2: Slime Swamp
-  'ss_01', 'ss_02', 'ss_03', 'ss_04', 'ss_05', 'ss_06', 'ss_07',
+  'ss_01', 'ss_02', 'ss_03', 'ss_04', 'ss_05',
   // World 3: Sugar Volcano
-  'sv_01', 'sv_02', 'sv_03', 'sv_04', 'sv_05', 'sv_06', 'sv_07',
+  'sv_01', 'sv_02', 'sv_03', 'sv_04', 'sv_05',
   // World 4: Shadow Nebula
-  'sn_01', 'sn_02', 'sn_03', 'sn_04', 'sn_05', 'sn_06', 'sn_07',
+  'sn_01', 'sn_02', 'sn_03', 'sn_04', 'sn_05',
   // World 5: Cavity Fortress
-  'cf_01', 'cf_02', 'cf_03', 'cf_04', 'cf_05', 'cf_06', 'cf_07',
+  'cf_01', 'cf_02', 'cf_03', 'cf_04', 'cf_05',
   // World 6: Frozen Tundra
-  'ft_01', 'ft_02', 'ft_03', 'ft_04', 'ft_05', 'ft_06', 'ft_07',
+  'ft_01', 'ft_02', 'ft_03', 'ft_04', 'ft_05',
   // World 7: Toxic Jungle
-  'tj_01', 'tj_02', 'tj_03', 'tj_04', 'tj_05', 'tj_06', 'tj_07',
+  'tj_01', 'tj_02', 'tj_03', 'tj_04', 'tj_05',
   // World 8: Crystal Cave
-  'cr_01', 'cr_02', 'cr_03', 'cr_04', 'cr_05', 'cr_06', 'cr_07',
+  'cc2_01', 'cc2_02', 'cc2_03', 'cc2_04', 'cc2_05',
   // World 9: Storm Citadel
-  'sc_01', 'sc_02', 'sc_03', 'sc_04', 'sc_05', 'sc_06', 'sc_07',
+  'sc_01', 'sc_02', 'sc_03', 'sc_04', 'sc_05',
   // World 10: Dark Dimension
-  'dd_01', 'dd_02', 'dd_03', 'dd_04', 'dd_05', 'dd_06', 'dd_07',
+  'dd_01', 'dd_02', 'dd_03', 'dd_04', 'dd_05',
 ];
 
 /// 6 hero IDs from HeroService.allHeroes (hero_service.dart).
@@ -207,10 +290,10 @@ String _projectRoot() {
 }
 
 /// Returns the expected on-disk path for a file in the preload list.
-/// Voice files (voice_*) live under voices/classic/; SFX/music stay at root.
+/// Voice files (voice_*) live under voices/buddy/; SFX/music stay at root.
 String _audioFilePath(String audioDir, String fileName) {
   if (fileName.startsWith('voice_')) {
-    return '$audioDir/voices/classic/$fileName';
+    return '$audioDir/voices/buddy/$fileName';
   }
   return '$audioDir/$fileName';
 }
@@ -244,7 +327,7 @@ void main() {
   // 2. Dynamic voice files exist for all cards, heroes, weapons, and worlds.
   // -----------------------------------------------------------------------
   group('Dynamic voice files exist', () {
-    group('Monster card voices (voice_card_{id}.mp3) — 70 cards', () {
+    group('Monster card voices (voice_card_{id}.mp3) — 50 cards', () {
       for (final cardId in _allCardIds) {
         final fileName = 'voice_card_$cardId.mp3';
         test(fileName, () {
@@ -353,10 +436,10 @@ void main() {
   // -----------------------------------------------------------------------
   group('All .mp3 files in assets/audio/ are > 1024 bytes', () {
     test('no tiny or empty audio files', () {
-      // Check SFX/music in audio root and voice files in voices/classic/
+      // Check SFX/music in audio root and voice files in voices/buddy/
       final dirsToCheck = [
         Directory(audioDir),
-        Directory('$audioDir/voices/classic'),
+        Directory('$audioDir/voices/buddy'),
       ];
       final tooSmall = <String>[];
       for (final dir in dirsToCheck) {
@@ -398,14 +481,14 @@ void main() {
         }
       }
     }
-    // Check voices/classic/ for voice orphans
-    final voiceDir = Directory('$audioDir/voices/classic');
+    // Check voices/buddy/ for voice orphans
+    final voiceDir = Directory('$audioDir/voices/buddy');
     if (voiceDir.existsSync()) {
       for (final entity in voiceDir.listSync()) {
         if (entity is File) {
           final name = entity.uri.pathSegments.last;
           if (!preloadSet.contains(name)) {
-            orphans.add('voices/classic/$name');
+            orphans.add('voices/buddy/$name');
           }
         }
       }

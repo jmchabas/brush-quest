@@ -133,46 +133,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _totalBrushes = totalBrushes;
         _trophyCount = trophyCount;
       });
-      _checkGreeting();
+      // Pass dailyBonus into greeting flow so bonus voice plays
+      // AFTER greeting voice (fixes voice ordering race).
+      _checkGreeting(dailyBonus: dailyBonus);
       // Ambient music on home screen (very low volume)
       AudioService().playMusic('battle_music_loop.mp3');
       AudioService().setMusicVolume(0.06);
-
-      // Show daily streak bonus notification (skip for brand-new users)
-      if (dailyBonus > 0 && totalBrushes > 0) {
-        if (!AudioService().isMuted) {
-          AudioService().playVoice('voice_streak_bonus.mp3');
-        }
-        // Delay snackbar so it doesn't overlap with greeting dialog
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    Icon(Icons.star, color: Colors.yellow.shade200, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Daily Streak Bonus: +$dailyBonus \u2b50',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: hero.primaryColor.withValues(alpha: 0.9),
-                duration: const Duration(seconds: 3),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        });
-      }
     }
   }
 
-  Future<void> _checkGreeting() async {
+  Future<void> _checkGreeting({int dailyBonus = 0}) async {
     if (_greetingChecked) return;
     _greetingChecked = true;
     // Skip full greeting when returning from a brush session,
@@ -215,18 +185,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (result != null && mounted) {
       await _greetingService.markGreetingShown(todayDate);
       AnalyticsService().logDailyLogin(streak: _streak);
-      _showGreetingPopup(result);
+      _showGreetingPopup(result, dailyBonus: dailyBonus);
     } else if (lastGreetingDate == todayDate && mounted) {
       // Already greeted today — play a random welcome back voice
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) {
         final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
         AudioService().playVoice(voice);
+        // Queue daily bonus voice AFTER welcome back voice
+        if (dailyBonus > 0) {
+          AudioService().playVoice('voice_streak_bonus.mp3');
+        }
+      }
+    } else if (dailyBonus > 0 && mounted) {
+      // No greeting shown but there's a daily bonus — play bonus voice standalone
+      if (!AudioService().isMuted) {
+        AudioService().playVoice('voice_streak_bonus.mp3');
       }
     }
   }
 
-  void _showGreetingPopup(GreetingResult greeting) {
+  void _showGreetingPopup(GreetingResult greeting, {int dailyBonus = 0}) {
     AudioService().playVoice(greeting.voiceFile);
     // Queue streak bonus explanation voice if applicable
     if (greeting.brushStreak >= 7 && greeting.yesterdayBothDone) {
@@ -237,6 +216,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       AudioService().playVoice('voice_streak_pair_bonus_low.mp3');
     } else if (greeting.brushStreak >= 3) {
       AudioService().playVoice('voice_streak_bonus_explain_low.mp3');
+    }
+    // Queue daily bonus voice AFTER greeting voices (fixes voice ordering race)
+    if (dailyBonus > 0) {
+      AudioService().playVoice('voice_streak_bonus.mp3');
     }
     HapticFeedback.mediumImpact();
 
@@ -303,6 +286,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                       letterSpacing: 1,
+                    ),
+                  ),
+                ],
+                // Comeback badge — returning user with broken streak
+                // Visual-only (heart + stars) since the child can't read
+                if (greeting.isComeback) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF69F0AE).withValues(alpha: 0.25),
+                          const Color(0xFF00E5FF).withValues(alpha: 0.25),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.favorite,
+                          color: Color(0xFF69F0AE),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          '+3',
+                          style: TextStyle(
+                            color: Color(0xFF69F0AE),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.star,
+                          color: Color(0xFFFFD54F),
+                          size: 24,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -412,7 +443,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       clearQueue: true,
       interrupt: true,
     );
-    Future.delayed(const Duration(milliseconds: 600), () {
+    // 1500ms lets the voice finish before home screen disposes
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) _launchBrushingScreen();
     });
   }
