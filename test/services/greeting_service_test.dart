@@ -82,6 +82,20 @@ void main() {
         yesterdayBothDone: false,
       );
       expect(result, isNotNull);
+      expect(result!.state, GreetingState.freshStart);
+      expect(result.voiceFile, equals('voice_greet_fresh_start.mp3'));
+    });
+
+    test('returning state for user with streak 1 and >2 brushes', () {
+      final result = service.checkGreeting(
+        totalBrushes: 10,
+        brushStreak: 1,
+        wallet: 10,
+        todayDate: '2026-03-16',
+        lastGreetingDate: null,
+        yesterdayBothDone: false,
+      );
+      expect(result, isNotNull);
       expect(result!.state, GreetingState.returning);
       expect(result.voiceFile, startsWith('voice_greet_returning_'));
     });

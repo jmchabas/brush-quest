@@ -247,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       GreetingState.streak10to19 => 'SUPER RANGER!',
       GreetingState.streak20plus => 'LEGENDARY!',
       GreetingState.returning => 'WELCOME BACK!',
+      GreetingState.freshStart => 'NEW ADVENTURE!',
     };
 
     showDialog(

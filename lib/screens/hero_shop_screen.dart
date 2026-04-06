@@ -38,6 +38,13 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) return;
+      final voice = _tabController.index == 0
+          ? 'voice_tab_heroes.mp3'
+          : 'voice_tab_weapons.mp3';
+      AudioService().playVoice(voice, clearQueue: true, interrupt: true);
+    });
     // Show wallet/rank immediately before async load refines them
     SharedPreferences.getInstance().then((p) {
       if (mounted) {

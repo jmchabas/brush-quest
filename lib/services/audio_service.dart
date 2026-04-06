@@ -245,6 +245,10 @@ class AudioService {
     'voice_onboarding_2.mp3',
     'voice_onboarding_3.mp3',
     'voice_need_stars.mp3',
+    'voice_world_complete.mp3',
+    'voice_tab_heroes.mp3',
+    'voice_tab_weapons.mp3',
+    'voice_greet_fresh_start.mp3',
     'voice_card_mystery.mp3',
     // Per-world description voices
     'voice_world_candy_crater.mp3',

@@ -7,6 +7,7 @@ enum GreetingState {
   streak10to19,
   streak20plus,
   returning,
+  freshStart,
 }
 
 class GreetingResult {
@@ -55,6 +56,9 @@ class GreetingService {
       'voice_greet_returning_2.mp3',
       'voice_greet_returning_excited_1.mp3',
       'voice_greet_returning_excited_2.mp3',
+    ],
+    GreetingState.freshStart: [
+      'voice_greet_fresh_start.mp3',
     ],
   };
 
@@ -107,6 +111,8 @@ class GreetingService {
     if (brushStreak >= 2) return GreetingState.streak2to4;
     // Streak is 0 or 1
     if (totalBrushes <= 2) return GreetingState.justStarted;
+    // Had brushes before but streak broke — reframe as fresh start
+    if (brushStreak == 0) return GreetingState.freshStart;
     return GreetingState.returning;
   }
 }

@@ -582,6 +582,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           if (_worldJustCompleted) {
             HapticFeedback.heavyImpact();
             _audio.playSfx('victory.mp3');
+            _audio.playVoice('voice_world_complete.mp3');
           }
         } else {
           // ── Endgame legendary encounter ──
