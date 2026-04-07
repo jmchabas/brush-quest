@@ -1,0 +1,47 @@
+# Dart Code Metrics (DCM) Configuration
+# Separate from analysis_options.yaml — DCM uses its own config file.
+# Run with: dcm analyze lib --options analysis_options_dcm.yaml
+# Docs: https://dcm.dev/docs/rules/
+
+dart_code_metrics:
+  rules:
+    # Widget performance
+    - avoid-returning-widgets
+    - avoid-unnecessary-setstate
+
+    # Dead / unused code
+    - avoid-unused-parameters
+
+    # Naming
+    - prefer-correct-identifier-length:
+        min-identifier-length: 2
+        max-identifier-length: 40
+
+    # Collection best practices
+    - prefer-first
+    - prefer-last
+
+    # File/class naming consistency
+    - prefer-match-file-name
+
+    # Complexity & readability
+    - avoid-nested-conditional-expressions
+    - avoid-redundant-async
+    - prefer-commenting-analyzer-ignores
+    - prefer-conditional-expressions
+    - prefer-moving-to-variable
+
+    # Type safety
+    - avoid-unnecessary-type-assertions
+    - avoid-unnecessary-type-casts
+    - avoid-unrelated-type-assertions
+
+  metrics:
+    cyclomatic-complexity: 20
+    number-of-parameters: 6
+    maximum-nesting-level: 5
+    source-lines-of-code: 50
+
+  anti-patterns:
+    - long-method
+    - long-parameter-list

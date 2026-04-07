@@ -1,28 +1,43 @@
-# This file configures the analyzer, which statically analyzes Dart code to
-# check for errors, warnings, and lints.
-#
-# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
-# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
-# invoked from the command line by running `flutter analyze`.
+include: package:very_good_analysis/analysis_options.yaml
 
-# The following line activates a set of recommended lints for Flutter apps,
-# packages, and plugins designed to encourage good coding practices.
-include: package:flutter_lints/flutter.yaml
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "lib/firebase_options.dart"
+  errors:
+    # Suppress documentation requirements (solo dev, code is the docs)
+    public_member_api_docs: ignore
+    lines_longer_than_80_chars: ignore
+    flutter_style_todos: ignore
+    sort_pub_dependencies: ignore
+    # Suppress strict-inference warnings (too noisy with Flutter widget trees)
+    inference_failure_on_instance_creation: ignore
+    inference_failure_on_function_invocation: ignore
+    inference_failure_on_untyped_parameter: ignore
+    strict_raw_type: ignore
 
 linter:
-  # The lint rules applied to this project can be customized in the
-  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
-  # included above or to enable additional rules. A list of all available lints
-  # and their documentation is published at https://dart.dev/lints.
-  #
-  # Instead of disabling a lint rule for the entire project in the
-  # section below, it can also be suppressed for a single line of code
-  # or a specific dart file by using the `// ignore: name_of_lint` and
-  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
-  # producing the lint.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    # === SUPPRESSED: Style-only rules that would require massive refactor ===
+    # These add no bug-catching value, just code style churn.
+    omit_local_variable_types: false        # 98 hits — type annotations are fine
+    sort_constructors_first: false           # 88 hits — constructor position is fine
+    cascade_invocations: false               # 82 hits — cascades aren't always clearer
+    always_use_package_imports: false         # 79 hits — relative imports are fine
+    prefer_int_literals: false               # 45 hits — 1.0 vs 1 doesn't matter
+    directives_ordering: false               # 38 hits — import order is fine
+    # inference_failure_on_instance_creation handled in analyzer.errors above
+    always_put_required_named_parameters_first: false  # 26 hits — parameter order
+    document_ignores: false                  # 14 hits — ignore comments don't need docs
+    avoid_escaping_inner_quotes: false        # 10 hits — style preference
+    avoid_multiple_declarations_per_line: false  # 8 hits — style preference
+    prefer_if_elements_to_conditional_expressions: false  # 6 hits — style preference
+    prefer_single_quotes: false              # existing codebase uses double quotes
+    avoid_redundant_argument_values: false    # noisy with Flutter widget constructors
 
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+    # === KEPT: Bug-catching rules worth having ===
+    # unawaited_futures: true               # catches fire-and-forget futures (default ON)
+    # avoid_catches_without_on_clauses: true # catches too-broad exception handling
+    # prefer_const_constructors: true        # performance benefit in Flutter
+    # prefer_const_literals_to_create_immutables: true

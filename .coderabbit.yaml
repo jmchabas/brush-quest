@@ -1,0 +1,67 @@
+# CodeRabbit Configuration
+# AI-powered PR reviewer — https://coderabbit.ai/docs
+language: "en-US"
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  # Review profile for solo developer — focus on bugs and logic errors,
+  # skip stylistic nitpicks that waste time without a team.
+  profile: "assertive"
+
+  request_changes_workflow: false
+
+  high_level_summary: true
+  poem: false
+
+  path_filters:
+    # Focus on app source and tests
+    - "lib/**"
+    - "test/**"
+    # Exclude generated files
+    - "!lib/firebase_options.dart"
+    - "!**/*.g.dart"
+    - "!**/*.freezed.dart"
+    - "!**/*.mocks.dart"
+    # Exclude build artifacts and assets
+    - "!build/**"
+    - "!android/.gradle/**"
+    - "!**/*.lock"
+
+  path_instructions:
+    - path: "lib/**"
+      instructions: |
+        This is a kids' toothbrushing app for 7-year-olds who can't read.
+        Never suggest adding text labels for the child user — use icons/animations instead.
+        Voice/audio is the primary UI — flag any screen that lacks voice guidance.
+
+    - path: "lib/services/**"
+      instructions: |
+        Services are singletons using SharedPreferences.
+        Verify atomic writes for purchases (wallet stars must decrease and item must unlock in same transaction).
+        Economy system uses wallet stars (spendable) and total stars (rank) — verify both are updated correctly.
+        Audio service uses a 3-player SFX pool — check for channel contention.
+
+    - path: "lib/screens/**"
+      instructions: |
+        Screens must work for non-readers. No text without voiceover.
+        Every interactive element needs a voice line or sound effect.
+        Check for audio collisions — voice, SFX, and music should not fight each other.
+        Large touch targets required (minimum 48x48).
+
+    - path: "test/**"
+      instructions: |
+        Tests should mock SharedPreferences and audio players.
+        Verify both wallet and rank star calculations in economy tests.
+
+  tools:
+    # Enable built-in analysis tools
+    ast-grep:
+      essential_rules: true
+
+chat:
+  auto_reply: true

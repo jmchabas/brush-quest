@@ -1,7 +1,7 @@
 name: brush_quest
 description: "A fun toothbrushing game for kids - defeat cavity monsters in space!"
 publish_to: 'none'
-version: 1.0.0+4
+version: 1.0.0+5
 
 environment:
   sdk: ^3.10.4
@@ -27,7 +27,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  very_good_analysis: ^7.0.0
+  glados: ^1.1.1
 
 flutter:
   uses-material-design: true

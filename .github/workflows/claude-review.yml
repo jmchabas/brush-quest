@@ -1,0 +1,37 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude-review:
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+# ---------------------------------------------------------------
+# SETUP INSTRUCTIONS
+# ---------------------------------------------------------------
+# 1. Go to https://console.anthropic.com/settings/keys and create
+#    an API key (or use an existing one).
+#
+# 2. In your GitHub repo, go to:
+#    Settings > Secrets and variables > Actions > New repository secret
+#    Name:  ANTHROPIC_API_KEY
+#    Value: sk-ant-...  (your key)
+#
+# 3. That's it. Claude will automatically review every PR and
+#    respond to comments that mention @claude on PRs/issues.
+# ---------------------------------------------------------------

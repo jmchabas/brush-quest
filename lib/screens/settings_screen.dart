@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1066,7 +1067,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   // ── Settings Tab (Tab 2) ──────────────────────────────
-  Widget _buildSettingsTab(bool signedIn, dynamic user) {
+  Widget _buildSettingsTab(bool signedIn, User? user) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       children: [
@@ -1160,16 +1161,16 @@ class _SettingsScreenState extends State<SettingsScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user.displayName ?? 'Space Ranger',
+                            user?.displayName ?? 'Space Ranger',
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                             ),
                           ),
-                          if (user.email != null)
+                          if (user?.email != null)
                             Text(
-                              user.email!,
+                              user!.email!,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.5),
                                 fontSize: 12,

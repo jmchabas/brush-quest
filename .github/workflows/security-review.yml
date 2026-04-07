@@ -1,0 +1,36 @@
+name: Security Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  security-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are a security reviewer for a Flutter/Dart kids app (Brush Quest).
+            Review the PR diff for security issues. Focus on:
+
+            1. **Secrets & credentials** - API keys, tokens, passwords in code or config
+            2. **Firebase security** - Firestore rules, auth misconfigurations, exposed project config
+            3. **Data privacy (COPPA)** - Any collection of personal data from children, analytics misuse
+            4. **Insecure storage** - Sensitive data in SharedPreferences without encryption
+            5. **Input validation** - Unsanitized inputs, injection vectors
+            6. **Dependency risks** - Known vulnerable packages, suspicious new dependencies
+            7. **Permission escalation** - Unnecessary Android permissions, overly broad access
+
+            If you find no issues, say so briefly. Do not fabricate concerns.
+            If you find real issues, label them by severity: CRITICAL / HIGH / MEDIUM / LOW.
+
+# ---------------------------------------------------------------
+# SETUP: Uses the same ANTHROPIC_API_KEY secret as claude-review.yml.
+# No additional configuration needed if that secret is already set.
+# ---------------------------------------------------------------
