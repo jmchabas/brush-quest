@@ -326,14 +326,14 @@ class MouthGuideOverlay extends StatefulWidget {
   final MouthQuadrant quadrant;
   final Color themeColor;
   final String label;
-  final VoidCallback? onDismiss;
+  final VoidCallback onDismiss;
 
   const MouthGuideOverlay({
     super.key,
     required this.quadrant,
     required this.themeColor,
     required this.label,
-    this.onDismiss,
+    required this.onDismiss,
   });
 
   @override
@@ -367,7 +367,7 @@ class _MouthGuideOverlayState extends State<MouthGuideOverlay>
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
         _exitController.forward().then((_) {
-          widget.onDismiss?.call();
+          widget.onDismiss();
         });
       }
     });

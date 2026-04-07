@@ -1220,16 +1220,6 @@ class _FeaturedWeaponDisplay extends StatelessWidget {
                         color: Colors.greenAccent.withValues(alpha: 0.8),
                         size: 16,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'EQUIPPED',
-                        style: TextStyle(
-                          color: Colors.greenAccent.withValues(alpha: 0.8),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
                     ],
                   ),
                 ],

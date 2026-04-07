@@ -109,9 +109,10 @@ assets/
 ## Quality Gates
 After modifying `.dart` files, run these before reporting done:
 1. **`dart analyze`** — static analysis (auto-runs via Claude Code hook on Edit/Write)
-2. **`flutter test`** — unit/widget tests must pass
-3. **`semgrep --config auto lib/`** — security scanning (if installed)
-4. **`gitleaks detect --source .`** — secret detection (if installed)
+2. **`dart run dart_code_linter:metrics analyze lib`** — DCM lint rules (widget perf, complexity, naming)
+3. **`flutter test`** — unit/widget tests must pass
+4. **`semgrep --config auto lib/`** — security scanning (if installed)
+5. **`gitleaks detect --source .`** — secret detection (if installed)
 
 If a gate fails, fix the issue before presenting the result.
 

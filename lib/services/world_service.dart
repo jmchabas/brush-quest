@@ -33,7 +33,7 @@ class WorldData {
   final List<int> monsterIndices;
   final List<Color> gradientColors;
   final String particleType; // 'sparkle', 'bubble', 'ember', 'twinkle', 'crack'
-  final String? backgroundImage;
+  final String backgroundImage;
 
   const WorldData({
     required this.id,
@@ -45,7 +45,7 @@ class WorldData {
     required this.monsterIndices,
     required this.gradientColors,
     required this.particleType,
-    this.backgroundImage,
+    required this.backgroundImage,
   });
 }
 

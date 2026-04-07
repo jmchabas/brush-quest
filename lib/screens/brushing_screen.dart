@@ -359,14 +359,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   // Tier 3: Weapon trail
   final List<Offset> _weaponTrailPoints = [];
 
-  static const _phaseNames = {
-    BrushPhase.topLeft: 'TOP LEFT',
-    BrushPhase.topFront: 'TOP FRONT',
-    BrushPhase.topRight: 'TOP RIGHT',
-    BrushPhase.bottomLeft: 'BOTTOM LEFT',
-    BrushPhase.bottomFront: 'BOTTOM FRONT',
-    BrushPhase.bottomRight: 'BOTTOM RIGHT',
-  };
+  // Phase names removed (mouth guide visual is sufficient)
 
   static const _phaseToMouthQuadrant = {
     BrushPhase.topLeft: MouthQuadrant.topLeft,
@@ -2370,7 +2363,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                               child: MouthGuideOverlay(
                                 quadrant: _phaseToMouthQuadrant[_phase]!,
                                 themeColor: _world.themeColor,
-                                label: _phaseNames[_phase] ?? '',
+                                label: '',
                                 onDismiss: () {
                                   if (mounted) {
                                     setState(
@@ -3231,16 +3224,15 @@ class _WorldBackground extends StatelessWidget {
             ),
           ),
         ),
-        if (world.backgroundImage != null)
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.6,
-              child: Image.asset(
-                world.backgroundImage!,
-                fit: BoxFit.cover,
-              ),
+        Positioned.fill(
+          child: Opacity(
+            opacity: 0.6,
+            child: Image.asset(
+              world.backgroundImage,
+              fit: BoxFit.cover,
             ),
           ),
+        ),
         child,
       ],
     );

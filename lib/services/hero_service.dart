@@ -310,8 +310,7 @@ class HeroService {
     return allEvolutions.where((e) => e.heroId == heroId).toList();
   }
 
-  static HeroEvolution? getEvolutionById(String? id) {
-    if (id == null) return null;
+  static HeroEvolution? getEvolutionById(String id) {
     try {
       return allEvolutions.firstWhere((e) => e.id == id);
     } catch (_) {
@@ -386,8 +385,7 @@ class HeroService {
 
   /// Build a hero image widget using the composite hero+weapon image.
   /// Falls back to the base hero image if the composite doesn't exist.
-  static Widget buildHeroImage(String heroId, {int stage = 1, String? weaponId, double size = 120}) {
-    weaponId ??= 'star_blaster';
+  static Widget buildHeroImage(String heroId, {int stage = 1, String weaponId = 'star_blaster', double size = 120}) {
     final path = 'assets/images/heroes/hero_${heroId}_stage${stage}_$weaponId.png';
     return Image.asset(
       path,

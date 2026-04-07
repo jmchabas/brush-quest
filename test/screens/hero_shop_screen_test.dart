@@ -104,8 +104,8 @@ void main() {
     await tester.tap(find.text('WEAPONS'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    // Star Blaster is selected, so its featured display should show "EQUIPPED"
-    expect(find.text('EQUIPPED'), findsOneWidget);
+    // Star Blaster is selected, so its featured display should show a check_circle icon
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
 

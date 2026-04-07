@@ -131,13 +131,13 @@ _ChestReward _rollChestReward(Random rng, int streak) {
 class VictoryScreen extends StatefulWidget {
   final int totalHits;
   final int monstersDefeated;
-  final String? sessionId;
+  final String sessionId;
   final String? trophyTargetId;
   const VictoryScreen({
     super.key,
     this.totalHits = 0,
     this.monstersDefeated = 4,
-    this.sessionId,
+    this.sessionId = '',
     this.trophyTargetId,
   });
 

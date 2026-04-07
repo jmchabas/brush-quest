@@ -40,6 +40,15 @@ jobs:
       - name: Analyze
         run: dart analyze
 
+      - name: DCM lint rules
+        run: dart run dart_code_linter:metrics analyze lib
+
+      - name: DCM unused code
+        run: dart run dart_code_linter:metrics check-unused-code lib
+
+      - name: DCM unnecessary nullable
+        run: dart run dart_code_linter:metrics check-unnecessary-nullable lib
+
   test:
     name: Tests
     runs-on: ubuntu-latest
