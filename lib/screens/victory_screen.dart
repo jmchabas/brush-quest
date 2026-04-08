@@ -11,12 +11,25 @@ import '../services/world_service.dart';
 import '../services/trophy_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/achievement_popup.dart';
+import '../widgets/trophy_detail_dialog.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import 'home_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
+
+/// Forward hook types shown after the chest sequence to encourage the next brush.
+enum _ForwardHookType {
+  /// Morning done, evening not yet: moon icon + "see you tonight"
+  tonight,
+
+  /// Both slots done today: star burst + "full power!"
+  fullPower,
+
+  /// Evening done, morning was not done: sun icon + "see you in the morning"
+  morning,
+}
 
 class _ChestReward {
   final _ChestRewardType type;
@@ -84,7 +97,7 @@ _ChestReward _rollChestReward(Random rng, int streak) {
     return const _ChestReward(
       type: _ChestRewardType.dance,
       bonusStars: 0,
-      voiceFile: 'voice_chest_dance.mp3',
+      voiceFile: 'voice_chest_dance_v2.mp3',
       color: Color(0xFFFF4081),
       icon: Icons.music_note,
       label: 'DANCE BREAK!',
@@ -227,6 +240,12 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
 
+  // Forward hook state (session-end encouragement)
+  bool _showForwardHook = false;
+  _ForwardHookType? _forwardHookType;
+  late AnimationController _forwardHookFadeController;
+  late AnimationController _forwardHookPulseController;
+
   // Victory celebration arcs: 2-beat connected story
   // [beat1 = celebration, beat2 = star earned]
   // beat3 (chest prompt) removed — chest is self-explanatory.
@@ -295,6 +314,15 @@ class _VictoryScreenState extends State<VictoryScreen>
       ),
     );
     _heroGlowController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _forwardHookFadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _forwardHookPulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
@@ -754,6 +782,11 @@ class _VictoryScreenState extends State<VictoryScreen>
             mounted) {
           await _audio.playVoice('voice_legend.mp3');
         }
+
+        // ── Forward hook: encourage the next brushing session ──
+        if (mounted) {
+          await _showForwardHookSequence();
+        }
       } catch (e) {
         debugPrint('Victory chest sequence error: $e');
       } finally {
@@ -769,7 +802,213 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
   }
 
+  /// Determine which forward hook to show and play the corresponding voice.
+  Future<void> _showForwardHookSequence() async {
+    final now = DateTime.now();
+    final slots = await _streakService.getTodaySlots();
 
+    _ForwardHookType? hookType;
+
+    if (now.hour < 15 && !slots.eveningDone) {
+      // Morning brush done (before 3pm), evening not yet done
+      hookType = _ForwardHookType.tonight;
+    } else if (slots.morningDone && slots.eveningDone) {
+      // Both slots complete — full power!
+      hookType = _ForwardHookType.fullPower;
+    } else if (now.hour >= 15 && !slots.morningDone) {
+      // Evening brush done, morning was not done
+      hookType = _ForwardHookType.morning;
+    }
+
+    if (hookType == null || !mounted) return;
+
+    setState(() {
+      _forwardHookType = hookType;
+      _showForwardHook = true;
+    });
+
+    _forwardHookFadeController.forward();
+    _forwardHookPulseController.repeat(reverse: true);
+
+    // Play the corresponding voice line
+    final voiceFile = switch (hookType) {
+      _ForwardHookType.tonight => 'voice_forward_tonight.mp3',
+      _ForwardHookType.fullPower => 'voice_full_power.mp3',
+      _ForwardHookType.morning => 'voice_forward_morning.mp3',
+    };
+    await _audio.playVoice(voiceFile);
+  }
+
+  Widget _buildForwardHook() {
+    final hookType = _forwardHookType!;
+
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: _forwardHookFadeController,
+        curve: Curves.easeIn,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 4),
+        child: AnimatedBuilder(
+          animation: _forwardHookPulseController,
+          builder: (context, _) {
+            final pulse = _forwardHookPulseController.value;
+
+            if (hookType == _ForwardHookType.fullPower) {
+              // Golden star burst for full power
+              return _buildFullPowerBurst(pulse);
+            }
+
+            // Moon or sun icon with glow
+            final IconData icon;
+            final Color iconColor;
+            final Color glowColor;
+
+            if (hookType == _ForwardHookType.tonight) {
+              icon = Icons.nightlight_round;
+              iconColor = Colors.white;
+              glowColor = const Color(0xFF90CAF9); // soft blue-white glow
+            } else {
+              icon = Icons.wb_sunny;
+              iconColor = const Color(0xFFFFB74D); // warm amber
+              glowColor = const Color(0xFFFFE082); // warm amber glow
+            }
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Pulsing icon with glow
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: glowColor.withValues(
+                          alpha: 0.3 + pulse * 0.3,
+                        ),
+                        blurRadius: 16 + pulse * 8,
+                        spreadRadius: 2 + pulse * 2,
+                      ),
+                    ],
+                  ),
+                  child: Transform.scale(
+                    scale: 1.0 + pulse * 0.08,
+                    child: Icon(
+                      icon,
+                      color: iconColor,
+                      size: 40,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // +1 star badge (visual only, no text)
+                if (hookType == _ForwardHookType.tonight)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '+1',
+                        style: TextStyle(
+                          color: const Color(0xFFFFD54F),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          shadows: [
+                            Shadow(
+                              color: const Color(0xFFFFD54F)
+                                  .withValues(alpha: 0.6),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.star,
+                        color: Color(0xFFFFD54F),
+                        size: 18,
+                      ),
+                    ],
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullPowerBurst(double pulse) {
+    // Golden star burst animation for both-slots-complete
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer glow
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD54F).withValues(
+                    alpha: 0.4 + pulse * 0.4,
+                  ),
+                  blurRadius: 20 + pulse * 10,
+                  spreadRadius: 4 + pulse * 4,
+                ),
+                BoxShadow(
+                  color: const Color(0xFFFF6D00).withValues(
+                    alpha: 0.2 + pulse * 0.2,
+                  ),
+                  blurRadius: 30,
+                  spreadRadius: 6,
+                ),
+              ],
+            ),
+          ),
+          // Star icon
+          Transform.scale(
+            scale: 1.0 + pulse * 0.12,
+            child: const Icon(
+              Icons.auto_awesome,
+              color: Color(0xFFFFD54F),
+              size: 40,
+            ),
+          ),
+          // Smaller sparkles
+          Positioned(
+            top: 2,
+            right: 4,
+            child: Opacity(
+              opacity: (pulse * 1.3).clamp(0.0, 1.0),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Color(0xFFFF6D00),
+                size: 14,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 4,
+            left: 2,
+            child: Opacity(
+              opacity: ((1.0 - pulse) * 1.3).clamp(0.0, 1.0),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Color(0xFFFFF59D),
+                size: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildTrophyReveal() {
     final trophy = _revealedTrophy!;
@@ -1031,6 +1270,24 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
+  /// Show trophy detail dialog for legendary encounter taps.
+  void _showLegendaryTrophyDetail() {
+    if (_revealedTrophy == null) return;
+    final trophy = _revealedTrophy!;
+    final worldColor = WorldService.getWorldById(trophy.worldId).themeColor;
+    HapticFeedback.mediumImpact();
+    _audio.playSfx('star_chime.mp3');
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      builder: (ctx) => TrophyDetailDialog(
+        trophy: trophy,
+        defeatCount: trophy.defeatsRequired,
+        worldColor: worldColor,
+      ),
+    );
+  }
+
   /// Show achievement with SFX only (no voice lines).
   /// The achievement popup already has visual + haptic feedback.
   void _showAchievementSfxOnly(Achievement achievement) {
@@ -1053,6 +1310,8 @@ class _VictoryScreenState extends State<VictoryScreen>
     _walletBumpController.dispose();
     _heroCelebrationController.dispose();
     _heroGlowController.dispose();
+    _forwardHookFadeController.dispose();
+    _forwardHookPulseController.dispose();
     super.dispose();
   }
 
@@ -1341,9 +1600,18 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
 
-                    // Trophy reveal
+                    // Trophy reveal — tappable for legendary encounters
                     if (_showTrophyReveal && _revealedTrophy != null)
-                      _buildTrophyReveal(),
+                      _isLegendaryEncounter
+                          ? GestureDetector(
+                              onTap: _showLegendaryTrophyDetail,
+                              child: _buildTrophyReveal(),
+                            )
+                          : _buildTrophyReveal(),
+
+                    // Forward hook: encourage the next brushing session
+                    if (_showForwardHook && _forwardHookType != null)
+                      _buildForwardHook(),
 
                     const SizedBox(height: 24),
 

@@ -52,12 +52,12 @@ void main() {
     (tester) async {
       await pumpHomeScreen(tester);
 
-      // Stats display: star pill shows 28px font
+      // Stats display: star pill shows 22px font (uniform across all pills)
       final starsText = tester.widget<Text>(find.text('12'));
-      expect(starsText.style?.fontSize, 28);
-      // Streak pill shows at 28px (matching star pill format)
+      expect(starsText.style?.fontSize, 22);
+      // Streak pill shows at 22px (matching all pill format)
       final streakText = tester.widget<Text>(find.text('3'));
-      expect(streakText.style?.fontSize, 28);
+      expect(streakText.style?.fontSize, 22);
 
       // Parent area uses shield icon with PARENTS label
       expect(find.byIcon(Icons.shield), findsOneWidget);

@@ -475,7 +475,7 @@ void main() {
     // Voice files by reward type:
     const rewardVoices = {
       'confetti': 'voice_chest_wow.mp3',
-      'dance': 'voice_chest_dance.mp3',
+      'dance': 'voice_chest_dance_v2.mp3',
       'bonusStar': 'voice_chest_bonus_star.mp3',
       'doubleStar': 'voice_chest_double.mp3',
       'jackpot': 'voice_chest_jackpot.mp3',
@@ -512,7 +512,7 @@ void main() {
     String voiceForRoll(int roll, int streak) {
       final c = ceilingsForStreak(streak)['ceilings']!;
       if (roll < c[0]) return 'voice_chest_wow.mp3';
-      if (roll < c[1]) return 'voice_chest_dance.mp3';
+      if (roll < c[1]) return 'voice_chest_dance_v2.mp3';
       if (roll < c[2]) return 'voice_chest_bonus_star.mp3';
       if (roll < c[3]) return 'voice_chest_double.mp3';
       if (roll < c[4]) return 'voice_chest_jackpot.mp3';
@@ -571,7 +571,7 @@ void main() {
     test('higher streaks give better rewards at same roll values', () {
       // At roll=30, streak=0 gives confetti, streak=7 gives dance
       expect(voiceForRoll(30, 0), 'voice_chest_wow.mp3'); // <35
-      expect(voiceForRoll(30, 7), 'voice_chest_dance.mp3'); // >=20, <35
+      expect(voiceForRoll(30, 7), 'voice_chest_dance_v2.mp3'); // >=20, <35
     });
 
     test('all chest voice files are in _allAudioFiles', () {

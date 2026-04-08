@@ -897,10 +897,14 @@ class _SettingsScreenState extends State<SettingsScreen>
           // Total Brushes
           Row(
             children: [
-              const ImageIcon(
-                AssetImage('assets/images/icon_toothbrush.png'),
-                size: 22,
-                color: Color(0xFF00E5FF),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.asset(
+                  'assets/images/icon_toothbrush.png',
+                  width: 22,
+                  height: 22,
+                  fit: BoxFit.cover,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -1326,7 +1330,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           child: _SettingCard(
             icon: Icons.delete_forever,
-            title: "Delete child's data",
+            title: "Start fresh",
             child: IconButton(
               icon: const Icon(
                 Icons.delete_outline,

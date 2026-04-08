@@ -163,7 +163,7 @@ class AudioService {
     'voice_welcome_back.mp3',
     'voice_lets_fight.mp3',
     'voice_chest_wow.mp3',
-    'voice_chest_dance.mp3',
+    'voice_chest_dance_v2.mp3',
     'voice_chest_bonus_star.mp3',
     'voice_chest_double.mp3',
     'voice_chest_jackpot.mp3',
@@ -363,8 +363,12 @@ class AudioService {
     'voice_shop_nudge_streak3.mp3',
     'voice_shop_nudge_streak7.mp3',
     'voice_shop_nudge_tonight.mp3',
-    'voice_entry_hero_shop.mp3',
+    'voice_entry_hero_hq.mp3',
     'voice_camera_prompt.mp3',
+    // Forward hook voices (session-end encouragement)
+    'voice_forward_tonight.mp3',
+    'voice_forward_morning.mp3',
+    'voice_full_power.mp3',
   ];
 
   /// Complete list of files to preload, built once from core list + named

@@ -202,13 +202,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
     await _worldService.setCurrentWorld(world.id);
     await _loadData();
     if (mounted) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('${world.name} is now your world!'),
-          backgroundColor: world.themeColor,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      // Visual confirmation: brief glow animation on the selected planet
+      // (the planet node already shows a check icon when selected)
+      // Play a confirming voice instead of text snackbar (kid can't read)
+      AudioService().playVoice('voice_world_${world.id}.mp3', interrupt: true);
     }
   }
 }

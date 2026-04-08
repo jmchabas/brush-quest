@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
 import 'services/analytics_service.dart';
+import 'services/audio_service.dart';
 import 'services/streak_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -39,8 +40,36 @@ void main() async {
   runApp(const BrushQuestApp());
 }
 
-class BrushQuestApp extends StatelessWidget {
+class BrushQuestApp extends StatefulWidget {
   const BrushQuestApp({super.key});
+
+  @override
+  State<BrushQuestApp> createState() => _BrushQuestAppState();
+}
+
+class _BrushQuestAppState extends State<BrushQuestApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      AudioService().stopAllAudio();
+    }
+    // On resumed: do NOT auto-restart music.
+    // Each screen handles its own music on rebuild.
+  }
 
   @override
   Widget build(BuildContext context) {

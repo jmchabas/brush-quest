@@ -319,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           color: Color(0xFF69F0AE),
                           size: 24,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         const Text(
                           '+3',
                           style: TextStyle(
@@ -374,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               fontSize: 22,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           const Icon(
                             Icons.star,
                             color: Color(0xFFFFD54F),
@@ -616,17 +616,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 16),
 
                   // Stats row: streak, rank, wallet, trophies
-                  // Use fixed-width pills so all 4 are same size
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 6,
+                  // Use Row with Expanded so all 4 pills are equal width
+                  Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
                     children: [
                       // Streak pill
-                      Container(
-                        constraints: const BoxConstraints(minWidth: 80),
+                      Expanded(
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
+                          horizontal: 8,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
@@ -648,6 +647,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               .withValues(alpha: 0.12),
                         ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (_streak == 0 && _totalBrushes > 0) ...[
@@ -672,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ? Colors.white
                                       : Colors.white.withValues(alpha: 0.3),
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 28,
+                                  fontSize: 22,
                                   shadows: _streak > 0
                                       ? const [
                                           Shadow(
@@ -686,12 +686,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ],
                         ),
-                      ),
+                      )),
+                      const SizedBox(width: 4),
                       // Ranger Rank pill (shield — the "pride number")
-                      Container(
-                        constraints: const BoxConstraints(minWidth: 80),
+                      Expanded(child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
+                          horizontal: 8,
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
@@ -716,7 +716,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 28,
+                                fontSize: 22,
                                 shadows: [
                                   Shadow(
                                     color: Color(0x807C4DFF),
@@ -727,10 +727,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                      ),
+                      )),
+                      const SizedBox(width: 4),
                       // Star Wallet pill (spendable stars)
-                      Container(
-                        constraints: const BoxConstraints(minWidth: 80),
+                      Expanded(child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
@@ -768,10 +768,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                      ),
+                      )),
+                      const SizedBox(width: 4),
                       // Trophy count pill (monsters captured)
-                      Container(
-                        constraints: const BoxConstraints(minWidth: 80),
+                      Expanded(child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
@@ -809,9 +809,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
-                      ),
+                      )),
                     ],
-                  ),
+                  )),
 
                   const Spacer(),
 
