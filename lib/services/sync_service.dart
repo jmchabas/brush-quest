@@ -40,8 +40,9 @@ class SyncService {
     'unlocked_evolutions',
     'streak_pause_until',
     'last_daily_bonus_date',
+    'camera_prompt_shown',
   ];
-  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'trophy_defeats_', 'evolution_stage_'];
+  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'trophy_defeats_', 'evolution_stage_', 'has_seen_first_', 'world_intro_seen_'];
 
   DocumentReference? get _userDoc {
     final user = AuthService().currentUser;
