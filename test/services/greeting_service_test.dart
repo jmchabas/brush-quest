@@ -83,7 +83,12 @@ void main() {
       );
       expect(result, isNotNull);
       expect(result!.state, GreetingState.freshStart);
-      expect(result.voiceFile, equals('voice_greet_fresh_start.mp3'));
+      expect(result.voiceFile, anyOf(
+        equals('voice_greet_fresh_start.mp3'),
+        equals('voice_greet_comeback_1.mp3'),
+        equals('voice_greet_comeback_2.mp3'),
+        equals('voice_greet_comeback_3.mp3'),
+      ));
     });
 
     test('returning state for user with streak 1 and >2 brushes', () {

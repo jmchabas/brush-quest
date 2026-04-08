@@ -427,11 +427,13 @@ void main() {
   // 6. Victory celebration arcs
   // ===========================================================================
   group('victory celebration arcs', () {
+    // 2-beat arcs: [celebration, star earned]. beat3 (chest prompt) removed —
+    // the chest is self-explanatory and doesn't need a voice.
     const victoryArcFiles = [
-      ['voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3', 'voice_victory_arc1_beat3.mp3'],
-      ['voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3', 'voice_victory_arc2_beat3.mp3'],
-      ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3'],
-      ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3'],
+      ['voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3'],
+      ['voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3'],
+      ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3'],
+      ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3'],
     ];
 
     test('source defines _victoryArcs with all arc files', () {
@@ -443,10 +445,10 @@ void main() {
       }
     });
 
-    test('each victory arc has exactly 3 beats', () {
+    test('each victory arc has exactly 2 beats', () {
       for (final arc in victoryArcFiles) {
-        expect(arc.length, 3,
-            reason: 'each arc must have 3 beats (celebrate, star, chest)');
+        expect(arc.length, 2,
+            reason: 'each arc must have 2 beats (celebrate, star)');
       }
     });
 

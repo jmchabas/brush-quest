@@ -183,7 +183,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _trophyService = TrophyService();
 
   bool _brushRecorded = false;
-  bool _achievementVoicePlayed = false;
   bool _showChest = false;
   bool _chestOpened = false;
   _ChestReward? _reward;
@@ -228,17 +227,18 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
 
-  // Victory celebration arcs: each arc is a 3-beat connected story
-  // [beat1 = celebration, beat2 = star earned, beat3 = chest prompt]
+  // Victory celebration arcs: 2-beat connected story
+  // [beat1 = celebration, beat2 = star earned]
+  // beat3 (chest prompt) removed — chest is self-explanatory.
   static const _victoryArcs = [
-    ['voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3', 'voice_victory_arc1_beat3.mp3'],
-    ['voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3', 'voice_victory_arc2_beat3.mp3'],
-    ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3'],
-    ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3'],
-    ['voice_victory_arc5_beat1.mp3', 'voice_victory_arc5_beat2.mp3', 'voice_victory_arc5_beat3.mp3'],
-    ['voice_victory_arc6_beat1.mp3', 'voice_victory_arc6_beat2.mp3', 'voice_victory_arc6_beat3.mp3'],
-    ['voice_victory_arc7_beat1.mp3', 'voice_victory_arc7_beat2.mp3', 'voice_victory_arc7_beat3.mp3'],
-    ['voice_victory_arc8_beat1.mp3', 'voice_victory_arc8_beat2.mp3', 'voice_victory_arc8_beat3.mp3'],
+    ['voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3'],
+    ['voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3'],
+    ['voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3'],
+    ['voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3'],
+    ['voice_victory_arc5_beat1.mp3', 'voice_victory_arc5_beat2.mp3'],
+    ['voice_victory_arc6_beat1.mp3', 'voice_victory_arc6_beat2.mp3'],
+    ['voice_victory_arc7_beat1.mp3', 'voice_victory_arc7_beat2.mp3'],
+    ['voice_victory_arc8_beat1.mp3', 'voice_victory_arc8_beat2.mp3'],
   ];
 
   @override
@@ -392,32 +392,25 @@ class _VictoryScreenState extends State<VictoryScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    // t=300ms   Arc beat 1 (celebration) + star animation
+    // t=300ms   Arc beat 1 (celebration)
     final arcIndex = _random.nextInt(_victoryArcs.length);
     final arc = _victoryArcs[arcIndex];
-    _audio.playVoice(arc[0]); // celebration
-
-    // Arc beat 2 (star earned) — queued via voice pipeline
-    await _audio.playVoice(arc[1]); // "+1 star!"
-
-    // Trigger star flight ~400ms after victory voice
-    await Future.delayed(const Duration(milliseconds: 400));
+    await _audio.playVoice(arc[0]); // celebration
     if (!mounted) return;
+
+    // Arc beat 2 (star earned) — start concurrently with star flight,
+    // DONE button, and chest drop. No await, no dead time.
+    unawaited(_audio.playVoice(arc[1])); // "+1 star!" (fire-and-forget)
     _triggerStarFlight();
 
-    // Show DONE button early so the user can exit before the chest sequence.
-    // The reward chain continues to play, but the child is never trapped.
-    if (!mounted) return;
+    // Show DONE button + chest immediately while beat2 plays
     _audio.playSfx('whoosh.mp3');
-    setState(() => _showDoneButton = true);
+    setState(() {
+      _showDoneButton = true;
+      _showChest = true;
+    });
     _doneButtonController.repeat(reverse: true);
-
-    // Chest drops after voice completes
-    setState(() => _showChest = true);
     _chestBounceController.repeat(reverse: true);
-    _audio.playVoice(arc[2]); // chest prompt
-    // NOTE: Achievements are now shown AFTER the chest/card sequence,
-    // not concurrently. See _openChest for the scheduling.
   }
 
   void _triggerStarFlight() {
@@ -445,57 +438,79 @@ class _VictoryScreenState extends State<VictoryScreen>
   Future<void> _revealBonusStars() async {
     if (!mounted) return;
 
+    final hasBonuses = _streakMultiplierBonus > 0 ||
+        _dailyBonus > 0 ||
+        _comebackBonus > 0;
+    if (!hasBonuses) return;
+
+    // Show all bonus pills simultaneously
+    setState(() {
+      if (_streakMultiplierBonus > 0) _showStreakBonus = true;
+      if (_dailyBonus > 0) _showDailyBonus = true;
+      if (_comebackBonus > 0) _showComebackBonus = true;
+    });
+
+    // Mark first-time milestones and determine highest-priority voice.
+    // Priority: first-time milestones > repeat bonuses.
+    // Only play ONE voice for all bonuses combined.
+    String? voiceToPlay;
+    bool isFirstTime = false;
+
+    // Check streak bonus (highest priority among bonuses)
     if (_streakMultiplierBonus > 0) {
-      setState(() => _showStreakBonus = true);
       if (_newStreak >= 7) {
         final seenBefore = await _streakService.hasSeenFirstStreak7();
         if (!seenBefore) {
           await _streakService.markFirstStreak7Seen();
-          HapticFeedback.heavyImpact();
-          await _audio.playVoice('voice_first_streak_7.mp3');
+          voiceToPlay = 'voice_first_streak_7.mp3';
+          isFirstTime = true;
         } else {
-          await _audio.playVoice('voice_chest_mega_streak.mp3');
+          voiceToPlay = 'voice_chest_mega_streak.mp3';
         }
       } else {
         final seenBefore = await _streakService.hasSeenFirstStreak3();
         if (!seenBefore) {
           await _streakService.markFirstStreak3Seen();
-          HapticFeedback.heavyImpact();
-          await _audio.playVoice('voice_first_streak_3.mp3');
+          voiceToPlay = 'voice_first_streak_3.mp3';
+          isFirstTime = true;
         } else {
-          await _audio.playVoice('voice_chest_streak_bonus.mp3');
+          voiceToPlay = 'voice_chest_streak_bonus.mp3';
         }
       }
-      if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 300));
     }
 
+    // Check daily pair (override voice only if it's a first-time and streak wasn't)
     if (_dailyBonus > 0) {
-      setState(() => _showDailyBonus = true);
       final seenBefore = await _streakService.hasSeenFirstDailyPair();
       if (!seenBefore) {
         await _streakService.markFirstDailyPairSeen();
-        HapticFeedback.heavyImpact();
-        await _audio.playVoice('voice_first_daily_pair.mp3');
+        if (!isFirstTime) {
+          voiceToPlay = 'voice_first_daily_pair.mp3';
+          isFirstTime = true;
+        }
       } else {
-        await _audio.playVoice('voice_chest_daily_pair.mp3');
+        voiceToPlay ??= 'voice_chest_daily_pair.mp3';
       }
-      if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 300));
     }
 
+    // Check comeback bonus
     if (_comebackBonus > 0) {
-      setState(() => _showComebackBonus = true);
       final seenBefore = await _streakService.hasSeenFirstComeback();
       if (!seenBefore) {
         await _streakService.markFirstComebackSeen();
-        HapticFeedback.heavyImpact();
-        await _audio.playVoice('voice_first_comeback.mp3');
+        if (!isFirstTime) {
+          voiceToPlay = 'voice_first_comeback.mp3';
+          isFirstTime = true;
+        }
       } else {
-        await _audio.playVoice('voice_chest_comeback.mp3');
+        voiceToPlay ??= 'voice_chest_comeback.mp3';
       }
-      if (!mounted) return;
-      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    // Play only the single highest-priority bonus voice
+    if (voiceToPlay != null && mounted) {
+      if (isFirstTime) HapticFeedback.heavyImpact();
+      await _audio.playVoice(voiceToPlay);
     }
   }
 
@@ -515,6 +530,8 @@ class _VictoryScreenState extends State<VictoryScreen>
         if (!mounted) return;
         _rewardRevealController.forward();
         if (_reward!.bonusStars > 0) HapticFeedback.mediumImpact();
+
+        // ── Slot 0: Chest reward voice (always plays) ──
         await _audio.playVoice(_reward!.voiceFile);
 
         final totalBonus = _reward!.bonusStars + _dailyModifier.chestBonusStars;
@@ -525,15 +542,81 @@ class _VictoryScreenState extends State<VictoryScreen>
           if (mounted) setState(() {});
         }
 
-        // ── Post-chest bonus star reveals ──
-        await _revealBonusStars();
+        // ── 3-slot priority voice budget ──
+        // After chest reward (slot 0), allow max 3 more voice slots.
+        // Priority: P1 first-time milestones > P2 trophy/world > P3 star milestone
+        //         > P4 repeat bonus > P5 legendary (voice only) > P6 achievements (SFX only)
+        int voiceSlotsRemaining = 3;
+
+        // ── Post-chest bonus star reveals (all pills shown simultaneously) ──
+        // _revealBonusStars handles first-time detection and plays ONE voice
+        final hasBonuses = _streakMultiplierBonus > 0 ||
+            _dailyBonus > 0 ||
+            _comebackBonus > 0;
+
+        // Determine first-time milestone status before spending slots
+        bool hasFirstTimeMilestone = false;
+        if (_streakMultiplierBonus > 0) {
+          if (_newStreak >= 7) {
+            hasFirstTimeMilestone = !(await _streakService.hasSeenFirstStreak7());
+          } else {
+            hasFirstTimeMilestone = !(await _streakService.hasSeenFirstStreak3());
+          }
+        }
+        if (!hasFirstTimeMilestone && _dailyBonus > 0) {
+          hasFirstTimeMilestone = !(await _streakService.hasSeenFirstDailyPair());
+        }
+        if (!hasFirstTimeMilestone && _comebackBonus > 0) {
+          hasFirstTimeMilestone = !(await _streakService.hasSeenFirstComeback());
+        }
+
+        // P1: First-time milestones get a voice slot
+        if (hasBonuses && hasFirstTimeMilestone && voiceSlotsRemaining > 0) {
+          await _revealBonusStars();
+          voiceSlotsRemaining--;
+        } else if (hasBonuses && voiceSlotsRemaining > 0) {
+          // P4: Repeat bonus — lower priority, still gets a slot if available
+          await _revealBonusStars();
+          voiceSlotsRemaining--;
+        } else if (hasBonuses) {
+          // No slots left — show pills silently
+          if (mounted) {
+            setState(() {
+              if (_streakMultiplierBonus > 0) _showStreakBonus = true;
+              if (_dailyBonus > 0) _showDailyBonus = true;
+              if (_comebackBonus > 0) _showComebackBonus = true;
+            });
+          }
+          // Still mark first-time flags so they don't replay
+          if (_streakMultiplierBonus > 0) {
+            if (_newStreak >= 7) {
+              if (!(await _streakService.hasSeenFirstStreak7())) {
+                await _streakService.markFirstStreak7Seen();
+              }
+            } else {
+              if (!(await _streakService.hasSeenFirstStreak3())) {
+                await _streakService.markFirstStreak3Seen();
+              }
+            }
+          }
+          if (_dailyBonus > 0) {
+            if (!(await _streakService.hasSeenFirstDailyPair())) {
+              await _streakService.markFirstDailyPairSeen();
+            }
+          }
+          if (_comebackBonus > 0) {
+            if (!(await _streakService.hasSeenFirstComeback())) {
+              await _streakService.markFirstComebackSeen();
+            }
+          }
+        }
 
         // ── Trophy defeat/capture ──
         if (widget.trophyTargetId != null) {
           final result = await _trophyService.recordDefeat(widget.trophyTargetId!);
           if (!mounted) return;
 
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(milliseconds: 200));
           if (!mounted) return;
 
           final trophy = TrophyService.allTrophies.firstWhere(
@@ -558,17 +641,22 @@ class _VictoryScreenState extends State<VictoryScreen>
           _cardGlowController.repeat(reverse: true);
           _newBadgeController.forward();
 
-          if (result.captured) {
+          // P2: Trophy captured — voice_card_new + card description
+          if (result.captured && voiceSlotsRemaining > 0) {
             HapticFeedback.heavyImpact();
-            _audio.playVoice('voice_card_new.mp3');
-          } else {
+            await _audio.playVoice('voice_card_new.mp3');
+            voiceSlotsRemaining--;
+            // Card description gets its own slot
+            if (voiceSlotsRemaining > 0) {
+              final cardVoiceId = widget.trophyTargetId!.replaceAll('_t', '_0');
+              await _audio.playVoice('voice_card_$cardVoiceId.mp3');
+              voiceSlotsRemaining--;
+            }
+          } else if (!result.captured) {
             _audio.playVoice('voice_keep_going.mp3');
+            // "keep going" is short, counts as a slot
+            if (voiceSlotsRemaining > 0) voiceSlotsRemaining--;
           }
-
-          // Play monster description voice
-          // Trophy IDs like 'cc_t1' → card voice 'voice_card_cc_01.mp3'
-          final cardVoiceId = widget.trophyTargetId!.replaceAll('_t', '_0');
-          await _audio.playVoice('voice_card_$cardVoiceId.mp3');
           if (!mounted) return;
 
           // Update total trophies count
@@ -582,10 +670,12 @@ class _VictoryScreenState extends State<VictoryScreen>
             _worldJustCompleted = worldComplete;
           });
 
-          if (_worldJustCompleted) {
+          // P2: World complete
+          if (_worldJustCompleted && voiceSlotsRemaining > 0) {
             HapticFeedback.heavyImpact();
             _audio.playSfx('victory.mp3');
-            _audio.playVoice('voice_world_complete.mp3');
+            await _audio.playVoice('voice_world_complete.mp3');
+            voiceSlotsRemaining--;
           }
         } else {
           // ── Endgame legendary encounter ──
@@ -593,7 +683,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           // a random already-captured trophy with a golden legendary treatment.
           final capturedIds = await _trophyService.getCapturedIds();
           if (capturedIds.isNotEmpty && mounted) {
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.delayed(const Duration(milliseconds: 200));
             if (!mounted) return;
 
             final randomId = capturedIds[_random.nextInt(capturedIds.length)];
@@ -620,53 +710,48 @@ class _VictoryScreenState extends State<VictoryScreen>
             _cardGlowController.repeat(reverse: true);
             _newBadgeController.forward();
 
-            // Play legendary voice + monster description
-            await _audio.playVoice('voice_wow_amazing.mp3');
-            if (!mounted) return;
-
-            final cardVoiceId = randomId.replaceAll('_t', '_0');
-            await _audio.playVoice('voice_card_$cardVoiceId.mp3');
+            // P5: Legendary encounter — voice_wow_amazing ONLY, skip card description
+            if (voiceSlotsRemaining > 0) {
+              await _audio.playVoice('voice_wow_amazing.mp3');
+              voiceSlotsRemaining--;
+            }
             if (!mounted) return;
           }
         }
 
-        // Short pause to let the kid see the world progress
-        await Future.delayed(const Duration(milliseconds: 1500));
+        // Short pause to let the kid see the world progress (reduced from 1500ms)
+        await Future.delayed(const Duration(milliseconds: 800));
         if (!mounted) return;
 
-        // ── Milestone celebration (70/80/90 stars) ──
-        for (final milestone in [70, 80, 90]) {
-          if (_newStars >= milestone && _previousStars < milestone) {
-            final voiceFile = 'voice_milestone_$milestone.mp3';
-            await _audio.playVoice(voiceFile);
-            _confettiController.repeat();
-            await Future.delayed(const Duration(milliseconds: 500));
-            break; // Only play one milestone per session
+        // ── P3: Milestone celebration (70/80/90 stars) ──
+        if (voiceSlotsRemaining > 0) {
+          for (final milestone in [70, 80, 90]) {
+            if (_newStars >= milestone && _previousStars < milestone) {
+              final voiceFile = 'voice_milestone_$milestone.mp3';
+              await _audio.playVoice(voiceFile);
+              _confettiController.repeat();
+              voiceSlotsRemaining--;
+              break; // Only play one milestone per session
+            }
           }
         }
         if (!mounted) return;
 
-        // ── Achievements (AFTER card reveal) ──
-        if (_newAchievements.isNotEmpty && !_achievementVoicePlayed) {
-          _achievementVoicePlayed = true;
-          await _audio.playVoice('voice_awesome.mp3');
-          if (!mounted) return;
-        }
+        // ── Achievements (SFX only — no voice_awesome pre-voice, no rotation voices) ──
+        // The achievement popup already has visual + haptic feedback.
         for (int i = 0; i < _newAchievements.length; i++) {
           if (!mounted) break;
           if (i > 0) {
-            await Future.delayed(const Duration(milliseconds: 1200));
+            await Future.delayed(const Duration(milliseconds: 800));
           }
-          if (mounted) _showAchievement(_newAchievements[i]);
+          if (mounted) _showAchievementSfxOnly(_newAchievements[i]);
         }
 
-        // Wait a beat after last achievement before showing DONE
-        if (_newAchievements.isNotEmpty) {
-          await Future.delayed(const Duration(milliseconds: 1000));
-        }
-
-        // Legendary ranger voice (all heroes/weapons/trophies unlocked)
-        if (_totalTrophies >= TrophyService.allTrophies.length && mounted) {
+        // P1: Legendary ranger voice (all heroes/weapons/trophies unlocked)
+        // This is a first-time milestone, gets priority
+        if (_totalTrophies >= TrophyService.allTrophies.length &&
+            voiceSlotsRemaining > 0 &&
+            mounted) {
           await _audio.playVoice('voice_legend.mp3');
         }
       } catch (e) {
@@ -946,20 +1031,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  static const _achievementVoices = [
-    'voice_wow_amazing.mp3',
-    'voice_awesome.mp3',
-    'voice_super.mp3',
-  ];
-  int _achievementVoiceIndex = 0;
-
-  void _showAchievement(Achievement achievement) {
-    _audio.playSfx('whoosh.mp3');
-    // Rotate through celebratory voices so achievements don't all sound the same.
-    final voice =
-        _achievementVoices[_achievementVoiceIndex % _achievementVoices.length];
-    _achievementVoiceIndex++;
-    _audio.playVoice(voice);
+  /// Show achievement with SFX only (no voice lines).
+  /// The achievement popup already has visual + haptic feedback.
+  void _showAchievementSfxOnly(Achievement achievement) {
+    _audio.playSfx('star_chime.mp3');
+    HapticFeedback.mediumImpact();
     showAchievementPopup(context, achievement);
   }
 

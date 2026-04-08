@@ -68,6 +68,13 @@ const _audioFilesCore = [
   'voice_tab_heroes.mp3',
   'voice_tab_weapons.mp3',
   'voice_greet_fresh_start.mp3',
+  'voice_greet_comeback_1.mp3',
+  'voice_greet_comeback_2.mp3',
+  'voice_greet_comeback_3.mp3',
+  'voice_streak_teach_low.mp3',
+  'voice_streak_teach_low_pair.mp3',
+  'voice_streak_teach_high.mp3',
+  'voice_streak_teach_high_pair.mp3',
   'voice_card_mystery.mp3',
   // Per-world description voices
   'voice_world_candy_crater.mp3',

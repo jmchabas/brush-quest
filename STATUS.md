@@ -2,37 +2,37 @@
 <!-- Every session reads this at start. Every session updates its section at end. -->
 <!-- Jim says "update the status board" → session updates its workstream below. -->
 
-**Current #1 Priority**: Get the app on Google Play Store. Nothing else matters.
+**Current #1 Priority**: Kid testing → collect feedback → Cycle 11
 **CEO Streak**: Week 0 (starting fresh)
-**Phase**: 0 — Pre-Launch
+**Phase**: 1 — Internal Testing (Play Store LIVE)
 
 ---
 
 ## Workstream Status
 
 ### APP
-- **Status**: UX feedback round shipped — hero-tap, victory overhaul, settings improvements, bug fixes
-- **Last session**: 2026-04-01
-- **Last commit**: `3e8ced4` — Settings screen improvements (latest in a series of 6 commits)
-- **What happened (2026-04-01)**:
-  - **Hero tap starts brushing**: Hero GestureDetector rewired from `_openShop()` to `_startBrushing()`. BRUSH! button removed. HEROES nav = only shop path.
-  - **Nav icons**: HEROES `Icons.shield` → `Icons.auto_awesome`, MONSTERS `Icons.catching_pokemon` → `Icons.bug_report`
-  - **Brushing timer fix**: `_phaseSecondsLeft` clamped to 0 (was showing -1)
-  - **Victory screen overhaul**: Removed all unnecessary text (STARS EARNED, You brushed!, TAP TO OPEN, Come back tomorrow). Moved counters to fixed top bar (matching home screen pills). Added star flight animation (bezier arc into wallet counter). Replaced yellow badge with hero celebration (elastic entrance + pulsing glow + sparkles).
-  - **Settings: fake minutes removed**: "Total minutes" was `brushes * phaseDuration * 6 / 60` — not real data, removed.
-  - **Settings: pause streak clarified**: Added subtitle "Protect streak during vacation or sick days"
-  - **Settings: narrator voice moved**: Right below Timer per zone, removed description text
-  - **Settings: Guide tab split**: Stars tab (How Stars Work) + Guide tab (parent info). 3→4 tabs.
-  - APK **133.3MB**, uploaded to Google Drive
-  - 665+ tests passing, dart analyze clean
+- **Status**: v1.0.0+6 deployed to Play Store internal testing — awaiting Oliver's feedback
+- **Last session**: 2026-04-07
+- **Last commit**: `245f7cb` — dart_code_linter integration + dead code cleanup
+- **What happened (2026-04-07)**:
+  - Completed Cycle 10 LEARN phase (was already recorded in dev-cycle `604aa67`)
+  - Deployed v1.0.0+6 to Play Store internal testing via fastlane
+  - Fixed fastlane config: added `release_status: "draft"` (app still in draft state on Play Console)
+  - Telegram bot connected — Jim can message Claude Code from phone
+- **What happened (2026-04-06, Cycle 10)**:
+  - 32 fixes across 6 parallel streams: audio, brushing, victory, home, shop, settings
+  - Key fixes: crystal cave voices, phase voice queue, timer pause on background, DOUBLE POWER→2 stars, comeback badge, evolution tap feedback, trophy brightness, 60s auto-lock
+  - Voiceover improvements shipped (world complete, shop tabs)
+  - dart_code_linter integrated, CI/AI review infrastructure added
+  - 755 tests (+79 from Cycle 9), 113.8 MB APK (-13% from Cycle 9)
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [x] P2.2: Privacy policy overhauled — COPPA 2025 + CCPA + data security program
-  - [ ] P2.1: Google Play Console families policy config — org account READY
-- **Blocked on**: Nothing — Google Play org account is live!
-- **Next up**: Create app listing + upload AAB
-- **Needs CEO decision**: None
+  - [ ] P2.1: Google Play Console families policy config
+- **Blocked on**: Oliver testing (to collect kid feedback before Cycle 11)
+- **Next up**: Oliver tests → kid-feedback.md → Cycle 11 → voiceover decisions (2.2, 2.5)
+- **Needs CEO decision**: Voiceover 2.2 (shop "not enough stars") and 2.5 (streak-break reframe)
 
 ### LANDING PAGE
 - **Status**: Live at brushquest.app — email capture LIVE via Buttondown
@@ -169,13 +169,26 @@
 - **Needs CEO decision**: None
 
 ### DEV CYCLE
-- **Status**: Cycle 8 complete — 17 findings shipped (5 deferred)
-- **Last session**: 2026-03-23
-- **Command**: `/cycle` (full audit), `/cycle ship` (verify+ship), `/cycle visual` (emulator screenshots)
+- **Status**: Cycle 10 complete — 32 findings shipped (9 deferred), LEARN phase done
+- **Last session**: 2026-04-07
+- **Command**: `/cycle` (full audit), `/cycle quick` (lightweight), `/cycle ship` (verify+ship), `/cycle visual` (emulator screenshots), `/cycle resume` (deferred findings)
 - **Repo**: `~/Projects/dev-cycle` (GitHub: jmchabas/dev-cycle, private)
-- **Cycles completed**: 1, 2, 3, 4, 5, 6, 8 (Cycle 7 informal — shipped but no LEARN phase)
+- **Cycles completed**: 1, 2, 3, 4, 5, 6, 8, 9, 10 (Cycle 7 informal — shipped but no LEARN phase)
+- **Documentation**: `docs/dev-cycle.md` — full explanation of how `/cycle` works
 - **Blocked on**: Nothing
-- **Next up**: Run next cycle when ready
+- **Next up**: Cycle 11 after Oliver testing feedback
+- **Needs CEO decision**: None
+
+### TELEGRAM
+- **Status**: LIVE — Claude Code reachable from Jim's phone
+- **Last session**: 2026-04-07
+- **What happened**:
+  - Installed `telegram@claude-plugins-official` plugin
+  - Bot ID: `8512732647`, Jim's user ID: `8567015757`
+  - Policy: `allowlist` — locked to Jim only
+  - Launch: `claude --channels plugin:telegram@claude-plugins-official`
+- **Blocked on**: Nothing
+- **Next up**: Use it
 - **Needs CEO decision**: None
 
 ### STRATEGY

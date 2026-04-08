@@ -6,6 +6,7 @@ import '../widgets/mouth_guide.dart';
 import '../widgets/space_background.dart';
 import '../services/audio_service.dart';
 import '../services/analytics_service.dart';
+import '../services/hero_service.dart';
 import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -357,29 +358,33 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   Widget _buildHowToPlayPage() {
     // Battle sequence driven by _battleController (0.0 -> 1.0 over 5 seconds):
-    //   0.0 - 0.40: Hero attacks monster (lunging + impact sparks)
-    //   0.40 - 0.70: Monster defeated (shrinks, fades, spins away)
-    //   0.70 - 0.90: Star earned (bounces in with celebration)
+    //   0.00 - 0.45: Hero attacks monster — lunges, HP drains, impact effects
+    //   0.45 - 0.70: Monster defeated — shrinks, spins, explodes
+    //   0.70 - 0.90: Star earned — bounces in with celebration
     //   0.90 - 1.00: Brief pause before loop restarts
     return AnimatedBuilder(
       animation: _battleController,
       builder: (context, _) {
         final t = _battleController.value;
 
-        // --- Hero animation ---
-        // During fight phase, hero lunges right toward monster
-        final double heroLunge;
-        if (t < 0.40) {
-          // Rapid back-and-forth lunging (attack swings)
-          heroLunge = sin(t / 0.40 * pi * 6) * 18;
+        // --- HP bar animation (drains during fight, empty at defeat) ---
+        final double hpFraction;
+        if (t < 0.45) {
+          hpFraction = 1.0 - (t / 0.45);
         } else {
-          // After fight, hero settles
+          hpFraction = 0.0;
+        }
+
+        // --- Hero animation ---
+        final double heroLunge;
+        if (t < 0.45) {
+          heroLunge = sin(t / 0.45 * pi * 7) * 14;
+        } else {
           heroLunge = 0;
         }
-        // Hero scale pulse during attack
         final double heroScale;
-        if (t < 0.40) {
-          heroScale = 1.0 + sin(t / 0.40 * pi * 6).abs() * 0.12;
+        if (t < 0.45) {
+          heroScale = 1.0 + sin(t / 0.45 * pi * 7).abs() * 0.10;
         } else {
           heroScale = 1.0;
         }
@@ -389,19 +394,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         final double monsterScale;
         final double monsterOpacity;
         final double monsterRotation;
-        if (t < 0.40) {
-          // Taking hits — shake intensifies over the fight
-          final fightProgress = t / 0.40;
-          monsterShake = sin(t * pi * 30) * (2 + fightProgress * 6);
-          monsterScale = 1.0 - fightProgress * 0.1; // Slight shrink
+        if (t < 0.45) {
+          final fightProgress = t / 0.45;
+          monsterShake = sin(t * pi * 30) * (3 + fightProgress * 8);
+          monsterScale = 1.0 - fightProgress * 0.12;
           monsterOpacity = 1.0;
           monsterRotation = 0;
         } else if (t < 0.70) {
-          // Defeated — shrink, spin, fade
-          final defeatProgress = (t - 0.40) / 0.30;
+          final defeatProgress = (t - 0.45) / 0.25;
           final eased = Curves.easeInBack.transform(defeatProgress);
           monsterShake = 0;
-          monsterScale = (1.0 - eased) * 0.9;
+          monsterScale = (1.0 - eased) * 0.88;
           monsterOpacity = 1.0 - eased;
           monsterRotation = eased * pi * 2;
         } else {
@@ -411,21 +414,28 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           monsterRotation = 0;
         }
 
-        // --- Impact effects (sparks/bolts between hero and monster) ---
-        final double impactOpacity;
-        final double impactScale;
-        if (t < 0.40) {
-          // Flash on each hit
-          impactOpacity = sin(t / 0.40 * pi * 6).abs() * 0.9;
-          impactScale = 0.6 + sin(t / 0.40 * pi * 6).abs() * 0.6;
-        } else if (t < 0.50) {
-          // Lingering flash during defeat start
-          final fade = (t - 0.40) / 0.10;
-          impactOpacity = (1.0 - fade) * 0.7;
-          impactScale = 1.0 - fade * 0.3;
+        // --- Comic impact word ---
+        // Cycle through POW / ZAP / BAM on each hit peak
+        final double comicOpacity;
+        final double comicScale;
+        final int comicIndex;
+        if (t < 0.45) {
+          final hitCycle = sin(t / 0.45 * pi * 7);
+          comicOpacity = hitCycle.abs() > 0.7 ? (hitCycle.abs() - 0.7) / 0.3 : 0.0;
+          comicScale = 0.5 + hitCycle.abs() * 0.8;
+          comicIndex = ((t / 0.45) * 7).floor() % 3;
         } else {
-          impactOpacity = 0;
-          impactScale = 0;
+          comicOpacity = 0;
+          comicScale = 0;
+          comicIndex = 0;
+        }
+
+        // --- Weapon beam effect ---
+        final double beamOpacity;
+        if (t < 0.45) {
+          beamOpacity = sin(t / 0.45 * pi * 7).abs() * 0.7;
+        } else {
+          beamOpacity = 0;
         }
 
         // --- Star animation ---
@@ -437,224 +447,321 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           starOpacity = 0;
           starBounce = 0;
         } else if (t < 0.90) {
-          // Star arrives with elastic bounce
           final starProgress = (t - 0.70) / 0.20;
           final eased = Curves.elasticOut.transform(starProgress);
           starScale = eased;
           starOpacity = starProgress.clamp(0.0, 1.0);
           starBounce = sin(starProgress * pi * 3) * (1.0 - starProgress) * 12;
         } else {
-          // Star holds with gentle float
           final holdProgress = (t - 0.90) / 0.10;
           starScale = 1.0;
           starOpacity = 1.0;
           starBounce = sin(holdProgress * pi) * 4;
         }
 
-        // --- Star glow ring ---
-        final double glowRingScale;
-        final double glowRingOpacity;
-        if (t >= 0.72 && t < 0.85) {
-          final ringProgress = (t - 0.72) / 0.13;
-          glowRingScale = 0.5 + ringProgress * 1.5;
-          glowRingOpacity = (1.0 - ringProgress) * 0.6;
-        } else {
-          glowRingScale = 0;
-          glowRingOpacity = 0;
-        }
-
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              const Spacer(flex: 2),
-              // Battle arena
-              SizedBox(
-                height: 320,
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    // --- Energy ring behind the fight ---
-                    if (t < 0.50)
-                      Positioned(
-                        child: Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFF7C4DFF).withValues(
-                                alpha: 0.1 + (t < 0.40 ? t / 0.40 * 0.15 : 0),
-                              ),
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                      ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availHeight = constraints.maxHeight;
+              // Scale hero/monster sizes to fill the space
+              final heroSize = (availHeight * 0.30).clamp(140.0, 200.0);
+              final monsterSize = (availHeight * 0.26).clamp(120.0, 180.0);
 
-                    // --- Hero (Blaze) — bottom-left ---
-                    Positioned(
-                      left: 16,
-                      bottom: 40,
-                      child: Transform.translate(
-                        offset: Offset(heroLunge, 0),
-                        child: Transform.scale(
-                          scale: heroScale,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF7C4DFF)
-                                      .withValues(alpha: 0.4),
-                                  blurRadius: 20,
-                                  spreadRadius: 4,
+              return Column(
+                children: [
+                  const SizedBox(height: 8),
+                  // Monster HP bar at the top
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildDemoHealthBar(hpFraction),
+                  ),
+                  const SizedBox(height: 8),
+                  // Battle arena — fills remaining space
+                  Expanded(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        // --- Energy ring behind the fight ---
+                        if (t < 0.50)
+                          Center(
+                            child: Container(
+                              width: availHeight * 0.5,
+                              height: availHeight * 0.5,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF7C4DFF).withValues(
+                                    alpha: 0.08 + (t < 0.45 ? t / 0.45 * 0.15 : 0),
+                                  ),
+                                  width: 2,
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Image.asset(
-                              'assets/images/hero_blaze.png',
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.contain,
+                          ),
+
+                        // --- Weapon beam between hero and monster ---
+                        if (beamOpacity > 0.05)
+                          Positioned.fill(
+                            child: Opacity(
+                              opacity: beamOpacity.clamp(0.0, 1.0),
+                              child: CustomPaint(
+                                painter: _WeaponBeamPainter(
+                                  progress: t / 0.45,
+                                  color: const Color(0xFF7C4DFF),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // --- Monster — top-right, much larger ---
+                        Positioned(
+                          right: 8,
+                          top: availHeight * 0.02,
+                          child: Transform.translate(
+                            offset: Offset(monsterShake, 0),
+                            child: Transform.rotate(
+                              angle: monsterRotation,
+                              child: Transform.scale(
+                                scale: monsterScale,
+                                child: Opacity(
+                                  opacity: monsterOpacity.clamp(0.0, 1.0),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFFFF1744)
+                                              .withValues(alpha: 0.4),
+                                          blurRadius: 24,
+                                          spreadRadius: 6,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Image.asset(
+                                      'assets/images/monster_purple.png',
+                                      width: monsterSize,
+                                      height: monsterSize,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
 
-                    // --- Monster — top-right ---
-                    Positioned(
-                      right: 16,
-                      top: 20,
-                      child: Transform.translate(
-                        offset: Offset(monsterShake, 0),
-                        child: Transform.rotate(
-                          angle: monsterRotation,
-                          child: Transform.scale(
-                            scale: monsterScale,
-                            child: Opacity(
-                              opacity: monsterOpacity.clamp(0.0, 1.0),
+                        // --- Hero — bottom-left, using HeroService ---
+                        Positioned(
+                          left: 8,
+                          bottom: availHeight * 0.04,
+                          child: Transform.translate(
+                            offset: Offset(heroLunge, 0),
+                            child: Transform.scale(
+                              scale: heroScale,
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFFF1744)
-                                          .withValues(alpha: 0.3),
-                                      blurRadius: 16,
-                                      spreadRadius: 2,
+                                      color: const Color(0xFF7C4DFF)
+                                          .withValues(alpha: 0.5),
+                                      blurRadius: 24,
+                                      spreadRadius: 6,
                                     ),
                                   ],
                                 ),
-                                child: Image.asset(
-                                  'assets/images/monster_purple.png',
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.contain,
+                                child: HeroService.buildHeroImage(
+                                  'blaze',
+                                  stage: 1,
+                                  weaponId: 'star_blaster',
+                                  size: heroSize,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
 
-                    // --- Impact effects (between hero and monster) ---
-                    if (impactOpacity > 0.01)
-                      Positioned(
-                        right: 80,
-                        top: 100,
-                        child: Transform.scale(
-                          scale: impactScale,
-                          child: Opacity(
-                            opacity: impactOpacity.clamp(0.0, 1.0),
-                            child: const _ImpactBurst(),
-                          ),
-                        ),
-                      ),
-
-                    // --- Defeat explosion particles ---
-                    if (t >= 0.40 && t < 0.65)
-                      Positioned(
-                        right: 40,
-                        top: 45,
-                        child: _DefeatParticles(
-                          progress: ((t - 0.40) / 0.25).clamp(0.0, 1.0),
-                        ),
-                      ),
-
-                    // --- Star glow ring expanding ---
-                    if (glowRingOpacity > 0.01)
-                      Positioned(
-                        right: 36,
-                        top: 40,
-                        child: Transform.scale(
-                          scale: glowRingScale,
-                          child: Opacity(
-                            opacity: glowRingOpacity.clamp(0.0, 1.0),
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFFFD740),
-                                  width: 3,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // --- Star earned (appears where monster was) ---
-                    if (starOpacity > 0.01)
-                      Positioned(
-                        right: 36,
-                        top: 30 - starBounce,
-                        child: Transform.scale(
-                          scale: starScale,
-                          child: Opacity(
-                            opacity: starOpacity.clamp(0.0, 1.0),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFFFD740)
-                                        .withValues(alpha: 0.6),
-                                    blurRadius: 30,
-                                    spreadRadius: 10,
+                        // --- Comic impact word (POW / ZAP / BAM) ---
+                        if (comicOpacity > 0.05)
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: availHeight * 0.20,
+                            child: Center(
+                              child: Transform.scale(
+                                scale: comicScale,
+                                child: Opacity(
+                                  opacity: comicOpacity.clamp(0.0, 1.0),
+                                  child: _ComicImpactWord(
+                                    word: const ['POW!', 'ZAP!', 'BAM!'][comicIndex],
                                   ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.star_rounded,
-                                color: Color(0xFFFFD740),
-                                size: 80,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
 
-                    // --- Small sparkle stars around the earned star ---
-                    if (t >= 0.74 && t < 0.90)
-                      ..._buildSparkles(
-                        centerRight: 56,
-                        centerTop: 55,
-                        progress: ((t - 0.74) / 0.16).clamp(0.0, 1.0),
-                      ),
-                  ],
-                ),
-              ),
-              const Spacer(flex: 3),
-            ],
+                        // --- Impact burst sparks ---
+                        if (t < 0.50 && sin(t / 0.45 * pi * 7).abs() > 0.3)
+                          Positioned(
+                            right: monsterSize * 0.3,
+                            top: availHeight * 0.15,
+                            child: Transform.scale(
+                              scale: 0.8 + sin(t / 0.45 * pi * 7).abs() * 0.5,
+                              child: Opacity(
+                                opacity: (sin(t / 0.45 * pi * 7).abs() * 0.8)
+                                    .clamp(0.0, 1.0),
+                                child: const _ImpactBurst(),
+                              ),
+                            ),
+                          ),
+
+                        // --- Defeat explosion particles ---
+                        if (t >= 0.45 && t < 0.68)
+                          Positioned(
+                            right: monsterSize * 0.15,
+                            top: availHeight * 0.05,
+                            child: _DefeatParticles(
+                              progress: ((t - 0.45) / 0.23).clamp(0.0, 1.0),
+                              size: monsterSize * 0.9,
+                            ),
+                          ),
+
+                        // --- Star earned (appears where monster was) ---
+                        if (starOpacity > 0.01)
+                          Positioned(
+                            right: monsterSize * 0.15,
+                            top: availHeight * 0.02 - starBounce,
+                            child: Transform.scale(
+                              scale: starScale,
+                              child: Opacity(
+                                opacity: starOpacity.clamp(0.0, 1.0),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFFFD740)
+                                            .withValues(alpha: 0.6),
+                                        blurRadius: 30,
+                                        spreadRadius: 10,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    Icons.star_rounded,
+                                    color: const Color(0xFFFFD740),
+                                    size: monsterSize * 0.6,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // --- Sparkle stars around the earned star ---
+                        if (t >= 0.74 && t < 0.90)
+                          ..._buildSparkles(
+                            centerRight: monsterSize * 0.35,
+                            centerTop: availHeight * 0.08,
+                            progress: ((t - 0.74) / 0.16).clamp(0.0, 1.0),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
+    );
+  }
+
+  /// Animated HP bar for the onboarding battle demo.
+  Widget _buildDemoHealthBar(double health) {
+    final hp = health.clamp(0.0, 1.0);
+    final barColor = Color.lerp(
+      const Color(0xFFFF5252),
+      const Color(0xFF69F0AE),
+      hp,
+    )!;
+
+    return Container(
+      height: 24,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: barColor.withValues(alpha: 0.6),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: barColor.withValues(alpha: 0.3),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            Container(color: Colors.black.withValues(alpha: 0.5)),
+            FractionallySizedBox(
+              widthFactor: hp,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [barColor, barColor.withValues(alpha: 0.7)],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.25),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.favorite,
+                    color: Colors.white.withValues(alpha: 0.8),
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'MONSTER HP',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                      shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -888,36 +995,41 @@ class _ImpactBurst extends StatelessWidget {
 /// Particles that fly out when the monster is defeated.
 class _DefeatParticles extends StatelessWidget {
   final double progress;
+  final double size;
 
-  const _DefeatParticles({required this.progress});
+  const _DefeatParticles({required this.progress, this.size = 120});
 
   @override
   Widget build(BuildContext context) {
     final opacity = (1.0 - progress).clamp(0.0, 1.0);
+    final spread = size * 0.45;
     const particleData = [
-      // (dx multiplier, dy multiplier, size, color)
-      (1.0, -1.0, 12.0, Color(0xFFFF1744)),
-      (-0.8, -0.6, 10.0, Color(0xFFFF9100)),
-      (0.5, 1.0, 8.0, Color(0xFF7C4DFF)),
-      (-1.0, 0.3, 10.0, Color(0xFFFF1744)),
-      (0.3, -1.2, 9.0, Color(0xFFFF9100)),
-      (-0.5, 0.8, 11.0, Color(0xFF7C4DFF)),
+      // (dx multiplier, dy multiplier, size factor, color)
+      (1.0, -1.0, 0.10, Color(0xFFFF1744)),
+      (-0.8, -0.6, 0.08, Color(0xFFFF9100)),
+      (0.5, 1.0, 0.07, Color(0xFF7C4DFF)),
+      (-1.0, 0.3, 0.08, Color(0xFFFF1744)),
+      (0.3, -1.2, 0.075, Color(0xFFFF9100)),
+      (-0.5, 0.8, 0.09, Color(0xFF7C4DFF)),
+      (0.9, 0.7, 0.06, Color(0xFFFFD740)),
+      (-0.7, -0.9, 0.07, Color(0xFFFFD740)),
     ];
     return SizedBox(
-      width: 120,
-      height: 120,
+      width: size,
+      height: size,
       child: Stack(
         alignment: Alignment.center,
         children: particleData.map((p) {
-          final dx = p.$1 * progress * 50;
-          final dy = p.$2 * progress * 50;
+          final dx = p.$1 * progress * spread;
+          final dy = p.$2 * progress * spread;
+          final pSize = p.$3 * size;
           return Transform.translate(
             offset: Offset(dx, dy),
             child: Opacity(
               opacity: opacity,
               child: Container(
-                width: p.$3,
-                height: p.$3,
+                width: pSize,
+                height: pSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: p.$4,
@@ -936,4 +1048,114 @@ class _DefeatParticles extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Comic-style impact word (POW! / ZAP! / BAM!) with bold outline styling.
+class _ComicImpactWord extends StatelessWidget {
+  final String word;
+
+  const _ComicImpactWord({required this.word});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Glow background
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFD740).withValues(alpha: 0.5),
+                blurRadius: 24,
+                spreadRadius: 8,
+              ),
+            ],
+          ),
+        ),
+        // Outline text (stroke)
+        Text(
+          word,
+          style: TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 4,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 6
+              ..color = const Color(0xFFFF6D00),
+          ),
+        ),
+        // Fill text
+        Text(
+          word,
+          style: const TextStyle(
+            fontSize: 48,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 4,
+            color: Color(0xFFFFD740),
+            shadows: [
+              Shadow(color: Color(0xFFFF6D00), blurRadius: 8),
+              Shadow(color: Color(0xFFFF6D00), blurRadius: 16),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Paints an energy beam from bottom-left (hero) toward top-right (monster).
+class _WeaponBeamPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+
+  _WeaponBeamPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Beam goes from hero area (bottom-left) toward monster area (top-right)
+    final startX = size.width * 0.25;
+    final startY = size.height * 0.75;
+    final endX = size.width * 0.75;
+    final endY = size.height * 0.20;
+
+    final beamPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [
+          color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.6),
+          Colors.white.withValues(alpha: 0.8),
+          color.withValues(alpha: 0.6),
+          color.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.2, 0.5, 0.8, 1.0],
+      ).createShader(Rect.fromLTRB(startX, startY, endX, endY))
+      ..strokeWidth = 4 + sin(progress * pi * 4) * 2
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()
+      ..moveTo(startX, startY)
+      ..quadraticBezierTo(
+        size.width * 0.5 + sin(progress * pi * 3) * 20,
+        size.height * 0.45,
+        endX,
+        endY,
+      );
+
+    canvas.drawPath(path, beamPaint);
+
+    // Small glow orb at the beam tip
+    final tipPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.7)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(Offset(endX, endY), 6, tipPaint);
+  }
+
+  @override
+  bool shouldRepaint(_WeaponBeamPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

@@ -419,16 +419,7 @@ class _MouthGuideOverlayState extends State<MouthGuideOverlay>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              widget.label,
-              style: TextStyle(
-                color: widget.themeColor,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 3,
-              ),
-            ),
-            const SizedBox(height: 16),
+            // Label text removed — visual mouth guide is self-explanatory
             AnimatedBuilder(
               animation: _glowController,
               builder: (context, _) => MouthGuide(
@@ -439,21 +430,33 @@ class _MouthGuideOverlayState extends State<MouthGuideOverlay>
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.arrow_forward, color: widget.themeColor, size: 20),
-                const SizedBox(width: 6),
-                Text(
-                  'BRUSH HERE!',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
+            // Pulsing directional arrow — no text (kids can't read)
+            AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, _) {
+                final glowAlpha = 0.5 + _glowController.value * 0.5;
+                final scale = 1.0 + _glowController.value * 0.15;
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.themeColor.withValues(alpha: glowAlpha * 0.6),
+                          blurRadius: 16,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.arrow_downward,
+                      color: widget.themeColor.withValues(alpha: glowAlpha),
+                      size: 36,
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ],
         ),

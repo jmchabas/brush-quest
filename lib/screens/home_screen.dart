@@ -110,9 +110,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Auto-grant trophies for worlds already cleared
     await TrophyService().autoGrantClearedWorldTrophies();
 
-    // Claim daily streak bonus (once per calendar day, silent if no streak)
-    final dailyBonus = await _streakService.claimDailyBonus();
-
+    // Read wallet BEFORE claiming daily bonus so the greeting popup
+    // shows the pre-bonus amount.  The bonus is claimed after the
+    // greeting dismisses, and the wallet pill animates the bump.
     final wallet = await _streakService.getWallet();
     final rank = await _streakService.getRangerRank();
     final hero = await _heroService.getSelectedHero();
@@ -133,16 +133,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _totalBrushes = totalBrushes;
         _trophyCount = trophyCount;
       });
-      // Pass dailyBonus into greeting flow so bonus voice plays
-      // AFTER greeting voice (fixes voice ordering race).
-      _checkGreeting(dailyBonus: dailyBonus);
+      _checkGreeting();
       // Ambient music on home screen (very low volume)
       AudioService().playMusic('battle_music_loop.mp3');
       AudioService().setMusicVolume(0.06);
     }
   }
 
-  Future<void> _checkGreeting({int dailyBonus = 0}) async {
+  Future<void> _checkGreeting() async {
     if (_greetingChecked) return;
     _greetingChecked = true;
     // Skip full greeting when returning from a brush session,
@@ -185,41 +183,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (result != null && mounted) {
       await _greetingService.markGreetingShown(todayDate);
       AnalyticsService().logDailyLogin(streak: _streak);
-      _showGreetingPopup(result, dailyBonus: dailyBonus);
+      _showGreetingPopup(result);
     } else if (lastGreetingDate == todayDate && mounted) {
       // Already greeted today — play a random welcome back voice
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) {
         final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
         AudioService().playVoice(voice);
-        // Queue daily bonus voice AFTER welcome back voice
-        if (dailyBonus > 0) {
-          AudioService().playVoice('voice_streak_bonus.mp3');
-        }
       }
-    } else if (dailyBonus > 0 && mounted) {
-      // No greeting shown but there's a daily bonus — play bonus voice standalone
-      if (!AudioService().isMuted) {
-        AudioService().playVoice('voice_streak_bonus.mp3');
-      }
+    }
+    // Claim daily bonus AFTER greeting flow (so wallet pill shows pre-bonus
+    // value during popup, then bumps after dismissal).
+    await _claimAndAnimateDailyBonus();
+  }
+
+  /// Claims the daily streak bonus and refreshes the wallet display.
+  Future<void> _claimAndAnimateDailyBonus() async {
+    final bonus = await _streakService.claimDailyBonus();
+    if (bonus > 0 && mounted) {
+      // Refresh wallet to include the newly-claimed bonus
+      final newWallet = await _streakService.getWallet();
+      setState(() {
+        _wallet = newWallet;
+      });
     }
   }
 
-  void _showGreetingPopup(GreetingResult greeting, {int dailyBonus = 0}) {
+  void _showGreetingPopup(GreetingResult greeting) {
     AudioService().playVoice(greeting.voiceFile);
-    // Queue streak bonus explanation voice if applicable
+    // Queue streak teach voice (Layer 2) — shorter replacements (~4s each).
+    // Layer 3 (voice_streak_bonus) eliminated; redundant with teach voices.
     if (greeting.brushStreak >= 7 && greeting.yesterdayBothDone) {
-      AudioService().playVoice('voice_streak_pair_bonus_high.mp3');
+      AudioService().playVoice('voice_streak_teach_high_pair.mp3');
     } else if (greeting.brushStreak >= 7) {
-      AudioService().playVoice('voice_streak_bonus_explain_high.mp3');
+      AudioService().playVoice('voice_streak_teach_high.mp3');
     } else if (greeting.brushStreak >= 3 && greeting.yesterdayBothDone) {
-      AudioService().playVoice('voice_streak_pair_bonus_low.mp3');
+      AudioService().playVoice('voice_streak_teach_low_pair.mp3');
     } else if (greeting.brushStreak >= 3) {
-      AudioService().playVoice('voice_streak_bonus_explain_low.mp3');
-    }
-    // Queue daily bonus voice AFTER greeting voices (fixes voice ordering race)
-    if (dailyBonus > 0) {
-      AudioService().playVoice('voice_streak_bonus.mp3');
+      AudioService().playVoice('voice_streak_teach_low.mp3');
     }
     HapticFeedback.mediumImpact();
 
@@ -634,7 +635,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             color: (_streak > 0
                                     ? Colors.orangeAccent
                                     : _totalBrushes > 0
-                                        ? const Color(0xFF00E5FF)
+                                        ? const Color(0xFFFFB74D)
                                         : Colors.white24)
                                 .withValues(alpha: 0.6),
                             width: 2,
@@ -642,7 +643,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           color: (_streak > 0
                                   ? Colors.orangeAccent
                                   : _totalBrushes > 0
-                                      ? const Color(0xFF00E5FF)
+                                      ? const Color(0xFFFFB74D)
                                       : Colors.white24)
                               .withValues(alpha: 0.12),
                         ),
@@ -652,18 +653,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             if (_streak == 0 && _totalBrushes > 0) ...[
                               const Icon(
                                 Icons.rocket_launch,
-                                color: Color(0xFF00E5FF),
+                                color: Color(0xFFFFB74D),
                                 size: 22,
-                              ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'NEW!',
-                                style: TextStyle(
-                                  color: Color(0xFF00E5FF),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  letterSpacing: 1,
-                                ),
                               ),
                             ] else ...[
                               Icon(

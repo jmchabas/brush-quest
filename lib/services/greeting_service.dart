@@ -64,6 +64,9 @@ class GreetingService {
     ],
     GreetingState.freshStart: [
       'voice_greet_fresh_start.mp3',
+      'voice_greet_comeback_1.mp3',
+      'voice_greet_comeback_2.mp3',
+      'voice_greet_comeback_3.mp3',
     ],
   };
 
