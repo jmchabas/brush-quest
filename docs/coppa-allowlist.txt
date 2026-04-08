@@ -1,0 +1,43 @@
+# COPPA-Safe Dependency Allowlist for Brush Quest
+# Format: package_name  # reason
+# Any dependency in pubspec.yaml NOT on this list triggers a fitness gate failure.
+#
+# Last reviewed: 2026-04-08
+
+# Core Flutter
+flutter  # framework — SDK package, no external data collection
+flutter_test  # testing — SDK package, never ships in release builds
+
+# Direct dependencies
+audioplayers  # local audio playback only, no network or tracking
+shared_preferences  # local key-value storage only, no network or user profiling
+google_fonts  # font loading; loads fonts from Google CDN — acceptable for kids apps under font-only exception
+wakelock_plus  # screen wake lock only, no data collection
+camera  # local camera access for motion detection; no data leaves device
+permission_handler  # runtime permission requests only, no data collection
+firebase_core  # Firebase SDK base; no standalone data collection
+firebase_auth  # Google Sign-In auth only; no behavioral tracking; parent-initiated
+cloud_firestore  # local user progress sync only; data scoped to authenticated UID; no cross-user profiling
+google_sign_in  # OAuth authentication; parent-initiated; no tracking
+firebase_crashlytics  # crash reporting only; no behavioral or advertising data; anonymized stack traces
+firebase_analytics  # CONDITIONAL — currently integrated; must be configured with analytics_collection_enabled=false for child users; review before each release; flag for removal if COPPA enforcement tightens
+lottie  # local animation rendering only, no network calls at runtime
+url_launcher  # opens URLs in external browser; used for privacy policy / support links only
+
+# Dev/build dependencies (never shipped in release APK)
+very_good_analysis  # lint rules only, build-time tool
+glados  # property-based testing, test-only
+dart_code_linter  # static analysis / code metrics, build-time tool
+
+# BLOCKED packages (never add these):
+# - google_mobile_ads  # behavioral advertising, COPPA violation
+# - firebase_analytics (unrestricted)  # child data collection without verifiable parental consent
+# - facebook_sdk  # behavioral tracking, COPPA violation
+# - appsflyer  # attribution tracking with device fingerprinting
+# - adjust  # attribution tracking with device fingerprinting
+# - onesignal  # push notifications with user profiling
+# - mixpanel_flutter  # behavioral analytics, COPPA violation
+# - amplitude_flutter  # behavioral analytics, COPPA violation
+# - branch_io_plugin  # deep link attribution with device tracking
+# - unity_ads  # advertising SDK, COPPA violation
+# - ironsource  # advertising mediation, COPPA violation
