@@ -183,3 +183,15 @@ These tools run automatically and feed INTO the next cycle's Phase 0:
 | Kid feedback | `~/Projects/dev-cycle/projects/brush-quest/kid-feedback.md` |
 | Screenshots (temp) | `/tmp/cycle-screens/` |
 | PrefsGate output (temp) | `/tmp/cycle-prefs-*.txt` |
+
+---
+
+## Cyclepro (`/cyclepro`)
+
+An evolution of `/cycle` with Foundation Principles, fitness gates, and auto mode. See `docs/superpowers/specs/2026-04-08-cyclepro-design.md` for the full design.
+
+Cyclepro runs everything `/cycle` does plus:
+- **11 Foundation Principles** evaluated by a dedicated Principles Reviewer agent (Agent 9)
+- **5 automated fitness gates** that block shipping (`scripts/fitness-gates.sh`)
+- **Auto mode** (`/cyclepro auto`) for autonomous Tier 1 cleanup
+- **Principle violation tracking** across cycles with chronic escalation
