@@ -831,12 +831,37 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           const SizedBox(height: 28),
           AnimatedBuilder(
             animation: _glowController,
-            builder: (context, _) => MouthGuide(
-              activeQuadrant: _quadrantOrder[_quadrantIndex],
-              glowAnim: _glowController.value,
-              highlightColor: const Color(0xFF00E5FF),
-              size: 240,
-            ),
+            builder: (context, _) {
+              final glowAlpha = 0.3 + _glowController.value * 0.4;
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00E5FF).withValues(alpha: glowAlpha),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: const Color(0xFF7C4DFF).withValues(alpha: glowAlpha * 0.5),
+                      blurRadius: 30,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: MouthGuide(
+                  activeQuadrant: _quadrantOrder[_quadrantIndex],
+                  glowAnim: _glowController.value,
+                  highlightColor: const Color(0xFF00E5FF),
+                  size: 240,
+                ),
+              );
+            },
           ),
           const Spacer(flex: 3),
         ],
@@ -885,18 +910,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _currentPage == 2
-                        ? [const Color(0xFF69F0AE), const Color(0xFF00BFA5)]
-                        : [const Color(0xFF7C4DFF), const Color(0xFF9C27B0)],
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
                   ),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color:
-                          (_currentPage == 2
-                                  ? const Color(0xFF69F0AE)
-                                  : const Color(0xFF7C4DFF))
+                      color: const Color(0xFF7C4DFF)
                               .withValues(alpha: 0.4),
                       blurRadius: 16,
                       spreadRadius: 2,

@@ -4114,7 +4114,7 @@ class _PulsingTapToFightState extends State<_PulsingTapToFight>
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.bolt, color: Colors.white, size: 28),
+                Icon(Icons.rocket_launch, color: Colors.white, size: 28),
                 SizedBox(width: 10),
                 Text(
                   'TAP TO FIGHT!',
