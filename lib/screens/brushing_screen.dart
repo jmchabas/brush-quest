@@ -1768,117 +1768,122 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== CAMERA PROMPT UI ====================
 
   Widget _buildCameraPrompt() {
+    // Play the camera pitch voice on first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _showCameraPrompt) {
+        _audio.playVoice('voice_camera_prompt.mp3', clearQueue: true);
+      }
+    });
+
     return Scaffold(
-      body: SpaceBackground(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Hero image with camera icon overlay
-                Stack(
-                  alignment: Alignment.center,
+      body: _WorldBackground(
+        world: _world,
+        child: Stack(
+          children: [
+            // Subtle world image overlay for continuity
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.15,
+                child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Column(
                   children: [
-                    Container(
-                      width: 130,
-                      height: 130,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _hero.primaryColor,
-                          width: 3,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(17),
-                        child: HeroService.buildHeroImage(
-                          _hero.id,
-                          stage: _evolutionStage,
-                          weaponId: _weapon.id,
-                          size: 130,
-                        ),
-                      ),
+                    const Spacer(flex: 2),
+
+                    // Hero with energy beam from camera
+                    _CameraPowerUpVisual(
+                      hero: _hero,
+                      evolutionStage: _evolutionStage,
+                      weapon: _weapon,
+                      themeColor: _world.themeColor,
                     ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF7C4DFF),
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.videocam,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-                // Two big buttons: enable (green check) and skip (gray X)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Enable camera button
+
+                    const Spacer(flex: 1),
+
+                    // POWER UP button (big, glowing, inviting)
                     GestureDetector(
                       onTap: _onCameraPromptAccept,
                       child: Container(
-                        width: 80,
-                        height: 80,
+                        width: double.infinity,
+                        height: 64,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF69F0AE).withValues(alpha: 0.25),
-                          border: Border.all(
-                            color: const Color(0xFF69F0AE),
-                            width: 3,
+                          borderRadius: BorderRadius.circular(32),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00E676), Color(0xFF00BFA5)],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF69F0AE).withValues(alpha: 0.4),
-                              blurRadius: 20,
+                              color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                              blurRadius: 24,
+                              spreadRadius: 2,
                             ),
                           ],
                         ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Color(0xFF69F0AE),
-                          size: 44,
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.bolt, color: Colors.white, size: 32),
+                            SizedBox(width: 8),
+                            Icon(Icons.videocam, color: Colors.white, size: 28),
+                            SizedBox(width: 8),
+                            Icon(Icons.bolt, color: Colors.white, size: 32),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 40),
-                    // Skip camera button
+
+                    const SizedBox(height: 16),
+
+                    // "Not now" option (subtle, non-pressuring)
                     GestureDetector(
                       onTap: _onCameraPromptSkip,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.1),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            width: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          'Not now',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 14,
                           ),
-                        ),
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.white.withValues(alpha: 0.6),
-                          size: 44,
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 24),
+
+                    // Parent trust line
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.lock_outline,
+                          color: Colors.white.withValues(alpha: 0.5),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Camera detects motion only — no pictures taken or stored.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 11,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -3194,6 +3199,140 @@ class _BrushingScreenState extends State<BrushingScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+// ==================== CAMERA POWER-UP VISUAL ====================
+
+class _CameraPowerUpVisual extends StatefulWidget {
+  final HeroCharacter hero;
+  final int evolutionStage;
+  final WeaponItem weapon;
+  final Color themeColor;
+
+  const _CameraPowerUpVisual({
+    required this.hero,
+    required this.evolutionStage,
+    required this.weapon,
+    required this.themeColor,
+  });
+
+  @override
+  State<_CameraPowerUpVisual> createState() => _CameraPowerUpVisualState();
+}
+
+class _CameraPowerUpVisualState extends State<_CameraPowerUpVisual>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final pulse = _pulseController.value;
+        final beamOpacity = 0.3 + pulse * 0.5;
+        final heroGlow = 8.0 + pulse * 16.0;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Camera icon at top with pulse
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF7C4DFF).withValues(alpha: 0.3 + pulse * 0.3),
+                border: Border.all(
+                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.6 + pulse * 0.4),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: pulse * 0.5),
+                    blurRadius: 16,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.videocam, color: Colors.white, size: 28),
+            ),
+
+            // Energy beam (camera → hero)
+            Container(
+              width: 4,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(2),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF7C4DFF).withValues(alpha: beamOpacity),
+                    widget.hero.primaryColor.withValues(alpha: beamOpacity),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: beamOpacity * 0.6),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+
+            // Hero — large, glowing, powered up
+            Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: widget.hero.primaryColor,
+                  width: 3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.hero.primaryColor.withValues(alpha: 0.4 + pulse * 0.3),
+                    blurRadius: heroGlow,
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFF7C4DFF).withValues(alpha: pulse * 0.3),
+                    blurRadius: heroGlow * 1.5,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: HeroService.buildHeroImage(
+                  widget.hero.id,
+                  stage: widget.evolutionStage,
+                  weaponId: widget.weapon.id,
+                  size: 180,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
