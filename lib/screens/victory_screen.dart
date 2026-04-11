@@ -200,6 +200,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _chestOpened = false;
   _ChestReward? _reward;
   bool _showDoneButton = false;
+  Timer? _chestAutoOpenTimer;
 
   // Top bar state
   final _walletPillKey = GlobalKey();
@@ -439,6 +440,13 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
     unawaited(_doneButtonController.repeat(reverse: true));
     unawaited(_chestBounceController.repeat(reverse: true));
+
+    // Auto-open chest after 4s if kid taps DONE without noticing the chest
+    _chestAutoOpenTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && !_chestOpened) {
+        _openChest();
+      }
+    });
   }
 
   void _triggerStarFlight() {
@@ -544,6 +552,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   void _openChest() {
     if (_chestOpened) return;
+    _chestAutoOpenTimer?.cancel();
     setState(() => _chestOpened = true);
     HapticFeedback.heavyImpact();
 
@@ -1300,6 +1309,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   void dispose() {
+    _chestAutoOpenTimer?.cancel();
     _audio.stopVoice();
     _confettiController.dispose();
     _doneButtonController.dispose();
@@ -1342,9 +1352,12 @@ class _VictoryScreenState extends State<VictoryScreen>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _showDoneButton,
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !_showDoneButton) {
+        if (didPop) return;
+        if (_showDoneButton) {
+          _goHome();
+        } else {
           HapticFeedback.lightImpact();
           // Brief pulse on the confetti to give visual feedback
           _confettiController.forward(from: 0.0);
@@ -1728,11 +1741,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                     // Streak pill (fire icon + streak count, orange)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
+                        horizontal: 14,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(22),
                         border: Border.all(
                           color: Colors.orangeAccent.withValues(alpha: 0.6),
                           width: 2,
@@ -1745,7 +1758,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                           const Icon(
                             Icons.local_fire_department,
                             color: Colors.orangeAccent,
-                            size: 22,
+                            size: 28,
                           ),
                           const SizedBox(width: 4),
                           TweenAnimationBuilder<int>(
@@ -1759,7 +1772,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 20,
+                                fontSize: 22,
                                 shadows: [
                                   Shadow(
                                     color: Color(0x80FF9800),
@@ -1773,7 +1786,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                       ),
                     ),
                     const SizedBox(width: 10),
-                    // Rank pill (diamond icon + total stars, purple)
+                    // Rank pill (diamond icon + total stars, purple) — secondary size
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -1821,7 +1834,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                       ),
                     ),
                     const SizedBox(width: 10),
-                    // Wallet pill (star icon + wallet count, yellow) with GlobalKey
+                    // Wallet pill (star icon + wallet count, yellow) with GlobalKey + glow
                     AnimatedBuilder(
                       animation: _walletBumpController,
                       builder: (context, child) {
@@ -1836,16 +1849,28 @@ class _VictoryScreenState extends State<VictoryScreen>
                       child: Container(
                         key: _walletPillKey,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 5,
+                          horizontal: 14,
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(22),
                           border: Border.all(
-                            color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
-                            width: 2,
+                            color: const Color(0xFFFFD54F).withValues(alpha: 0.7),
+                            width: 2.5,
                           ),
-                          color: const Color(0xFFFFD54F).withValues(alpha: 0.12),
+                          color: const Color(0xFFFFD54F).withValues(alpha: 0.15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFFD54F).withValues(alpha: 0.35),
+                              blurRadius: 16,
+                              spreadRadius: 2,
+                            ),
+                            BoxShadow(
+                              color: const Color(0xFFFF8F00).withValues(alpha: 0.15),
+                              blurRadius: 24,
+                              spreadRadius: 4,
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1853,7 +1878,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                             const Icon(
                               Icons.star,
                               color: Color(0xFFFFD54F),
-                              size: 20,
+                              size: 28,
                             ),
                             const SizedBox(width: 4),
                             TweenAnimationBuilder<int>(
@@ -1867,11 +1892,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 20,
+                                  fontSize: 24,
                                   shadows: [
                                     Shadow(
-                                      color: Color(0x80FFD54F),
-                                      blurRadius: 8,
+                                      color: Color(0xB0FFD54F),
+                                      blurRadius: 10,
                                     ),
                                   ],
                                 ),

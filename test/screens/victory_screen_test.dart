@@ -75,12 +75,14 @@ void main() {
       ),
     );
     // Pump past all internal timers (Future.delayed in _recordAndAnimate,
-    // star flight staggered launches, etc.)
+    // star flight staggered launches, chest auto-open at 4s, etc.)
     await tester.pump();
     await tester.pump(const Duration(seconds: 5));
     // Drain remaining star flight timers + 10s DONE-button fallback
     await tester.pump(const Duration(seconds: 6));
     await tester.pump(const Duration(seconds: 1));
+    // Drain achievement popup auto-dismiss timers (3s each)
+    await tester.pump(const Duration(seconds: 4));
   }
 
   testWidgets('victory screen shows GREAT JOB text', (tester) async {
