@@ -593,17 +593,6 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
               ),
             ),
           ),
-          // Subtle "???" overlay centered
-          Center(
-            child: Text(
-              '???',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.08),
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
           // Small lock icon in the bottom-right corner
           Positioned(
             bottom: 4,
