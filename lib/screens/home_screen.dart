@@ -53,7 +53,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _auraController;
   late AnimationController _breatheController;
   late Animation<double> _breatheAnimation;
+  late AnimationController _statPulseController;
+  late Animation<double> _statPulseAnimation;
   bool _buttonPressed = false;
+  int _showStarDelta = 0;
+  bool _starDeltaVisible = false;
+  bool _streakPulseActive = false;
   static const _welcomeBackVoices = [
     'voice_welcome_back.mp3',
     'voice_keep_it_up.mp3',
@@ -94,6 +99,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _breatheController, curve: Curves.easeInOut),
     );
 
+    _statPulseController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _statPulseAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.2), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 50),
+    ]).animate(
+      CurvedAnimation(parent: _statPulseController, curve: Curves.easeInOut),
+    );
+
   }
 
   @override
@@ -104,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _floatController.dispose();
     _auraController.dispose();
     _breatheController.dispose();
+    _statPulseController.dispose();
     super.dispose();
   }
 
@@ -184,7 +201,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (result != null && mounted) {
       await _greetingService.markGreetingShown(todayDate);
       unawaited(AnalyticsService().logDailyLogin(streak: _streak));
-      _showGreetingPopup(result);
+      _showGreetingPopup(
+        result,
+        pulseStreak: result.state == GreetingState.freshStart &&
+            totalBrushes > 2,
+      );
     } else if (lastGreetingDate == todayDate && mounted) {
       // Already greeted today — play a random welcome back voice
       await Future.delayed(const Duration(milliseconds: 800));
@@ -210,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _showGreetingPopup(GreetingResult greeting) {
+  void _showGreetingPopup(GreetingResult greeting, {bool pulseStreak = false}) {
     AudioService().playVoice(greeting.voiceFile);
     // Queue streak teach voice (Layer 2) — shorter replacements (~4s each).
     // Layer 3 (voice_streak_bonus) eliminated; redundant with teach voices.
@@ -245,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       GreetingState.freshStart => const Color(0xFF00E5FF),
     };
 
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) => Dialog(
@@ -422,7 +443,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-    );
+    ).then((_) {
+      // Stop any pending voice when dialog dismisses (barrier tap or auto)
+      AudioService().stopVoice();
+      // Pulse streak pill if this was a fresh-start greeting
+      if (pulseStreak && mounted) {
+        setState(() => _streakPulseActive = true);
+        _statPulseController.forward(from: 0).then((_) {
+          if (mounted) setState(() => _streakPulseActive = false);
+        });
+      }
+    });
     // Auto-dismiss when voice finishes + 0.5s (minimum 5s)
     final showTime = DateTime.now();
     void dismissWhenReady() {
@@ -511,7 +542,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             transitionDuration: const Duration(milliseconds: 500),
           ),
         )
-        .then((_) => _loadStats());
+        .then((_) async {
+          final prevWallet = _wallet;
+          final prevStreak = _streak;
+          await _loadStats();
+          if (!mounted) return;
+          final walletDelta = _wallet - prevWallet;
+          if (walletDelta > 0 || _streak != prevStreak) {
+            unawaited(_statPulseController.forward(from: 0));
+          }
+          if (walletDelta > 0) {
+            setState(() {
+              _showStarDelta = walletDelta;
+              _starDeltaVisible = true;
+            });
+            Future.delayed(const Duration(milliseconds: 1500), () {
+              if (mounted) setState(() => _starDeltaVisible = false);
+            });
+          }
+        });
   }
 
   void _openShop() {
@@ -655,7 +704,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       // Streak pill
                       Expanded(
-                      child: Container(
+                      child: AnimatedBuilder(
+                        animation: _statPulseAnimation,
+                        builder: (context, child) {
+                          final scale = _streakPulseActive
+                              ? _statPulseAnimation.value
+                              : 1.0;
+                          return Transform.scale(scale: scale, child: child);
+                        },
+                        child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 6,
@@ -718,7 +775,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             ],
                           ],
                         ),
-                      )),
+                      ))),
                       const SizedBox(width: 4),
                       // Ranger Rank pill (shield — the "pride number")
                       Expanded(child: Container(
@@ -762,44 +819,94 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       )),
                       const SizedBox(width: 4),
                       // Star Wallet pill (spendable stars)
-                      Expanded(child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFFFFD54F).withValues(alpha: 0.6),
-                            width: 2,
-                          ),
-                          color: const Color(0xFFFFD54F).withValues(alpha: 0.12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: Color(0xFFFFD54F),
-                              size: 22,
+                      Expanded(child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          AnimatedBuilder(
+                            animation: _statPulseAnimation,
+                            builder: (context, child) {
+                              final scale = _starDeltaVisible
+                                  ? _statPulseAnimation.value
+                                  : 1.0;
+                              return Transform.scale(
+                                  scale: scale, child: child);
+                            },
+                            child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_wallet',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                                shadows: [
-                                  Shadow(
-                                    color: Color(0x80FFD54F),
-                                    blurRadius: 8,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFFFD54F)
+                                    .withValues(alpha: 0.6),
+                                width: 2,
+                              ),
+                              color: const Color(0xFFFFD54F)
+                                  .withValues(alpha: 0.12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star,
+                                  color: Color(0xFFFFD54F),
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$_wallet',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 22,
+                                    shadows: [
+                                      Shadow(
+                                        color: Color(0x80FFD54F),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
+                              ],
+                            ),
+                          )),
+                          // Floating "+N" indicator
+                          if (_showStarDelta > 0)
+                            Positioned(
+                              top: -18,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: AnimatedOpacity(
+                                  opacity: _starDeltaVisible ? 1.0 : 0.0,
+                                  duration:
+                                      const Duration(milliseconds: 400),
+                                  child: AnimatedSlide(
+                                    offset: Offset(
+                                        0, _starDeltaVisible ? 0.0 : 0.5),
+                                    duration:
+                                        const Duration(milliseconds: 400),
+                                    child: Text(
+                                      '+$_showStarDelta',
+                                      style: const TextStyle(
+                                        color: Color(0xFFFFD54F),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        shadows: [
+                                          Shadow(
+                                            color: Color(0x80000000),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                        ],
                       )),
                       const SizedBox(width: 4),
                       // Trophy count pill (monsters captured)
