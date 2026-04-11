@@ -1921,7 +1921,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             final wobble = sin(_chestBounceController.value * pi * 2) * 0.03;
             final sparkleDrift = sin(_chestBounceController.value * pi * 2) * 5;
             return GestureDetector(
-              onTap: _openChest,
+              onTap: _chestOpened ? null : _openChest,
               behavior: HitTestBehavior.opaque,
               child: Transform.translate(
                 offset: Offset(0, -bounce),

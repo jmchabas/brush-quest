@@ -221,6 +221,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
 
   Future<void> _onWeaponTap(WeaponItem weapon) async {
     if (_unlockedWeapons.contains(weapon.id)) {
+      // Already selected — no-op to avoid unnecessary work
+      if (_selectedWeaponId == weapon.id) return;
       await _weaponService.selectWeapon(weapon.id);
       unawaited(HapticFeedback.mediumImpact());
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));

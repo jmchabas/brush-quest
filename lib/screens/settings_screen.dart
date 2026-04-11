@@ -580,6 +580,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
+                    onChanged: (_) => _resetInactivityTimer(),
                     onSubmitted: (_) {
                       final ans = int.tryParse(deleteController.text.trim());
                       if (ans == (deleteA * deleteB)) {
@@ -971,7 +972,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
         Center(
           child: Text(
-            'Brush Quest v7',
+            'Brush Quest v1.0.0',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.3),
               fontSize: 12,
@@ -1674,6 +1675,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
+                onChanged: (_) => _resetInactivityTimer(),
                 onSubmitted: (_) => _checkMathAnswer(),
                 decoration: InputDecoration(
                   hintText: '?',

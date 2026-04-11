@@ -1768,12 +1768,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   // ==================== CAMERA PROMPT UI ====================
 
   Widget _buildCameraPrompt() {
-    // Play the camera pitch voice on first build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _showCameraPrompt) {
-        _audio.playVoice('voice_camera_prompt.mp3', clearQueue: true);
-      }
-    });
+    // Voice is triggered from _dismissWorldIntro(), not here.
+    // Build methods must never trigger audio side effects.
 
     return Scaffold(
       body: _WorldBackground(
