@@ -2,7 +2,7 @@
 <!-- Every session reads this at start. Every session updates its section at end. -->
 <!-- Jim says "update the status board" → session updates its workstream below. -->
 
-**Current #1 Priority**: Kid testing → collect feedback → Cycle 11
+**Current #1 Priority**: Kid testing → collect Cycle 12 feedback
 **CEO Streak**: Week 0 (starting fresh)
 **Phase**: 1 — Internal Testing (Play Store LIVE)
 
@@ -11,28 +11,27 @@
 ## Workstream Status
 
 ### APP
-- **Status**: v1.0.0+6 deployed to Play Store internal testing — awaiting Oliver's feedback
-- **Last session**: 2026-04-07
-- **Last commit**: `245f7cb` — dart_code_linter integration + dead code cleanup
-- **What happened (2026-04-07)**:
-  - Completed Cycle 10 LEARN phase (was already recorded in dev-cycle `604aa67`)
-  - Deployed v1.0.0+6 to Play Store internal testing via fastlane
-  - Fixed fastlane config: added `release_status: "draft"` (app still in draft state on Play Console)
-  - Telegram bot connected — Jim can message Claude Code from phone
-- **What happened (2026-04-06, Cycle 10)**:
-  - 32 fixes across 6 parallel streams: audio, brushing, victory, home, shop, settings
-  - Key fixes: crystal cave voices, phase voice queue, timer pause on background, DOUBLE POWER→2 stars, comeback badge, evolution tap feedback, trophy brightness, 60s auto-lock
-  - Voiceover improvements shipped (world complete, shop tabs)
-  - dart_code_linter integrated, CI/AI review infrastructure added
-  - 755 tests (+79 from Cycle 9), 113.8 MB APK (-13% from Cycle 9)
+- **Status**: Cycle 12 shipped — 25 fixes across victory, services, UI, trophy wall, audio
+- **Last session**: 2026-04-10
+- **Last commit**: `a14dd6e` — Cycle 12
+- **What happened (2026-04-10, Cycle 12)**:
+  - 28 findings (1 Crit, 9 High, 10 Med, 8 Low), 25 implemented across 6 parallel streams
+  - Victory: trophy cards tappable, legendary badge interactive, forward hook guaranteed, dance/party chests +1 star
+  - Services: purchase atomicity fixed, smartSync timeout, trophy crash guard
+  - UI: delete dialog softened, mic→bolt icon, greeting 5s, camera skip, weekly dots legend, monster silhouettes
+  - Audio: 7 orphaned files removed, ambient music on map+trophies, encouragement shuffle+skip
+  - Tests: 773 (+8), 121.2 MB APK
+- **What happened (2026-04-08, Cycle 11 + 11b)**:
+  - Cycle 11: visual-only brushing cues, voice chain optimization, onboarding overhaul
+  - Cycle 11b hotfix: Oliver feedback — music lifecycle, phase voices, habit hook, stat pills, shop voice
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [x] P2.2: Privacy policy overhauled — COPPA 2025 + CCPA + data security program
   - [ ] P2.1: Google Play Console families policy config
-- **Blocked on**: Oliver testing (to collect kid feedback before Cycle 11)
-- **Next up**: Oliver tests → kid-feedback.md → Cycle 11 → voiceover decisions (2.2, 2.5)
-- **Needs CEO decision**: Voiceover 2.2 (shop "not enough stars") and 2.5 (streak-break reframe)
+- **Blocked on**: Oliver testing Cycle 12 build
+- **Next up**: Oliver tests → kid-feedback.md → monster voice audit (50 files) → Cycle 13
+- **Needs CEO decision**: Monster voice audit approach (manual vs re-generate all)
 
 ### LANDING PAGE
 - **Status**: Live at brushquest.app — email capture LIVE via Buttondown
