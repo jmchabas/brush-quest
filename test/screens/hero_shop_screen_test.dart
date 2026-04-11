@@ -190,9 +190,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
+    // Snackbar now uses icon-only (lock + prev stage thumbnail + arrow + current stage thumbnail).
+    // Verify a floating SnackBar appeared by checking for arrow_forward icon inside it.
     expect(
-      find.text('Unlock the previous evolution first!'),
-      findsOneWidget,
+      find.byIcon(Icons.arrow_forward),
+      findsWidgets,
     );
     await tester.binding.setSurfaceSize(null);
   });

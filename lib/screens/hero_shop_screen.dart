@@ -139,8 +139,28 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Get ${hero.name} first!'),
+              content: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.lock, color: Colors.amber, size: 24),
+                  const SizedBox(width: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/images/hero_${hero.id}.png',
+                      width: 32, height: 32,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 24),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward, color: Colors.white70, size: 20),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.star, color: Color(0xFFFFD54F), size: 24),
+                ],
+              ),
+              backgroundColor: hero.primaryColor.withValues(alpha: 0.9),
               duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
@@ -186,11 +206,38 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Row(
+                content: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.lock, color: Colors.amber, size: 20),
-                    SizedBox(width: 8),
-                    Text('Unlock the previous evolution first!'),
+                    const Icon(Icons.lock, color: Colors.amber, size: 24),
+                    const SizedBox(width: 8),
+                    // Previous stage thumbnail
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/heroes/hero_${hero.id}_stage${evolution.stage - 1}_star_blaster.png',
+                        width: 32, height: 32,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/images/hero_${hero.id}.png',
+                          width: 32, height: 32,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward, color: Colors.white70, size: 18),
+                    const SizedBox(width: 6),
+                    // Current stage thumbnail
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/heroes/hero_${hero.id}_stage${evolution.stage}_star_blaster.png',
+                        width: 32, height: 32,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          'assets/images/hero_${hero.id}.png',
+                          width: 32, height: 32,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 backgroundColor: hero.primaryColor.withValues(alpha: 0.9),
@@ -628,7 +675,12 @@ class _HeroEvolutionRow extends StatelessWidget {
         child: Row(
           children: [
             for (int i = 0; i < evolutions.length; i++) ...[
-              if (i > 0) const SizedBox(width: 6),
+              if (i > 0) ...[
+                const SizedBox(width: 2),
+                Icon(Icons.arrow_forward_ios, size: 12,
+                  color: Colors.white.withValues(alpha: 0.25)),
+                const SizedBox(width: 2),
+              ],
               Expanded(
                 child: _EvolutionCell(
                   hero: hero,
