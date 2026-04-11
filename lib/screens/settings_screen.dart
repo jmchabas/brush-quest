@@ -365,6 +365,40 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
+  Future<void> _handleDeleteCloudData() async {
+    _resetInactivityTimer();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Cloud Data?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'This will delete your cloud backup. Your local progress will be kept.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) {
+      final success = await SyncService().deleteCloudData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(success ? 'Cloud data deleted' : 'Failed to delete cloud data')),
+        );
+      }
+    }
+  }
+
   Future<void> _handleSyncNow() async {
     _resetInactivityTimer();
     setState(() => _syncing = true);
@@ -1181,15 +1215,27 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ],
                       ),
                     ),
-                    TextButton(
-                      onPressed: _handleSignOut,
-                      child: const Text(
-                        'Sign out',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 12,
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton(
+                          onPressed: _handleSignOut,
+                          child: const Text(
+                            'Sign out',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
                         ),
-                      ),
+                        TextButton(
+                          onPressed: _handleDeleteCloudData,
+                          child: const Text(
+                            'Delete cloud data',
+                            style: TextStyle(color: Colors.redAccent, fontSize: 12),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
