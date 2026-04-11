@@ -225,14 +225,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     HapticFeedback.mediumImpact();
 
-    final title = switch (greeting.state) {
-      GreetingState.justStarted => 'HEY SPACE RANGER!',
-      GreetingState.streak2to4 => 'WELCOME BACK!',
-      GreetingState.streak5to9 => 'WELCOME BACK!',
-      GreetingState.streak10to19 => 'SUPER RANGER!',
-      GreetingState.streak20plus => 'LEGENDARY!',
-      GreetingState.returning => 'WELCOME BACK!',
-      GreetingState.freshStart => 'NEW ADVENTURE!',
+    final greetingIcon = switch (greeting.state) {
+      GreetingState.justStarted => Icons.rocket_launch,
+      GreetingState.streak2to4 => Icons.local_fire_department,
+      GreetingState.streak5to9 => Icons.local_fire_department,
+      GreetingState.streak10to19 => Icons.star,
+      GreetingState.streak20plus => Icons.emoji_events,
+      GreetingState.returning => Icons.waving_hand,
+      GreetingState.freshStart => Icons.rocket_launch,
+    };
+
+    final greetingColor = switch (greeting.state) {
+      GreetingState.justStarted => const Color(0xFF00E5FF),
+      GreetingState.streak2to4 => const Color(0xFFFF6D00),
+      GreetingState.streak5to9 => const Color(0xFFFF6D00),
+      GreetingState.streak10to19 => const Color(0xFFFFD54F),
+      GreetingState.streak20plus => const Color(0xFFFFD54F),
+      GreetingState.returning => const Color(0xFF69F0AE),
+      GreetingState.freshStart => const Color(0xFF00E5FF),
     };
 
     showDialog(
@@ -270,25 +280,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color(0xFF69F0AE),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    letterSpacing: 3,
-                  ),
+                Icon(
+                  greetingIcon,
+                  color: greetingColor,
+                  size: 56,
                 ),
                 if (greeting.brushStreak >= 2) ...[
                   const SizedBox(height: 12),
-                  Text(
-                    '\u{1F525} ${greeting.brushStreak} DAY STREAK!',
-                    style: const TextStyle(
-                      color: Color(0xFFFFD54F),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      letterSpacing: 1,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.local_fire_department,
+                          color: Color(0xFFFF6D00), size: 36),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${greeting.brushStreak}',
+                        style: const TextStyle(
+                          color: Color(0xFFFFD54F),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.star,
+                          color: Color(0xFFFFD54F), size: 28),
+                    ],
                   ),
                 ],
                 // Comeback badge — returning user with broken streak
@@ -722,7 +738,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.diamond,
+                              Icons.military_tech,
                               color: Color(0xFF7C4DFF),
                               size: 26,
                             ),
