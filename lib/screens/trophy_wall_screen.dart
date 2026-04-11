@@ -128,6 +128,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     } else {
       HapticFeedback.lightImpact();
       AudioService().playSfx('whoosh.mp3');
+      AudioService().playVoice('voice_keep_going.mp3', clearQueue: true, interrupt: true);
     }
   }
 
