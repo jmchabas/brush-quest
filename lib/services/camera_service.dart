@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -69,9 +70,9 @@ class CameraService {
 
       await _controller!.initialize();
       return true;
-    } catch (e) {
+    } on Exception catch (_) {
       _initFailed = true;
-      _controller?.dispose();
+      unawaited(_controller?.dispose());
       _controller = null;
       return false;
     }
@@ -107,7 +108,7 @@ class CameraService {
     _motionIntensity = 0.0;
     try {
       _controller?.stopImageStream();
-    } catch (_) {}
+    } on Exception catch (_) {}
   }
 
   /// Process a single camera frame: downsample Y plane to 32x32,

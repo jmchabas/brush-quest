@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 
 class MuteButton extends StatefulWidget {
@@ -12,6 +13,7 @@ class _MuteButtonState extends State<MuteButton> {
   bool _muted = AudioService().isMuted;
 
   void _toggle() {
+    HapticFeedback.lightImpact();
     AudioService().toggleMute();
     setState(() => _muted = AudioService().isMuted);
   }

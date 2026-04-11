@@ -147,7 +147,7 @@ class SyncService {
       if (user == null) return false;
       await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
       return true;
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Failed to delete cloud data: $e');
       return false;
     }
@@ -173,11 +173,11 @@ class SyncService {
         try {
           final stringList = val.whereType<String>().toList();
           await prefs.setStringList(key, stringList);
-        } catch (e) {
+        } on Exception catch (e) {
           debugPrint('Sync: failed to write list for $key: $e');
         }
       }
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Sync: failed to write $key: $e');
     }
   }

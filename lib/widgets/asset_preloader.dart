@@ -82,7 +82,7 @@ class _AssetPreloaderState extends State<AssetPreloader>
             AssetImage(path),
             context,
           ).timeout(const Duration(milliseconds: 600));
-        } catch (_) {
+        } on Exception catch (_) {
           // Keep startup resilient on constrained/slow emulators.
           // If one asset fails to decode, continue boot so the app remains usable.
         }
@@ -94,7 +94,7 @@ class _AssetPreloaderState extends State<AssetPreloader>
       await AudioService().preloadAll().timeout(const Duration(seconds: 8));
       completed++;
       if (mounted) setState(() => _progress = completed / total);
-    } catch (_) {
+    } on Exception catch (_) {
       // Ignore preloading errors and continue into the app.
     } finally {
       if (mounted) {
@@ -211,10 +211,10 @@ class _AssetPreloaderState extends State<AssetPreloader>
                     animation: _pulseController,
                     builder: (context, _) => Opacity(
                       opacity: 0.4 + _pulseController.value * 0.3,
-                      child: Text(
+                      child: const Text(
                         'DEFEAT THE CAVITY MONSTERS',
                         style: TextStyle(
-                          color: const Color(0xFF00E5FF),
+                          color: Color(0xFF00E5FF),
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 5,

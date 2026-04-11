@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +17,7 @@ import 'widgets/asset_preloader.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  unawaited(SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]));
 
   // Firebase init must never block app startup.
   try {
@@ -31,7 +32,7 @@ void main() async {
     };
     // COPPA-compliant analytics: no ad IDs, no ad personalization.
     await AnalyticsService().init();
-  } catch (_) {
+  } on Exception catch (_) {
     // Firebase/Crashlytics/Analytics unavailable — app still launches.
   }
 
@@ -77,10 +78,10 @@ class _BrushQuestAppState extends State<BrushQuestApp>
       title: 'Brush Quest',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.dark(
-          primary: const Color(0xFF7C4DFF),
-          secondary: const Color(0xFF00E5FF),
-          surface: const Color(0xFF0D0B2E),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF7C4DFF),
+          secondary: Color(0xFF00E5FF),
+          surface: Color(0xFF0D0B2E),
         ),
         textTheme: GoogleFonts.fredokaTextTheme(ThemeData.dark().textTheme),
       ),

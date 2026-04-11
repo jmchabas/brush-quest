@@ -270,7 +270,7 @@ void main() {
       final data = buildLocalData(prefs);
 
       expect(data['brush_history'], isA<List>());
-      expect((data['brush_history'] as List), isEmpty);
+      expect(data['brush_history'] as List, isEmpty);
     });
 
     test('includes string list values (unlocked_heroes, unlocked_weapons)', () async {
@@ -571,7 +571,7 @@ void main() {
         'world_progress_slime_swamp': 5,
       });
       final prefs = await SharedPreferences.getInstance();
-      final expected = 20 * 8 + 40 * 5 + 2 * 30 + 1 * 20 + 3 * 15 + 12 * 3;
+      const expected = 20 * 8 + 40 * 5 + 2 * 30 + 1 * 20 + 3 * 15 + 12 * 3;
       expect(progressScoreFromPrefs(prefs), expected);
     });
 

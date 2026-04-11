@@ -224,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () => _openPrivacyPolicy(),
+              onTap: _openPrivacyPolicy,
               child: const Text(
                 'Read our Privacy Policy',
                 style: TextStyle(
@@ -251,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         ],
       ),
     );
-    return result == true;
+    return result ?? false;
   }
 
   Future<void> _handleSignIn() async {
@@ -263,7 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     try {
       final user = await _auth.signInWithGoogle();
       if (user != null && mounted) {
-        AnalyticsService().logSignIn();
+        unawaited(AnalyticsService().logSignIn());
         await _sync.smartSync();
         await _loadSettings();
         if (mounted) {
@@ -282,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           );
         }
       }
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Sign-in failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -345,7 +345,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     try {
       await _auth.signOut();
       if (mounted) setState(() {});
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Sign-out failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -388,7 +388,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Cloud sync failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -470,7 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Cloud restore failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -571,10 +571,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   child: TextField(
                     controller: deleteController,
                     autofocus: true,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      signed: false,
-                      decimal: false,
-                    ),
+                    keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.done,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     textAlign: TextAlign.center,
@@ -723,10 +720,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     await SyncService().deleteCloudData();
 
     if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
+      unawaited(Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
         (_) => false,
-      );
+      ));
     }
   }
 
@@ -935,10 +932,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       children: [
         // ── STATS (top of dashboard) ────────────────
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.bar_chart,
           label: 'STATS',
-          color: const Color(0xFF00E676),
+          color: Color(0xFF00E676),
         ),
         const SizedBox(height: 8),
         _buildHabitStrength(),
@@ -946,10 +943,10 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(height: 24),
 
         // ── THIS WEEK ────────────────────────────────────────
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.calendar_view_week,
           label: 'THIS WEEK',
-          color: const Color(0xFFFFD54F),
+          color: Color(0xFFFFD54F),
         ),
         const SizedBox(height: 8),
         if (_historyLoaded) _WeekActivityCard(history: _brushHistory),
@@ -957,10 +954,10 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(height: 24),
 
         // ── TODAY STATUS ─────────────────────────────────────
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.today,
           label: 'TODAY',
-          color: const Color(0xFF00E5FF),
+          color: Color(0xFF00E5FF),
         ),
         const SizedBox(height: 8),
         _buildTodayStatus(),
@@ -1076,10 +1073,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       children: [
         // ── ACCOUNT ──────────────────────────────────────────
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.person,
           label: 'ACCOUNT',
-          color: const Color(0xFF00E676),
+          color: Color(0xFF00E676),
         ),
         const SizedBox(height: 8),
         if (!signedIn) ...[
@@ -1237,14 +1234,14 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(height: 24),
 
         // ── BRUSHING ─────────────────────────────────────────
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.cleaning_services,
-          customIcon: const ImageIcon(
+          customIcon: ImageIcon(
             AssetImage('assets/images/icon_toothbrush.png'),
             size: 20,
           ),
           label: 'BRUSHING',
-          color: const Color(0xFF00E5FF),
+          color: Color(0xFF00E5FF),
         ),
         const SizedBox(height: 8),
         _SettingCard(
@@ -1302,10 +1299,10 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(height: 24),
 
         // ── OTHER ────────────────────────────────────────────
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.settings,
           label: 'OTHER',
-          color: const Color(0xFF7C4DFF),
+          color: Color(0xFF7C4DFF),
         ),
         const SizedBox(height: 8),
         _SettingCard(
@@ -1438,10 +1435,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHeader(
+        const _SectionHeader(
           icon: Icons.star,
           label: 'HOW STARS WORK',
-          color: const Color(0xFFFFD54F),
+          color: Color(0xFFFFD54F),
         ),
         const SizedBox(height: 12),
         _buildStarGuideCard(
@@ -1668,10 +1665,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               child: TextField(
                 controller: _mathController,
                 autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(
-                  signed: false,
-                  decimal: false,
-                ),
+                keyboardType: TextInputType.number,
                 textInputAction: TextInputAction.done,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 textAlign: TextAlign.center,
@@ -2248,4 +2242,3 @@ class _HalfCirclePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

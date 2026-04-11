@@ -597,7 +597,7 @@ class _BrushingScreenState extends State<BrushingScreen>
         'assets/shaders/shockwave.frag',
       );
       if (mounted) setState(() {});
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('Shader load failed (non-fatal): $e');
     }
   }
@@ -657,14 +657,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     // Slow-motion: skip every other frame for cinematic finisher
     if (_slowMotion) {
       _slowMotionFrame++;
-      if (_slowMotionFrame % 2 == 0) return;
+      if (_slowMotionFrame.isEven) return;
     }
     for (int i = 0; i < _particles.length; i++) {
       final p = _particles[i];
       p.x += p.vx;
       p.y += p.vy;
       p.life -= 0.006;
-      p.opacity = (p.life).clamp(0, 0.7);
+      p.opacity = p.life.clamp(0, 0.7);
       if (p.life <= 0 || p.y < -0.1 || p.y > 1.1 || p.x < -0.1 || p.x > 1.1) {
         _particles[i] = _createParticle();
         _particles[i].y = 0.85 + _random.nextDouble() * 0.15;
@@ -778,7 +778,7 @@ class _BrushingScreenState extends State<BrushingScreen>
           _triggerAttack();
           _resetStallTimer(); // Reset mercy timer on successful attack
         }
-      } catch (e) {
+      } on Exception catch (e) {
         debugPrint('Motion callback error: $e');
       }
     });
@@ -839,7 +839,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     await _loadHeroAndWorld();
     final restored = await _tryRestoreCheckpoint();
     if (!restored) {
-      _startWorldIntro();
+      unawaited(_startWorldIntro());
     }
   }
 
@@ -903,7 +903,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     await prefs.remove(_checkpointWorldKey);
   }
 
-  void _startWorldIntro() async {
+  Future<void> _startWorldIntro() async {
     // Always show world intro — it's the mission briefing moment.
     // Kid can tap to skip; auto-advances after 10 seconds.
     _worldIntroTimer?.cancel();
@@ -921,7 +921,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
-  void _dismissWorldIntro() async {
+  Future<void> _dismissWorldIntro() async {
     _worldIntroTimer?.cancel();
 
     if (!mounted) return;
@@ -951,7 +951,7 @@ class _BrushingScreenState extends State<BrushingScreen>
         _showCameraPrompt = true;
         _sessionStage = SessionStage.countdown;
       });
-      _audio.playVoice('voice_camera_prompt.mp3');
+      unawaited(_audio.playVoice('voice_camera_prompt.mp3'));
       return; // Wait for user to respond to camera prompt
     }
 
@@ -960,7 +960,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Future<void> _onCameraPromptAccept() async {
-    _audio.stopVoice();
+    unawaited(_audio.stopVoice());
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_prompt_shown', true);
     await prefs.setBool('camera_enabled', true);
@@ -973,7 +973,7 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Future<void> _onCameraPromptSkip() async {
-    _audio.stopVoice();
+    unawaited(_audio.stopVoice());
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('camera_prompt_shown', true);
     if (!mounted) return;
@@ -981,7 +981,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _startCountdown();
   }
 
-  void _exitWorldIntro() async {
+  Future<void> _exitWorldIntro() async {
     _worldIntroTimer?.cancel();
 
     // On the very first brush, redirect the kid back to the fight
@@ -989,15 +989,15 @@ class _BrushingScreenState extends State<BrushingScreen>
     final prefs = await SharedPreferences.getInstance();
     final totalBrushes = prefs.getInt('total_brushes') ?? 0;
     if (totalBrushes == 0) {
-      _audio.stopVoice();
-      _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
+      unawaited(_audio.stopVoice());
+      unawaited(_audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true));
       // Dismiss the intro and start the session instead of popping
-      _dismissWorldIntro();
+      unawaited(_dismissWorldIntro());
       return;
     }
 
-    _audio.stopVoice();
-    _audio.stopMusic();
+    unawaited(_audio.stopVoice());
+    unawaited(_audio.stopMusic());
     if (!mounted) return;
     setState(() => _isQuitting = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1400,7 +1400,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       _attackStyleIndex = _totalHits % AttackStyle.values.length;
       if (_monster.alive) {
         _monster.hitRecoil = 1.0;
-        final baseDamage = 0.08;
+        const baseDamage = 0.08;
         _monster.health -= baseDamage * _dailyModifier.damageMultiplier;
         if (_monster.health <= 0) {
           _monster.health = 0;
@@ -2122,8 +2122,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   Widget _buildBrushing() {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final monsterSize = 160.0;
-    final heroSize = 168.0;
+    const monsterSize = 160.0;
+    const heroSize = 168.0;
 
     return Scaffold(
       body: AnimatedBuilder(
@@ -2671,7 +2671,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     final damageTintStrength = _monster.personality.tintStrength +
         (damageProgress > 0.5 ? (damageProgress - 0.5) * 0.2 : 0.0);
 
-    Widget monsterImage = ColorFiltered(
+    final Widget monsterImage = ColorFiltered(
       colorFilter: _monster.hitRecoil > 0.93
           // Tier 1: White flash on hit — 1-2 frames only, not overused
           ? const ColorFilter.mode(Colors.white, BlendMode.srcATop)
@@ -3144,14 +3144,14 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   Widget _buildPauseOverlay() {
-    return Container(
+    return ColoredBox(
       color: Colors.black.withValues(alpha: 0.8),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Pulsing pause icon — no text needed
-            _PulsingPauseIcon(color: Colors.white54),
+            const _PulsingPauseIcon(color: Colors.white54),
             const SizedBox(height: 48),
             // Resume button — enlarged play arrow, no text
             GestureDetector(
@@ -3490,7 +3490,7 @@ class _EnergyRingPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2;
     final radius = size.width * 0.42;
-    final particleCount = 8;
+    const particleCount = 8;
 
     for (int i = 0; i < particleCount; i++) {
       final angle = (i / particleCount) * 2 * pi + animValue * pi * 2;
@@ -3529,8 +3529,8 @@ class _WeaponBattleEffectPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height * 0.35;
 
-    final impactStart = 0.35;
-    final impactEnd = 0.7;
+    const impactStart = 0.35;
+    const impactEnd = 0.7;
     if (progress < impactStart || progress > impactEnd) return;
 
     final impactProgress =
@@ -3569,7 +3569,6 @@ class _WeaponBattleEffectPainter extends CustomPainter {
           Offset(cx + slashLen, cy + slashLen * 0.3),
           glowPaint,
         );
-        break;
 
       case AttackEffectType.iceHammer:
         for (int i = 0; i < 2; i++) {
@@ -3591,17 +3590,16 @@ class _WeaponBattleEffectPainter extends CustomPainter {
             paint,
           );
         }
-        break;
 
       case AttackEffectType.lightningWand:
         final path = Path();
         path.moveTo(cx, cy + size.height * 0.3);
-        final segments = 6;
+        const segments = 6;
         for (int i = 1; i <= segments; i++) {
           final t = i / segments;
           final y =
               cy + size.height * 0.3 - size.height * 0.3 * t * impactProgress;
-          final x = cx + (i % 2 == 0 ? 1 : -1) * 20 * impactProgress;
+          final x = cx + (i.isEven ? 1 : -1) * 20 * impactProgress;
           path.lineTo(x, y);
         }
         paint.strokeWidth = lineWidth * 1.5;
@@ -3616,7 +3614,6 @@ class _WeaponBattleEffectPainter extends CustomPainter {
             canvas.drawPath(boltPath, paint);
           }
         }
-        break;
 
       case AttackEffectType.vineWhip:
         final path = Path();
@@ -3639,7 +3636,6 @@ class _WeaponBattleEffectPainter extends CustomPainter {
           cy + 10,
         );
         canvas.drawPath(path2, paint);
-        break;
 
       case AttackEffectType.cosmicBurst:
         final colors = [
@@ -3667,9 +3663,8 @@ class _WeaponBattleEffectPainter extends CustomPainter {
           ..color = Colors.white.withValues(alpha: fadeAlpha * 0.5)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
         canvas.drawCircle(Offset(cx, cy), 20 * impactProgress, starPaint);
-        break;
 
-      default:
+      case AttackEffectType.defaultBeam:
         final beamEndY = cy + size.height * 0.3 * (1 - impactProgress);
         paint.strokeWidth = lineWidth * 2;
         canvas.drawLine(
@@ -3683,7 +3678,6 @@ class _WeaponBattleEffectPainter extends CustomPainter {
           Offset(cx, beamEndY),
           glowPaint,
         );
-        break;
     }
 
     if (isFinisher) {
@@ -3791,7 +3785,7 @@ class _MonsterDripPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rng = Random((phase * 1000).toInt());
-    final dripCount = 3;
+    const dripCount = 3;
 
     for (int i = 0; i < dripCount; i++) {
       final baseX = size.width * 0.25 + rng.nextDouble() * size.width * 0.5;
@@ -3858,7 +3852,7 @@ class _HeroPowerParticlePainter extends CustomPainter {
       final x = cx + cos(angle) * orbitRadius;
       final y = cy + sin(angle) * orbitRadius * 0.7; // Slightly elliptical
 
-      final useSecondary = i % 2 == 0;
+      final useSecondary = i.isEven;
       final c = useSecondary ? secondaryColor : color;
       final alpha = isAttacking
           ? 0.8
@@ -3917,8 +3911,8 @@ class _DamageCrackPainter extends CustomPainter {
       final len = 20 + rng.nextDouble() * 35;
       final x1 = cx + cos(startAngle) * 14;
       final y1 = cy + sin(startAngle) * 14;
-      var x2 = x1 + cos(startAngle) * len;
-      var y2 = y1 + sin(startAngle) * len;
+      final x2 = x1 + cos(startAngle) * len;
+      final y2 = y1 + sin(startAngle) * len;
       if (glowPaint != null) {
         canvas.drawLine(Offset(x1, y1), Offset(x2, y2), glowPaint);
       }
@@ -4121,12 +4115,12 @@ class _PulsingTapToFightState extends State<_PulsingTapToFight>
                 ),
               ],
             ),
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.bolt, color: Colors.white, size: 28),
-                const SizedBox(width: 10),
-                const Text(
+                Icon(Icons.bolt, color: Colors.white, size: 28),
+                SizedBox(width: 10),
+                Text(
                   'TAP TO FIGHT!',
                   style: TextStyle(
                     color: Colors.white,
@@ -4519,7 +4513,7 @@ class _ImpactShapePainter extends CustomPainter {
     canvas.drawLine(Offset(cx - r * 0.6, cy - r * 0.3), Offset(cx + r * 0.4, cy + r * 0.5), crackPaint);
     canvas.drawLine(Offset(cx + r * 0.2, cy - r * 0.5), Offset(cx - r * 0.3, cy + r * 0.4), crackPaint);
     // 4 mini stars bursting outward
-    final miniStarColor = Colors.yellowAccent;
+    const miniStarColor = Colors.yellowAccent;
     for (int i = 0; i < 4; i++) {
       final angle = i * pi / 2 + pi / 4;
       final dist = r * 1.2;

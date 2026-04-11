@@ -388,34 +388,34 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     // Analytics: log completion + update user properties
     final analytics = AnalyticsService();
-    analytics.logBrushSessionComplete(
+    unawaited(analytics.logBrushSessionComplete(
       totalHits: widget.totalHits,
       monstersDefeated: widget.monstersDefeated,
       starsEarned: _starsEarnedThisSession,
       newStreak: _newStreak,
       totalStars: _newStars,
-    );
-    analytics.setUserProperties(
+    ));
+    unawaited(analytics.setUserProperties(
       lifetimeBrushes: lifetimeBrushes,
       currentStreak: _newStreak,
       totalStars: _newStars,
-    );
+    ));
 
     if (mounted) setState(() {});
 
     // Auto-sync progress to cloud if signed in (fire-and-forget)
     if (AuthService().currentUser != null) {
-      SyncService().uploadProgress().catchError((e) {
+      unawaited(SyncService().uploadProgress().catchError((e) {
         debugPrint('Cloud sync failed: $e');
-      });
+      }));
     }
 
     // ── NEW TIMING SEQUENCE ──
     // t=0       Hero celebration + Victory SFX + confetti
-    _heroCelebrationController.forward();
-    _heroGlowController.repeat(reverse: true);
-    _audio.playSfx('victory.mp3');
-    _confettiController.repeat();
+    unawaited(_heroCelebrationController.forward());
+    unawaited(_heroGlowController.repeat(reverse: true));
+    unawaited(_audio.playSfx('victory.mp3'));
+    unawaited(_confettiController.repeat());
 
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
@@ -432,13 +432,13 @@ class _VictoryScreenState extends State<VictoryScreen>
     _triggerStarFlight();
 
     // Show DONE button + chest immediately while beat2 plays
-    _audio.playSfx('whoosh.mp3');
+    unawaited(_audio.playSfx('whoosh.mp3'));
     setState(() {
       _showDoneButton = true;
       _showChest = true;
     });
-    _doneButtonController.repeat(reverse: true);
-    _chestBounceController.repeat(reverse: true);
+    unawaited(_doneButtonController.repeat(reverse: true));
+    unawaited(_chestBounceController.repeat(reverse: true));
   }
 
   void _triggerStarFlight() {
@@ -537,7 +537,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     // Play only the single highest-priority bonus voice
     if (voiceToPlay != null && mounted) {
-      if (isFirstTime) HapticFeedback.heavyImpact();
+      if (isFirstTime) unawaited(HapticFeedback.heavyImpact());
       await _audio.playVoice(voiceToPlay);
     }
   }
@@ -556,8 +556,8 @@ class _VictoryScreenState extends State<VictoryScreen>
     Future.delayed(const Duration(milliseconds: 500), () async {
       try {
         if (!mounted) return;
-        _rewardRevealController.forward();
-        if (_reward!.bonusStars > 0) HapticFeedback.mediumImpact();
+        unawaited(_rewardRevealController.forward());
+        if (_reward!.bonusStars > 0) unawaited(HapticFeedback.mediumImpact());
 
         // ── Slot 0: Chest reward voice (always plays) ──
         await _audio.playVoice(_reward!.voiceFile);
@@ -660,18 +660,18 @@ class _VictoryScreenState extends State<VictoryScreen>
             _revealedTrophy = trophy;
           });
 
-          HapticFeedback.mediumImpact();
-          _cardFlyController.forward();
+          unawaited(HapticFeedback.mediumImpact());
+          unawaited(_cardFlyController.forward());
 
           await Future.delayed(const Duration(milliseconds: 700));
           if (!mounted) return;
 
-          _cardGlowController.repeat(reverse: true);
-          _newBadgeController.forward();
+          unawaited(_cardGlowController.repeat(reverse: true));
+          unawaited(_newBadgeController.forward());
 
           // P2: Trophy captured — voice_card_new + card description
           if (result.captured && voiceSlotsRemaining > 0) {
-            HapticFeedback.heavyImpact();
+            unawaited(HapticFeedback.heavyImpact());
             await _audio.playVoice('voice_card_new.mp3');
             voiceSlotsRemaining--;
             // Card description gets its own slot
@@ -681,7 +681,7 @@ class _VictoryScreenState extends State<VictoryScreen>
               voiceSlotsRemaining--;
             }
           } else if (!result.captured) {
-            _audio.playVoice('voice_keep_going.mp3');
+            unawaited(_audio.playVoice('voice_keep_going.mp3'));
             // "keep going" is short, counts as a slot
             if (voiceSlotsRemaining > 0) voiceSlotsRemaining--;
           }
@@ -700,8 +700,8 @@ class _VictoryScreenState extends State<VictoryScreen>
 
           // P2: World complete
           if (_worldJustCompleted && voiceSlotsRemaining > 0) {
-            HapticFeedback.heavyImpact();
-            _audio.playSfx('victory.mp3');
+            unawaited(HapticFeedback.heavyImpact());
+            unawaited(_audio.playSfx('victory.mp3'));
             await _audio.playVoice('voice_world_complete.mp3');
             voiceSlotsRemaining--;
           }
@@ -729,14 +729,14 @@ class _VictoryScreenState extends State<VictoryScreen>
               _revealedTrophy = trophy;
             });
 
-            HapticFeedback.heavyImpact();
-            _cardFlyController.forward();
+            unawaited(HapticFeedback.heavyImpact());
+            unawaited(_cardFlyController.forward());
 
             await Future.delayed(const Duration(milliseconds: 700));
             if (!mounted) return;
 
-            _cardGlowController.repeat(reverse: true);
-            _newBadgeController.forward();
+            unawaited(_cardGlowController.repeat(reverse: true));
+            unawaited(_newBadgeController.forward());
 
             // P5: Legendary encounter — voice_wow_amazing ONLY, skip card description
             if (voiceSlotsRemaining > 0) {
@@ -757,7 +757,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             if (_newStars >= milestone && _previousStars < milestone) {
               final voiceFile = 'voice_milestone_$milestone.mp3';
               await _audio.playVoice(voiceFile);
-              _confettiController.repeat();
+              unawaited(_confettiController.repeat());
               voiceSlotsRemaining--;
               break; // Only play one milestone per session
             }
@@ -787,16 +787,16 @@ class _VictoryScreenState extends State<VictoryScreen>
         if (mounted) {
           await _showForwardHookSequence();
         }
-      } catch (e) {
+      } on Exception catch (e) {
         debugPrint('Victory chest sequence error: $e');
       } finally {
         // Guarantee the DONE button is visible even if the reward chain fails.
         // It may already be showing (set in _recordAndAnimate), but this
         // ensures it appears if the early-show somehow didn't fire.
         if (mounted && !_showDoneButton) {
-          _audio.playSfx('whoosh.mp3');
+          unawaited(_audio.playSfx('whoosh.mp3'));
           setState(() => _showDoneButton = true);
-          _doneButtonController.repeat(reverse: true);
+          unawaited(_doneButtonController.repeat(reverse: true));
         }
       }
     });
@@ -827,8 +827,8 @@ class _VictoryScreenState extends State<VictoryScreen>
       _showForwardHook = true;
     });
 
-    _forwardHookFadeController.forward();
-    _forwardHookPulseController.repeat(reverse: true);
+    unawaited(_forwardHookFadeController.forward());
+    unawaited(_forwardHookPulseController.repeat(reverse: true));
 
     // Play the corresponding voice line
     final voiceFile = switch (hookType) {
@@ -1328,7 +1328,7 @@ class _VictoryScreenState extends State<VictoryScreen>
       }
     }
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
+    unawaited(Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             const HomeScreen(skipGreeting: true),
@@ -1336,7 +1336,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             FadeTransition(opacity: animation, child: child),
       ),
       (route) => false,
-    );
+    ));
   }
 
   @override
@@ -2551,7 +2551,7 @@ class _ConfettiPainter extends CustomPainter {
     ];
     for (int i = 0; i < 120; i++) {
       final baseX = _random.nextDouble() * size.width;
-      final sineDrift = sin((progress * 4 + i * 0.3)) * 30;
+      final sineDrift = sin(progress * 4 + i * 0.3) * 30;
       final x = baseX + sineDrift;
       final speed = 0.6 + _random.nextDouble() * 0.8;
       final startY = -20.0 + _random.nextDouble() * -100;
@@ -2649,7 +2649,7 @@ class _StarFlightOverlayState extends State<_StarFlightOverlay>
 
     _positionAnims = List.generate(widget.starCount, (i) {
       // Randomize control point for unique arc per star
-      final dx = ((_random.nextDouble() - 0.5) * 200);
+      final dx = (_random.nextDouble() - 0.5) * 200;
       final dy = -100 - _random.nextDouble() * 100; // arc upward
       final controlPoint = Offset(
         (widget.source.dx + widget.target.dx) / 2 + dx,
@@ -2679,14 +2679,14 @@ class _StarFlightOverlayState extends State<_StarFlightOverlay>
   Future<void> _launchStars() async {
     for (int i = 0; i < widget.starCount; i++) {
       if (!mounted) return;
-      _controllers[i].forward().then((_) {
+      unawaited(_controllers[i].forward().then((_) {
         if (!mounted) return;
         widget.onStarLanded();
         _landedCount++;
         if (_landedCount >= widget.starCount) {
           widget.onComplete();
         }
-      });
+      }));
       if (i < widget.starCount - 1) {
         await Future.delayed(const Duration(milliseconds: 150));
       }

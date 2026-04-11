@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -132,8 +134,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     if (!isHeroOwned) {
       // Hero not purchased — only stage 1 is tappable for purchase
       if (evolution.stage != 1) {
-        HapticFeedback.lightImpact();
-        AudioService().playVoice('voice_need_stars.mp3');
+        unawaited(HapticFeedback.lightImpact());
+        unawaited(AudioService().playVoice('voice_need_stars.mp3'));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -152,15 +154,15 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         final success = await _heroService.purchaseHero(hero.id);
         if (success) {
           await _heroService.selectHero(hero.id);
-          HapticFeedback.heavyImpact();
-          AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _rank);
+          unawaited(HapticFeedback.heavyImpact());
+          unawaited(AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _rank));
           if (mounted) _showHeroUnlockAnimation(hero);
           await _loadData();
         }
       } else {
-        HapticFeedback.lightImpact();
+        unawaited(HapticFeedback.lightImpact());
         _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
-        AudioService().playVoice(await _selectNudgeVoice());
+        unawaited(AudioService().playVoice(await _selectNudgeVoice()));
         _showCannotAffordSnackBar(price: hero.price, wallet: _wallet, accentColor: hero.primaryColor);
       }
       return;
@@ -170,7 +172,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       // Equip this evolution + select hero
       await _heroService.selectHero(hero.id);
       await _heroService.setEvolutionStage(hero.id, evolution.stage);
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
       await _loadData();
     } else if (_wallet >= evolution.price) {
@@ -178,16 +180,16 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (evolution.stage >= 3) {
         final prevId = '${hero.id}_stage${evolution.stage - 1}';
         if (!_unlockedEvolutions.contains(prevId)) {
-          HapticFeedback.lightImpact();
+          unawaited(HapticFeedback.lightImpact());
           _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
-          AudioService().playVoice(await _selectNudgeVoice());
+          unawaited(AudioService().playVoice(await _selectNudgeVoice()));
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Row(
+                content: const Row(
                   children: [
                     Icon(Icons.lock, color: Colors.amber, size: 20),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text('Unlock the previous evolution first!'),
                   ],
                 ),
@@ -206,13 +208,13 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (success) {
         await _heroService.selectHero(hero.id);
         await _heroService.setEvolutionStage(hero.id, evolution.stage);
-        HapticFeedback.heavyImpact();
+        unawaited(HapticFeedback.heavyImpact());
         await _loadData();
       }
     } else {
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
-      AudioService().playVoice(await _selectNudgeVoice());
+      unawaited(AudioService().playVoice(await _selectNudgeVoice()));
       _showCannotAffordSnackBar(price: evolution.price, wallet: _wallet, accentColor: hero.primaryColor);
     }
   }
@@ -220,7 +222,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   Future<void> _onWeaponTap(WeaponItem weapon) async {
     if (_unlockedWeapons.contains(weapon.id)) {
       await _weaponService.selectWeapon(weapon.id);
-      HapticFeedback.mediumImpact();
+      unawaited(HapticFeedback.mediumImpact());
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       await _loadData();
     } else if (_wallet >= weapon.price) {
@@ -231,18 +233,18 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       final success = await _weaponService.purchaseWeapon(weapon.id);
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
-        HapticFeedback.heavyImpact();
-        AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsAtUnlock: _rank);
+        unawaited(HapticFeedback.heavyImpact());
+        unawaited(AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsAtUnlock: _rank));
         // Finding #8: Don't play voice here — the unlock dialog's initState
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showWeaponUnlockAnimation(weapon);
         await _loadData();
       }
     } else {
-      HapticFeedback.lightImpact();
+      unawaited(HapticFeedback.lightImpact());
       // Describe the weapon, then give a context-aware nudge
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
-      AudioService().playVoice(await _selectNudgeVoice());
+      unawaited(AudioService().playVoice(await _selectNudgeVoice()));
       _showCannotAffordSnackBar(
         price: weapon.price,
         wallet: _wallet,
@@ -1456,4 +1458,3 @@ class _PriceTag extends StatelessWidget {
     );
   }
 }
-

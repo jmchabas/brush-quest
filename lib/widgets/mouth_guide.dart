@@ -93,7 +93,7 @@ class _MouthGuidePainter extends CustomPainter {
     canvas.clipPath(mouthPath);
 
     // Gum areas
-    final gumColor = const Color(0xFFD4737D);
+    const gumColor = Color(0xFFD4737D);
     _drawGums(canvas, w, h, gumColor);
 
     // Draw teeth
@@ -163,7 +163,7 @@ class _MouthGuidePainter extends CustomPainter {
   }
 
   void _drawTeethRow(Canvas canvas, double w, double h, {required bool isUpper}) {
-    final teethCount = 10;
+    const teethCount = 10;
     final cx = w / 2;
     final toothW = w * 0.072;
     final toothH = h * 0.16;

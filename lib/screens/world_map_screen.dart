@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/audio_service.dart';
@@ -42,16 +43,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         _unlocked.addAll(unlocked);
       });
       // Ambient music — low volume so voice lines stay clear
-      AudioService().playMusic('battle_music_loop.mp3');
-      AudioService().setMusicVolume(0.04);
+      unawaited(AudioService().playMusic('battle_music_loop.mp3'));
+      unawaited(AudioService().setMusicVolume(0.04));
 
       // Play intro voice only once per app session, then world description
       if (!_introPlayedThisSession) {
         _introPlayedThisSession = true;
-        AudioService().playVoice('voice_world_map_intro.mp3', clearQueue: true, interrupt: true);
-        AudioService().playVoice('voice_world_$currentId.mp3');
+        unawaited(AudioService().playVoice('voice_world_map_intro.mp3', clearQueue: true, interrupt: true));
+        unawaited(AudioService().playVoice('voice_world_$currentId.mp3'));
       } else {
-        AudioService().playVoice('voice_world_$currentId.mp3', clearQueue: true, interrupt: true);
+        unawaited(AudioService().playVoice('voice_world_$currentId.mp3', clearQueue: true, interrupt: true));
       }
     }
   }
@@ -132,7 +133,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   }
 
   Widget _buildAdventurePath(BuildContext context) {
-    final worlds = WorldService.allWorlds;
+    const worlds = WorldService.allWorlds;
     final screenWidth = MediaQuery.of(context).size.width;
     // Horizontal offset for zigzag: planets alternate left/right
     final zigzagOffset = screenWidth * 0.15;
@@ -250,7 +251,7 @@ class _CurvedDashPainter extends CustomPainter {
     // Even (left-aligned): center is at ~(24 + planetSize/2) from left
     // Odd (right-aligned): center is at ~(screenWidth - 24 - planetSize/2) from left
     const planetSize = 100.0;
-    final leftCenter = 24.0 + planetSize / 2;
+    const leftCenter = 24.0 + planetSize / 2;
     final rightCenter = screenWidth - 24.0 - zigzagOffset * 2 + planetSize / 2;
 
     // Adjust for actual available width

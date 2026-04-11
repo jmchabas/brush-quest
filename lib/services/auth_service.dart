@@ -31,13 +31,13 @@ class AuthService {
       final credential = GoogleAuthProvider.credential(idToken: idToken);
       final authResult = await _auth.signInWithCredential(credential);
       return authResult.user;
-    } catch (e) {
+    } on Exception catch (e) {
       // If reauth fails (stale cached token), disconnect and retry fresh
       if (e.toString().contains('reauth failed') ||
           e.toString().contains('canceled')) {
         try {
           await GoogleSignIn.instance.disconnect();
-        } catch (_) {}
+        } on Exception catch (_) {}
         try {
           // Retry with a clean slate
           final account = await GoogleSignIn.instance.authenticate();
@@ -45,7 +45,7 @@ class AuthService {
           final credential = GoogleAuthProvider.credential(idToken: idToken);
           final authResult = await _auth.signInWithCredential(credential);
           return authResult.user;
-        } catch (_) {
+        } on Exception catch (_) {
           return null;
         }
       }

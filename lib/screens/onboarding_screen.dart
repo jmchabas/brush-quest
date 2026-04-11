@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -116,14 +117,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _completeOnboarding() async {
-    HapticFeedback.heavyImpact();
-    _audio.playSfx('victory.mp3');
-    _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
-    AnalyticsService().logOnboardingComplete();
+    unawaited(HapticFeedback.heavyImpact());
+    unawaited(_audio.playSfx('victory.mp3'));
+    unawaited(_audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true));
+    unawaited(AnalyticsService().logOnboardingComplete());
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_completed', true);
     if (mounted) {
-      Navigator.of(context).pushReplacement(
+      unawaited(Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
               const HomeScreen(),
@@ -140,7 +141,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           },
           transitionDuration: const Duration(milliseconds: 600),
         ),
-      );
+      ));
     }
   }
 

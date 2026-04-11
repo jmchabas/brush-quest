@@ -16,6 +16,9 @@ class AudioService {
 
   /// Replace the singleton for testing. Pass null to restore the default.
   @visibleForTesting
+  static AudioService get testInstance => _instance;
+
+  @visibleForTesting
   static set testInstance(AudioService? instance) {
     _instance = instance ?? AudioService._internal();
   }
@@ -433,10 +436,10 @@ class AudioService {
         await player
             .setSource(AssetSource(assetPath))
             .timeout(const Duration(milliseconds: 350));
-      } catch (_) {
+      } on Exception catch (_) {
         failures++;
       }
-      player.dispose();
+      unawaited(player.dispose());
     }
     if (failures > 0) {
       _reportAudioIssue(
@@ -453,17 +456,17 @@ class AudioService {
       for (final p in _sfxPool) {
         try {
           await p.stop();
-        } catch (_) {}
+        } on Exception catch (_) {}
       }
       try {
         await _voicePlayer.stop();
-      } catch (e) {
+      } on Exception catch (e) {
         _reportAudioIssue(operation: 'mute_stop_voice_failed', error: e);
       }
       if (!_musicTransitioning) {
         try {
           await _musicPlayer.stop();
-        } catch (e) {
+        } on Exception catch (e) {
           _reportAudioIssue(operation: 'mute_stop_music_failed', error: e);
         }
       }
@@ -483,7 +486,7 @@ class AudioService {
       // Keep SFX audible during narrator lines, but quieter while voice plays.
       await player.setVolume(_voicePlaying ? 0.24 : 0.7);
       await player.play(AssetSource('audio/$fileName'));
-    } catch (e) {
+    } on Exception catch (e) {
       _reportAudioIssue(
         operation: 'sfx_play_failed',
         fileName: fileName,
@@ -515,7 +518,7 @@ class AudioService {
     if (interrupt) {
       try {
         await _voicePlayer.stop();
-      } catch (e) {
+      } on Exception catch (e) {
         _reportAudioIssue(
           operation: 'voice_interrupt_stop_failed',
           fileName: fileName,
@@ -540,7 +543,7 @@ class AudioService {
         if (!_musicTransitioning) {
           try {
             await _musicPlayer.setVolume(_musicDuckedVolume);
-          } catch (_) {}
+          } on Exception catch (_) {}
         }
 
         try {
@@ -561,7 +564,7 @@ class AudioService {
               fileName: request.fileName,
             );
           }
-        } catch (e) {
+        } on Exception catch (e) {
           _reportAudioIssue(
             operation: 'voice_play_failed',
             fileName: request.fileName,
@@ -591,7 +594,7 @@ class AudioService {
     _updateVoicePipelineState();
     try {
       await _voicePlayer.stop();
-    } catch (e) {
+    } on Exception catch (e) {
       _reportAudioIssue(operation: 'stop_voice_failed', error: e);
     }
     _restoreMusicVolume();
@@ -617,7 +620,7 @@ class AudioService {
     if (!_musicPlaying || _musicTransitioning) return;
     try {
       _musicPlayer.setVolume(_musicVolume);
-    } catch (_) {}
+    } on Exception catch (_) {}
   }
 
   Future<void> playMusic(String fileName) async {
@@ -626,8 +629,8 @@ class AudioService {
     _musicTransitioning = true;
     try {
       await _musicPlayer.stop();
-      _musicPlayer.dispose();
-    } catch (e) {
+      unawaited(_musicPlayer.dispose());
+    } on Exception catch (e) {
       _reportAudioIssue(
         operation: 'music_reset_failed',
         fileName: fileName,
@@ -642,7 +645,7 @@ class AudioService {
       await _musicPlayer.setVolume(_musicVolume);
       await _musicPlayer.resume();
       _musicTransitioning = false;
-    } catch (e) {
+    } on Exception catch (e) {
       _musicTransitioning = false;
       _musicPlaying = false;
       _reportAudioIssue(
@@ -667,7 +670,7 @@ class AudioService {
       if (state != PlayerState.playing) {
         await playMusic(_currentMusicFile!);
       }
-    } catch (e) {
+    } on Exception catch (e) {
       _reportAudioIssue(
         operation: 'music_health_restart',
         fileName: _currentMusicFile,
@@ -681,7 +684,7 @@ class AudioService {
     if (_musicTransitioning || !_musicPlaying) return;
     try {
       await _musicPlayer.setVolume(volume.clamp(0.0, 1.0));
-    } catch (_) {}
+    } on Exception catch (_) {}
   }
 
   /// Pause music playback (keeps player state so it can resume).
@@ -689,7 +692,7 @@ class AudioService {
     if (_musicTransitioning || !_musicPlaying) return;
     try {
       await _musicPlayer.pause();
-    } catch (e) {
+    } on Exception catch (e) {
       _reportAudioIssue(operation: 'music_pause_failed', error: e);
     }
   }
@@ -701,7 +704,7 @@ class AudioService {
       final vol = _voicePlaying ? _musicDuckedVolume : _musicVolume;
       await _musicPlayer.setVolume(vol);
       await _musicPlayer.resume();
-    } catch (e) {
+    } on Exception catch (e) {
       _reportAudioIssue(operation: 'music_resume_failed', error: e);
     }
   }
@@ -712,7 +715,7 @@ class AudioService {
     _currentMusicFile = null;
     try {
       await _musicPlayer.stop();
-    } catch (e) {
+    } on Exception catch (e) {
       _reportAudioIssue(operation: 'music_stop_failed', error: e);
     }
   }
@@ -724,16 +727,16 @@ class AudioService {
     _updateVoicePipelineState();
     try {
       await _voicePlayer.stop();
-    } catch (_) {}
+    } on Exception catch (_) {}
     for (final p in _sfxPool) {
       try {
         await p.stop();
-      } catch (_) {}
+      } on Exception catch (_) {}
     }
     if (!_musicTransitioning) {
       try {
         await _musicPlayer.stop();
-      } catch (_) {}
+      } on Exception catch (_) {}
     }
     _musicPlaying = false;
   }

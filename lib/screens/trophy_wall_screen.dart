@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/trophy_service.dart';
@@ -79,14 +81,14 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     if (mounted) {
       setState(() => _loading = false);
       // Ambient music — low volume so voice lines stay clear
-      AudioService().playMusic('battle_music_loop.mp3');
-      AudioService().setMusicVolume(0.04);
+      unawaited(AudioService().playMusic('battle_music_loop.mp3'));
+      unawaited(AudioService().setMusicVolume(0.04));
       // Play entry voice explaining the monster collection
-      AudioService().playVoice(
+      unawaited(AudioService().playVoice(
         'voice_card_album_intro.mp3',
         clearQueue: true,
         interrupt: true,
-      );
+      ));
     }
   }
 
@@ -105,8 +107,8 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
 
   Future<void> _selectWorld(String worldId) async {
     if (worldId == _selectedWorldId) return;
-    HapticFeedback.selectionClick();
-    AudioService().playSfx('whoosh.mp3');
+    unawaited(HapticFeedback.selectionClick());
+    unawaited(AudioService().playSfx('whoosh.mp3'));
     setState(() => _selectedWorldId = worldId);
     await _loadWorldDefeats(worldId);
   }
@@ -145,9 +147,9 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(
+      return const Scaffold(
         body: SpaceBackground(
-          child: const Center(
+          child: Center(
             child: CircularProgressIndicator(color: Color(0xFFB388FF)),
           ),
         ),

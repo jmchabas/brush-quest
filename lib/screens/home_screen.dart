@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -133,10 +134,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _totalBrushes = totalBrushes;
         _trophyCount = trophyCount;
       });
-      _checkGreeting();
+      unawaited(_checkGreeting());
       // Ambient music on home screen (very low volume)
-      AudioService().playMusic('battle_music_loop.mp3');
-      AudioService().setMusicVolume(0.06);
+      unawaited(AudioService().playMusic('battle_music_loop.mp3'));
+      unawaited(AudioService().setMusicVolume(0.06));
     }
   }
 
@@ -150,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) {
           final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
-          AudioService().playVoice(voice);
+          unawaited(AudioService().playVoice(voice));
         }
       }
       return;
@@ -161,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // First-launch: kid just finished onboarding, guide them to tap the hero
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
-        AudioService().playVoice('voice_tap_hero.mp3');
+        unawaited(AudioService().playVoice('voice_tap_hero.mp3'));
       }
       return;
     }
@@ -182,14 +183,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     if (result != null && mounted) {
       await _greetingService.markGreetingShown(todayDate);
-      AnalyticsService().logDailyLogin(streak: _streak);
+      unawaited(AnalyticsService().logDailyLogin(streak: _streak));
       _showGreetingPopup(result);
     } else if (lastGreetingDate == todayDate && mounted) {
       // Already greeted today — play a random welcome back voice
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) {
         final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
-        AudioService().playVoice(voice);
+        unawaited(AudioService().playVoice(voice));
       }
     }
     // Claim daily bonus AFTER greeting flow (so wallet pill shows pre-bonus
@@ -311,16 +312,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
                       ),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.favorite,
                           color: Color(0xFF69F0AE),
                           size: 24,
                         ),
-                        const SizedBox(width: 4),
-                        const Text(
+                        SizedBox(width: 4),
+                        Text(
                           '+3',
                           style: TextStyle(
                             color: Color(0xFF69F0AE),
@@ -328,8 +329,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             fontSize: 22,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(
+                        SizedBox(width: 4),
+                        Icon(
                           Icons.star,
                           color: Color(0xFFFFD54F),
                           size: 24,
@@ -454,11 +455,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await prefs.setBool('camera_mode_configured', true);
     }
 
-    AudioService().playVoice(
+    unawaited(AudioService().playVoice(
       'voice_lets_fight.mp3',
       clearQueue: true,
       interrupt: true,
-    );
+    ));
     // 1500ms lets the voice finish before home screen disposes
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) _launchBrushingScreen();
@@ -559,12 +560,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         width: 1.5,
                       ),
                     ),
-                    child: Column(
+                    child: const Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.shield, color: Colors.white, size: 20),
-                        const SizedBox(height: 2),
-                        const Text(
+                        Icon(Icons.shield, color: Colors.white, size: 20),
+                        SizedBox(height: 2),
+                        Text(
                           'PARENTS',
                           style: TextStyle(
                             color: Colors.white70,
@@ -579,12 +580,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
               // Top-right controls
-              Positioned(
+              const Positioned(
                 top: 8,
                 right: 8,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [const MuteButton()],
+                  children: [MuteButton()],
                 ),
               ),
 

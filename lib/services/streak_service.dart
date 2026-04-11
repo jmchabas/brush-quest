@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
@@ -207,9 +208,9 @@ class StreakService {
 
     try {
       if (AuthService().isSignedIn) {
-        SyncService().uploadProgress().catchError((_) {});
+        unawaited(SyncService().uploadProgress().catchError((_) {}));
       }
-    } catch (_) {
+    } on Exception catch (_) {
       // Firebase may be unavailable in unit tests; local progress still persists.
     }
 

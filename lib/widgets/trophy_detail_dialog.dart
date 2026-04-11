@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../services/audio_service.dart';
 import '../services/trophy_service.dart';
 
 /// Reusable trophy detail dialog shown when tapping a captured monster.
@@ -165,7 +167,11 @@ class TrophyDetailDialog extends StatelessWidget {
               const SizedBox(height: 22),
               // Close button
               GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  AudioService().playSfx('whoosh.mp3');
+                  Navigator.of(context).pop();
+                },
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 12),

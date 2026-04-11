@@ -118,7 +118,7 @@ class AchievementService {
 
     for (final milestone in _milestones) {
       final key = '$_prefix${milestone.id}';
-      if (prefs.getBool(key) == true) continue;
+      if (prefs.getBool(key) ?? false) continue;
 
       bool earned = false;
       switch (milestone.id) {

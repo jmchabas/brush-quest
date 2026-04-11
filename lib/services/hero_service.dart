@@ -314,7 +314,7 @@ class HeroService {
   static HeroEvolution? getEvolutionById(String id) {
     try {
       return allEvolutions.firstWhere((e) => e.id == id);
-    } catch (_) {
+    } on Exception catch (_) {
       return null;
     }
   }

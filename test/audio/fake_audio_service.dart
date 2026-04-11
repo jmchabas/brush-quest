@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:brush_quest/services/audio_service.dart';
+import 'package:flutter/foundation.dart';
 
 /// A recorded method call on [FakeAudioService].
+@immutable
 class AudioCall {
   final String method;
   final Map<String, dynamic> args;
-  AudioCall(this.method, [this.args = const {}]);
+  const AudioCall(this.method, [this.args = const {}]);
 
   @override
   String toString() => 'AudioCall($method, $args)';
@@ -69,7 +71,7 @@ class FakeAudioService extends AudioService {
 
   @override
   Future<void> preloadAll() async {
-    calls.add(AudioCall('preloadAll'));
+    calls.add(const AudioCall('preloadAll'));
   }
 
   @override
@@ -97,7 +99,7 @@ class FakeAudioService extends AudioService {
 
   @override
   String nextHitSound() {
-    calls.add(AudioCall('nextHitSound'));
+    calls.add(const AudioCall('nextHitSound'));
     return 'zap.mp3';
   }
 
@@ -117,7 +119,7 @@ class FakeAudioService extends AudioService {
       _clearVoiceQueue();
     }
     if (interrupt && _voicePlaying) {
-      calls.add(AudioCall('_voiceInterrupted'));
+      calls.add(const AudioCall('_voiceInterrupted'));
       _voicePlaying = false;
     }
     _voicePlaying = true;
@@ -143,7 +145,7 @@ class FakeAudioService extends AudioService {
 
   @override
   Future<void> stopVoice() async {
-    calls.add(AudioCall('stopVoice'));
+    calls.add(const AudioCall('stopVoice'));
     _clearVoiceQueue();
     _voicePlaying = false;
   }
@@ -159,7 +161,7 @@ class FakeAudioService extends AudioService {
 
   @override
   Future<void> ensureMusicPlaying() async {
-    calls.add(AudioCall('ensureMusicPlaying'));
+    calls.add(const AudioCall('ensureMusicPlaying'));
   }
 
   @override
@@ -172,7 +174,7 @@ class FakeAudioService extends AudioService {
 
   @override
   Future<void> stopMusic() async {
-    calls.add(AudioCall('stopMusic'));
+    calls.add(const AudioCall('stopMusic'));
     _musicPlaying = false;
     _currentMusicFile = null;
   }
@@ -186,7 +188,7 @@ class FakeAudioService extends AudioService {
 
   @override
   void dispose() {
-    calls.add(AudioCall('dispose'));
+    calls.add(const AudioCall('dispose'));
   }
 
   /// Simulate queueing a voice (for queue-related tests).
