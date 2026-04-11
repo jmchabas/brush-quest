@@ -298,6 +298,15 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   final _random = Random();
 
+  // K.O. voice variety pool
+  static const _koVoices = [
+    'voice_awesome.mp3',
+    'voice_wow_amazing.mp3',
+    'voice_super.mp3',
+    'voice_so_strong.mp3',
+    'voice_nice_combo.mp3',
+  ];
+
   // Combat system
   int _attackStyleIndex = 0;
   int _totalHits = 0;
@@ -1177,7 +1186,7 @@ class _BrushingScreenState extends State<BrushingScreen>
             _startMonsterDeath(_monster);
             _playDefeatAnimation(() {
               timer.cancel();
-              _finishBrushing();
+              unawaited(_finishBrushing());
             });
           });
         }
@@ -1470,7 +1479,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     // Celebration voice after early kill — queued (not interrupting) with a small delay
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
-        _audio.playVoice('voice_awesome.mp3');
+        _audio.playVoice(_koVoices[_random.nextInt(_koVoices.length)]);
       }
     });
 
@@ -1703,22 +1712,25 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
   }
 
-  void _finishBrushing() {
+  Future<void> _finishBrushing() async {
     _baseAttackTimer?.cancel();
     _stallTimer?.cancel();
     _microRewardTimer?.cancel();
     _musicHealthTimer?.cancel();
     _stopMotionDetection();
-    _audio.stopVoice();
-    _audio.stopMusic();
-    _clearCheckpoint();
+    // Play victory SFX immediately (overlaps with fading music)
+    unawaited(_audio.playSfx('victory.mp3'));
+    await Future.delayed(const Duration(milliseconds: 400));
+    await _audio.stopVoice();
+    await _audio.stopMusic();
+    unawaited(_clearCheckpoint());
     if (!mounted) return;
     setState(() {
       _phase = BrushPhase.done;
       _sessionStage = SessionStage.done;
       _isQuitting = true;
     });
-    Navigator.of(context).pushReplacement(
+    unawaited(Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => VictoryScreen(
           totalHits: _totalHits,
@@ -1730,7 +1742,7 @@ class _BrushingScreenState extends State<BrushingScreen>
             FadeTransition(opacity: anim, child: child),
         transitionDuration: const Duration(milliseconds: 800),
       ),
-    );
+    ));
   }
 
   /// Returns the phase progress as 0.0 to 1.0 (0 = just started, 1 = phase ending)

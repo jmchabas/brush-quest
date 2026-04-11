@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/hero_service.dart';
@@ -412,10 +413,9 @@ class _VictoryScreenState extends State<VictoryScreen>
     }
 
     // ── NEW TIMING SEQUENCE ──
-    // t=0       Hero celebration + Victory SFX + confetti
+    // t=0       Hero celebration + confetti (victory SFX now plays from brushing_screen)
     unawaited(_heroCelebrationController.forward());
     unawaited(_heroGlowController.repeat(reverse: true));
-    unawaited(_audio.playSfx('victory.mp3'));
     unawaited(_confettiController.repeat());
 
     await Future.delayed(const Duration(milliseconds: 300));
@@ -718,41 +718,49 @@ class _VictoryScreenState extends State<VictoryScreen>
           // ── Endgame legendary encounter ──
           // When all trophies in the current world are captured, showcase
           // a random already-captured trophy with a golden legendary treatment.
-          final capturedIds = await _trophyService.getCapturedIds();
-          if (capturedIds.isNotEmpty && mounted) {
-            await Future.delayed(const Duration(milliseconds: 200));
-            if (!mounted) return;
+          // Only show once — after that, skip straight to chest.
+          final prefs = await SharedPreferences.getInstance();
+          final hasSeenLegendary =
+              prefs.getBool('has_seen_legendary') ?? false;
+          if (!hasSeenLegendary) {
+            await prefs.setBool('has_seen_legendary', true);
+            final capturedIds = await _trophyService.getCapturedIds();
+            if (capturedIds.isNotEmpty && mounted) {
+              await Future.delayed(const Duration(milliseconds: 200));
+              if (!mounted) return;
 
-            final randomId = capturedIds[_random.nextInt(capturedIds.length)];
-            final trophy = TrophyService.allTrophies.firstWhere(
-              (t) => t.id == randomId,
-              orElse: () => TrophyService.allTrophies.first,
-            );
+              final randomId =
+                  capturedIds[_random.nextInt(capturedIds.length)];
+              final trophy = TrophyService.allTrophies.firstWhere(
+                (t) => t.id == randomId,
+                orElse: () => TrophyService.allTrophies.first,
+              );
 
-            setState(() {
-              _showTrophyReveal = true;
-              _trophyCaptured = true;
-              _isLegendaryEncounter = true;
-              _trophyDefeats = trophy.defeatsRequired;
-              _trophyRequired = trophy.defeatsRequired;
-              _revealedTrophy = trophy;
-            });
+              setState(() {
+                _showTrophyReveal = true;
+                _trophyCaptured = true;
+                _isLegendaryEncounter = true;
+                _trophyDefeats = trophy.defeatsRequired;
+                _trophyRequired = trophy.defeatsRequired;
+                _revealedTrophy = trophy;
+              });
 
-            unawaited(HapticFeedback.heavyImpact());
-            unawaited(_cardFlyController.forward());
+              unawaited(HapticFeedback.heavyImpact());
+              unawaited(_cardFlyController.forward());
 
-            await Future.delayed(const Duration(milliseconds: 700));
-            if (!mounted) return;
+              await Future.delayed(const Duration(milliseconds: 700));
+              if (!mounted) return;
 
-            unawaited(_cardGlowController.repeat(reverse: true));
-            unawaited(_newBadgeController.forward());
+              unawaited(_cardGlowController.repeat(reverse: true));
+              unawaited(_newBadgeController.forward());
 
-            // P5: Legendary encounter — voice_wow_amazing ONLY, skip card description
-            if (voiceSlotsRemaining > 0) {
-              await _audio.playVoice('voice_wow_amazing.mp3');
-              voiceSlotsRemaining--;
+              // P5: Legendary encounter — voice_wow_amazing ONLY, skip card description
+              if (voiceSlotsRemaining > 0) {
+                await _audio.playVoice('voice_wow_amazing.mp3');
+                voiceSlotsRemaining--;
+              }
+              if (!mounted) return;
             }
-            if (!mounted) return;
           }
         }
 

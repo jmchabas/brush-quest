@@ -736,6 +736,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       'last_daily_bonus_date',
       'unlocked_evolutions',
       'trophy_captured',
+      'has_seen_legendary',
     ];
     for (final key in keysToReset) {
       await prefs.remove(key);
