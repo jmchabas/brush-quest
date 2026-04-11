@@ -312,17 +312,21 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         duration: const Duration(seconds: 2),
         backgroundColor: const Color(0xFF1A1A2E),
         content: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.star, color: accentColor, size: 18),
-            const SizedBox(width: 8),
+            Icon(Icons.star, color: accentColor, size: 24),
+            const SizedBox(width: 6),
             Text(
-              'Need $delta more stars! Keep brushing!',
+              '$delta more',
               style: TextStyle(
                 color: accentColor,
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 18,
               ),
             ),
+            const SizedBox(width: 10),
+            Icon(Icons.auto_awesome, color: accentColor.withValues(alpha: 0.7), size: 20),
           ],
         ),
         shape: RoundedRectangleBorder(

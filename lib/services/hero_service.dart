@@ -143,9 +143,9 @@ class HeroService {
   /// Returns true if purchase succeeds or hero already owned.
   /// Returns false if insufficient stars or invalid hero ID.
   ///
-  /// Wallet deduction and unlock list update are written in the same
-  /// synchronous batch (no await between them) so a crash can't lose stars
-  /// without granting the hero.
+  /// Writes the unlock list first (idempotent), then deducts the wallet.
+  /// A crash between the two writes grants the hero without spending stars
+  /// (recoverable), rather than spending stars without granting (lost).
   Future<bool> purchaseHero(String heroId) async {
     if (_purchasing) return false;
     _purchasing = true;
@@ -163,13 +163,14 @@ class HeroService {
         return true;
       }
 
-      // Read wallet directly — atomic write of both values below
       final wallet = prefs.getInt('star_wallet') ?? 0;
       if (wallet < hero.price) return false;
 
-      // Write both atomically (no await between writes)
-      await prefs.setInt('star_wallet', wallet - hero.price);
+      // Write unlock first (idempotent), then deduct wallet.
+      // A crash after unlock but before deduction is safe (item granted,
+      // stars not spent). The reverse would lose stars without granting.
       await prefs.setStringList(_unlockedKey, [...unlocked, heroId]);
+      await prefs.setInt('star_wallet', wallet - hero.price);
       return true;
     } finally {
       _purchasing = false;
@@ -337,9 +338,9 @@ class HeroService {
 
   /// Purchase an evolution by spending stars from the wallet.
   ///
-  /// Wallet deduction and unlock list update are written in the same
-  /// synchronous batch (no await between them) so a crash can't lose stars
-  /// without granting the evolution.
+  /// Writes the unlock list first (idempotent), then deducts the wallet.
+  /// A crash between the two writes grants the evolution without spending
+  /// stars (recoverable), rather than spending stars without granting (lost).
   Future<bool> purchaseEvolution(String evolutionId) async {
     if (_purchasing) return false;
     _purchasing = true;
@@ -360,13 +361,14 @@ class HeroService {
         if (!unlocked.contains(prevId)) return false;
       }
 
-      // Read wallet directly — atomic write of both values below
       final wallet = prefs.getInt('star_wallet') ?? 0;
       if (wallet < evo.price) return false;
 
-      // Write both atomically (no await between writes)
-      await prefs.setInt('star_wallet', wallet - evo.price);
+      // Write unlock first (idempotent), then deduct wallet.
+      // A crash after unlock but before deduction is safe (item granted,
+      // stars not spent). The reverse would lose stars without granting.
       await prefs.setStringList(_unlockedEvolutionsKey, [...unlocked, evolutionId]);
+      await prefs.setInt('star_wallet', wallet - evo.price);
       return true;
     } finally {
       _purchasing = false;

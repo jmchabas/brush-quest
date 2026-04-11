@@ -45,6 +45,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   @override
   void dispose() {
     AudioService().stopVoice();
+    AudioService().stopMusic();
     _glowController.dispose();
     super.dispose();
   }
@@ -77,6 +78,9 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
 
     if (mounted) {
       setState(() => _loading = false);
+      // Ambient music — low volume so voice lines stay clear
+      AudioService().playMusic('battle_music_loop.mp3');
+      AudioService().setMusicVolume(0.04);
       // Play entry voice explaining the monster collection
       AudioService().playVoice(
         'voice_card_album_intro.mp3',
@@ -565,31 +569,47 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     } else {
       // Fully locked — dark silhouette showing monster shape
       return Stack(
-        alignment: Alignment.center,
         children: [
-          ColorFiltered(
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF2A2040),
-              BlendMode.srcATop,
-            ),
-            child: Opacity(
-              opacity: 0.45,
-              child: Image.asset(
-                trophy.imagePath,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Icon(
-                  Icons.bug_report,
-                  size: 60,
-                  color: Color(0xFF2A2040),
+          Center(
+            child: ColorFiltered(
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF1a1a2e),
+                BlendMode.srcATop,
+              ),
+              child: Opacity(
+                opacity: 0.3,
+                child: Image.asset(
+                  trophy.imagePath,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => const Icon(
+                    Icons.bug_report,
+                    size: 60,
+                    color: Color(0xFF1a1a2e),
+                  ),
                 ),
               ),
             ),
           ),
-          // Lock icon for fully locked monsters
-          Icon(
-            Icons.lock_rounded,
-            size: 28,
-            color: Colors.white.withValues(alpha: 0.15),
+          // Subtle "???" overlay centered
+          Center(
+            child: Text(
+              '???',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.08),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          // Small lock icon in the bottom-right corner
+          Positioned(
+            bottom: 4,
+            right: 4,
+            child: Icon(
+              Icons.lock_rounded,
+              size: 16,
+              color: Colors.white.withValues(alpha: 0.15),
+            ),
           ),
         ],
       );

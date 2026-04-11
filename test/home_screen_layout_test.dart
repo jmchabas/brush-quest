@@ -48,7 +48,7 @@ void main() {
   }
 
   testWidgets(
-    'home stats row uses brush icon and settings is a gear IconButton',
+    'home stats row has uniform 22px font and parent shield icon',
     (tester) async {
       await pumpHomeScreen(tester);
 

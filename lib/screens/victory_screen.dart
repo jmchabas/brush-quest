@@ -87,7 +87,7 @@ _ChestReward _rollChestReward(Random rng, int streak) {
   if (roll < confettiCeil) {
     return const _ChestReward(
       type: _ChestRewardType.confetti,
-      bonusStars: 0,
+      bonusStars: 1,
       voiceFile: 'voice_chest_wow.mp3',
       color: Color(0xFF00E5FF),
       icon: Icons.celebration,
@@ -96,11 +96,11 @@ _ChestReward _rollChestReward(Random rng, int streak) {
   } else if (roll < danceCeil) {
     return const _ChestReward(
       type: _ChestRewardType.dance,
-      bonusStars: 0,
+      bonusStars: 1,
       voiceFile: 'voice_chest_dance_v2.mp3',
       color: Color(0xFFFF4081),
       icon: Icons.music_note,
-      label: 'DANCE BREAK!',
+      label: '',
     );
   } else if (roll < bonusCeil) {
     return const _ChestReward(
@@ -1270,19 +1270,21 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  /// Show trophy detail dialog for legendary encounter taps.
-  void _showLegendaryTrophyDetail() {
+  /// Show trophy detail dialog and play card voice on tap.
+  void _showTrophyCardDetail() {
     if (_revealedTrophy == null) return;
     final trophy = _revealedTrophy!;
     final worldColor = WorldService.getWorldById(trophy.worldId).themeColor;
     HapticFeedback.mediumImpact();
-    _audio.playSfx('star_chime.mp3');
+    // Play the card's voice on tap
+    final cardVoiceId = trophy.id.replaceAll('_t', '_0');
+    _audio.playVoice('voice_card_$cardVoiceId.mp3');
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.7),
       builder: (ctx) => TrophyDetailDialog(
         trophy: trophy,
-        defeatCount: trophy.defeatsRequired,
+        defeatCount: _isLegendaryEncounter ? trophy.defeatsRequired : _trophyDefeats,
         worldColor: worldColor,
       ),
     );
@@ -1315,8 +1317,17 @@ class _VictoryScreenState extends State<VictoryScreen>
     super.dispose();
   }
 
-  void _goHome() {
-    AudioService().stopVoice();
+  Future<void> _goHome() async {
+    await AudioService().stopVoice();
+    // Fire forward hook before navigation if it hasn't been shown yet
+    if (!_showForwardHook) {
+      await _showForwardHookSequence();
+      // Brief pause so the child sees/hears the hook before navigating
+      if (_showForwardHook && mounted) {
+        await Future.delayed(const Duration(milliseconds: 2500));
+      }
+    }
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
@@ -1517,39 +1528,75 @@ class _VictoryScreenState extends State<VictoryScreen>
                     // LEGENDARY RANGER badge (all trophies collected)
                     if (_chestOpened &&
                         _totalTrophies >= TrophyService.allTrophies.length)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
-                                blurRadius: 16,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'LEGENDARY RANGER',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                  letterSpacing: 2,
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.heavyImpact();
+                          _audio.playVoice('voice_legend.mp3');
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
+                          child: AnimatedBuilder(
+                            animation: _heroGlowController,
+                            builder: (context, _) {
+                              final pulse = _heroGlowController.value;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color.lerp(const Color(0xFFFFD54F), const Color(0xFFFF6D00), pulse)!,
+                                      Color.lerp(const Color(0xFFFF6D00), const Color(0xFFFFD54F), pulse)!,
+                                    ],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFFD54F).withValues(alpha: 0.4 + pulse * 0.3),
+                                      blurRadius: 16 + pulse * 8,
+                                      spreadRadius: 2 + pulse * 2,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Transform.scale(
+                                      scale: 1.0 + pulse * 0.15,
+                                      child: Icon(
+                                        Icons.auto_awesome,
+                                        color: Colors.white.withValues(alpha: 0.9 + pulse * 0.1),
+                                        size: 32,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.white.withValues(alpha: 0.5 + pulse * 0.5),
+                                            blurRadius: 8 + pulse * 6,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Opacity(
+                                      opacity: (pulse * 1.3).clamp(0.0, 1.0),
+                                      child: const Icon(
+                                        Icons.auto_awesome,
+                                        color: Color(0xFFFFF59D),
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Opacity(
+                                      opacity: ((1.0 - pulse) * 1.3).clamp(0.0, 1.0),
+                                      child: const Icon(
+                                        Icons.auto_awesome,
+                                        color: Color(0xFFFFF59D),
+                                        size: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -1600,14 +1647,12 @@ class _VictoryScreenState extends State<VictoryScreen>
                         ),
                       ),
 
-                    // Trophy reveal — tappable for legendary encounters
+                    // Trophy reveal — tappable for all trophy cards
                     if (_showTrophyReveal && _revealedTrophy != null)
-                      _isLegendaryEncounter
-                          ? GestureDetector(
-                              onTap: _showLegendaryTrophyDetail,
-                              child: _buildTrophyReveal(),
-                            )
-                          : _buildTrophyReveal(),
+                      GestureDetector(
+                        onTap: _showTrophyCardDetail,
+                        child: _buildTrophyReveal(),
+                      ),
 
                     // Forward hook: encourage the next brushing session
                     if (_showForwardHook && _forwardHookType != null)
@@ -2277,7 +2322,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ),
                   ),
                 ),
-              // Reward label — large, clear text
+              // Reward label — icon-based for dance, text for others
               if (revealProgress > 0.4)
                 Positioned(
                   top: 0,
@@ -2296,25 +2341,39 @@ class _VictoryScreenState extends State<VictoryScreen>
                           width: 1.5,
                         ),
                       ),
-                      child: Text(
-                        reward.label,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 22,
-                          letterSpacing: 1.5,
-                          shadows: [
-                            Shadow(
-                              color: reward.color,
-                              blurRadius: 16,
+                      child: reward.type == _ChestRewardType.dance
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.music_note, color: Colors.white, size: 28,
+                                  shadows: [Shadow(color: reward.color, blurRadius: 12)]),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.star, color: Color(0xFFFFD54F), size: 30,
+                                  shadows: [Shadow(color: Color(0xFFFFD54F), blurRadius: 12)]),
+                                const SizedBox(width: 4),
+                                Icon(Icons.music_note, color: Colors.white, size: 28,
+                                  shadows: [Shadow(color: reward.color, blurRadius: 12)]),
+                              ],
+                            )
+                          : Text(
+                              reward.label,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 22,
+                                letterSpacing: 1.5,
+                                shadows: [
+                                  Shadow(
+                                    color: reward.color,
+                                    blurRadius: 16,
+                                  ),
+                                  Shadow(
+                                    color: reward.color.withValues(alpha: 0.6),
+                                    blurRadius: 30,
+                                  ),
+                                ],
+                              ),
                             ),
-                            Shadow(
-                              color: reward.color.withValues(alpha: 0.6),
-                              blurRadius: 30,
-                            ),
-                          ],
-                        ),
-                      ),
                     ),
                   ),
                 ),

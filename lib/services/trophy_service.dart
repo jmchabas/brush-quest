@@ -158,7 +158,13 @@ class TrophyService {
   /// Record a defeat against a trophy monster.
   /// Returns whether it was captured (defeats >= required).
   Future<DefeatResult> recordDefeat(String trophyId) async {
-    final trophy = allTrophies.firstWhere((t) => t.id == trophyId);
+    final trophy = allTrophies.cast<TrophyMonster?>().firstWhere(
+      (t) => t!.id == trophyId,
+      orElse: () => null,
+    );
+    if (trophy == null) {
+      return const DefeatResult(captured: false, currentDefeats: 0, required: 1);
+    }
     final prefs = await SharedPreferences.getInstance();
 
     // Already captured? No-op.

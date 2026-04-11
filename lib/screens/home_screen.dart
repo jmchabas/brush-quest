@@ -338,8 +338,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
-                // Bonus star badge — icon-only, no text (kid can't read)
-                // Combined bonus: streak bonus + daily pair bonus
+                // Bonus star badge — visual cause-effect: streak -> bonus stars
+                // Shows fire icon (streak) -> arrow -> star + bonus amount
                 if (greeting.brushStreak >= 3) ...[
                   const SizedBox(height: 12),
                   Builder(builder: (context) {
@@ -366,6 +366,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Fire icon (your streak)
+                          const Icon(
+                            Icons.local_fire_department,
+                            color: Colors.orangeAccent,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 4),
+                          // Arrow showing cause -> effect
+                          const Icon(
+                            Icons.arrow_forward,
+                            color: Color(0xFFFFD54F),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 4),
+                          // Star + bonus amount (the reward)
                           Text(
                             '+$totalBonus',
                             style: const TextStyle(
@@ -391,14 +406,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
-    // Auto-dismiss when voice finishes + 0.5s (minimum 3s)
+    // Auto-dismiss when voice finishes + 0.5s (minimum 5s)
     final showTime = DateTime.now();
     void dismissWhenReady() {
       if (!mounted) return;
       final elapsed = DateTime.now().difference(showTime);
-      if (elapsed < const Duration(seconds: 3)) {
+      if (elapsed < const Duration(seconds: 5)) {
         // Ensure minimum display time
-        Future.delayed(const Duration(seconds: 3) - elapsed, () {
+        Future.delayed(const Duration(seconds: 5) - elapsed, () {
           if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
         });
       } else {
@@ -415,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     // If voice is already done, dismiss with minimum delay
     if (!AudioService().voicePipelineActiveNotifier.value) {
-      Future.delayed(const Duration(seconds: 3), () {
+      Future.delayed(const Duration(seconds: 5), () {
         if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
       });
     } else {

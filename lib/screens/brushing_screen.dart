@@ -439,6 +439,11 @@ class _BrushingScreenState extends State<BrushingScreen>
   ];
   int _currentArcIndex = -1;
   int _lastArcIndex = -1;
+  // Shuffled arc order for variety across a full session
+  late List<int> _arcOrder;
+  int _arcOrderPosition = 0;
+  // Lifetime brush count — used for encouragement skip probability
+  int _totalBrushes = 0;
 
   @override
   void initState() {
@@ -453,6 +458,16 @@ class _BrushingScreenState extends State<BrushingScreen>
       if (mounted) {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       }
+    });
+
+    // Shuffle arc order so encouragements don't repeat in the same sequence
+    _arcOrder = List.generate(_encouragementArcs.length, (i) => i);
+    _arcOrder.shuffle(_random);
+    _arcOrderPosition = 0;
+
+    // Load lifetime brush count for encouragement skip probability
+    SharedPreferences.getInstance().then((prefs) {
+      _totalBrushes = prefs.getInt('total_brushes') ?? 0;
     });
 
     // Init single monster
@@ -914,13 +929,23 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showWorldIntro = false;
     });
 
-    // Check if this is the first ever brush and camera prompt hasn't been shown
+    // Check if this is the first ever brush and camera prompt hasn't been shown.
+    // Skip the prompt entirely if camera was explicitly disabled in settings.
     final prefs = await SharedPreferences.getInstance();
     final totalBrushes = prefs.getInt('total_brushes') ?? 0;
     final cameraPromptShown = prefs.getBool('camera_prompt_shown') ?? false;
     final cameraAlreadyEnabled = prefs.getBool('camera_enabled') ?? false;
+    final cameraConfigured = prefs.getBool('camera_mode_configured') ?? false;
 
-    if (totalBrushes == 0 && !cameraPromptShown && !cameraAlreadyEnabled) {
+    // Show camera prompt only on first brush, if not already shown,
+    // camera not already enabled, and user hasn't explicitly configured
+    // camera off in settings.
+    final shouldShowPrompt = totalBrushes == 0 &&
+        !cameraPromptShown &&
+        !cameraAlreadyEnabled &&
+        !cameraConfigured;
+
+    if (shouldShowPrompt) {
       if (!mounted) return;
       setState(() {
         _showCameraPrompt = true;
@@ -956,8 +981,21 @@ class _BrushingScreenState extends State<BrushingScreen>
     _startCountdown();
   }
 
-  void _exitWorldIntro() {
+  void _exitWorldIntro() async {
     _worldIntroTimer?.cancel();
+
+    // On the very first brush, redirect the kid back to the fight
+    // instead of silently exiting — they may not realize what the X does.
+    final prefs = await SharedPreferences.getInstance();
+    final totalBrushes = prefs.getInt('total_brushes') ?? 0;
+    if (totalBrushes == 0) {
+      _audio.stopVoice();
+      _audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true);
+      // Dismiss the intro and start the session instead of popping
+      _dismissWorldIntro();
+      return;
+    }
+
     _audio.stopVoice();
     _audio.stopMusic();
     if (!mounted) return;
@@ -1098,15 +1136,21 @@ class _BrushingScreenState extends State<BrushingScreen>
       final almostAt = (_phaseDuration * 0.20).round();
       if (_phaseSecondsLeft == energizeAt && !_playedEncouragement) {
         _playedEncouragement = true;
-        _audio.playVoice(_encouragementArcs[_currentArcIndex][0]);
+        if (!_shouldSkipEncouragement()) {
+          _audio.playVoice(_encouragementArcs[_currentArcIndex][0]);
+        }
       }
       if (_phaseSecondsLeft == supportAt && !_playedMidEncouragement) {
         _playedMidEncouragement = true;
-        _audio.playVoice(_encouragementArcs[_currentArcIndex][1]);
+        if (!_shouldSkipEncouragement()) {
+          _audio.playVoice(_encouragementArcs[_currentArcIndex][1]);
+        }
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
-        _audio.playVoice(_encouragementArcs[_currentArcIndex][2]);
+        if (!_shouldSkipEncouragement()) {
+          _audio.playVoice(_encouragementArcs[_currentArcIndex][2]);
+        }
       }
 
       if (_phaseSecondsLeft <= 0 && !_phaseTransitioning) {
@@ -1490,13 +1534,34 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _pickNextArc() {
-    int next = _random.nextInt(_encouragementArcs.length);
-    // Avoid repeating the same arc back-to-back
-    while (next == _lastArcIndex && _encouragementArcs.length > 1) {
-      next = _random.nextInt(_encouragementArcs.length);
+    // Walk through a shuffled order of all arcs so every arc plays before
+    // any repeats. When the pool is exhausted, reshuffle (avoiding the
+    // last-played arc at the boundary).
+    if (_arcOrderPosition >= _arcOrder.length) {
+      _arcOrder.shuffle(_random);
+      // If the first arc in the new shuffle is the same as the last played,
+      // swap it with a random later position to avoid back-to-back repeat.
+      if (_arcOrder.first == _lastArcIndex && _arcOrder.length > 1) {
+        final swapIdx = 1 + _random.nextInt(_arcOrder.length - 1);
+        final tmp = _arcOrder[0];
+        _arcOrder[0] = _arcOrder[swapIdx];
+        _arcOrder[swapIdx] = tmp;
+      }
+      _arcOrderPosition = 0;
     }
+    final next = _arcOrder[_arcOrderPosition];
+    _arcOrderPosition++;
     _lastArcIndex = next;
     _currentArcIndex = next;
+  }
+
+  /// For experienced brushers (10+ lifetime brushes), occasionally skip
+  /// individual encouragement beats to let the music carry the energy.
+  /// Returns true if the beat should be skipped.
+  bool _shouldSkipEncouragement() {
+    if (_totalBrushes < 10) return false;
+    // 30% chance to skip any given beat after 10 brushes
+    return _random.nextDouble() < 0.30;
   }
 
   void _spawnDamagePopup() {
@@ -3920,7 +3985,7 @@ class _PulsingTapToFightState extends State<_PulsingTapToFight>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.touch_app, color: Colors.white, size: 28),
+                const Icon(Icons.bolt, color: Colors.white, size: 28),
                 const SizedBox(width: 10),
                 const Text(
                   'TAP TO FIGHT!',

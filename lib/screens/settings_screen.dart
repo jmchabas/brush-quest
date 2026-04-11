@@ -502,11 +502,11 @@ class _SettingsScreenState extends State<SettingsScreen>
         backgroundColor: const Color(0xFF1A0A3E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
-          "Delete Child's Data?",
+          'Start Fresh?',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'Are you sure? This will delete ALL progress — stars, heroes, weapons, streaks, achievements, and cloud data. This cannot be undone.',
+          'This will reset all game progress — stars, heroes, weapons, streaks, and achievements. This cannot be undone.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -546,14 +546,14 @@ class _SettingsScreenState extends State<SettingsScreen>
             backgroundColor: const Color(0xFF1A0A3E),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text(
-              'Confirm Deletion',
+              'Are you sure?',
               style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'To confirm deletion, solve this:',
+                  'To confirm, solve this:',
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 16),
@@ -2090,8 +2090,72 @@ class _WeekActivityCard extends StatelessWidget {
               );
             }),
           ),
+          const SizedBox(height: 10),
+          // Legend row explaining the three dot states
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildLegendItem(0, 'Missed'),
+              const SizedBox(width: 14),
+              _buildLegendItem(1, 'Once'),
+              const SizedBox(width: 14),
+              _buildLegendItem(2, 'Both'),
+            ],
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLegendItem(int count, String label) {
+    const size = 12.0;
+    Widget dot;
+    if (count == 0) {
+      dot = Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+        ),
+      );
+    } else if (count == 1) {
+      dot = SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _HalfCirclePainter(
+            fillColor: const Color(0xFF00E676),
+            borderColor: const Color(0xFF00E676),
+          ),
+        ),
+      );
+    } else {
+      dot = Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Color(0xFF00E676),
+        ),
+      );
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        dot,
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.54),
+            fontSize: 11,
+          ),
+        ),
+      ],
     );
   }
 }

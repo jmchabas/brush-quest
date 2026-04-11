@@ -346,9 +346,15 @@ void main() {
 
   group('No dead zones in unlock ladder', () {
     test('no gap between consecutive unlock prices exceeds 6 stars', () {
+      // Combine heroes, weapons, AND evolution prices into one ladder.
+      // Stage 1 evolutions are free (same as base hero), so only include
+      // stage 2+ evolutions which have non-zero prices.
       final allPrices = <int>[
         ...HeroService.allHeroes.map((h) => h.price),
         ...WeaponService.allWeapons.map((w) => w.price),
+        ...HeroService.allEvolutions
+            .where((e) => e.stage > 1)
+            .map((e) => e.price),
       ];
       // Remove free items (price 0) — they are always available
       allPrices.removeWhere((p) => p == 0);
@@ -372,6 +378,9 @@ void main() {
       final allPrices = <int>[
         ...HeroService.allHeroes.map((h) => h.price),
         ...WeaponService.allWeapons.map((w) => w.price),
+        ...HeroService.allEvolutions
+            .where((e) => e.stage > 1)
+            .map((e) => e.price),
       ];
       allPrices.removeWhere((p) => p == 0);
       allPrices.sort();

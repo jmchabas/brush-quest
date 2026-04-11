@@ -41,6 +41,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         _progress.addAll(progress);
         _unlocked.addAll(unlocked);
       });
+      // Ambient music — low volume so voice lines stay clear
+      AudioService().playMusic('battle_music_loop.mp3');
+      AudioService().setMusicVolume(0.04);
+
       // Play intro voice only once per app session, then world description
       if (!_introPlayedThisSession) {
         _introPlayedThisSession = true;
@@ -50,6 +54,13 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         AudioService().playVoice('voice_world_$currentId.mp3', clearQueue: true, interrupt: true);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    AudioService().stopVoice();
+    AudioService().stopMusic();
+    super.dispose();
   }
 
   @override
@@ -198,14 +209,12 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   }
 
   Future<void> _setCurrentWorld(WorldData world) async {
-    final messenger = ScaffoldMessenger.of(context);
     await _worldService.setCurrentWorld(world.id);
     await _loadData();
     if (mounted) {
       // Visual confirmation: brief glow animation on the selected planet
       // (the planet node already shows a check icon when selected)
-      // Play a confirming voice instead of text snackbar (kid can't read)
-      AudioService().playVoice('voice_world_${world.id}.mp3', interrupt: true);
+      // Voice already played by onTap handler — no duplicate here
     }
   }
 }

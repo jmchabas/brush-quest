@@ -133,9 +133,9 @@ class WeaponService {
   /// Returns true if purchase succeeds or weapon already owned.
   /// Returns false if insufficient stars or invalid weapon ID.
   ///
-  /// Wallet deduction and unlock list update are written in the same
-  /// synchronous batch (no await between them) so a crash can't lose stars
-  /// without granting the weapon.
+  /// Writes the unlock list first (idempotent), then deducts the wallet.
+  /// A crash between the two writes grants the weapon without spending stars
+  /// (recoverable), rather than spending stars without granting (lost).
   Future<bool> purchaseWeapon(String weaponId) async {
     if (_purchasing) return false;
     _purchasing = true;
@@ -153,13 +153,14 @@ class WeaponService {
         return true;
       }
 
-      // Read wallet directly — atomic write of both values below
       final wallet = prefs.getInt('star_wallet') ?? 0;
       if (wallet < weapon.price) return false;
 
-      // Write both atomically (no await between writes)
-      await prefs.setInt('star_wallet', wallet - weapon.price);
+      // Write unlock first (idempotent), then deduct wallet.
+      // A crash after unlock but before deduction is safe (item granted,
+      // stars not spent). The reverse would lose stars without granting.
       await prefs.setStringList(_unlockedKey, [...unlocked, weaponId]);
+      await prefs.setInt('star_wallet', wallet - weapon.price);
       return true;
     } finally {
       _purchasing = false;

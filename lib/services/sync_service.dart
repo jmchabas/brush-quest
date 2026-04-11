@@ -115,7 +115,13 @@ class SyncService {
     final doc = _userDoc;
     if (doc == null) return;
 
-    final snap = await doc.get();
+    final DocumentSnapshot snap;
+    try {
+      snap = await doc.get().timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      // Silently fall back — smartSync is best-effort
+      return;
+    }
     if (!snap.exists) {
       await uploadProgress();
       return;
