@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'streak_service.dart';
 
 class HeroCharacter {
   final String id;
@@ -50,7 +51,6 @@ class HeroService {
   static const _selectedKey = 'selected_hero';
   static const _unlockedEvolutionsKey = 'unlocked_evolutions';
   static const _evolutionStagePrefix = 'evolution_stage_';
-  static bool _purchasing = false;
 
   // Star prices — deducted from wallet on purchase.
   // Dense price ladder: a new unlock every 1-3 days at 2x/day.
@@ -147,8 +147,8 @@ class HeroService {
   /// A crash between the two writes grants the hero without spending stars
   /// (recoverable), rather than spending stars without granting (lost).
   Future<bool> purchaseHero(String heroId) async {
-    if (_purchasing) return false;
-    _purchasing = true;
+    if (StreakService.isPurchasing) return false;
+    StreakService.isPurchasing = true;
     try {
       final hero = getHeroById(heroId);
       if (hero.id != heroId) return false;
@@ -173,7 +173,7 @@ class HeroService {
       await prefs.setInt('star_wallet', wallet - hero.price);
       return true;
     } finally {
-      _purchasing = false;
+      StreakService.isPurchasing = false;
     }
   }
 
@@ -342,8 +342,8 @@ class HeroService {
   /// A crash between the two writes grants the evolution without spending
   /// stars (recoverable), rather than spending stars without granting (lost).
   Future<bool> purchaseEvolution(String evolutionId) async {
-    if (_purchasing) return false;
-    _purchasing = true;
+    if (StreakService.isPurchasing) return false;
+    StreakService.isPurchasing = true;
     try {
       final evo = getEvolutionById(evolutionId);
       if (evo == null) return false;
@@ -371,7 +371,7 @@ class HeroService {
       await prefs.setInt('star_wallet', wallet - evo.price);
       return true;
     } finally {
-      _purchasing = false;
+      StreakService.isPurchasing = false;
     }
   }
 

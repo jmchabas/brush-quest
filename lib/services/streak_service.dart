@@ -70,6 +70,10 @@ class BrushRecord {
 }
 
 class StreakService {
+  /// Cross-service purchase mutex — shared by HeroService & WeaponService.
+  /// Prevents concurrent star-deducting purchases from racing.
+  static bool isPurchasing = false;
+
   static const _keyLastBrushDate = 'last_brush_date';
   static const _keyCurrentStreak = 'current_streak';
   static const _keyTotalStars = 'total_stars';

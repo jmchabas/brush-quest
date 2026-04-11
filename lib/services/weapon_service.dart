@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'streak_service.dart';
 
 enum AttackEffectType {
   defaultBeam,
@@ -37,7 +38,6 @@ class WeaponItem {
 class WeaponService {
   static const _unlockedKey = 'unlocked_weapons';
   static const _selectedKey = 'selected_weapon';
-  static bool _purchasing = false;
 
   // Star prices — deducted from wallet on purchase.
   static const List<WeaponItem> allWeapons = [
@@ -137,8 +137,8 @@ class WeaponService {
   /// A crash between the two writes grants the weapon without spending stars
   /// (recoverable), rather than spending stars without granting (lost).
   Future<bool> purchaseWeapon(String weaponId) async {
-    if (_purchasing) return false;
-    _purchasing = true;
+    if (StreakService.isPurchasing) return false;
+    StreakService.isPurchasing = true;
     try {
       final weapon = getWeaponById(weaponId);
       if (weapon.id != weaponId) return false; // Invalid ID
@@ -163,7 +163,7 @@ class WeaponService {
       await prefs.setInt('star_wallet', wallet - weapon.price);
       return true;
     } finally {
-      _purchasing = false;
+      StreakService.isPurchasing = false;
     }
   }
 
