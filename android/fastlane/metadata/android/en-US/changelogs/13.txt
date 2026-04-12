@@ -1,0 +1,1 @@
+Oliver feedback hotfix: removed auto-open chest, fixed voice cut on victory, removed LEGENDARY badge, removed +N bonus pills

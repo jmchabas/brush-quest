@@ -1,7 +1,7 @@
 name: brush_quest
 description: "A fun toothbrushing game for kids - defeat cavity monsters in space!"
 publish_to: 'none'
-version: 1.0.0+12
+version: 1.0.0+13
 
 environment:
   sdk: ^3.10.4
