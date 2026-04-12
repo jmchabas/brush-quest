@@ -1,0 +1,1 @@
+Oliver feedback retest: restore monster showcase on victory, remove confusing yellow box and rectangular pill, fix voice cut on forward hook. Cleaner victory screen.
