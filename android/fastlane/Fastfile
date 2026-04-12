@@ -6,10 +6,8 @@ platform :android do
     upload_to_play_store(
       track: "internal",
       aab: "../build/app/outputs/bundle/release/app-release.aab",
-      # NOTE: Must be "draft" while the app is in draft state on Play Console
-      # (org still "unreviewed"). Switch to "completed" once the org is approved
-      # so deploys auto-publish to internal testers without manual intervention.
-      release_status: "draft",
+      # App was approved by Google on 2026-04-12; deploys now auto-publish.
+      release_status: "completed",
       skip_upload_metadata: true,
       skip_upload_images: true,
       skip_upload_screenshots: true,
