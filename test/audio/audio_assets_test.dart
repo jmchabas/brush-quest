@@ -115,16 +115,34 @@ const _audioFilesCore = [
   'voice_arc9_beat1.mp3', 'voice_arc9_beat2.mp3', 'voice_arc9_beat3.mp3',
   'voice_arc10_beat1.mp3', 'voice_arc10_beat2.mp3', 'voice_arc10_beat3.mp3',
   // Victory celebration arc voice lines (8 arcs x 3 beats)
-  'voice_victory_arc1_beat1.mp3', 'voice_victory_arc1_beat2.mp3', 'voice_victory_arc1_beat3.mp3',
-  'voice_victory_arc2_beat1.mp3', 'voice_victory_arc2_beat2.mp3', 'voice_victory_arc2_beat3.mp3',
-  'voice_victory_arc3_beat1.mp3', 'voice_victory_arc3_beat2.mp3', 'voice_victory_arc3_beat3.mp3',
-  'voice_victory_arc4_beat1.mp3', 'voice_victory_arc4_beat2.mp3', 'voice_victory_arc4_beat3.mp3',
-  'voice_victory_arc5_beat1.mp3', 'voice_victory_arc5_beat2.mp3', 'voice_victory_arc5_beat3.mp3',
-  'voice_victory_arc6_beat1.mp3', 'voice_victory_arc6_beat2.mp3', 'voice_victory_arc6_beat3.mp3',
-  'voice_victory_arc7_beat1.mp3', 'voice_victory_arc7_beat2.mp3', 'voice_victory_arc7_beat3.mp3',
-  'voice_victory_arc8_beat1.mp3', 'voice_victory_arc8_beat2.mp3', 'voice_victory_arc8_beat3.mp3',
+  'voice_victory_arc1_beat1.mp3',
+  'voice_victory_arc1_beat2.mp3',
+  'voice_victory_arc1_beat3.mp3',
+  'voice_victory_arc2_beat1.mp3',
+  'voice_victory_arc2_beat2.mp3',
+  'voice_victory_arc2_beat3.mp3',
+  'voice_victory_arc3_beat1.mp3',
+  'voice_victory_arc3_beat2.mp3',
+  'voice_victory_arc3_beat3.mp3',
+  'voice_victory_arc4_beat1.mp3',
+  'voice_victory_arc4_beat2.mp3',
+  'voice_victory_arc4_beat3.mp3',
+  'voice_victory_arc5_beat1.mp3',
+  'voice_victory_arc5_beat2.mp3',
+  'voice_victory_arc5_beat3.mp3',
+  'voice_victory_arc6_beat1.mp3',
+  'voice_victory_arc6_beat2.mp3',
+  'voice_victory_arc6_beat3.mp3',
+  'voice_victory_arc7_beat1.mp3',
+  'voice_victory_arc7_beat2.mp3',
+  'voice_victory_arc7_beat3.mp3',
+  'voice_victory_arc8_beat1.mp3',
+  'voice_victory_arc8_beat2.mp3',
+  'voice_victory_arc8_beat3.mp3',
   // Post-chest encouragement variants
-  'voice_chest_encourage_1.mp3', 'voice_chest_encourage_2.mp3', 'voice_chest_encourage_3.mp3',
+  'voice_chest_encourage_1.mp3',
+  'voice_chest_encourage_2.mp3',
+  'voice_chest_encourage_3.mp3',
   // Milestones and special voices
   'voice_tap_hero.mp3',
   'voice_card_power_up.mp3',
@@ -261,16 +279,26 @@ const _allHeroIds = ['blaze', 'frost', 'bolt', 'shadow', 'leaf', 'nova'];
 
 /// 6 weapon IDs from WeaponService.allWeapons (weapon_service.dart).
 const _allWeaponIds = [
-  'star_blaster', 'flame_sword', 'ice_hammer',
-  'lightning_wand', 'vine_whip', 'cosmic_burst',
+  'star_blaster',
+  'flame_sword',
+  'ice_hammer',
+  'lightning_wand',
+  'vine_whip',
+  'cosmic_burst',
 ];
 
 /// 10 world IDs from WorldService.allWorlds (world_service.dart).
 const _allWorldIds = [
-  'candy_crater', 'slime_swamp', 'sugar_volcano',
-  'shadow_nebula', 'cavity_fortress',
-  'frozen_tundra', 'toxic_jungle', 'crystal_cave',
-  'storm_citadel', 'dark_dimension',
+  'candy_crater',
+  'slime_swamp',
+  'sugar_volcano',
+  'shadow_nebula',
+  'cavity_fortress',
+  'frozen_tundra',
+  'toxic_jungle',
+  'crystal_cave',
+  'storm_citadel',
+  'dark_dimension',
 ];
 
 // ---------------------------------------------------------------------------
@@ -389,19 +417,22 @@ void main() {
       }
     });
 
-    group('Weapon picker voices (voice_picker_weapon_{id}.mp3) — 6 weapons', () {
-      for (final weaponId in _allWeaponIds) {
-        final fileName = 'voice_picker_weapon_$weaponId.mp3';
-        test(fileName, () {
-          final path = _audioFilePath(audioDir, fileName);
-          expect(
-            File(path).existsSync(),
-            isTrue,
-            reason: 'Missing weapon picker voice: $path',
-          );
-        });
-      }
-    });
+    group(
+      'Weapon picker voices (voice_picker_weapon_{id}.mp3) — 6 weapons',
+      () {
+        for (final weaponId in _allWeaponIds) {
+          final fileName = 'voice_picker_weapon_$weaponId.mp3';
+          test(fileName, () {
+            final path = _audioFilePath(audioDir, fileName);
+            expect(
+              File(path).existsSync(),
+              isTrue,
+              reason: 'Missing weapon picker voice: $path',
+            );
+          });
+        }
+      },
+    );
 
     group('World voices (voice_world_{id}.mp3) — 10 worlds', () {
       for (final worldId in _allWorldIds) {
@@ -454,9 +485,7 @@ void main() {
           if (entity is File && entity.path.endsWith('.mp3')) {
             final size = entity.lengthSync();
             if (size <= 1024) {
-              tooSmall.add(
-                '${entity.uri.pathSegments.last} (${size}B)',
-              );
+              tooSmall.add('${entity.uri.pathSegments.last} (${size}B)');
             }
           }
         }

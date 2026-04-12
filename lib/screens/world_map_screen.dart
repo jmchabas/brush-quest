@@ -49,10 +49,22 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
       // Play intro voice only once per app session, then world description
       if (!_introPlayedThisSession) {
         _introPlayedThisSession = true;
-        unawaited(AudioService().playVoice('voice_world_map_intro.mp3', clearQueue: true, interrupt: true));
+        unawaited(
+          AudioService().playVoice(
+            'voice_world_map_intro.mp3',
+            clearQueue: true,
+            interrupt: true,
+          ),
+        );
         unawaited(AudioService().playVoice('voice_world_$currentId.mp3'));
       } else {
-        unawaited(AudioService().playVoice('voice_world_$currentId.mp3', clearQueue: true, interrupt: true));
+        unawaited(
+          AudioService().playVoice(
+            'voice_world_$currentId.mp3',
+            clearQueue: true,
+            interrupt: true,
+          ),
+        );
       }
     }
   }
@@ -80,9 +92,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                        AudioService().stopVoice();
-                        Navigator.of(context).pop();
-                      },
+                          AudioService().stopVoice();
+                          Navigator.of(context).pop();
+                        },
                         borderRadius: BorderRadius.circular(18),
                         child: Container(
                           width: 56,
@@ -190,7 +202,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             progress: progress,
             onTap: () {
               // Always play the world description voice
-              AudioService().playVoice('voice_world_${world.id}.mp3', clearQueue: true, interrupt: true);
+              AudioService().playVoice(
+                'voice_world_${world.id}.mp3',
+                clearQueue: true,
+                interrupt: true,
+              );
               if (!isUnlocked) {
                 // Locked world — describe world, then say needs more brushing
                 AudioService().playVoice('voice_need_stars.mp3');
@@ -266,18 +282,19 @@ class _CurvedDashPainter extends CustomPainter {
     path.moveTo(startPoint.dx, startPoint.dy);
     // Use a cubic bezier with control points that create a nice S-curve
     final midY = size.height / 2;
-    path.cubicTo(
-      fromX, midY,
-      toX, midY,
-      endPoint.dx, endPoint.dy,
-    );
+    path.cubicTo(fromX, midY, toX, midY, endPoint.dx, endPoint.dy);
 
     // Draw as dashed line
     _drawDashedPath(canvas, path, paint, dashLength: 6, gapLength: 5);
   }
 
-  void _drawDashedPath(Canvas canvas, Path path, Paint paint,
-      {double dashLength = 6, double gapLength = 5}) {
+  void _drawDashedPath(
+    Canvas canvas,
+    Path path,
+    Paint paint, {
+    double dashLength = 6,
+    double gapLength = 5,
+  }) {
     final metrics = path.computeMetrics();
     for (final metric in metrics) {
       double distance = 0;
@@ -384,8 +401,9 @@ class _PlanetNodeState extends State<_PlanetNode>
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: widget.world.themeColor
-                                    .withValues(alpha: ringOpacity),
+                                color: widget.world.themeColor.withValues(
+                                  alpha: ringOpacity,
+                                ),
                                 width: 2,
                               ),
                             ),
@@ -421,7 +439,9 @@ class _PlanetNodeState extends State<_PlanetNode>
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: widget.world.themeColor.withValues(alpha: glowAlpha),
+                              color: widget.world.themeColor.withValues(
+                                alpha: glowAlpha,
+                              ),
                               blurRadius: glowBlur,
                               spreadRadius: 4,
                             ),
@@ -440,13 +460,19 @@ class _PlanetNodeState extends State<_PlanetNode>
                     height: planetSize,
                     child: ColorFiltered(
                       colorFilter: widget.isUnlocked
-                          ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                          ? const ColorFilter.mode(
+                              Colors.transparent,
+                              BlendMode.dst,
+                            )
                           : ColorFilter.mode(
                               Colors.black.withValues(alpha: 0.35),
                               BlendMode.srcATop,
                             ),
                       child: ClipOval(
-                        child: Image.asset(widget.world.imagePath, fit: BoxFit.cover),
+                        child: Image.asset(
+                          widget.world.imagePath,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
@@ -465,12 +491,18 @@ class _PlanetNodeState extends State<_PlanetNode>
                           border: Border.all(color: Colors.white, width: 2),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF69F0AE).withValues(alpha: 0.5),
+                              color: const Color(
+                                0xFF69F0AE,
+                              ).withValues(alpha: 0.5),
                               blurRadius: 8,
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.check, color: Colors.white, size: 18),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
 
@@ -510,8 +542,8 @@ class _PlanetNodeState extends State<_PlanetNode>
                 color: widget.isCurrent
                     ? Colors.white
                     : widget.isUnlocked
-                        ? Colors.white.withValues(alpha: 0.85)
-                        : Colors.white.withValues(alpha: 0.4),
+                    ? Colors.white.withValues(alpha: 0.85)
+                    : Colors.white.withValues(alpha: 0.4),
                 fontWeight: FontWeight.bold,
                 fontSize: widget.isCurrent ? 15 : 13,
                 letterSpacing: 1.5,
@@ -524,7 +556,10 @@ class _PlanetNodeState extends State<_PlanetNode>
             if (widget.isUnlocked)
               widget.isCompleted
                   ? Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF69F0AE).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
@@ -545,12 +580,16 @@ class _PlanetNodeState extends State<_PlanetNode>
                     )
                   : Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: List.generate(widget.world.missionsRequired, (i) {
+                      children: List.generate(widget.world.missionsRequired, (
+                        i,
+                      ) {
                         final filled = i < widget.progress;
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 1),
                           child: Icon(
-                            filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                            filled
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
                             color: filled
                                 ? const Color(0xFFFFD54F)
                                 : Colors.white.withValues(alpha: 0.3),

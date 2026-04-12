@@ -38,7 +38,12 @@ const _syncKeys = [
   'star_wallet',
   'trophy_captured',
 ];
-const _prefixSyncKeys = ['world_progress_', 'achievement_', 'card_dup_count_', 'trophy_defeats_'];
+const _prefixSyncKeys = [
+  'world_progress_',
+  'achievement_',
+  'card_dup_count_',
+  'trophy_defeats_',
+];
 
 /// Mirrors SyncService._shouldSyncKey
 bool shouldSyncKey(String key) {
@@ -48,7 +53,11 @@ bool shouldSyncKey(String key) {
 }
 
 /// Mirrors SyncService._writeValue
-Future<void> writeValue(SharedPreferences prefs, String key, dynamic val) async {
+Future<void> writeValue(
+  SharedPreferences prefs,
+  String key,
+  dynamic val,
+) async {
   if (val is int) {
     await prefs.setInt(key, val);
   } else if (val is String) {
@@ -77,7 +86,13 @@ int progressScoreFromPrefs(SharedPreferences prefs) {
   final worldProgress = keys
       .where((k) => k.startsWith('world_progress_'))
       .fold<int>(0, (acc, key) => acc + (prefs.getInt(key) ?? 0));
-  return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + worldProgress * 3 + trophies * 25;
+  return brushes * 8 +
+      stars * 5 +
+      heroes * 30 +
+      weapons * 20 +
+      achievements * 15 +
+      worldProgress * 3 +
+      trophies * 25;
 }
 
 /// Mirrors SyncService._progressScoreFromCloud
@@ -94,13 +109,22 @@ int progressScoreFromCloud(Map<String, dynamic> cloudData) {
   });
   final brushes = (cloudData['total_brushes'] as int?) ?? 0;
   final stars = (cloudData['total_stars'] as int?) ?? 0;
-  final heroes =
-      (cloudData['unlocked_heroes'] is List) ? (cloudData['unlocked_heroes'] as List).length : 0;
-  final weapons =
-      (cloudData['unlocked_weapons'] is List) ? (cloudData['unlocked_weapons'] as List).length : 0;
-  final trophies =
-      (cloudData['trophy_captured'] is List) ? (cloudData['trophy_captured'] as List).length : 0;
-  return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + sumWorldProgress * 3 + trophies * 25;
+  final heroes = (cloudData['unlocked_heroes'] is List)
+      ? (cloudData['unlocked_heroes'] as List).length
+      : 0;
+  final weapons = (cloudData['unlocked_weapons'] is List)
+      ? (cloudData['unlocked_weapons'] as List).length
+      : 0;
+  final trophies = (cloudData['trophy_captured'] is List)
+      ? (cloudData['trophy_captured'] as List).length
+      : 0;
+  return brushes * 8 +
+      stars * 5 +
+      heroes * 30 +
+      weapons * 20 +
+      achievements * 15 +
+      sumWorldProgress * 3 +
+      trophies * 25;
 }
 
 /// Mirrors SyncService's buildLocalData pattern (from uploadProgress)
@@ -119,7 +143,10 @@ Map<String, dynamic> buildLocalData(SharedPreferences prefs) {
 }
 
 /// Mirrors SyncService's applyData pattern (from downloadProgress)
-Future<void> applyData(SharedPreferences prefs, Map<String, dynamic> data) async {
+Future<void> applyData(
+  SharedPreferences prefs,
+  Map<String, dynamic> data,
+) async {
   for (final entry in data.entries) {
     if (!shouldSyncKey(entry.key)) continue;
     await writeValue(prefs, entry.key, entry.value);
@@ -132,7 +159,11 @@ void main() {
   group('SyncService key filtering (shouldSyncKey)', () {
     test('recognizes all direct sync keys', () {
       for (final key in _syncKeys) {
-        expect(shouldSyncKey(key), isTrue, reason: 'Key "$key" should be synced');
+        expect(
+          shouldSyncKey(key),
+          isTrue,
+          reason: 'Key "$key" should be synced',
+        );
       }
     });
 
@@ -195,7 +226,12 @@ void main() {
     test('list with mixed types only keeps strings', () async {
       final prefs = await SharedPreferences.getInstance();
       // Simulate cloud data that might have mixed types
-      await writeValue(prefs, 'unlocked_heroes', ['hero_1', 42, 'hero_2', true]);
+      await writeValue(prefs, 'unlocked_heroes', [
+        'hero_1',
+        42,
+        'hero_2',
+        true,
+      ]);
       expect(prefs.getStringList('unlocked_heroes'), ['hero_1', 'hero_2']);
     });
   });
@@ -273,19 +309,22 @@ void main() {
       expect(data['brush_history'] as List, isEmpty);
     });
 
-    test('includes string list values (unlocked_heroes, unlocked_weapons)', () async {
-      SharedPreferences.setMockInitialValues({
-        'unlocked_heroes': ['ranger', 'ninja'],
-        'unlocked_weapons': ['blaster', 'sword'],
-        'collected_cards': ['cc_01', 'cc_02'],
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final data = buildLocalData(prefs);
+    test(
+      'includes string list values (unlocked_heroes, unlocked_weapons)',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'unlocked_heroes': ['ranger', 'ninja'],
+          'unlocked_weapons': ['blaster', 'sword'],
+          'collected_cards': ['cc_01', 'cc_02'],
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final data = buildLocalData(prefs);
 
-      expect(data['unlocked_heroes'], ['ranger', 'ninja']);
-      expect(data['unlocked_weapons'], ['blaster', 'sword']);
-      expect(data['collected_cards'], ['cc_01', 'cc_02']);
-    });
+        expect(data['unlocked_heroes'], ['ranger', 'ninja']);
+        expect(data['unlocked_weapons'], ['blaster', 'sword']);
+        expect(data['collected_cards'], ['cc_01', 'cc_02']);
+      },
+    );
   });
 
   group('SyncService applyData', () {
@@ -336,7 +375,11 @@ void main() {
       };
       await applyData(prefs, data);
 
-      expect(prefs.getStringList('unlocked_heroes'), ['ranger', 'ninja', 'pirate']);
+      expect(prefs.getStringList('unlocked_heroes'), [
+        'ranger',
+        'ninja',
+        'pirate',
+      ]);
       expect(prefs.getStringList('collected_cards'), ['cc_01', 'ss_01']);
     });
   });
@@ -423,8 +466,14 @@ void main() {
 
       expect(prefs2.getStringList('unlocked_heroes'), ['ranger', 'ninja']);
       expect(prefs2.getStringList('unlocked_weapons'), ['blaster']);
-      expect(prefs2.getStringList('collected_cards'), ['cc_01', 'cc_02', 'ss_01']);
-      expect(prefs2.getStringList('brush_history'), ['{"date":"2026-03-14","stars":1}']);
+      expect(prefs2.getStringList('collected_cards'), [
+        'cc_01',
+        'cc_02',
+        'ss_01',
+      ]);
+      expect(prefs2.getStringList('brush_history'), [
+        '{"date":"2026-03-14","stars":1}',
+      ]);
     });
 
     test('round-trip preserves prefixed keys (world progress)', () async {
@@ -489,14 +538,25 @@ void main() {
       expect(prefs2.getString('last_brush_date'), '2026-03-14');
       expect(prefs2.getInt('today_brush_count'), 2);
       expect(prefs2.getString('selected_hero'), 'pirate');
-      expect(prefs2.getStringList('unlocked_heroes'), ['ranger', 'ninja', 'pirate']);
-      expect(prefs2.getStringList('collected_cards'), ['cc_01', 'cc_02', 'ss_01']);
+      expect(prefs2.getStringList('unlocked_heroes'), [
+        'ranger',
+        'ninja',
+        'pirate',
+      ]);
+      expect(prefs2.getStringList('collected_cards'), [
+        'cc_01',
+        'cc_02',
+        'ss_01',
+      ]);
       expect(prefs2.getBool('achievement_first_brush'), true);
       expect(prefs2.getInt('world_progress_candy_crater'), 7);
       expect(prefs2.getInt('star_wallet'), 25);
       expect(prefs2.getStringList('trophy_captured'), ['cc_t1', 'ss_t1']);
       expect(prefs2.getInt('trophy_defeats_cc_t2'), 1);
-      expect(prefs2.getStringList('brush_history'), ['{"date":"2026-03-13"}', '{"date":"2026-03-14"}']);
+      expect(prefs2.getStringList('brush_history'), [
+        '{"date":"2026-03-13"}',
+        '{"date":"2026-03-14"}',
+      ]);
     });
   });
 
@@ -656,9 +716,7 @@ void main() {
     });
 
     test('smart merge: more achievements wins', () async {
-      SharedPreferences.setMockInitialValues({
-        'achievement_first_brush': true,
-      });
+      SharedPreferences.setMockInitialValues({'achievement_first_brush': true});
       final prefs = await SharedPreferences.getInstance();
       final localScore = progressScoreFromPrefs(prefs);
 

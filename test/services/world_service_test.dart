@@ -72,16 +72,23 @@ void main() {
 
     test('all worlds have positive missionsRequired', () {
       for (final world in WorldService.allWorlds) {
-        expect(world.missionsRequired > 0, true,
-            reason: '${world.id} should require at least 1 mission');
+        expect(
+          world.missionsRequired > 0,
+          true,
+          reason: '${world.id} should require at least 1 mission',
+        );
       }
     });
 
     test('world mission thresholds are [5, 5, 6, 6, 7, 7, 7, 8, 8, 10]', () {
       final expected = [5, 5, 6, 6, 7, 7, 7, 8, 8, 10];
       for (int i = 0; i < WorldService.allWorlds.length; i++) {
-        expect(WorldService.allWorlds[i].missionsRequired, expected[i],
-            reason: '${WorldService.allWorlds[i].id} should require ${expected[i]} missions');
+        expect(
+          WorldService.allWorlds[i].missionsRequired,
+          expected[i],
+          reason:
+              '${WorldService.allWorlds[i].id} should require ${expected[i]} missions',
+        );
       }
     });
   });
@@ -221,14 +228,17 @@ void main() {
       expect(unlocked, true);
     });
 
-    test('second world unlocks when first world has more than required missions', () async {
-      SharedPreferences.setMockInitialValues({
-        'world_progress_candy_crater': 8, // more than 5 required
-      });
-      final service = WorldService();
-      final unlocked = await service.isWorldUnlocked('slime_swamp');
-      expect(unlocked, true);
-    });
+    test(
+      'second world unlocks when first world has more than required missions',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'world_progress_candy_crater': 8, // more than 5 required
+        });
+        final service = WorldService();
+        final unlocked = await service.isWorldUnlocked('slime_swamp');
+        expect(unlocked, true);
+      },
+    );
 
     test('third world is locked when second is incomplete', () async {
       SharedPreferences.setMockInitialValues({
@@ -264,21 +274,27 @@ void main() {
       expect(completed, true);
     });
 
-    test('isAllWorldsCompleted returns false when any world is incomplete', () async {
-      final service = WorldService();
-      final allDone = await service.isAllWorldsCompleted();
-      expect(allDone, false);
-    });
+    test(
+      'isAllWorldsCompleted returns false when any world is incomplete',
+      () async {
+        final service = WorldService();
+        final allDone = await service.isAllWorldsCompleted();
+        expect(allDone, false);
+      },
+    );
 
-    test('isAllWorldsCompleted returns true when all worlds are done', () async {
-      final values = <String, Object>{};
-      for (final world in WorldService.allWorlds) {
-        values['world_progress_${world.id}'] = world.missionsRequired;
-      }
-      SharedPreferences.setMockInitialValues(values);
-      final service = WorldService();
-      final allDone = await service.isAllWorldsCompleted();
-      expect(allDone, true);
-    });
+    test(
+      'isAllWorldsCompleted returns true when all worlds are done',
+      () async {
+        final values = <String, Object>{};
+        for (final world in WorldService.allWorlds) {
+          values['world_progress_${world.id}'] = world.missionsRequired;
+        }
+        SharedPreferences.setMockInitialValues(values);
+        final service = WorldService();
+        final allDone = await service.isAllWorldsCompleted();
+        expect(allDone, true);
+      },
+    );
   });
 }

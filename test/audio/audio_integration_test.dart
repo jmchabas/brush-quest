@@ -101,8 +101,11 @@ void main() {
       // We call with interrupt — the fake records _voiceInterrupted only
       // when _voicePlaying is true at the moment of call. Since fake
       // completes instantly, let's verify the flag is passed through.
-      await fake.playVoice('voice_top_left.mp3',
-          clearQueue: true, interrupt: true);
+      await fake.playVoice(
+        'voice_top_left.mp3',
+        clearQueue: true,
+        interrupt: true,
+      );
 
       final voiceCall = fake.callsFor('playVoice').first;
       expect(voiceCall.args['interrupt'], isTrue);
@@ -208,8 +211,9 @@ void main() {
 
       // Verify interleaving: duck, restore, duck, restore.
       final allEvents = fake.calls
-          .where((c) =>
-              c.method == '_musicDucked' || c.method == '_musicRestored')
+          .where(
+            (c) => c.method == '_musicDucked' || c.method == '_musicRestored',
+          )
           .toList();
       expect(allEvents.length, 4);
       expect(allEvents[0].method, '_musicDucked');
@@ -235,8 +239,11 @@ void main() {
     test('typical brushing flow records expected call sequence', () async {
       // Simulate what brushing_screen.dart does:
       // 1. Countdown voice
-      await fake.playVoice('voice_countdown.mp3',
-          clearQueue: true, interrupt: true);
+      await fake.playVoice(
+        'voice_countdown.mp3',
+        clearQueue: true,
+        interrupt: true,
+      );
       // 2. Countdown beeps
       await fake.playSfx('countdown_beep.mp3');
       await fake.playSfx('countdown_beep.mp3');
@@ -306,7 +313,9 @@ void main() {
       expect(fake.callsFor('playSfx')[0].args['fileName'], 'victory.mp3');
       expect(fake.callsFor('playSfx')[1].args['fileName'], 'star_chime.mp3');
       expect(
-          fake.callsFor('playVoice').first.args['fileName'], 'voice_awesome.mp3');
+        fake.callsFor('playVoice').first.args['fileName'],
+        'voice_awesome.mp3',
+      );
     });
   });
 

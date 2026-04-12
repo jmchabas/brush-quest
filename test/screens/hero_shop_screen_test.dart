@@ -21,14 +21,14 @@ void main() {
     // Mock audioplayers platform channel to prevent MissingPluginException
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
   });
 
   setUp(() {
@@ -60,9 +60,7 @@ void main() {
     });
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
-    await tester.pumpWidget(
-      const MaterialApp(home: HeroShopScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: HeroShopScreen()));
     // Let async _loadData and SharedPreferences complete
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
@@ -97,8 +95,9 @@ void main() {
 
   // ── Weapon grid ──────────────────────────────────────────────
 
-  testWidgets('weapon grid shows all weapons after tapping WEAPONS tab',
-      (tester) async {
+  testWidgets('weapon grid shows all weapons after tapping WEAPONS tab', (
+    tester,
+  ) async {
     await pumpShop(tester);
     // Tap WEAPONS tab
     await tester.tap(find.text('WEAPONS'));
@@ -131,9 +130,9 @@ void main() {
 
   // ── Evolution gating snackbar ────────────────────────────────
 
-  testWidgets(
-      'tapping stage 3 without owning stage 2 shows gating snackbar',
-      (tester) async {
+  testWidgets('tapping stage 3 without owning stage 2 shows gating snackbar', (
+    tester,
+  ) async {
     // Blaze is owned, blaze_stage2 is NOT owned, so tapping stage 3 should
     // show the "Unlock the previous evolution first!" snackbar.
     await pumpShop(
@@ -192,10 +191,7 @@ void main() {
 
     // Snackbar now uses icon-only (lock + prev stage thumbnail + arrow + current stage thumbnail).
     // Verify a floating SnackBar appeared by checking for arrow_forward icon inside it.
-    expect(
-      find.byIcon(Icons.arrow_forward),
-      findsWidgets,
-    );
+    expect(find.byIcon(Icons.arrow_forward), findsWidgets);
     await tester.binding.setSurfaceSize(null);
   });
 

@@ -66,7 +66,9 @@ class _MouthGuidePainter extends CustomPainter {
       width: w * 0.92,
       height: h * 0.88,
     );
-    mouthPath.addRRect(RRect.fromRectAndRadius(mouthRect, Radius.circular(w * 0.38)));
+    mouthPath.addRRect(
+      RRect.fromRectAndRadius(mouthRect, Radius.circular(w * 0.38)),
+    );
 
     // Dark mouth interior
     canvas.drawPath(mouthPath, Paint()..color = const Color(0xFF1A0808));
@@ -102,7 +104,11 @@ class _MouthGuidePainter extends CustomPainter {
 
     // Tongue hint (pinkish oval at bottom-center)
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx, h * 0.62), width: w * 0.35, height: h * 0.12),
+      Rect.fromCenter(
+        center: Offset(cx, h * 0.62),
+        width: w * 0.35,
+        height: h * 0.12,
+      ),
       Paint()..color = const Color(0xFFE88994).withValues(alpha: 0.5),
     );
 
@@ -113,9 +119,17 @@ class _MouthGuidePainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.15)
       ..strokeWidth = 1.5;
     // Left vertical divider (1/3 mark)
-    canvas.drawLine(Offset(w * 0.33, h * 0.1), Offset(w * 0.33, h * 0.9), dividerPaint);
+    canvas.drawLine(
+      Offset(w * 0.33, h * 0.1),
+      Offset(w * 0.33, h * 0.9),
+      dividerPaint,
+    );
     // Right vertical divider (2/3 mark)
-    canvas.drawLine(Offset(w * 0.67, h * 0.1), Offset(w * 0.67, h * 0.9), dividerPaint);
+    canvas.drawLine(
+      Offset(w * 0.67, h * 0.1),
+      Offset(w * 0.67, h * 0.9),
+      dividerPaint,
+    );
     // Horizontal center line
     canvas.drawLine(Offset(w * 0.08, cy), Offset(w * 0.92, cy), dividerPaint);
 
@@ -151,7 +165,7 @@ class _MouthGuidePainter extends CustomPainter {
     // 10 teeth: indices 0-2 = left, 3-6 = front, 7-9 = right
     // 3 left teeth, 4 front teeth, 3 right teeth
     final leftEnd = (teethCount * 0.3).floor(); // 3
-    final rightStart = teethCount - leftEnd;     // 7
+    final rightStart = teethCount - leftEnd; // 7
 
     if (i < leftEnd) {
       return isUpper ? MouthQuadrant.topLeft : MouthQuadrant.bottomLeft;
@@ -162,7 +176,12 @@ class _MouthGuidePainter extends CustomPainter {
     }
   }
 
-  void _drawTeethRow(Canvas canvas, double w, double h, {required bool isUpper}) {
+  void _drawTeethRow(
+    Canvas canvas,
+    double w,
+    double h, {
+    required bool isUpper,
+  }) {
     const teethCount = 10;
     final cx = w / 2;
     final toothW = w * 0.072;
@@ -178,7 +197,8 @@ class _MouthGuidePainter extends CustomPainter {
       final isActive = activeQuadrant == quadrant;
 
       // Slight arc: teeth near center are taller
-      final distFromCenter = ((i - (teethCount - 1) / 2).abs()) / ((teethCount - 1) / 2);
+      final distFromCenter =
+          ((i - (teethCount - 1) / 2).abs()) / ((teethCount - 1) / 2);
       final heightMod = 1.0 - distFromCenter * 0.3;
       final widthMod = 1.0 - distFromCenter * 0.15;
       final actualH = toothH * heightMod;
@@ -255,7 +275,13 @@ class _MouthGuidePainter extends CustomPainter {
     }
   }
 
-  void _drawZoneHighlight(Canvas canvas, double w, double h, double cx, double cy) {
+  void _drawZoneHighlight(
+    Canvas canvas,
+    double w,
+    double h,
+    double cx,
+    double cy,
+  ) {
     final quadRect = _zoneRect(activeQuadrant, w, h, cx, cy);
 
     final glowAlpha = 0.05 + glowAnim * 0.08;
@@ -267,7 +293,13 @@ class _MouthGuidePainter extends CustomPainter {
     );
   }
 
-  void _drawBrushIndicator(Canvas canvas, double w, double h, double cx, double cy) {
+  void _drawBrushIndicator(
+    Canvas canvas,
+    double w,
+    double h,
+    double cx,
+    double cy,
+  ) {
     final quadRect = _zoneRect(activeQuadrant, w, h, cx, cy);
     final bx = quadRect.center.dx;
     final by = quadRect.center.dy;
@@ -386,17 +418,17 @@ class _MouthGuideOverlayState extends State<MouthGuideOverlay>
     return AnimatedBuilder(
       animation: Listenable.merge([_entryController, _exitController]),
       builder: (context, child) {
-        final entryT = CurvedAnimation(parent: _entryController, curve: Curves.easeOutBack).value;
+        final entryT = CurvedAnimation(
+          parent: _entryController,
+          curve: Curves.easeOutBack,
+        ).value;
         final exitT = _exitController.value;
         final opacity = entryT * (1.0 - exitT);
         final scale = 0.5 + entryT * 0.5 * (1.0 - exitT * 0.3);
 
         return Opacity(
           opacity: opacity.clamp(0.0, 1.0),
-          child: Transform.scale(
-            scale: scale,
-            child: child,
-          ),
+          child: Transform.scale(scale: scale, child: child),
         );
       },
       child: Container(
@@ -443,7 +475,9 @@ class _MouthGuideOverlayState extends State<MouthGuideOverlay>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: widget.themeColor.withValues(alpha: glowAlpha * 0.6),
+                          color: widget.themeColor.withValues(
+                            alpha: glowAlpha * 0.6,
+                          ),
                           blurRadius: 16,
                           spreadRadius: 4,
                         ),

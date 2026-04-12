@@ -22,14 +22,14 @@ void main() {
     // Mock audioplayers platform channel to prevent MissingPluginException
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
   });
 
   setUp(() {
@@ -55,15 +55,12 @@ void main() {
       'muted': false,
     };
     for (final world in WorldService.allWorlds) {
-      prefs['world_progress_${world.id}'] =
-          worldProgress[world.id] ?? 0;
+      prefs['world_progress_${world.id}'] = worldProgress[world.id] ?? 0;
     }
     SharedPreferences.setMockInitialValues(prefs);
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
-    await tester.pumpWidget(
-      const MaterialApp(home: WorldMapScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: WorldMapScreen()));
     // Allow async _loadData to complete
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -76,11 +73,14 @@ void main() {
 
     // The intro voice uses a static flag (_introPlayedThisSession) so it
     // only plays once per app session. This test must run first.
-    final introVoices = fakeAudio.callsFor('playVoice').where(
-          (c) => c.args['fileName'] == 'voice_world_map_intro.mp3',
-        );
-    expect(introVoices.isNotEmpty, isTrue,
-        reason: 'World map intro voice should play on first load');
+    final introVoices = fakeAudio
+        .callsFor('playVoice')
+        .where((c) => c.args['fileName'] == 'voice_world_map_intro.mp3');
+    expect(
+      introVoices.isNotEmpty,
+      isTrue,
+      reason: 'World map intro voice should play on first load',
+    );
 
     await tester.binding.setSurfaceSize(null);
   });

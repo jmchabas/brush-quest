@@ -47,25 +47,24 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   }
 
-  testWidgets(
-    'home stats row has uniform 22px font and parent shield icon',
-    (tester) async {
-      await pumpHomeScreen(tester);
+  testWidgets('home stats row has uniform 22px font and parent shield icon', (
+    tester,
+  ) async {
+    await pumpHomeScreen(tester);
 
-      // Stats display: star pill shows 22px font (uniform across all pills)
-      final starsText = tester.widget<Text>(find.text('12'));
-      expect(starsText.style?.fontSize, 22);
-      // Streak pill shows at 22px (matching all pill format)
-      final streakText = tester.widget<Text>(find.text('3'));
-      expect(streakText.style?.fontSize, 22);
+    // Stats display: star pill shows 22px font (uniform across all pills)
+    final starsText = tester.widget<Text>(find.text('12'));
+    expect(starsText.style?.fontSize, 22);
+    // Streak pill shows at 22px (matching all pill format)
+    final streakText = tester.widget<Text>(find.text('3'));
+    expect(streakText.style?.fontSize, 22);
 
-      // Parent area uses shield icon with PARENTS label
-      expect(find.byIcon(Icons.shield), findsOneWidget);
-      expect(find.text('PARENTS'), findsOneWidget);
-      // MuteButton shows volume_up when not muted
-      expect(find.byIcon(Icons.volume_up), findsOneWidget);
+    // Parent area uses shield icon with PARENTS label
+    expect(find.byIcon(Icons.shield), findsOneWidget);
+    expect(find.text('PARENTS'), findsOneWidget);
+    // MuteButton shows volume_up when not muted
+    expect(find.byIcon(Icons.volume_up), findsOneWidget);
 
-      await tester.binding.setSurfaceSize(null);
-    },
-  );
+    await tester.binding.setSurfaceSize(null);
+  });
 }

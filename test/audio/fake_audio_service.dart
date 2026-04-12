@@ -15,7 +15,9 @@ class AudioCall {
 
   @override
   bool operator ==(Object other) =>
-      other is AudioCall && other.method == method && _mapsEqual(other.args, args);
+      other is AudioCall &&
+      other.method == method &&
+      _mapsEqual(other.args, args);
 
   @override
   int get hashCode => Object.hash(method, args.toString());
@@ -109,11 +111,13 @@ class FakeAudioService extends AudioService {
     bool clearQueue = false,
     bool interrupt = false,
   }) async {
-    calls.add(AudioCall('playVoice', {
-      'fileName': fileName,
-      'clearQueue': clearQueue,
-      'interrupt': interrupt,
-    }));
+    calls.add(
+      AudioCall('playVoice', {
+        'fileName': fileName,
+        'clearQueue': clearQueue,
+        'interrupt': interrupt,
+      }),
+    );
     if (_muted) return;
     if (clearQueue) {
       _clearVoiceQueue();
@@ -181,10 +185,10 @@ class FakeAudioService extends AudioService {
 
   @override
   List<String> get encouragementVoices => [
-        'voice_keep_going.mp3',
-        'voice_youre_doing_great.mp3',
-        'voice_nice_combo.mp3',
-      ];
+    'voice_keep_going.mp3',
+    'voice_youre_doing_great.mp3',
+    'voice_nice_combo.mp3',
+  ];
 
   @override
   void dispose() {

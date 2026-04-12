@@ -57,13 +57,13 @@ enum ImpactShapeType {
   speedLines,
   circleBurst,
   lightningBolt,
-  goldStarburst,    // CRITICAL hit — larger with concentric rings
-  flameCombo,       // combo counter — flame shape with number
-  explosionBurst,   // FINISH — huge yellow explosion
-  shatteredStar,    // K.O. — star breaking apart with mini stars
-  rewardStar,       // micro-reward — spinning gold star
-  rewardBolt,       // micro-reward — lightning bolt with glow
-  rewardShield,     // micro-reward — shield with shimmer
+  goldStarburst, // CRITICAL hit — larger with concentric rings
+  flameCombo, // combo counter — flame shape with number
+  explosionBurst, // FINISH — huge yellow explosion
+  shatteredStar, // K.O. — star breaking apart with mini stars
+  rewardStar, // micro-reward — spinning gold star
+  rewardBolt, // micro-reward — lightning bolt with glow
+  rewardShield, // micro-reward — shield with shimmer
 }
 
 class _DamagePopup {
@@ -219,7 +219,6 @@ class _MonsterPersonality {
       entranceStyle: rng.nextInt(4),
     );
   }
-
 }
 
 class _MonsterSlot {
@@ -524,54 +523,59 @@ class _BrushingScreenState extends State<BrushingScreen>
       vsync: this,
     )..repeat(reverse: true);
 
-    _hitLottieController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (!mounted) return;
-        setState(() => _showHitEffect = false);
-      }
-    });
+    _hitLottieController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 600),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            if (!mounted) return;
+            setState(() => _showHitEffect = false);
+          }
+        });
 
-    _defeatLottieController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (!mounted) return;
-        setState(() => _showDefeatExplosion = false);
-      }
-    });
+    _defeatLottieController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 800),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            if (!mounted) return;
+            setState(() => _showDefeatExplosion = false);
+          }
+        });
 
-    _sparkleLottieController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (!mounted) return;
-        setState(() => _showSparkleStars = false);
-      }
-    });
+    _sparkleLottieController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 700),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            if (!mounted) return;
+            setState(() => _showSparkleStars = false);
+          }
+        });
 
-    _dustLottieController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (!mounted) return;
-        setState(() => _showEntranceDust = false);
-      }
-    });
+    _dustLottieController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 500),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            if (!mounted) return;
+            setState(() => _showEntranceDust = false);
+          }
+        });
 
-    _shockwaveController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _shockwaveProgress = -1.0;
-      }
-    });
+    _shockwaveController =
+        AnimationController(
+          duration: const Duration(milliseconds: 500),
+          vsync: this,
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            _shockwaveProgress = -1.0;
+          }
+        });
     _shockwaveController.addListener(() {
       _shockwaveProgress = _shockwaveController.value;
     });
@@ -581,20 +585,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     _prepareSession();
     _initCamera();
 
-    _damageCleanupTimer = Timer.periodic(
-      const Duration(milliseconds: 40),
-      (_) {
-        if (!mounted) return;
-        _cleanupEffects();
-      },
-    );
-    _starCleanupTimer = Timer.periodic(
-      const Duration(milliseconds: 30),
-      (_) {
-        if (!mounted) return;
-        _updateFloatingStars();
-      },
-    );
+    _damageCleanupTimer = Timer.periodic(const Duration(milliseconds: 40), (_) {
+      if (!mounted) return;
+      _cleanupEffects();
+    });
+    _starCleanupTimer = Timer.periodic(const Duration(milliseconds: 30), (_) {
+      if (!mounted) return;
+      _updateFloatingStars();
+    });
   }
 
   Future<void> _loadShaders() async {
@@ -717,7 +715,8 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     // Monster eye blink timer
     _monsterBlinkTimer += 0.05;
-    if (!_monsterBlinking && _monsterBlinkTimer > 3.0 + (_monster.wobblePhase * 2)) {
+    if (!_monsterBlinking &&
+        _monsterBlinkTimer > 3.0 + (_monster.wobblePhase * 2)) {
       _monsterBlinking = true;
       _monsterBlinkTimer = 0;
     }
@@ -949,7 +948,8 @@ class _BrushingScreenState extends State<BrushingScreen>
     // Show camera prompt only on first brush, if not already shown,
     // camera not already enabled, and user hasn't explicitly configured
     // camera off in settings.
-    final shouldShowPrompt = totalBrushes == 0 &&
+    final shouldShowPrompt =
+        totalBrushes == 0 &&
         !cameraPromptShown &&
         !cameraAlreadyEnabled &&
         !cameraConfigured;
@@ -999,7 +999,13 @@ class _BrushingScreenState extends State<BrushingScreen>
     final totalBrushes = prefs.getInt('total_brushes') ?? 0;
     if (totalBrushes == 0) {
       unawaited(_audio.stopVoice());
-      unawaited(_audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true));
+      unawaited(
+        _audio.playVoice(
+          'voice_lets_fight.mp3',
+          clearQueue: true,
+          interrupt: true,
+        ),
+      );
       // Dismiss the intro and start the session instead of popping
       unawaited(_dismissWorldIntro());
       return;
@@ -1015,23 +1021,32 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _playWorldMissionBriefing() {
-    _audio.playVoice('voice_world_${_world.id}.mp3', clearQueue: true, interrupt: true);
+    _audio.playVoice(
+      'voice_world_${_world.id}.mp3',
+      clearQueue: true,
+      interrupt: true,
+    );
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       // App backgrounded — stop all audio
       _musicWasPlaying = _audio.isMusicPlaying;
       _audio.stopAllAudio();
       // Pause the brushing session so the timer doesn't run in the background
-      if (!_isPaused && _sessionStage == SessionStage.brushing && !_isQuitting) {
+      if (!_isPaused &&
+          _sessionStage == SessionStage.brushing &&
+          !_isQuitting) {
         _togglePause();
       }
     } else if (state == AppLifecycleState.resumed) {
       // App foregrounded — resume music if it was playing before
       // Don't auto-resume: the child will tap RESUME themselves
-      if (_musicWasPlaying && !_isPaused && _sessionStage == SessionStage.brushing) {
+      if (_musicWasPlaying &&
+          !_isPaused &&
+          _sessionStage == SessionStage.brushing) {
         _audio.playMusic('battle_music_loop.mp3');
       }
     }
@@ -1081,7 +1096,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
     _audio.playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) { timer.cancel(); return; }
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
         _audio.playSfx('countdown_beep.mp3');
@@ -1116,13 +1134,10 @@ class _BrushingScreenState extends State<BrushingScreen>
 
     // Periodic music health check — recovers if player gets stuck
     _musicHealthTimer?.cancel();
-    _musicHealthTimer = Timer.periodic(
-      const Duration(seconds: 5),
-      (_) {
-        if (!mounted) return;
-        _audio.ensureMusicPlaying();
-      },
-    );
+    _musicHealthTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
+      _audio.ensureMusicPlaying();
+    });
 
     _scheduleNextMicroReward();
 
@@ -1132,7 +1147,10 @@ class _BrushingScreenState extends State<BrushingScreen>
     }
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) { timer.cancel(); return; }
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       if (_isPaused) return;
       setState(() {
         _phaseSecondsLeft--;
@@ -1252,7 +1270,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     Future.delayed(const Duration(milliseconds: 50), () {
       if (mounted) _screenShakeController.forward(from: 0);
     });
-    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
+    _flashController.forward(from: 0).then((_) {
+      if (mounted) _flashController.reverse();
+    });
     HapticFeedback.heavyImpact();
     _audio.playSfx('zap.mp3');
 
@@ -1310,7 +1330,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     _baseAttackTimer?.cancel();
     _audio.playSfx('monster_defeat.mp3');
     HapticFeedback.heavyImpact();
-    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
+    _flashController.forward(from: 0).then((_) {
+      if (mounted) _flashController.reverse();
+    });
     _spawnDefeatSparks();
 
     // Tier 2: Lottie defeat explosion + sparkle stars
@@ -1379,7 +1401,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     HapticFeedback.mediumImpact();
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted && _phaseVoiceFiles.containsKey(newPhase)) {
-        _audio.playVoice(_phaseVoiceFiles[newPhase]!, clearQueue: true, interrupt: true);
+        _audio.playVoice(
+          _phaseVoiceFiles[newPhase]!,
+          clearQueue: true,
+          interrupt: true,
+        );
       }
     });
     Future.delayed(const Duration(milliseconds: 3000), () {
@@ -1421,7 +1447,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     setState(() => _showHitEffect = true);
     _hitLottieController.forward(from: 0);
     _screenShakeController.forward(from: 0);
-    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
+    _flashController.forward(from: 0).then((_) {
+      if (mounted) _flashController.reverse();
+    });
 
     // Hero lunge animation
     setState(() => _heroLunging = true);
@@ -1473,7 +1501,9 @@ class _BrushingScreenState extends State<BrushingScreen>
     _startMonsterDeath(_monster);
     _audio.playSfx('monster_defeat.mp3');
     HapticFeedback.heavyImpact();
-    _flashController.forward(from: 0).then((_) { if (mounted) _flashController.reverse(); });
+    _flashController.forward(from: 0).then((_) {
+      if (mounted) _flashController.reverse();
+    });
     _spawnDefeatSparks();
 
     // Celebration voice after early kill — queued (not interrupting) with a small delay
@@ -1521,7 +1551,8 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _triggerMicroReward() {
-    final shape = _microRewardShapes[_random.nextInt(_microRewardShapes.length)];
+    final shape =
+        _microRewardShapes[_random.nextInt(_microRewardShapes.length)];
     setState(() {
       _damagePopups.add(
         _DamagePopup(
@@ -1580,7 +1611,9 @@ class _BrushingScreenState extends State<BrushingScreen>
         : _impactShapes[_random.nextInt(_impactShapes.length)];
 
     // Combo scaling: bigger shape the higher the combo
-    final comboScale = _comboCount >= 8 ? 1.6 : (_comboCount >= 5 ? 1.4 : (_comboCount >= 3 ? 1.2 : 1.0));
+    final comboScale = _comboCount >= 8
+        ? 1.6
+        : (_comboCount >= 5 ? 1.4 : (_comboCount >= 3 ? 1.2 : 1.0));
     final baseScale = isCritical ? 1.8 : 1.3;
 
     setState(() {
@@ -1598,7 +1631,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       );
 
       // Show combo counter at milestones (3, 5, 8, 10+) — flame shape with number
-      if (_comboCount == 3 || _comboCount == 5 || _comboCount == 8 || (_comboCount >= 10 && _comboCount % 5 == 0)) {
+      if (_comboCount == 3 ||
+          _comboCount == 5 ||
+          _comboCount == 8 ||
+          (_comboCount >= 10 && _comboCount % 5 == 0)) {
         _damagePopups.add(
           _DamagePopup(
             shapeType: ImpactShapeType.flameCombo,
@@ -1666,13 +1702,10 @@ class _BrushingScreenState extends State<BrushingScreen>
       _audio.resumeMusic();
       // Restart music health check
       _musicHealthTimer?.cancel();
-      _musicHealthTimer = Timer.periodic(
-        const Duration(seconds: 5),
-        (_) {
-          if (!mounted) return;
-          _audio.ensureMusicPlaying();
-        },
-      );
+      _musicHealthTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (!mounted) return;
+        _audio.ensureMusicPlaying();
+      });
       // Audio cue: random encouraging voice on resume
       const resumeVoices = [
         'voice_lets_fight.mp3',
@@ -1730,19 +1763,22 @@ class _BrushingScreenState extends State<BrushingScreen>
       _sessionStage = SessionStage.done;
       _isQuitting = true;
     });
-    unawaited(Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => VictoryScreen(
-          totalHits: _totalHits,
-          monstersDefeated: _monstersDefeated,
-          sessionId: _sessionId,
-          trophyTargetId: _currentTrophyTarget?.id,
+    unawaited(
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              VictoryScreen(
+                totalHits: _totalHits,
+                monstersDefeated: _monstersDefeated,
+                sessionId: _sessionId,
+                trophyTargetId: _currentTrophyTarget?.id,
+              ),
+          transitionsBuilder: (context, anim, secondaryAnimation, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 800),
         ),
-        transitionsBuilder: (context, anim, secondaryAnimation, child) =>
-            FadeTransition(opacity: anim, child: child),
-        transitionDuration: const Duration(milliseconds: 800),
       ),
-    ));
+    );
   }
 
   /// Returns the phase progress as 0.0 to 1.0 (0 = just started, 1 = phase ending)
@@ -1825,7 +1861,9 @@ class _BrushingScreenState extends State<BrushingScreen>
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                              color: const Color(
+                                0xFF00E676,
+                              ).withValues(alpha: 0.5),
                               blurRadius: 24,
                               spreadRadius: 2,
                             ),
@@ -2066,7 +2104,9 @@ class _BrushingScreenState extends State<BrushingScreen>
                                 child: CircularProgressIndicator(
                                   value: value,
                                   strokeWidth: 3,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   valueColor: AlwaysStoppedAnimation(
                                     _world.themeColor.withValues(alpha: 0.6),
                                   ),
@@ -2081,17 +2121,25 @@ class _BrushingScreenState extends State<BrushingScreen>
                           height: 140,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: _world.themeColor, width: 4),
+                            border: Border.all(
+                              color: _world.themeColor,
+                              width: 4,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: _world.themeColor.withValues(alpha: 0.55),
+                                color: _world.themeColor.withValues(
+                                  alpha: 0.55,
+                                ),
                                 blurRadius: 28,
                                 spreadRadius: 3,
                               ),
                             ],
                           ),
                           child: ClipOval(
-                            child: Image.asset(_world.imagePath, fit: BoxFit.cover),
+                            child: Image.asset(
+                              _world.imagePath,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
@@ -2106,7 +2154,9 @@ class _BrushingScreenState extends State<BrushingScreen>
                               letterSpacing: 3,
                               shadows: [
                                 Shadow(
-                                  color: _world.themeColor.withValues(alpha: 0.8),
+                                  color: _world.themeColor.withValues(
+                                    alpha: 0.8,
+                                  ),
                                   blurRadius: 18,
                                 ),
                               ],
@@ -2275,7 +2325,8 @@ class _BrushingScreenState extends State<BrushingScreen>
                           ),
 
                           // Tier 3: Shockwave shader overlay
-                          if (_shockwaveProgress >= 0 && _shockwaveProgram != null)
+                          if (_shockwaveProgress >= 0 &&
+                              _shockwaveProgram != null)
                             Positioned.fill(
                               child: IgnorePointer(
                                 child: AnimatedBuilder(
@@ -2548,8 +2599,7 @@ class _BrushingScreenState extends State<BrushingScreen>
                 animation: _mouthGuideGlowController,
                 builder: (context, _) => MouthGuide(
                   activeQuadrant:
-                      _phaseToMouthQuadrant[_phase] ??
-                      MouthQuadrant.topLeft,
+                      _phaseToMouthQuadrant[_phase] ?? MouthQuadrant.topLeft,
                   glowAnim: _mouthGuideGlowController.value,
                   highlightColor: _world.themeColor,
                   size: 82,
@@ -2676,7 +2726,8 @@ class _BrushingScreenState extends State<BrushingScreen>
             ((damageProgress - 0.5) * 1.5).clamp(0.0, 0.6),
           )!
         : _monster.personality.tintColor;
-    final damageTintStrength = _monster.personality.tintStrength +
+    final damageTintStrength =
+        _monster.personality.tintStrength +
         (damageProgress > 0.5 ? (damageProgress - 0.5) * 0.2 : 0.0);
 
     final Widget monsterImage = ColorFiltered(
@@ -2955,10 +3006,7 @@ class _BrushingScreenState extends State<BrushingScreen>
       height: 22,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: barColor.withValues(alpha: 0.6),
-          width: 1.5,
-        ),
+        border: Border.all(color: barColor.withValues(alpha: 0.6), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: barColor.withValues(alpha: 0.3),
@@ -3179,7 +3227,11 @@ class _BrushingScreenState extends State<BrushingScreen>
                     ),
                   ],
                 ),
-                child: const Icon(Icons.play_arrow, color: Colors.white, size: 48),
+                child: const Icon(
+                  Icons.play_arrow,
+                  color: Colors.white,
+                  size: 48,
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -3267,14 +3319,20 @@ class _CameraPowerUpVisualState extends State<_CameraPowerUpVisual>
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF7C4DFF).withValues(alpha: 0.3 + pulse * 0.3),
+                color: const Color(
+                  0xFF7C4DFF,
+                ).withValues(alpha: 0.3 + pulse * 0.3),
                 border: Border.all(
-                  color: const Color(0xFF7C4DFF).withValues(alpha: 0.6 + pulse * 0.4),
+                  color: const Color(
+                    0xFF7C4DFF,
+                  ).withValues(alpha: 0.6 + pulse * 0.4),
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C4DFF).withValues(alpha: pulse * 0.5),
+                    color: const Color(
+                      0xFF7C4DFF,
+                    ).withValues(alpha: pulse * 0.5),
                     blurRadius: 16,
                   ),
                 ],
@@ -3298,7 +3356,9 @@ class _CameraPowerUpVisualState extends State<_CameraPowerUpVisual>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C4DFF).withValues(alpha: beamOpacity * 0.6),
+                    color: const Color(
+                      0xFF7C4DFF,
+                    ).withValues(alpha: beamOpacity * 0.6),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -3312,18 +3372,19 @@ class _CameraPowerUpVisualState extends State<_CameraPowerUpVisual>
               height: 180,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: widget.hero.primaryColor,
-                  width: 3,
-                ),
+                border: Border.all(color: widget.hero.primaryColor, width: 3),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.hero.primaryColor.withValues(alpha: 0.4 + pulse * 0.3),
+                    color: widget.hero.primaryColor.withValues(
+                      alpha: 0.4 + pulse * 0.3,
+                    ),
                     blurRadius: heroGlow,
                     spreadRadius: 2,
                   ),
                   BoxShadow(
-                    color: const Color(0xFF7C4DFF).withValues(alpha: pulse * 0.3),
+                    color: const Color(
+                      0xFF7C4DFF,
+                    ).withValues(alpha: pulse * 0.3),
                     blurRadius: heroGlow * 1.5,
                     spreadRadius: 1,
                   ),
@@ -3383,10 +3444,7 @@ class _WorldBackground extends StatelessWidget {
         Positioned.fill(
           child: Opacity(
             opacity: 0.6,
-            child: Image.asset(
-              world.backgroundImage,
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset(world.backgroundImage, fit: BoxFit.cover),
           ),
         ),
         child,
@@ -3469,7 +3527,10 @@ class _HitSparkPainter extends CustomPainter {
         } else {
           path.lineTo(px + cos(outerAngle) * r, py + sin(outerAngle) * r);
         }
-        path.lineTo(px + cos(innerAngle) * r * 0.4, py + sin(innerAngle) * r * 0.4);
+        path.lineTo(
+          px + cos(innerAngle) * r * 0.4,
+          py + sin(innerAngle) * r * 0.4,
+        );
       }
       path.close();
       canvas.drawPath(path, paint);
@@ -4135,9 +4196,7 @@ class _PulsingTapToFightState extends State<_PulsingTapToFight>
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 3,
-                    shadows: [
-                      Shadow(color: Colors.black54, blurRadius: 8),
-                    ],
+                    shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
                   ),
                 ),
               ],
@@ -4292,7 +4351,14 @@ class _ImpactShapePainter extends CustomPainter {
     }
   }
 
-  void _drawJaggedStar(Canvas canvas, double cx, double cy, double r, int points, Color c) {
+  void _drawJaggedStar(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double r,
+    int points,
+    Color c,
+  ) {
     // Glow shadow
     final glowPaint = Paint()
       ..color = c.withValues(alpha: 0.5)
@@ -4304,10 +4370,19 @@ class _ImpactShapePainter extends CustomPainter {
     canvas.drawPath(path, fillPaint);
     // White center highlight
     final centerPath = _starPath(cx, cy, r * 0.35, r * 0.15, points);
-    canvas.drawPath(centerPath, Paint()..color = Colors.white.withValues(alpha: 0.7));
+    canvas.drawPath(
+      centerPath,
+      Paint()..color = Colors.white.withValues(alpha: 0.7),
+    );
   }
 
-  Path _starPath(double cx, double cy, double outerR, double innerR, int points) {
+  Path _starPath(
+    double cx,
+    double cy,
+    double outerR,
+    double innerR,
+    int points,
+  ) {
     final path = Path();
     final step = pi / points;
     for (int i = 0; i < points * 2; i++) {
@@ -4351,7 +4426,13 @@ class _ImpactShapePainter extends CustomPainter {
     canvas.drawCircle(Offset(cx, cy), r * 0.15, Paint()..color = Colors.white);
   }
 
-  void _drawCircleBurst(Canvas canvas, double cx, double cy, double r, Color c) {
+  void _drawCircleBurst(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double r,
+    Color c,
+  ) {
     // Outer ring with glow
     final ringPaint = Paint()
       ..color = c
@@ -4365,8 +4446,16 @@ class _ImpactShapePainter extends CustomPainter {
     canvas.drawCircle(Offset(cx, cy), r, glowRingPaint);
     canvas.drawCircle(Offset(cx, cy), r, ringPaint);
     // Inner burst
-    canvas.drawCircle(Offset(cx, cy), r * 0.5, Paint()..color = c.withValues(alpha: 0.6));
-    canvas.drawCircle(Offset(cx, cy), r * 0.25, Paint()..color = Colors.white.withValues(alpha: 0.8));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.5,
+      Paint()..color = c.withValues(alpha: 0.6),
+    );
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.25,
+      Paint()..color = Colors.white.withValues(alpha: 0.8),
+    );
     // Small radiating dots
     for (int i = 0; i < 8; i++) {
       final angle = i * pi / 4;
@@ -4376,7 +4465,13 @@ class _ImpactShapePainter extends CustomPainter {
     }
   }
 
-  void _drawLightningBolt(Canvas canvas, double cx, double cy, double r, Color c) {
+  void _drawLightningBolt(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double r,
+    Color c,
+  ) {
     final path = Path();
     path.moveTo(cx - r * 0.15, cy - r);
     path.lineTo(cx + r * 0.35, cy - r * 0.1);
@@ -4386,9 +4481,12 @@ class _ImpactShapePainter extends CustomPainter {
     path.lineTo(cx, cy + r * 0.1);
     path.close();
     // Glow
-    canvas.drawPath(path, Paint()
-      ..color = c.withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = c.withValues(alpha: 0.5)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
     // Fill
     canvas.drawPath(path, Paint()..color = c);
     // White highlight down center
@@ -4400,7 +4498,10 @@ class _ImpactShapePainter extends CustomPainter {
     highlightPath.lineTo(cx - r * 0.15, cy + r * 0.1);
     highlightPath.lineTo(cx + r * 0.05, cy + r * 0.1);
     highlightPath.close();
-    canvas.drawPath(highlightPath, Paint()..color = Colors.white.withValues(alpha: 0.5));
+    canvas.drawPath(
+      highlightPath,
+      Paint()..color = Colors.white.withValues(alpha: 0.5),
+    );
   }
 
   void _drawGoldStarburst(Canvas canvas, double cx, double cy, double r) {
@@ -4408,53 +4509,124 @@ class _ImpactShapePainter extends CustomPainter {
     const gold = Color(0xFFFFD54F);
     const brightGold = Color(0xFFFFEB3B);
     // Outer glow
-    canvas.drawCircle(Offset(cx, cy), r * 1.2, Paint()
-      ..color = gold.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 1.2,
+      Paint()
+        ..color = gold.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+    );
     // Concentric rings
     for (int i = 3; i >= 1; i--) {
       final ringR = r * (0.3 + i * 0.25);
-      canvas.drawCircle(Offset(cx, cy), ringR, Paint()
-        ..color = gold.withValues(alpha: 0.15 + i * 0.1)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2);
+      canvas.drawCircle(
+        Offset(cx, cy),
+        ringR,
+        Paint()
+          ..color = gold.withValues(alpha: 0.15 + i * 0.1)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
     }
     // Star shape
     final starPath = _starPath(cx, cy, r, r * 0.35, 8);
-    canvas.drawPath(starPath, Paint()
-      ..color = gold.withValues(alpha: 0.6)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    canvas.drawPath(
+      starPath,
+      Paint()
+        ..color = gold.withValues(alpha: 0.6)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
     canvas.drawPath(starPath, Paint()..color = brightGold);
     // White hot center
     canvas.drawCircle(Offset(cx, cy), r * 0.2, Paint()..color = Colors.white);
   }
 
-  void _drawFlameCombo(Canvas canvas, double cx, double cy, double r, int combo) {
+  void _drawFlameCombo(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double r,
+    int combo,
+  ) {
     // Flame shape with number inside
     final flamePath = Path();
     flamePath.moveTo(cx, cy - r); // top of flame
-    flamePath.cubicTo(cx + r * 0.5, cy - r * 0.7, cx + r * 0.6, cy - r * 0.2, cx + r * 0.4, cy + r * 0.3);
-    flamePath.cubicTo(cx + r * 0.5, cy + r * 0.1, cx + r * 0.3, cy + r * 0.6, cx + r * 0.15, cy + r * 0.8);
+    flamePath.cubicTo(
+      cx + r * 0.5,
+      cy - r * 0.7,
+      cx + r * 0.6,
+      cy - r * 0.2,
+      cx + r * 0.4,
+      cy + r * 0.3,
+    );
+    flamePath.cubicTo(
+      cx + r * 0.5,
+      cy + r * 0.1,
+      cx + r * 0.3,
+      cy + r * 0.6,
+      cx + r * 0.15,
+      cy + r * 0.8,
+    );
     flamePath.quadraticBezierTo(cx, cy + r, cx - r * 0.15, cy + r * 0.8);
-    flamePath.cubicTo(cx - r * 0.3, cy + r * 0.6, cx - r * 0.5, cy + r * 0.1, cx - r * 0.4, cy + r * 0.3);
-    flamePath.cubicTo(cx - r * 0.6, cy - r * 0.2, cx - r * 0.5, cy - r * 0.7, cx, cy - r);
+    flamePath.cubicTo(
+      cx - r * 0.3,
+      cy + r * 0.6,
+      cx - r * 0.5,
+      cy + r * 0.1,
+      cx - r * 0.4,
+      cy + r * 0.3,
+    );
+    flamePath.cubicTo(
+      cx - r * 0.6,
+      cy - r * 0.2,
+      cx - r * 0.5,
+      cy - r * 0.7,
+      cx,
+      cy - r,
+    );
     flamePath.close();
 
     // Orange→yellow gradient via layered fill
-    canvas.drawPath(flamePath, Paint()
-      ..color = const Color(0xFFFF6D00).withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawPath(
+      flamePath,
+      Paint()
+        ..color = const Color(0xFFFF6D00).withValues(alpha: 0.5)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
     canvas.drawPath(flamePath, Paint()..color = const Color(0xFFFF6D00));
     // Inner lighter flame
     final innerFlame = Path();
     innerFlame.moveTo(cx, cy - r * 0.55);
-    innerFlame.cubicTo(cx + r * 0.25, cy - r * 0.35, cx + r * 0.3, cy, cx + r * 0.15, cy + r * 0.4);
-    innerFlame.quadraticBezierTo(cx, cy + r * 0.55, cx - r * 0.15, cy + r * 0.4);
-    innerFlame.cubicTo(cx - r * 0.3, cy, cx - r * 0.25, cy - r * 0.35, cx, cy - r * 0.55);
+    innerFlame.cubicTo(
+      cx + r * 0.25,
+      cy - r * 0.35,
+      cx + r * 0.3,
+      cy,
+      cx + r * 0.15,
+      cy + r * 0.4,
+    );
+    innerFlame.quadraticBezierTo(
+      cx,
+      cy + r * 0.55,
+      cx - r * 0.15,
+      cy + r * 0.4,
+    );
+    innerFlame.cubicTo(
+      cx - r * 0.3,
+      cy,
+      cx - r * 0.25,
+      cy - r * 0.35,
+      cx,
+      cy - r * 0.55,
+    );
     innerFlame.close();
     canvas.drawPath(innerFlame, Paint()..color = const Color(0xFFFFAB00));
     // Hot center
-    canvas.drawCircle(Offset(cx, cy + r * 0.1), r * 0.2, Paint()..color = const Color(0xFFFFD54F));
+    canvas.drawCircle(
+      Offset(cx, cy + r * 0.1),
+      r * 0.2,
+      Paint()..color = const Color(0xFFFFD54F),
+    );
 
     // Number in center (numbers are universal — kids can read them)
     final textPainter = TextPainter(
@@ -4469,7 +4641,13 @@ class _ImpactShapePainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    textPainter.paint(canvas, Offset(cx - textPainter.width / 2, cy - textPainter.height / 2 + r * 0.05));
+    textPainter.paint(
+      canvas,
+      Offset(
+        cx - textPainter.width / 2,
+        cy - textPainter.height / 2 + r * 0.05,
+      ),
+    );
   }
 
   void _drawExplosionBurst(Canvas canvas, double cx, double cy, double r) {
@@ -4477,9 +4655,13 @@ class _ImpactShapePainter extends CustomPainter {
     const yellow = Color(0xFFFFEB3B);
     const orange = Color(0xFFFF9800);
     // Glow
-    canvas.drawCircle(Offset(cx, cy), r * 1.5, Paint()
-      ..color = yellow.withValues(alpha: 0.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 1.5,
+      Paint()
+        ..color = yellow.withValues(alpha: 0.35)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16),
+    );
     // Outer spikes — jagged 12-point star
     final spikePath = _starPath(cx, cy, r * 1.1, r * 0.5, 12);
     canvas.drawPath(spikePath, Paint()..color = orange);
@@ -4507,9 +4689,13 @@ class _ImpactShapePainter extends CustomPainter {
     // Main cracked star in yellow
     const yellow = Color(0xFFFFEB3B);
     // Glow
-    canvas.drawCircle(Offset(cx, cy), r * 1.3, Paint()
-      ..color = yellow.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 1.3,
+      Paint()
+        ..color = yellow.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+    );
     // Star with crack lines
     final starPath = _starPath(cx, cy, r, r * 0.4, 5);
     canvas.drawPath(starPath, Paint()..color = yellow);
@@ -4518,8 +4704,16 @@ class _ImpactShapePainter extends CustomPainter {
       ..color = Colors.black.withValues(alpha: 0.5)
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(cx - r * 0.6, cy - r * 0.3), Offset(cx + r * 0.4, cy + r * 0.5), crackPaint);
-    canvas.drawLine(Offset(cx + r * 0.2, cy - r * 0.5), Offset(cx - r * 0.3, cy + r * 0.4), crackPaint);
+    canvas.drawLine(
+      Offset(cx - r * 0.6, cy - r * 0.3),
+      Offset(cx + r * 0.4, cy + r * 0.5),
+      crackPaint,
+    );
+    canvas.drawLine(
+      Offset(cx + r * 0.2, cy - r * 0.5),
+      Offset(cx - r * 0.3, cy + r * 0.4),
+      crackPaint,
+    );
     // 4 mini stars bursting outward
     const miniStarColor = Colors.yellowAccent;
     for (int i = 0; i < 4; i++) {
@@ -4529,27 +4723,40 @@ class _ImpactShapePainter extends CustomPainter {
       final my = cy + sin(angle) * dist;
       final miniPath = _starPath(mx, my, r * 0.18, r * 0.08, 4);
       canvas.drawPath(miniPath, Paint()..color = miniStarColor);
-      canvas.drawPath(miniPath, Paint()
-        ..color = miniStarColor.withValues(alpha: 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      canvas.drawPath(
+        miniPath,
+        Paint()
+          ..color = miniStarColor.withValues(alpha: 0.4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      );
     }
   }
 
   void _drawRewardStar(Canvas canvas, double cx, double cy, double r) {
     // Spinning gold star with sparkle trail
     const gold = Color(0xFFFFD54F);
-    canvas.drawCircle(Offset(cx, cy), r * 0.8, Paint()
-      ..color = gold.withValues(alpha: 0.25)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.8,
+      Paint()
+        ..color = gold.withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+    );
     final starPath = _starPath(cx, cy, r * 0.8, r * 0.35, 5);
     canvas.drawPath(starPath, Paint()..color = gold);
-    canvas.drawPath(starPath, Paint()
-      ..color = Colors.white.withValues(alpha: 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2);
+    canvas.drawPath(
+      starPath,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
     // Inner highlight
-    canvas.drawCircle(Offset(cx - r * 0.1, cy - r * 0.1), r * 0.15,
-      Paint()..color = Colors.white.withValues(alpha: 0.6));
+    canvas.drawCircle(
+      Offset(cx - r * 0.1, cy - r * 0.1),
+      r * 0.15,
+      Paint()..color = Colors.white.withValues(alpha: 0.6),
+    );
   }
 
   void _drawRewardBolt(Canvas canvas, double cx, double cy, double r) {
@@ -4557,11 +4764,15 @@ class _ImpactShapePainter extends CustomPainter {
     const yellow = Color(0xFFFFEB3B);
     _drawLightningBolt(canvas, cx, cy, r * 0.85, yellow);
     // Extra glow ring
-    canvas.drawCircle(Offset(cx, cy), r * 0.9, Paint()
-      ..color = yellow.withValues(alpha: 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.9,
+      Paint()
+        ..color = yellow.withValues(alpha: 0.2)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
   }
 
   void _drawRewardShield(Canvas canvas, double cx, double cy, double r) {
@@ -4576,22 +4787,32 @@ class _ImpactShapePainter extends CustomPainter {
     shieldPath.quadraticBezierTo(cx - r * 0.9, cy - r * 0.7, cx, cy - r);
     shieldPath.close();
     // Glow
-    canvas.drawPath(shieldPath, Paint()
-      ..color = cyan.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawPath(
+      shieldPath,
+      Paint()
+        ..color = cyan.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
     // Fill
     canvas.drawPath(shieldPath, Paint()..color = cyan.withValues(alpha: 0.8));
     // Border
-    canvas.drawPath(shieldPath, Paint()
-      ..color = gold
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3);
+    canvas.drawPath(
+      shieldPath,
+      Paint()
+        ..color = gold
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
     // Central star emblem
     final miniStar = _starPath(cx, cy, r * 0.3, r * 0.12, 4);
     canvas.drawPath(miniStar, Paint()..color = gold);
     // Shimmer highlight
     canvas.drawOval(
-      Rect.fromCenter(center: Offset(cx - r * 0.15, cy - r * 0.3), width: r * 0.4, height: r * 0.2),
+      Rect.fromCenter(
+        center: Offset(cx - r * 0.15, cy - r * 0.3),
+        width: r * 0.4,
+        height: r * 0.2,
+      ),
       Paint()..color = Colors.white.withValues(alpha: 0.4),
     );
   }
@@ -4615,9 +4836,13 @@ class _SmallBurstPainter extends CustomPainter {
     final r = size.width * 0.45;
 
     // Glow
-    canvas.drawCircle(Offset(cx, cy), r * 1.2, Paint()
-      ..color = color.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 1.2,
+      Paint()
+        ..color = color.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+    );
 
     // 6-point star burst
     final path = Path();
@@ -4635,11 +4860,16 @@ class _SmallBurstPainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, Paint()..color = color);
     // White center
-    canvas.drawCircle(Offset(cx, cy), r * 0.25, Paint()..color = Colors.white.withValues(alpha: 0.7));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.25,
+      Paint()..color = Colors.white.withValues(alpha: 0.7),
+    );
   }
 
   @override
-  bool shouldRepaint(_SmallBurstPainter oldDelegate) => color != oldDelegate.color;
+  bool shouldRepaint(_SmallBurstPainter oldDelegate) =>
+      color != oldDelegate.color;
 }
 
 /// Phase-progress icon that changes based on time elapsed in the current phase.
@@ -4676,7 +4906,14 @@ class _PhaseProgressIconPainter extends CustomPainter {
     }
   }
 
-  void _drawCrossedSwords(Canvas canvas, double cx, double cy, double r, Color c, double pulse) {
+  void _drawCrossedSwords(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double r,
+    Color c,
+    double pulse,
+  ) {
     final glowAlpha = 0.3 + pulse * 0.3;
     final paint = Paint()
       ..color = c
@@ -4688,15 +4925,39 @@ class _PhaseProgressIconPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
     // Sword 1: top-left to bottom-right
-    canvas.drawLine(Offset(cx - r, cy - r * 0.8), Offset(cx + r, cy + r * 0.8), glowPaint);
-    canvas.drawLine(Offset(cx - r, cy - r * 0.8), Offset(cx + r, cy + r * 0.8), paint);
+    canvas.drawLine(
+      Offset(cx - r, cy - r * 0.8),
+      Offset(cx + r, cy + r * 0.8),
+      glowPaint,
+    );
+    canvas.drawLine(
+      Offset(cx - r, cy - r * 0.8),
+      Offset(cx + r, cy + r * 0.8),
+      paint,
+    );
     // Sword 2: top-right to bottom-left
-    canvas.drawLine(Offset(cx + r, cy - r * 0.8), Offset(cx - r, cy + r * 0.8), glowPaint);
-    canvas.drawLine(Offset(cx + r, cy - r * 0.8), Offset(cx - r, cy + r * 0.8), paint);
+    canvas.drawLine(
+      Offset(cx + r, cy - r * 0.8),
+      Offset(cx - r, cy + r * 0.8),
+      glowPaint,
+    );
+    canvas.drawLine(
+      Offset(cx + r, cy - r * 0.8),
+      Offset(cx - r, cy + r * 0.8),
+      paint,
+    );
     // Cross guards (short perpendicular lines at 1/3 from top)
     final guardY = cy - r * 0.3;
-    canvas.drawLine(Offset(cx - r * 0.5, guardY - r * 0.15), Offset(cx - r * 0.5, guardY + r * 0.15), paint);
-    canvas.drawLine(Offset(cx + r * 0.5, guardY - r * 0.15), Offset(cx + r * 0.5, guardY + r * 0.15), paint);
+    canvas.drawLine(
+      Offset(cx - r * 0.5, guardY - r * 0.15),
+      Offset(cx - r * 0.5, guardY + r * 0.15),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(cx + r * 0.5, guardY - r * 0.15),
+      Offset(cx + r * 0.5, guardY + r * 0.15),
+      paint,
+    );
   }
 
   void _drawShield(Canvas canvas, double cx, double cy, double r, Color c) {
@@ -4708,27 +4969,48 @@ class _PhaseProgressIconPainter extends CustomPainter {
     shieldPath.quadraticBezierTo(cx - r * 0.9, cy - r * 0.7, cx, cy - r);
     shieldPath.close();
     // Glow
-    canvas.drawPath(shieldPath, Paint()
-      ..color = c.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+    canvas.drawPath(
+      shieldPath,
+      Paint()
+        ..color = c.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
     // Fill
     canvas.drawPath(shieldPath, Paint()..color = c.withValues(alpha: 0.7));
     // Border
-    canvas.drawPath(shieldPath, Paint()
-      ..color = c
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2);
+    canvas.drawPath(
+      shieldPath,
+      Paint()
+        ..color = c
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
     // Chevron in center
     final chevronPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(cx - r * 0.25, cy - r * 0.1), Offset(cx, cy - r * 0.35), chevronPaint);
-    canvas.drawLine(Offset(cx, cy - r * 0.35), Offset(cx + r * 0.25, cy - r * 0.1), chevronPaint);
+    canvas.drawLine(
+      Offset(cx - r * 0.25, cy - r * 0.1),
+      Offset(cx, cy - r * 0.35),
+      chevronPaint,
+    );
+    canvas.drawLine(
+      Offset(cx, cy - r * 0.35),
+      Offset(cx + r * 0.25, cy - r * 0.1),
+      chevronPaint,
+    );
   }
 
-  void _drawHourglass(Canvas canvas, double cx, double cy, double r, Color c, double pulse) {
+  void _drawHourglass(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double r,
+    Color c,
+    double pulse,
+  ) {
     final scale = 1.0 + pulse * 0.08;
     canvas.save();
     canvas.translate(cx, cy);
@@ -4751,31 +5033,60 @@ class _PhaseProgressIconPainter extends CustomPainter {
     path.close();
 
     // Glow
-    canvas.drawPath(path, Paint()
-      ..color = c.withValues(alpha: 0.3)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = c.withValues(alpha: 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    );
     // Fill
     canvas.drawPath(path, Paint()..color = c.withValues(alpha: 0.7));
     // Border
-    canvas.drawPath(path, Paint()
-      ..color = c
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = c
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
     // Top/bottom bars
-    canvas.drawLine(Offset(cx - r * 0.7, cy - r), Offset(cx + r * 0.7, cy - r),
-      Paint()..color = c..strokeWidth = 3..strokeCap = StrokeCap.round);
-    canvas.drawLine(Offset(cx - r * 0.7, cy + r), Offset(cx + r * 0.7, cy + r),
-      Paint()..color = c..strokeWidth = 3..strokeCap = StrokeCap.round);
+    canvas.drawLine(
+      Offset(cx - r * 0.7, cy - r),
+      Offset(cx + r * 0.7, cy - r),
+      Paint()
+        ..color = c
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(
+      Offset(cx - r * 0.7, cy + r),
+      Offset(cx + r * 0.7, cy + r),
+      Paint()
+        ..color = c
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
 
     canvas.restore();
   }
 
-  void _drawTarget(Canvas canvas, double cx, double cy, double r, Color c, double pulse) {
+  void _drawTarget(
+    Canvas canvas,
+    double cx,
+    double cy,
+    double r,
+    Color c,
+    double pulse,
+  ) {
     final glowAlpha = 0.3 + pulse * 0.4;
     // Outer glow pulse
-    canvas.drawCircle(Offset(cx, cy), r * 1.2, Paint()
-      ..color = c.withValues(alpha: glowAlpha * 0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 1.2,
+      Paint()
+        ..color = c.withValues(alpha: glowAlpha * 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
     // Rings
     for (int i = 3; i >= 1; i--) {
       final ringR = r * (i / 3);

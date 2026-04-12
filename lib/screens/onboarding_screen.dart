@@ -67,17 +67,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       duration: const Duration(milliseconds: 5000),
       vsync: this,
     )..repeat();
-    _quadrantCycleController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() {
-          _quadrantIndex = (_quadrantIndex + 1) % _quadrantOrder.length;
+    _quadrantCycleController =
+        AnimationController(
+          duration: const Duration(milliseconds: 1500),
+          vsync: this,
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            setState(() {
+              _quadrantIndex = (_quadrantIndex + 1) % _quadrantOrder.length;
+            });
+            _quadrantCycleController.forward(from: 0);
+          }
         });
-        _quadrantCycleController.forward(from: 0);
-      }
-    });
     _quadrantCycleController.forward();
     Future.delayed(const Duration(milliseconds: 450), () {
       if (mounted) _playPageNarration(0, force: true);
@@ -119,29 +120,41 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Future<void> _completeOnboarding() async {
     unawaited(HapticFeedback.heavyImpact());
     unawaited(_audio.playSfx('victory.mp3'));
-    unawaited(_audio.playVoice('voice_lets_fight.mp3', clearQueue: true, interrupt: true));
+    unawaited(
+      _audio.playVoice(
+        'voice_lets_fight.mp3',
+        clearQueue: true,
+        interrupt: true,
+      ),
+    );
     unawaited(AnalyticsService().logOnboardingComplete());
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_completed', true);
     if (mounted) {
-      unawaited(Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const HomeScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                  CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                ),
-                child: child,
-              ),
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 600),
+      unawaited(
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const HomeScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOut,
+                        ),
+                      ),
+                      child: child,
+                    ),
+                  );
+                },
+            transitionDuration: const Duration(milliseconds: 600),
+          ),
         ),
-      ));
+      );
     }
   }
 
@@ -324,8 +337,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFFD740)
-                                  .withValues(alpha: glowAlpha),
+                              color: const Color(
+                                0xFFFFD740,
+                              ).withValues(alpha: glowAlpha),
                               blurRadius: 16,
                               spreadRadius: 4,
                             ),
@@ -422,7 +436,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         final int comicIndex;
         if (t < 0.45) {
           final hitCycle = sin(t / 0.45 * pi * 7);
-          comicOpacity = hitCycle.abs() > 0.7 ? (hitCycle.abs() - 0.7) / 0.3 : 0.0;
+          comicOpacity = hitCycle.abs() > 0.7
+              ? (hitCycle.abs() - 0.7) / 0.3
+              : 0.0;
           comicScale = 0.5 + hitCycle.abs() * 0.8;
           comicIndex = ((t / 0.45) * 7).floor() % 3;
         } else {
@@ -494,7 +510,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: const Color(0xFF7C4DFF).withValues(
-                                    alpha: 0.08 + (t < 0.45 ? t / 0.45 * 0.15 : 0),
+                                    alpha:
+                                        0.08 + (t < 0.45 ? t / 0.45 * 0.15 : 0),
                                   ),
                                   width: 2,
                                 ),
@@ -533,8 +550,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFFFF1744)
-                                              .withValues(alpha: 0.4),
+                                          color: const Color(
+                                            0xFFFF1744,
+                                          ).withValues(alpha: 0.4),
                                           blurRadius: 24,
                                           spreadRadius: 6,
                                         ),
@@ -566,8 +584,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF7C4DFF)
-                                          .withValues(alpha: 0.5),
+                                      color: const Color(
+                                        0xFF7C4DFF,
+                                      ).withValues(alpha: 0.5),
                                       blurRadius: 24,
                                       spreadRadius: 6,
                                     ),
@@ -596,7 +615,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 child: Opacity(
                                   opacity: comicOpacity.clamp(0.0, 1.0),
                                   child: _ComicImpactWord(
-                                    word: const ['POW!', 'ZAP!', 'BAM!'][comicIndex],
+                                    word: const [
+                                      'POW!',
+                                      'ZAP!',
+                                      'BAM!',
+                                    ][comicIndex],
                                   ),
                                 ),
                               ),
@@ -643,8 +666,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFFFFD740)
-                                            .withValues(alpha: 0.6),
+                                        color: const Color(
+                                          0xFFFFD740,
+                                        ).withValues(alpha: 0.6),
                                         blurRadius: 30,
                                         spreadRadius: 10,
                                       ),
@@ -692,10 +716,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       height: 24,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: barColor.withValues(alpha: 0.6),
-          width: 1.5,
-        ),
+        border: Border.all(color: barColor.withValues(alpha: 0.6), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: barColor.withValues(alpha: 0.3),
@@ -754,7 +775,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2,
-                      shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+                      shadows: const [
+                        Shadow(color: Colors.black54, blurRadius: 4),
+                      ],
                     ),
                   ),
                 ],
@@ -843,12 +866,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF00E5FF).withValues(alpha: glowAlpha),
+                      color: const Color(
+                        0xFF00E5FF,
+                      ).withValues(alpha: glowAlpha),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
                     BoxShadow(
-                      color: const Color(0xFF7C4DFF).withValues(alpha: glowAlpha * 0.5),
+                      color: const Color(
+                        0xFF7C4DFF,
+                      ).withValues(alpha: glowAlpha * 0.5),
                       blurRadius: 30,
                       spreadRadius: 4,
                     ),
@@ -916,8 +943,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF7C4DFF)
-                              .withValues(alpha: 0.4),
+                      color: const Color(0xFF7C4DFF).withValues(alpha: 0.4),
                       blurRadius: 16,
                       spreadRadius: 2,
                     ),
@@ -927,11 +953,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     if (_currentPage == 2)
-                      const Icon(Icons.rocket_launch, color: Colors.white, size: 24)
+                      const Icon(
+                        Icons.rocket_launch,
+                        color: Colors.white,
+                        size: 24,
+                      )
                     else
                       const SizedBox.shrink(),
-                    if (_currentPage == 2)
-                      const SizedBox(width: 8),
+                    if (_currentPage == 2) const SizedBox(width: 8),
                     Text(
                       _currentPage == 2 ? "LET'S GO!" : 'NEXT',
                       style: const TextStyle(
@@ -943,7 +972,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                     if (_currentPage < 2) ...[
                       const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, color: Colors.white, size: 24),
+                      const Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ],
                   ],
                 ),

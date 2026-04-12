@@ -42,7 +42,14 @@ class SyncService {
     'last_daily_bonus_date',
     'camera_prompt_shown',
   ];
-  static const _prefixSyncKeys = ['world_progress_', 'achievement_', 'trophy_defeats_', 'evolution_stage_', 'has_seen_first_', 'world_intro_seen_'];
+  static const _prefixSyncKeys = [
+    'world_progress_',
+    'achievement_',
+    'trophy_defeats_',
+    'evolution_stage_',
+    'has_seen_first_',
+    'world_intro_seen_',
+  ];
 
   DocumentReference? get _userDoc {
     final user = AuthService().currentUser;
@@ -77,7 +84,9 @@ class SyncService {
       // Persist last sync timestamp locally for UI display
       final prefs2 = await SharedPreferences.getInstance();
       await prefs2.setString(
-          'last_cloud_save', DateTime.now().toIso8601String());
+        'last_cloud_save',
+        DateTime.now().toIso8601String(),
+      );
     } on TimeoutException {
       throw Exception('Cloud save timed out. Please check your connection.');
     }
@@ -92,8 +101,7 @@ class SyncService {
     try {
       snap = await doc.get().timeout(const Duration(seconds: 10));
     } on TimeoutException {
-      throw Exception(
-          'Cloud restore timed out. Please check your connection.');
+      throw Exception('Cloud restore timed out. Please check your connection.');
     }
     if (!snap.exists) return false;
 
@@ -145,7 +153,10 @@ class SyncService {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return false;
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .delete();
       return true;
     } on Exception catch (e) {
       debugPrint('Failed to delete cloud data: $e');
@@ -159,7 +170,11 @@ class SyncService {
     return _prefixSyncKeys.any((prefix) => key.startsWith(prefix));
   }
 
-  Future<void> _writeValue(SharedPreferences prefs, String key, dynamic val) async {
+  Future<void> _writeValue(
+    SharedPreferences prefs,
+    String key,
+    dynamic val,
+  ) async {
     try {
       if (val is int) {
         await prefs.setInt(key, val);
@@ -186,14 +201,26 @@ class SyncService {
     final brushes = prefs.getInt('total_brushes') ?? 0;
     final stars = prefs.getInt('total_stars') ?? 0;
     final heroes = (prefs.getStringList('unlocked_heroes') ?? const []).length;
-    final weapons = (prefs.getStringList('unlocked_weapons') ?? const []).length;
-    final trophies = (prefs.getStringList('trophy_captured') ?? const []).length;
+    final weapons =
+        (prefs.getStringList('unlocked_weapons') ?? const []).length;
+    final trophies =
+        (prefs.getStringList('trophy_captured') ?? const []).length;
     final keys = prefs.getKeys();
-    final achievements = keys.where((k) => k.startsWith('achievement_') && (prefs.getBool(k) ?? false)).length;
+    final achievements = keys
+        .where(
+          (k) => k.startsWith('achievement_') && (prefs.getBool(k) ?? false),
+        )
+        .length;
     final worldProgress = keys
         .where((k) => k.startsWith('world_progress_'))
         .fold<int>(0, (acc, key) => acc + (prefs.getInt(key) ?? 0));
-    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + worldProgress * 3 + trophies * 25;
+    return brushes * 8 +
+        stars * 5 +
+        heroes * 30 +
+        weapons * 20 +
+        achievements * 15 +
+        worldProgress * 3 +
+        trophies * 25;
   }
 
   int _progressScoreFromCloud(Map<String, dynamic> cloudData) {
@@ -209,9 +236,21 @@ class SyncService {
     });
     final brushes = (cloudData['total_brushes'] as int?) ?? 0;
     final stars = (cloudData['total_stars'] as int?) ?? 0;
-    final heroes = (cloudData['unlocked_heroes'] is List) ? (cloudData['unlocked_heroes'] as List).length : 0;
-    final weapons = (cloudData['unlocked_weapons'] is List) ? (cloudData['unlocked_weapons'] as List).length : 0;
-    final trophies = (cloudData['trophy_captured'] is List) ? (cloudData['trophy_captured'] as List).length : 0;
-    return brushes * 8 + stars * 5 + heroes * 30 + weapons * 20 + achievements * 15 + sumWorldProgress * 3 + trophies * 25;
+    final heroes = (cloudData['unlocked_heroes'] is List)
+        ? (cloudData['unlocked_heroes'] as List).length
+        : 0;
+    final weapons = (cloudData['unlocked_weapons'] is List)
+        ? (cloudData['unlocked_weapons'] as List).length
+        : 0;
+    final trophies = (cloudData['trophy_captured'] is List)
+        ? (cloudData['trophy_captured'] as List).length
+        : 0;
+    return brushes * 8 +
+        stars * 5 +
+        heroes * 30 +
+        weapons * 20 +
+        achievements * 15 +
+        sumWorldProgress * 3 +
+        trophies * 25;
   }
 }

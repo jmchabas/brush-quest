@@ -45,9 +45,10 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.bounceOut));
-    _opacityAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _opacityAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     _controller.forward();
 
@@ -104,18 +105,15 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                     children: [
                       Text(
                         'ACHIEVEMENT UNLOCKED!',
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFF00E5FF),
-                                  letterSpacing: 2,
-                                  fontSize: 10,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF00E5FF),
+                          letterSpacing: 2,
+                          fontSize: 10,
+                        ),
                       ),
                       Text(
                         widget.achievement.title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
+                        style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -123,10 +121,9 @@ class _AchievementOverlayState extends State<_AchievementOverlay>
                       ),
                       Text(
                         widget.achievement.description,
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.white70,
-                                ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.white70),
                       ),
                       if (widget.achievement.bonusStars > 0)
                         Padding(

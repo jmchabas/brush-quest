@@ -83,12 +83,15 @@ void main() {
       );
       expect(result, isNotNull);
       expect(result!.state, GreetingState.freshStart);
-      expect(result.voiceFile, anyOf(
-        equals('voice_greet_fresh_start.mp3'),
-        equals('voice_greet_comeback_1.mp3'),
-        equals('voice_greet_comeback_2.mp3'),
-        equals('voice_greet_comeback_3.mp3'),
-      ));
+      expect(
+        result.voiceFile,
+        anyOf(
+          equals('voice_greet_fresh_start.mp3'),
+          equals('voice_greet_comeback_1.mp3'),
+          equals('voice_greet_comeback_2.mp3'),
+          equals('voice_greet_comeback_3.mp3'),
+        ),
+      );
     });
 
     test('returning state for user with streak 1 and >2 brushes', () {
@@ -265,29 +268,32 @@ void main() {
       expect(result!.voiceFile, startsWith('voice_greet_streak_legend_'));
     });
 
-    test('voice selection is deterministic based on totalBrushes modulo pool size', () {
-      // justStarted pool has 3 files, totalBrushes=1 => index 1%3=1
-      final result1 = service.checkGreeting(
-        totalBrushes: 1,
-        brushStreak: 0,
-        wallet: 1,
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-        yesterdayBothDone: false,
-      );
-      expect(result1!.voiceFile, 'voice_greet_just_started_2.mp3');
+    test(
+      'voice selection is deterministic based on totalBrushes modulo pool size',
+      () {
+        // justStarted pool has 3 files, totalBrushes=1 => index 1%3=1
+        final result1 = service.checkGreeting(
+          totalBrushes: 1,
+          brushStreak: 0,
+          wallet: 1,
+          todayDate: '2026-03-16',
+          lastGreetingDate: null,
+          yesterdayBothDone: false,
+        );
+        expect(result1!.voiceFile, 'voice_greet_just_started_2.mp3');
 
-      // totalBrushes=2 => index 2%3=2
-      final result2 = service.checkGreeting(
-        totalBrushes: 2,
-        brushStreak: 1,
-        wallet: 2,
-        todayDate: '2026-03-16',
-        lastGreetingDate: null,
-        yesterdayBothDone: false,
-      );
-      expect(result2!.voiceFile, 'voice_greet_just_started_3.mp3');
-    });
+        // totalBrushes=2 => index 2%3=2
+        final result2 = service.checkGreeting(
+          totalBrushes: 2,
+          brushStreak: 1,
+          wallet: 2,
+          todayDate: '2026-03-16',
+          lastGreetingDate: null,
+          yesterdayBothDone: false,
+        );
+        expect(result2!.voiceFile, 'voice_greet_just_started_3.mp3');
+      },
+    );
 
     // ── No material reward ──
 

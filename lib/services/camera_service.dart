@@ -23,7 +23,8 @@ class CameraService {
   double _motionIntensity = 0.0;
   MotionCallback? _motionCallback;
 
-  bool get isAvailable => _initialized && !_initFailed && !_permissionDenied && _controller != null;
+  bool get isAvailable =>
+      _initialized && !_initFailed && !_permissionDenied && _controller != null;
   bool get permissionDenied => _permissionDenied;
   CameraController? get controller => _controller;
   double get motionIntensity => _motionIntensity;
@@ -133,7 +134,9 @@ class CameraService {
       for (int sx = 0; sx < _sampleSize; sx++) {
         final int srcX = (sx * stepX).toInt().clamp(0, width - 1);
         final int index = srcY * rowStride + srcX;
-        sampled[sy * _sampleSize + sx] = index < bytes.length ? bytes[index] : 0;
+        sampled[sy * _sampleSize + sx] = index < bytes.length
+            ? bytes[index]
+            : 0;
       }
     }
 

@@ -12,10 +12,10 @@ void main() {
   late String brushingSource;
 
   setUpAll(() {
-    audioSource =
-        File('lib/services/audio_service.dart').readAsStringSync();
-    brushingSource =
-        File('lib/screens/brushing_screen.dart').readAsStringSync();
+    audioSource = File('lib/services/audio_service.dart').readAsStringSync();
+    brushingSource = File(
+      'lib/screens/brushing_screen.dart',
+    ).readAsStringSync();
   });
 
   test('AndroidAudioFocus.none is set globally', () {
@@ -112,7 +112,9 @@ void main() {
     // Should NOT early-return based on voice state
     expect(
       playSfxBody.contains('_voicePlaying') &&
-          RegExp(r'if\s*\(\s*_voicePlaying\s*\)\s*return').hasMatch(playSfxBody),
+          RegExp(
+            r'if\s*\(\s*_voicePlaying\s*\)\s*return',
+          ).hasMatch(playSfxBody),
       isFalse,
       reason:
           'playSfx must NOT early-return when voice is playing. '
@@ -132,8 +134,7 @@ void main() {
     expect(
       playSfxBody.contains('if (_muted) return'),
       isTrue,
-      reason:
-          'playSfx should still have the _muted early return guard.',
+      reason: 'playSfx should still have the _muted early return guard.',
     );
   });
 
@@ -180,8 +181,7 @@ void main() {
     expect(
       disposeIdx < newPlayerIdx,
       isTrue,
-      reason:
-          'Old player must be disposed BEFORE creating a new AudioPlayer.',
+      reason: 'Old player must be disposed BEFORE creating a new AudioPlayer.',
     );
   });
 
@@ -208,14 +208,14 @@ void main() {
     expect(
       brushingSource.contains('ensureMusicPlaying'),
       isTrue,
-      reason:
-          'Brushing screen must call ensureMusicPlaying periodically.',
+      reason: 'Brushing screen must call ensureMusicPlaying periodically.',
     );
 
     // Timer should be periodic with 5-second interval
     expect(
-      RegExp(r'Timer\.periodic\s*\(\s*const\s+Duration\(seconds:\s*5\)')
-          .hasMatch(brushingSource),
+      RegExp(
+        r'Timer\.periodic\s*\(\s*const\s+Duration\(seconds:\s*5\)',
+      ).hasMatch(brushingSource),
       isTrue,
       reason:
           'Brushing screen must use Timer.periodic with 5-second interval '
@@ -229,10 +229,7 @@ void main() {
 
     // Extract toggleMute method body
     final toggleMuteStart = audioSource.indexOf('toggleMute()');
-    expect(
-      toggleMuteStart, isNot(-1),
-      reason: 'toggleMute method not found.',
-    );
+    expect(toggleMuteStart, isNot(-1), reason: 'toggleMute method not found.');
     final methodStart = audioSource.indexOf('{', toggleMuteStart);
     int braceDepth = 0;
     int methodEnd = methodStart;
@@ -259,16 +256,14 @@ void main() {
     expect(
       toggleMuteBody.contains('_voicePlayer.stop()'),
       isTrue,
-      reason:
-          'toggleMute must stop _voicePlayer when muting.',
+      reason: 'toggleMute must stop _voicePlayer when muting.',
     );
 
     // Verify _clearVoiceQueue actually drains the queue
     expect(
       audioSource.contains('_voiceQueue.removeFirst()'),
       isTrue,
-      reason:
-          '_clearVoiceQueue must drain the queue by removing all entries.',
+      reason: '_clearVoiceQueue must drain the queue by removing all entries.',
     );
   });
 }

@@ -61,9 +61,7 @@ class AudioService {
   bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
 
   /// Available voice styles.
-  static const voiceStyles = {
-    'buddy': 'George — friendly guide',
-  };
+  static const voiceStyles = {'buddy': 'George — friendly guide'};
 
   /// Current voice narrator style ('classic', 'buddy', or 'boy').
   String get voiceStyle => _voiceStyle;
@@ -377,14 +375,14 @@ class AudioService {
   /// Complete list of files to preload, built once from core list + named
   /// const lists so each file appears exactly once.
   static List<String> get _allPreloadFiles => [
-        ..._audioFilesCore,
-        ..._encouragementVoices,
-        ...heroPickerVoices.values,
-        ...evolutionPickerVoices.values,
-        ...weaponPickerVoices.values,
-        ...heroIntroVoices.values,
-        ...weaponIntroVoices.values,
-      ];
+    ..._audioFilesCore,
+    ..._encouragementVoices,
+    ...heroPickerVoices.values,
+    ...evolutionPickerVoices.values,
+    ...weaponPickerVoices.values,
+    ...heroIntroVoices.values,
+    ...weaponIntroVoices.values,
+  ];
 
   List<String> get encouragementVoices =>
       List.unmodifiable(_encouragementVoices);
@@ -417,9 +415,7 @@ class AudioService {
     // We manage volume ducking manually instead.
     await AudioPlayer.global.setAudioContext(
       AudioContext(
-        android: const AudioContextAndroid(
-          audioFocus: AndroidAudioFocus.none,
-        ),
+        android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
       ),
     );
 
@@ -549,7 +545,9 @@ class AudioService {
         try {
           await _voicePlayer.stop();
           await _voicePlayer.setVolume(1.0);
-          await _voicePlayer.play(AssetSource(_voiceAssetPath(request.fileName)));
+          await _voicePlayer.play(
+            AssetSource(_voiceAssetPath(request.fileName)),
+          );
           final completed = await Future.any<bool>([
             _voicePlayer.onPlayerComplete.first.then((_) => true),
             _voicePlayer.onPlayerStateChanged

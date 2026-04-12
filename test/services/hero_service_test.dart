@@ -19,8 +19,12 @@ void main() {
     test('hero prices match expected values (0/5/8/12/15/20)', () {
       final expectedPrices = [0, 5, 8, 12, 15, 20];
       for (int i = 0; i < HeroService.allHeroes.length; i++) {
-        expect(HeroService.allHeroes[i].price, expectedPrices[i],
-            reason: 'Hero ${HeroService.allHeroes[i].id} should cost ${expectedPrices[i]}');
+        expect(
+          HeroService.allHeroes[i].price,
+          expectedPrices[i],
+          reason:
+              'Hero ${HeroService.allHeroes[i].id} should cost ${expectedPrices[i]}',
+        );
       }
     });
 
@@ -195,22 +199,26 @@ void main() {
 
     // ── getNextLockedHero ─────────────────────────────────────────
 
-    test('getNextLockedHero returns frost when only blaze is unlocked', () async {
-      final service = HeroService();
-      final next = await service.getNextLockedHero();
-      expect(next, isNotNull);
-      expect(next!.id, 'frost');
-    });
+    test(
+      'getNextLockedHero returns frost when only blaze is unlocked',
+      () async {
+        final service = HeroService();
+        final next = await service.getNextLockedHero();
+        expect(next, isNotNull);
+        expect(next!.id, 'frost');
+      },
+    );
 
-    test('getNextLockedHero returns null when all heroes are unlocked', () async {
-      final allIds = HeroService.allHeroes.map((h) => h.id).toList();
-      SharedPreferences.setMockInitialValues({
-        'unlocked_heroes': allIds,
-      });
-      final service = HeroService();
-      final next = await service.getNextLockedHero();
-      expect(next, isNull);
-    });
+    test(
+      'getNextLockedHero returns null when all heroes are unlocked',
+      () async {
+        final allIds = HeroService.allHeroes.map((h) => h.id).toList();
+        SharedPreferences.setMockInitialValues({'unlocked_heroes': allIds});
+        final service = HeroService();
+        final next = await service.getNextLockedHero();
+        expect(next, isNull);
+      },
+    );
 
     test('getNextLockedHero skips already-unlocked heroes', () async {
       SharedPreferences.setMockInitialValues({

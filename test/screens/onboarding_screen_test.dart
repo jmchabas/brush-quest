@@ -21,14 +21,14 @@ void main() {
     // Mock audioplayers platform channel to prevent MissingPluginException
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
   });
 
   setUp(() {
@@ -44,9 +44,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
-    await tester.pumpWidget(
-      const MaterialApp(home: OnboardingScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: OnboardingScreen()));
     // Allow async init + animation controllers to settle
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -55,8 +53,9 @@ void main() {
 
   // ── Page rendering ───────────────────────────────────────────
 
-  testWidgets('onboarding renders 3 pages with NEXT button on page 1',
-      (tester) async {
+  testWidgets('onboarding renders 3 pages with NEXT button on page 1', (
+    tester,
+  ) async {
     await pumpOnboarding(tester);
 
     // Page 1 content: welcome text
@@ -112,16 +111,20 @@ void main() {
 
   // ── Voice narration ──────────────────────────────────────────
 
-  testWidgets('voice narration triggers on page load and page changes',
-      (tester) async {
+  testWidgets('voice narration triggers on page load and page changes', (
+    tester,
+  ) async {
     await pumpOnboarding(tester);
 
     // Page 1 narration should have been triggered
-    final page1Voices = fakeAudio.callsFor('playVoice').where(
-          (c) => c.args['fileName'] == 'voice_onboarding_1.mp3',
-        );
-    expect(page1Voices.isNotEmpty, isTrue,
-        reason: 'Page 1 narration should play on initial load');
+    final page1Voices = fakeAudio
+        .callsFor('playVoice')
+        .where((c) => c.args['fileName'] == 'voice_onboarding_1.mp3');
+    expect(
+      page1Voices.isNotEmpty,
+      isTrue,
+      reason: 'Page 1 narration should play on initial load',
+    );
 
     // Navigate to page 2
     fakeAudio.clearCalls();
@@ -129,11 +132,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    final page2Voices = fakeAudio.callsFor('playVoice').where(
-          (c) => c.args['fileName'] == 'voice_onboarding_2.mp3',
-        );
-    expect(page2Voices.isNotEmpty, isTrue,
-        reason: 'Page 2 narration should play after swiping');
+    final page2Voices = fakeAudio
+        .callsFor('playVoice')
+        .where((c) => c.args['fileName'] == 'voice_onboarding_2.mp3');
+    expect(
+      page2Voices.isNotEmpty,
+      isTrue,
+      reason: 'Page 2 narration should play after swiping',
+    );
 
     // Navigate to page 3
     fakeAudio.clearCalls();
@@ -141,11 +147,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    final page3Voices = fakeAudio.callsFor('playVoice').where(
-          (c) => c.args['fileName'] == 'voice_onboarding_3.mp3',
-        );
-    expect(page3Voices.isNotEmpty, isTrue,
-        reason: 'Page 3 narration should play after swiping');
+    final page3Voices = fakeAudio
+        .callsFor('playVoice')
+        .where((c) => c.args['fileName'] == 'voice_onboarding_3.mp3');
+    expect(
+      page3Voices.isNotEmpty,
+      isTrue,
+      reason: 'Page 3 narration should play after swiping',
+    );
 
     await tester.binding.setSurfaceSize(null);
   });

@@ -21,14 +21,14 @@ void main() {
     // Mock audioplayers platform channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
   });
 
   setUp(() {
@@ -50,14 +50,14 @@ void main() {
     });
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
-    await tester.pumpWidget(
-      const MaterialApp(home: SettingsScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  testWidgets('parent gate blocks settings until math is answered', (tester) async {
+  testWidgets('parent gate blocks settings until math is answered', (
+    tester,
+  ) async {
     await pumpSettings(tester);
 
     // Parent gate shows the math challenge

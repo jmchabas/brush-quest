@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:glados/glados.dart' hide expect, group, setUp, setUpAll, tearDown, tearDownAll, test;
+import 'package:glados/glados.dart'
+    hide expect, group, setUp, setUpAll, tearDown, tearDownAll, test;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:brush_quest/services/hero_service.dart';
@@ -18,7 +19,8 @@ void main() {
         expect(
           prices[i] >= prices[i - 1],
           isTrue,
-          reason: 'Hero at index $i (${prices[i]}) should be >= '
+          reason:
+              'Hero at index $i (${prices[i]}) should be >= '
               'hero at index ${i - 1} (${prices[i - 1]})',
         );
       }
@@ -30,7 +32,8 @@ void main() {
         expect(
           prices[i] >= prices[i - 1],
           isTrue,
-          reason: 'Weapon at index $i (${prices[i]}) should be >= '
+          reason:
+              'Weapon at index $i (${prices[i]}) should be >= '
               'weapon at index ${i - 1} (${prices[i - 1]})',
         );
       }
@@ -43,7 +46,8 @@ void main() {
           expect(
             evos[i].price >= evos[i - 1].price,
             isTrue,
-            reason: '${hero.id} stage ${evos[i].stage} (${evos[i].price}) '
+            reason:
+                '${hero.id} stage ${evos[i].stage} (${evos[i].price}) '
                 'should be >= stage ${evos[i - 1].stage} '
                 '(${evos[i - 1].price})',
           );
@@ -62,9 +66,7 @@ void main() {
     Glados<int>(any.intInRange(0, 200)).test(
       'spendStars returns false when wallet has insufficient funds',
       (walletBalance) async {
-        SharedPreferences.setMockInitialValues({
-          'star_wallet': walletBalance,
-        });
+        SharedPreferences.setMockInitialValues({'star_wallet': walletBalance});
         final service = StreakService();
         final overSpend = walletBalance + 1;
         final result = await service.spendStars(overSpend);
@@ -77,9 +79,7 @@ void main() {
     Glados<int>(any.intInRange(0, 200)).test(
       'wallet stays non-negative after any valid spend',
       (walletBalance) async {
-        SharedPreferences.setMockInitialValues({
-          'star_wallet': walletBalance,
-        });
+        SharedPreferences.setMockInitialValues({'star_wallet': walletBalance});
         final service = StreakService();
 
         // Try spending every possible amount from 1 to walletBalance
@@ -99,13 +99,16 @@ void main() {
     test('hero purchase fails when wallet is below hero price', () async {
       for (final hero in HeroService.allHeroes) {
         if (hero.price == 0) continue;
-        SharedPreferences.setMockInitialValues({
-          'star_wallet': hero.price - 1,
-        });
+        SharedPreferences.setMockInitialValues({'star_wallet': hero.price - 1});
         final service = HeroService();
         final result = await service.purchaseHero(hero.id);
-        expect(result, isFalse, reason: '${hero.id} should not be '
-            'purchasable with ${hero.price - 1} stars');
+        expect(
+          result,
+          isFalse,
+          reason:
+              '${hero.id} should not be '
+              'purchasable with ${hero.price - 1} stars',
+        );
       }
     });
 
@@ -117,8 +120,13 @@ void main() {
         });
         final service = WeaponService();
         final result = await service.purchaseWeapon(weapon.id);
-        expect(result, isFalse, reason: '${weapon.id} should not be '
-            'purchasable with ${weapon.price - 1} stars');
+        expect(
+          result,
+          isFalse,
+          reason:
+              '${weapon.id} should not be '
+              'purchasable with ${weapon.price - 1} stars',
+        );
       }
     });
   });
@@ -150,8 +158,11 @@ void main() {
 
         final prefs = await SharedPreferences.getInstance();
         final totalAfter = prefs.getInt('total_stars') ?? 0;
-        expect(totalAfter, initialStars,
-            reason: 'Rank should not change after spending wallet stars');
+        expect(
+          totalAfter,
+          initialStars,
+          reason: 'Rank should not change after spending wallet stars',
+        );
       },
     );
 
@@ -174,45 +185,49 @@ void main() {
 
         final prefs = await SharedPreferences.getInstance();
         final totalAfter = prefs.getInt('total_stars') ?? 0;
-        expect(totalAfter, initialStars,
-            reason: 'Rank should not change after spending wallet stars');
+        expect(
+          totalAfter,
+          initialStars,
+          reason: 'Rank should not change after spending wallet stars',
+        );
       },
     );
 
-    Glados<int>(any.intInRange(10, 200)).test(
-      'total_stars unchanged after evolution purchase',
-      (initialStars) async {
-        // Find an affordable evolution (stage 2, no prerequisite issue)
-        final affordableEvo = HeroService.allEvolutions
-            .where((e) => e.stage == 2 && e.price > 0 && e.price <= initialStars)
-            .toList();
-        if (affordableEvo.isEmpty) return;
+    Glados<int>(
+      any.intInRange(10, 200),
+    ).test('total_stars unchanged after evolution purchase', (
+      initialStars,
+    ) async {
+      // Find an affordable evolution (stage 2, no prerequisite issue)
+      final affordableEvo = HeroService.allEvolutions
+          .where((e) => e.stage == 2 && e.price > 0 && e.price <= initialStars)
+          .toList();
+      if (affordableEvo.isEmpty) return;
 
-        final evo = affordableEvo.last;
-        SharedPreferences.setMockInitialValues({
-          'total_stars': initialStars,
-          'star_wallet': initialStars,
-          'unlocked_heroes': ['blaze', 'frost', 'bolt', 'shadow', 'leaf', 'nova'],
-        });
+      final evo = affordableEvo.last;
+      SharedPreferences.setMockInitialValues({
+        'total_stars': initialStars,
+        'star_wallet': initialStars,
+        'unlocked_heroes': ['blaze', 'frost', 'bolt', 'shadow', 'leaf', 'nova'],
+      });
 
-        final service = HeroService();
-        await service.purchaseEvolution(evo.id);
+      final service = HeroService();
+      await service.purchaseEvolution(evo.id);
 
-        final prefs = await SharedPreferences.getInstance();
-        final totalAfter = prefs.getInt('total_stars') ?? 0;
-        expect(totalAfter, initialStars,
-            reason: 'Rank should not change after purchasing an evolution');
-      },
-    );
+      final prefs = await SharedPreferences.getInstance();
+      final totalAfter = prefs.getInt('total_stars') ?? 0;
+      expect(
+        totalAfter,
+        initialStars,
+        reason: 'Rank should not change after purchasing an evolution',
+      );
+    });
   });
 
   // ── 4. Star earning is deterministic ─────────────────────────────────────
 
   group('Star earning is deterministic', () {
-    Glados2<int, bool>(
-      any.intInRange(0, 100),
-      any.bool,
-    ).test(
+    Glados2<int, bool>(any.intInRange(0, 100), any.bool).test(
       'calculateStreakBonus is deterministic for same inputs',
       (streak, bothSlotsDone) {
         final service = StreakService();
@@ -224,9 +239,13 @@ void main() {
           streak: streak,
           bothSlotsDone: bothSlotsDone,
         );
-        expect(first, second,
-            reason: 'Same inputs should produce same bonus '
-                '(streak=$streak, bothSlots=$bothSlotsDone)');
+        expect(
+          first,
+          second,
+          reason:
+              'Same inputs should produce same bonus '
+              '(streak=$streak, bothSlots=$bothSlotsDone)',
+        );
       },
     );
 
@@ -237,10 +256,7 @@ void main() {
       expect(outcome.baseStars, 2);
     });
 
-    Glados2<int, bool>(
-      any.intInRange(0, 100),
-      any.bool,
-    ).test(
+    Glados2<int, bool>(any.intInRange(0, 100), any.bool).test(
       'detailed breakdown total matches simple bonus',
       (streak, bothSlotsDone) {
         final service = StreakService();
@@ -252,8 +268,11 @@ void main() {
           streak: streak,
           bothSlotsDone: bothSlotsDone,
         );
-        expect(detailed.total, simple,
-            reason: 'Detailed breakdown total should equal simple bonus');
+        expect(
+          detailed.total,
+          simple,
+          reason: 'Detailed breakdown total should equal simple bonus',
+        );
       },
     );
   });
@@ -261,10 +280,7 @@ void main() {
   // ── 5. Streak bonus bounds ───────────────────────────────────────────────
 
   group('Streak bonus bounds', () {
-    Glados2<int, bool>(
-      any.intInRange(0, 1000),
-      any.bool,
-    ).test(
+    Glados2<int, bool>(any.intInRange(0, 1000), any.bool).test(
       'streak bonus is always 0-3',
       (streak, bothSlotsDone) {
         final service = StreakService();
@@ -272,9 +288,13 @@ void main() {
           streak: streak,
           bothSlotsDone: bothSlotsDone,
         );
-        expect(bonus, inInclusiveRange(0, 3),
-            reason: 'Bonus should be 0-3, got $bonus '
-                '(streak=$streak, bothSlots=$bothSlotsDone)');
+        expect(
+          bonus,
+          inInclusiveRange(0, 3),
+          reason:
+              'Bonus should be 0-3, got $bonus '
+              '(streak=$streak, bothSlots=$bothSlotsDone)',
+        );
       },
     );
 
@@ -286,8 +306,11 @@ void main() {
           streak: streak,
           bothSlotsDone: false,
         );
-        expect(breakdown.streakMultiplierBonus, 0,
-            reason: 'Streak $streak (< 3) should give 0 multiplier bonus');
+        expect(
+          breakdown.streakMultiplierBonus,
+          0,
+          reason: 'Streak $streak (< 3) should give 0 multiplier bonus',
+        );
       },
     );
 
@@ -299,8 +322,11 @@ void main() {
           streak: streak,
           bothSlotsDone: false,
         );
-        expect(breakdown.streakMultiplierBonus, 1,
-            reason: 'Streak $streak (3-6) should give 1 multiplier bonus');
+        expect(
+          breakdown.streakMultiplierBonus,
+          1,
+          reason: 'Streak $streak (3-6) should give 1 multiplier bonus',
+        );
       },
     );
 
@@ -312,8 +338,11 @@ void main() {
           streak: streak,
           bothSlotsDone: false,
         );
-        expect(breakdown.streakMultiplierBonus, 2,
-            reason: 'Streak $streak (>= 7) should give 2 multiplier bonus');
+        expect(
+          breakdown.streakMultiplierBonus,
+          2,
+          reason: 'Streak $streak (>= 7) should give 2 multiplier bonus',
+        );
       },
     );
 
@@ -367,7 +396,8 @@ void main() {
         expect(
           gap <= 6,
           isTrue,
-          reason: 'Gap between prices ${uniquePrices[i - 1]} and '
+          reason:
+              'Gap between prices ${uniquePrices[i - 1]} and '
               '${uniquePrices[i]} is $gap stars (> 6). '
               'Child would go ~${(gap / 2).ceil()} days without a new unlock.',
         );
@@ -387,7 +417,8 @@ void main() {
       expect(
         allPrices.first,
         lessThanOrEqualTo(6),
-        reason: 'First paid item should be achievable within 3 days '
+        reason:
+            'First paid item should be achievable within 3 days '
             '(at 2 stars/brush, 2 brushes/day)',
       );
     });
@@ -406,9 +437,7 @@ void main() {
         for (final hero in HeroService.allHeroes) {
           if (hero.price == 0) continue;
           final walletBefore = hero.price + extraStars;
-          SharedPreferences.setMockInitialValues({
-            'star_wallet': walletBefore,
-          });
+          SharedPreferences.setMockInitialValues({'star_wallet': walletBefore});
 
           final service = HeroService();
           final result = await service.purchaseHero(hero.id);
@@ -419,7 +448,8 @@ void main() {
             expect(
               walletAfter,
               walletBefore - hero.price,
-              reason: 'After buying ${hero.id} (cost ${hero.price}) '
+              reason:
+                  'After buying ${hero.id} (cost ${hero.price}) '
                   'with $walletBefore stars, wallet should be '
                   '${walletBefore - hero.price} but was $walletAfter',
             );
@@ -434,9 +464,7 @@ void main() {
         for (final weapon in WeaponService.allWeapons) {
           if (weapon.price == 0) continue;
           final walletBefore = weapon.price + extraStars;
-          SharedPreferences.setMockInitialValues({
-            'star_wallet': walletBefore,
-          });
+          SharedPreferences.setMockInitialValues({'star_wallet': walletBefore});
 
           final service = WeaponService();
           final result = await service.purchaseWeapon(weapon.id);
@@ -447,7 +475,8 @@ void main() {
             expect(
               walletAfter,
               walletBefore - weapon.price,
-              reason: 'After buying ${weapon.id} (cost ${weapon.price}) '
+              reason:
+                  'After buying ${weapon.id} (cost ${weapon.price}) '
                   'with $walletBefore stars, wallet should be '
                   '${walletBefore - weapon.price} but was $walletAfter',
             );
@@ -460,18 +489,20 @@ void main() {
       for (final hero in HeroService.allHeroes) {
         if (hero.price == 0) continue;
         final walletBefore = hero.price - 1;
-        SharedPreferences.setMockInitialValues({
-          'star_wallet': walletBefore,
-        });
+        SharedPreferences.setMockInitialValues({'star_wallet': walletBefore});
 
         final service = HeroService();
         await service.purchaseHero(hero.id);
 
         final prefs = await SharedPreferences.getInstance();
         final walletAfter = prefs.getInt('star_wallet') ?? 0;
-        expect(walletAfter, walletBefore,
-            reason: 'Failed purchase of ${hero.id} should leave wallet '
-                'at $walletBefore but was $walletAfter');
+        expect(
+          walletAfter,
+          walletBefore,
+          reason:
+              'Failed purchase of ${hero.id} should leave wallet '
+              'at $walletBefore but was $walletAfter',
+        );
       }
     });
 
@@ -479,18 +510,20 @@ void main() {
       for (final weapon in WeaponService.allWeapons) {
         if (weapon.price == 0) continue;
         final walletBefore = weapon.price - 1;
-        SharedPreferences.setMockInitialValues({
-          'star_wallet': walletBefore,
-        });
+        SharedPreferences.setMockInitialValues({'star_wallet': walletBefore});
 
         final service = WeaponService();
         await service.purchaseWeapon(weapon.id);
 
         final prefs = await SharedPreferences.getInstance();
         final walletAfter = prefs.getInt('star_wallet') ?? 0;
-        expect(walletAfter, walletBefore,
-            reason: 'Failed purchase of ${weapon.id} should leave wallet '
-                'at $walletBefore but was $walletAfter');
+        expect(
+          walletAfter,
+          walletBefore,
+          reason:
+              'Failed purchase of ${weapon.id} should leave wallet '
+              'at $walletBefore but was $walletAfter',
+        );
       }
     });
   });

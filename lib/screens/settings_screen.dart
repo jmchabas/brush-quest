@@ -159,10 +159,16 @@ class _SettingsScreenState extends State<SettingsScreen>
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: const Color(0xFF1A0A3E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text(
             'Brushing Detection',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
           content: const Text(
             'The camera detects brushing motion to drive the game. '
@@ -173,13 +179,19 @@ class _SettingsScreenState extends State<SettingsScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'CANCEL',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text(
                 'ENABLE',
-                style: TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Color(0xFF00E5FF),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -202,7 +214,11 @@ class _SettingsScreenState extends State<SettingsScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
           'Cloud Save — Data Notice',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -239,13 +255,19 @@ class _SettingsScreenState extends State<SettingsScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
               'I CONSENT',
-              style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Color(0xFF00E676),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -317,7 +339,11 @@ class _SettingsScreenState extends State<SettingsScreen>
             SizedBox(width: 10),
             Text(
               'Sign Out?',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
           ],
         ),
@@ -328,13 +354,19 @@ class _SettingsScreenState extends State<SettingsScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
               'SIGN OUT',
-              style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.orangeAccent,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -372,7 +404,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A0A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Cloud Data?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Delete Cloud Data?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'This will delete your cloud backup. Your local progress will be kept.',
           style: TextStyle(color: Colors.white70),
@@ -384,7 +419,10 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -393,7 +431,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       final success = await SyncService().deleteCloudData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(success ? 'Cloud data deleted' : 'Failed to delete cloud data')),
+          SnackBar(
+            content: Text(
+              success ? 'Cloud data deleted' : 'Failed to delete cloud data',
+            ),
+          ),
         );
       }
     }
@@ -578,10 +620,15 @@ class _SettingsScreenState extends State<SettingsScreen>
         return StatefulBuilder(
           builder: (ctx, setDialogState) => AlertDialog(
             backgroundColor: const Color(0xFF1A0A3E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: const Text(
               'Are you sure?',
-              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -756,10 +803,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     await SyncService().deleteCloudData();
 
     if (mounted) {
-      unawaited(Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-        (_) => false,
-      ));
+      unawaited(
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (_) => false,
+        ),
+      );
     }
   }
 
@@ -854,7 +903,11 @@ class _SettingsScreenState extends State<SettingsScreen>
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.nightlight_round, color: Color(0xFF90CAF9), size: 20),
+              const Icon(
+                Icons.nightlight_round,
+                color: Color(0xFF90CAF9),
+                size: 20,
+              ),
               const SizedBox(width: 10),
               const Text(
                 'Evening',
@@ -886,7 +939,11 @@ class _SettingsScreenState extends State<SettingsScreen>
           // Current Streak
           Row(
             children: [
-              const Icon(Icons.local_fire_department, color: Colors.orangeAccent, size: 22),
+              const Icon(
+                Icons.local_fire_department,
+                color: Colors.orangeAccent,
+                size: 22,
+              ),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -908,7 +965,11 @@ class _SettingsScreenState extends State<SettingsScreen>
           // Best Streak
           Row(
             children: [
-              const Icon(Icons.emoji_events, color: Color(0xFFFFD54F), size: 22),
+              const Icon(
+                Icons.emoji_events,
+                color: Color(0xFFFFD54F),
+                size: 22,
+              ),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -960,7 +1021,6 @@ class _SettingsScreenState extends State<SettingsScreen>
       ),
     );
   }
-
 
   // ── Dashboard Tab (Tab 1) ──────────────────────────────
   Widget _buildDashboardTab() {
@@ -1025,7 +1085,11 @@ class _SettingsScreenState extends State<SettingsScreen>
     return GlassCard(
       child: Row(
         children: [
-          const Icon(Icons.pause_circle_outline, color: Colors.white54, size: 20),
+          const Icon(
+            Icons.pause_circle_outline,
+            color: Colors.white54,
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1119,18 +1183,13 @@ class _SettingsScreenState extends State<SettingsScreen>
           GestureDetector(
             onTap: _signingIn ? null : _handleSignIn,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF1A237E), Color(0xFF283593)],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1145,11 +1204,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ),
                     )
                   else ...[
-                    const Icon(
-                      Icons.login,
-                      color: Colors.white,
-                      size: 22,
-                    ),
+                    const Icon(Icons.login, color: Colors.white, size: 22),
                     const SizedBox(width: 12),
                     const Text(
                       'Sign in with Google',
@@ -1233,7 +1288,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                           onPressed: _handleDeleteCloudData,
                           child: const Text(
                             'Delete cloud data',
-                            style: TextStyle(color: Colors.redAccent, fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -1357,11 +1415,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           icon: Icons.replay,
           title: 'Show tutorial again',
           child: IconButton(
-            icon: const Icon(
-              Icons.replay,
-              color: Color(0xFF00E5FF),
-              size: 24,
-            ),
+            icon: const Icon(Icons.replay, color: Color(0xFF00E5FF), size: 24),
             onPressed: _resetOnboarding,
           ),
         ),
@@ -1475,10 +1529,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 15,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 15),
           ),
         ),
         Container(
@@ -1574,7 +1625,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildGuideSection(String title, String body, IconData icon, Color iconColor) {
+  Widget _buildGuideSection(
+    String title,
+    String body,
+    IconData icon,
+    Color iconColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
@@ -1623,11 +1679,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.lock_outline,
-              color: Color(0xFF7C4DFF),
-              size: 64,
-            ),
+            const Icon(Icons.lock_outline, color: Color(0xFF7C4DFF), size: 64),
             const SizedBox(height: 24),
             const Text(
               'Parent Check',
@@ -1852,7 +1904,10 @@ class _SectionHeader extends StatelessWidget {
     return Row(
       children: [
         customIcon != null
-            ? IconTheme(data: IconThemeData(color: color, size: 20), child: customIcon!)
+            ? IconTheme(
+                data: IconThemeData(color: color, size: 20),
+                child: customIcon!,
+              )
             : Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
         Text(
@@ -2215,7 +2270,9 @@ class _HalfCirclePainter extends CustomPainter {
 
     // Clip to circle, then draw a rect covering bottom half
     canvas.save();
-    canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
+    canvas.clipPath(
+      Path()..addOval(Rect.fromCircle(center: center, radius: radius)),
+    );
     canvas.drawRect(
       Rect.fromLTRB(0, size.height / 2, size.width, size.height),
       fillPaint,

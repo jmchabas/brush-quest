@@ -1,6 +1,7 @@
 // PLACEHOLDER — will be replaced by `flutterfire configure`
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform;
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -8,7 +9,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       default:
-        throw UnsupportedError('DefaultFirebaseOptions not configured for this platform.');
+        throw UnsupportedError(
+          'DefaultFirebaseOptions not configured for this platform.',
+        );
     }
   }
 
@@ -19,5 +22,4 @@ class DefaultFirebaseOptions {
     projectId: 'brush-quest',
     storageBucket: 'brush-quest.firebasestorage.app',
   );
-
 }

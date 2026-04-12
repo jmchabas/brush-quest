@@ -22,14 +22,14 @@ void main() {
     // from AudioPlayer construction during AudioService static initialization.
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
   });
 
   setUp(() {
@@ -68,10 +68,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(430, 932));
     await tester.pumpWidget(
       const MaterialApp(
-        home: VictoryScreen(
-          totalHits: 10,
-          monstersDefeated: 4,
-        ),
+        home: VictoryScreen(totalHits: 10, monstersDefeated: 4),
       ),
     );
     // Pump past all internal timers (Future.delayed in _recordAndAnimate,

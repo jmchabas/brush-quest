@@ -21,20 +21,20 @@ void main() {
     // Mock audioplayers platform channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
     // Mock wakelock channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('dev.fluttercommunity.plus/wakelock_plus'),
-      (call) async => true,
-    );
+          const MethodChannel('dev.fluttercommunity.plus/wakelock_plus'),
+          (call) async => true,
+        );
   });
 
   setUp(() {
@@ -65,9 +65,7 @@ void main() {
       origOnError?.call(details);
     };
 
-    await tester.pumpWidget(
-      const MaterialApp(home: BrushingScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: BrushingScreen()));
     // Pump past all internal timers (1.5s Future.delayed in initState)
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));

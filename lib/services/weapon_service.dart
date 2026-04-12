@@ -184,6 +184,9 @@ class WeaponService {
   }
 
   static WeaponItem getWeaponById(String id) {
-    return allWeapons.firstWhere((w) => w.id == id, orElse: () => allWeapons[0]);
+    return allWeapons.firstWhere(
+      (w) => w.id == id,
+      orElse: () => allWeapons[0],
+    );
   }
 }

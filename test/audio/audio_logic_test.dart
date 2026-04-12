@@ -18,14 +18,18 @@ void main() {
   late String onboardingScreenSrc;
 
   setUpAll(() {
-    audioServiceSrc =
-        File('lib/services/audio_service.dart').readAsStringSync();
-    brushingScreenSrc =
-        File('lib/screens/brushing_screen.dart').readAsStringSync();
-    victoryScreenSrc =
-        File('lib/screens/victory_screen.dart').readAsStringSync();
-    onboardingScreenSrc =
-        File('lib/screens/onboarding_screen.dart').readAsStringSync();
+    audioServiceSrc = File(
+      'lib/services/audio_service.dart',
+    ).readAsStringSync();
+    brushingScreenSrc = File(
+      'lib/screens/brushing_screen.dart',
+    ).readAsStringSync();
+    victoryScreenSrc = File(
+      'lib/screens/victory_screen.dart',
+    ).readAsStringSync();
+    onboardingScreenSrc = File(
+      'lib/screens/onboarding_screen.dart',
+    ).readAsStringSync();
   });
 
   // ===========================================================================
@@ -87,29 +91,37 @@ void main() {
       expect(heroPickerVoiceFor(''), 'voice_great_choice.mp3');
     });
 
-    test('weaponPickerVoiceFor returns correct file for every known weapon',
-        () {
-      for (final entry in weaponPickerVoices.entries) {
-        expect(weaponPickerVoiceFor(entry.key), entry.value);
-      }
-    });
+    test(
+      'weaponPickerVoiceFor returns correct file for every known weapon',
+      () {
+        for (final entry in weaponPickerVoices.entries) {
+          expect(weaponPickerVoiceFor(entry.key), entry.value);
+        }
+      },
+    );
 
     test('weaponPickerVoiceFor falls back for unknown weapon ID', () {
       expect(weaponPickerVoiceFor('unknown_weapon'), 'voice_awesome.mp3');
       expect(weaponPickerVoiceFor(''), 'voice_awesome.mp3');
     });
 
-    test('source fallback for heroPickerVoiceFor is voice_great_choice.mp3',
-        () {
-      expect(
-        audioServiceSrc.contains("heroPickerVoices[heroId] ?? 'voice_great_choice.mp3'"),
-        isTrue,
-      );
-    });
+    test(
+      'source fallback for heroPickerVoiceFor is voice_great_choice.mp3',
+      () {
+        expect(
+          audioServiceSrc.contains(
+            "heroPickerVoices[heroId] ?? 'voice_great_choice.mp3'",
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('source fallback for weaponPickerVoiceFor is voice_awesome.mp3', () {
       expect(
-        audioServiceSrc.contains("weaponPickerVoices[weaponId] ?? 'voice_awesome.mp3'"),
+        audioServiceSrc.contains(
+          "weaponPickerVoices[weaponId] ?? 'voice_awesome.mp3'",
+        ),
         isTrue,
       );
     });
@@ -147,21 +159,24 @@ void main() {
       }
     });
 
-    test('weaponIntroVoices has an entry for every weapon in weaponPickerVoices',
-        () {
-      for (final id in weaponIntroVoices.keys) {
-        expect(
-          audioServiceSrc.contains("'$id': '${weaponIntroVoices[id]}'"),
-          isTrue,
-          reason: 'weaponIntroVoices should contain entry for $id',
-        );
-      }
-    });
+    test(
+      'weaponIntroVoices has an entry for every weapon in weaponPickerVoices',
+      () {
+        for (final id in weaponIntroVoices.keys) {
+          expect(
+            audioServiceSrc.contains("'$id': '${weaponIntroVoices[id]}'"),
+            isTrue,
+            reason: 'weaponIntroVoices should contain entry for $id',
+          );
+        }
+      },
+    );
 
     test('heroIntroVoiceFor fallback chains to heroPickerVoiceFor', () {
       expect(
         audioServiceSrc.contains(
-            'heroIntroVoices[heroId] ?? heroPickerVoiceFor(heroId)'),
+          'heroIntroVoices[heroId] ?? heroPickerVoiceFor(heroId)',
+        ),
         isTrue,
       );
     });
@@ -169,7 +184,8 @@ void main() {
     test('weaponIntroVoiceFor fallback chains to weaponPickerVoiceFor', () {
       expect(
         audioServiceSrc.contains(
-            'weaponIntroVoices[weaponId] ?? weaponPickerVoiceFor(weaponId)'),
+          'weaponIntroVoices[weaponId] ?? weaponPickerVoiceFor(weaponId)',
+        ),
         isTrue,
       );
     });
@@ -199,13 +215,15 @@ void main() {
       }
     });
 
-    test('nextHitSound returns zap.mp3 at even indices and whoosh.mp3 at odd',
-        () {
-      expect(hitSounds[0 % hitSounds.length], 'zap.mp3');
-      expect(hitSounds[1 % hitSounds.length], 'whoosh.mp3');
-      expect(hitSounds[2 % hitSounds.length], 'zap.mp3');
-      expect(hitSounds[3 % hitSounds.length], 'whoosh.mp3');
-    });
+    test(
+      'nextHitSound returns zap.mp3 at even indices and whoosh.mp3 at odd',
+      () {
+        expect(hitSounds[0 % hitSounds.length], 'zap.mp3');
+        expect(hitSounds[1 % hitSounds.length], 'whoosh.mp3');
+        expect(hitSounds[2 % hitSounds.length], 'zap.mp3');
+        expect(hitSounds[3 % hitSounds.length], 'whoosh.mp3');
+      },
+    );
 
     test('nextHitSound uses _sfxIndex (shared with playSfx)', () {
       // Verify the source uses _sfxIndex for both nextHitSound and playSfx
@@ -240,18 +258,9 @@ void main() {
     }
 
     test('source uses 0.80, 0.50, 0.20 multipliers', () {
-      expect(
-        brushingScreenSrc.contains('_phaseDuration * 0.80'),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains('_phaseDuration * 0.50'),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains('_phaseDuration * 0.20'),
-        isTrue,
-      );
+      expect(brushingScreenSrc.contains('_phaseDuration * 0.80'), isTrue);
+      expect(brushingScreenSrc.contains('_phaseDuration * 0.50'), isTrue);
+      expect(brushingScreenSrc.contains('_phaseDuration * 0.20'), isTrue);
     });
 
     test('10s phase: thresholds are 8, 5, 2 (all distinct)', () {
@@ -275,10 +284,12 @@ void main() {
     test('thresholds are strictly decreasing for all supported durations', () {
       for (final d in [10, 15, 20]) {
         final t = thresholdsFor(d);
-        expect(t[0] > t[1], isTrue,
-            reason: 'energize > support for duration $d');
-        expect(t[1] > t[2], isTrue,
-            reason: 'support > almost for duration $d');
+        expect(
+          t[0] > t[1],
+          isTrue,
+          reason: 'energize > support for duration $d',
+        );
+        expect(t[1] > t[2], isTrue, reason: 'support > almost for duration $d');
       }
     });
 
@@ -286,8 +297,11 @@ void main() {
       for (final d in [10, 15, 20]) {
         final t = thresholdsFor(d);
         for (final v in t) {
-          expect(v >= 1 && v < d, isTrue,
-              reason: 'threshold $v out of range for duration $d');
+          expect(
+            v >= 1 && v < d,
+            isTrue,
+            reason: 'threshold $v out of range for duration $d',
+          );
         }
       }
     });
@@ -309,23 +323,32 @@ void main() {
     test('source defines _encouragementArcs with all arc files', () {
       for (final arc in arcFiles) {
         for (final file in arc) {
-          expect(brushingScreenSrc.contains("'$file'"), isTrue,
-              reason: '_encouragementArcs should contain $file');
+          expect(
+            brushingScreenSrc.contains("'$file'"),
+            isTrue,
+            reason: '_encouragementArcs should contain $file',
+          );
         }
       }
     });
 
     test('each arc has exactly 3 beats', () {
       for (final arc in arcFiles) {
-        expect(arc.length, 3,
-            reason: 'each arc must have 3 beats (energize, support, finish)');
+        expect(
+          arc.length,
+          3,
+          reason: 'each arc must have 3 beats (energize, support, finish)',
+        );
       }
     });
 
     test('no duplicate files across all arcs', () {
       final all = arcFiles.expand((a) => a).toList();
-      expect(all.toSet().length, all.length,
-          reason: 'duplicate found across arcs');
+      expect(
+        all.toSet().length,
+        all.length,
+        reason: 'duplicate found across arcs',
+      );
     });
   });
 
@@ -358,56 +381,35 @@ void main() {
         brushingScreenSrc.contains("BrushPhase.topLeft: 'voice_top_left.mp3'"),
         isTrue,
       );
+      expect(brushingScreenSrc.contains("BrushPhase.topFront:"), isTrue);
       expect(
-        brushingScreenSrc.contains("BrushPhase.topFront:"),
+        brushingScreenSrc.contains(
+          "BrushPhase.topRight: 'voice_top_right.mp3'",
+        ),
         isTrue,
       );
       expect(
-        brushingScreenSrc
-            .contains("BrushPhase.topRight: 'voice_top_right.mp3'"),
+        brushingScreenSrc.contains(
+          "BrushPhase.bottomLeft: 'voice_bottom_left.mp3'",
+        ),
         isTrue,
       );
+      expect(brushingScreenSrc.contains("BrushPhase.bottomFront:"), isTrue);
       expect(
-        brushingScreenSrc
-            .contains("BrushPhase.bottomLeft: 'voice_bottom_left.mp3'"),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains("BrushPhase.bottomFront:"),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc
-            .contains("BrushPhase.bottomRight: 'voice_bottom_right.mp3'"),
+        brushingScreenSrc.contains(
+          "BrushPhase.bottomRight: 'voice_bottom_right.mp3'",
+        ),
         isTrue,
       );
     });
 
     test('brushPhaseOrder contains exactly the 6 brushing phases', () {
-      expect(
-        brushingScreenSrc.contains('BrushPhase.topLeft,'),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains('BrushPhase.topFront,'),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains('BrushPhase.topRight,'),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains('BrushPhase.bottomLeft,'),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains('BrushPhase.bottomFront,'),
-        isTrue,
-      );
-      expect(
-        brushingScreenSrc.contains('BrushPhase.bottomRight,'),
-        isTrue,
-      );
+      expect(brushingScreenSrc.contains('BrushPhase.topLeft,'), isTrue);
+      expect(brushingScreenSrc.contains('BrushPhase.topFront,'), isTrue);
+      expect(brushingScreenSrc.contains('BrushPhase.topRight,'), isTrue);
+      expect(brushingScreenSrc.contains('BrushPhase.bottomLeft,'), isTrue);
+      expect(brushingScreenSrc.contains('BrushPhase.bottomFront,'), isTrue);
+      expect(brushingScreenSrc.contains('BrushPhase.bottomRight,'), isTrue);
     });
 
     test('all phase voice files are in _allAudioFiles', () {
@@ -439,24 +441,33 @@ void main() {
     test('source defines _victoryArcs with all arc files', () {
       for (final arc in victoryArcFiles) {
         for (final file in arc) {
-          expect(victoryScreenSrc.contains("'$file'"), isTrue,
-              reason: '_victoryArcs should contain $file');
+          expect(
+            victoryScreenSrc.contains("'$file'"),
+            isTrue,
+            reason: '_victoryArcs should contain $file',
+          );
         }
       }
     });
 
     test('each victory arc has exactly 2 beats', () {
       for (final arc in victoryArcFiles) {
-        expect(arc.length, 2,
-            reason: 'each arc must have 2 beats (celebrate, star)');
+        expect(
+          arc.length,
+          2,
+          reason: 'each arc must have 2 beats (celebrate, star)',
+        );
       }
     });
 
     test('all victory arc files are in _allAudioFiles', () {
       for (final arc in victoryArcFiles) {
         for (final file in arc) {
-          expect(audioServiceSrc.contains("'$file'"), isTrue,
-              reason: '$file should be in _allAudioFiles');
+          expect(
+            audioServiceSrc.contains("'$file'"),
+            isTrue,
+            reason: '$file should be in _allAudioFiles',
+          );
         }
       }
     });
@@ -505,7 +516,13 @@ void main() {
         jackpotCeil = 99;
       }
       return {
-        'ceilings': [confettiCeil, danceCeil, bonusCeil, doubleCeil, jackpotCeil],
+        'ceilings': [
+          confettiCeil,
+          danceCeil,
+          bonusCeil,
+          doubleCeil,
+          jackpotCeil,
+        ],
       };
     }
 
@@ -523,32 +540,40 @@ void main() {
       expect(victoryScreenSrc.contains('_rollChestReward'), isTrue);
     });
 
-    test('no-streak tier: confetti=35, dance=60, bonus=85, double=95, jackpot=99',
-        () {
-      final c = ceilingsForStreak(0)['ceilings']!;
-      expect(c, [35, 60, 85, 95, 99]);
-    });
+    test(
+      'no-streak tier: confetti=35, dance=60, bonus=85, double=95, jackpot=99',
+      () {
+        final c = ceilingsForStreak(0)['ceilings']!;
+        expect(c, [35, 60, 85, 95, 99]);
+      },
+    );
 
-    test('streak>=3 tier: confetti=25, dance=45, bonus=70, double=85, jackpot=95',
-        () {
-      final c = ceilingsForStreak(3)['ceilings']!;
-      expect(c, [25, 45, 70, 85, 95]);
-    });
+    test(
+      'streak>=3 tier: confetti=25, dance=45, bonus=70, double=85, jackpot=95',
+      () {
+        final c = ceilingsForStreak(3)['ceilings']!;
+        expect(c, [25, 45, 70, 85, 95]);
+      },
+    );
 
-    test('streak>=7 tier: confetti=20, dance=35, bonus=65, double=83, jackpot=93',
-        () {
-      final c = ceilingsForStreak(7)['ceilings']!;
-      expect(c, [20, 35, 65, 83, 93]);
-    });
+    test(
+      'streak>=7 tier: confetti=20, dance=35, bonus=65, double=83, jackpot=93',
+      () {
+        final c = ceilingsForStreak(7)['ceilings']!;
+        expect(c, [20, 35, 65, 83, 93]);
+      },
+    );
 
     test('every possible roll (0-99) produces a valid voice file', () {
       final validVoices = rewardVoices.values.toSet();
       for (final streak in [0, 1, 2, 3, 5, 7, 10, 20]) {
         for (int roll = 0; roll < 100; roll++) {
           final voice = voiceForRoll(roll, streak);
-          expect(validVoices.contains(voice), isTrue,
-              reason:
-                  'roll=$roll streak=$streak produced invalid voice: $voice');
+          expect(
+            validVoices.contains(voice),
+            isTrue,
+            reason: 'roll=$roll streak=$streak produced invalid voice: $voice',
+          );
         }
       }
     });
@@ -576,20 +601,40 @@ void main() {
 
     test('all chest voice files are in _allAudioFiles', () {
       for (final f in rewardVoices.values.toSet()) {
-        expect(audioServiceSrc.contains("'$f'"), isTrue,
-            reason: '$f should be in _allAudioFiles');
+        expect(
+          audioServiceSrc.contains("'$f'"),
+          isTrue,
+          reason: '$f should be in _allAudioFiles',
+        );
       }
     });
 
-    test('bonus stars: confetti=0, dance=0, bonus=1, double=1, jackpot=3, mega=5',
-        () {
-      // Verify these from the source
-      expect(victoryScreenSrc.contains("type: _ChestRewardType.confetti,"), isTrue);
-      expect(victoryScreenSrc.contains("type: _ChestRewardType.dance,"), isTrue);
-      expect(victoryScreenSrc.contains("type: _ChestRewardType.bonusStar,"), isTrue);
-      expect(victoryScreenSrc.contains("type: _ChestRewardType.doubleStar,"), isTrue);
-      expect(victoryScreenSrc.contains("type: _ChestRewardType.jackpot,"), isTrue);
-    });
+    test(
+      'bonus stars: confetti=0, dance=0, bonus=1, double=1, jackpot=3, mega=5',
+      () {
+        // Verify these from the source
+        expect(
+          victoryScreenSrc.contains("type: _ChestRewardType.confetti,"),
+          isTrue,
+        );
+        expect(
+          victoryScreenSrc.contains("type: _ChestRewardType.dance,"),
+          isTrue,
+        );
+        expect(
+          victoryScreenSrc.contains("type: _ChestRewardType.bonusStar,"),
+          isTrue,
+        );
+        expect(
+          victoryScreenSrc.contains("type: _ChestRewardType.doubleStar,"),
+          isTrue,
+        );
+        expect(
+          victoryScreenSrc.contains("type: _ChestRewardType.jackpot,"),
+          isTrue,
+        );
+      },
+    );
   });
 
   // ===========================================================================
@@ -659,8 +704,11 @@ void main() {
         'voice_onboarding_2.mp3',
         'voice_onboarding_3.mp3',
       ]) {
-        expect(audioServiceSrc.contains("'$f'"), isTrue,
-            reason: '$f should be in _allAudioFiles');
+        expect(
+          audioServiceSrc.contains("'$f'"),
+          isTrue,
+          reason: '$f should be in _allAudioFiles',
+        );
       }
     });
 
@@ -701,20 +749,24 @@ void main() {
 
       for (int call = 0; call < 30; call++) {
         String selected =
-            encouragementVoices[encouragementIndex % encouragementVoices.length];
+            encouragementVoices[encouragementIndex %
+                encouragementVoices.length];
         int safety = 0;
         while (selected == lastVoice &&
             safety < encouragementVoices.length + 2) {
           encouragementIndex++;
-          selected = encouragementVoices[
-              encouragementIndex % encouragementVoices.length];
+          selected =
+              encouragementVoices[encouragementIndex %
+                  encouragementVoices.length];
           safety++;
         }
         // The selected voice should differ from the last one
         if (lastVoice != null) {
-          expect(selected != lastVoice, isTrue,
-              reason:
-                  'call $call should not repeat: got $selected == $lastVoice');
+          expect(
+            selected != lastVoice,
+            isTrue,
+            reason: 'call $call should not repeat: got $selected == $lastVoice',
+          );
         }
         lastVoice = selected;
         encouragementIndex++;
@@ -723,8 +775,11 @@ void main() {
 
     test('all _encouragementVoices are in _allAudioFiles', () {
       for (final v in encouragementVoices) {
-        expect(audioServiceSrc.contains("'$v'"), isTrue,
-            reason: '$v should be listed in _allAudioFiles');
+        expect(
+          audioServiceSrc.contains("'$v'"),
+          isTrue,
+          reason: '$v should be listed in _allAudioFiles',
+        );
       }
     });
   });
@@ -741,9 +796,11 @@ void main() {
       expect(audioServiceSrc.contains("'star_chime.mp3'"), isTrue);
     });
 
-    test('voice_lets_fight.mp3 is in _allAudioFiles (played at onboarding end)',
-        () {
-      expect(audioServiceSrc.contains("'voice_lets_fight.mp3'"), isTrue);
-    });
+    test(
+      'voice_lets_fight.mp3 is in _allAudioFiles (played at onboarding end)',
+      () {
+        expect(audioServiceSrc.contains("'voice_lets_fight.mp3'"), isTrue);
+      },
+    );
   });
 }

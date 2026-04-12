@@ -125,10 +125,7 @@ class AnalyticsService {
   }) async {
     await _analytics.logEvent(
       name: 'hero_unlock',
-      parameters: {
-        'hero_id': heroId,
-        'stars_at_unlock': starsAtUnlock,
-      },
+      parameters: {'hero_id': heroId, 'stars_at_unlock': starsAtUnlock},
     );
   }
 
@@ -138,10 +135,7 @@ class AnalyticsService {
   }) async {
     await _analytics.logEvent(
       name: 'weapon_unlock',
-      parameters: {
-        'weapon_id': weaponId,
-        'stars_at_unlock': starsAtUnlock,
-      },
+      parameters: {'weapon_id': weaponId, 'stars_at_unlock': starsAtUnlock},
     );
   }
 

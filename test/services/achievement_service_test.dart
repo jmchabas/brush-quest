@@ -23,13 +23,21 @@ void main() {
     // ── first_brush milestone ──
 
     test('first_brush unlocks at 1 brush', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 1,
+        totalBrushes: 1,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, contains('first_brush'));
     });
 
     test('first_brush does not unlock at 0 brushes', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 0);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 0,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, isNot(contains('first_brush')));
     });
@@ -81,37 +89,61 @@ void main() {
     // ── brush milestones ──
 
     test('brushes_10 unlocks at 10 brushes', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 10);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 10,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, contains('brushes_10'));
     });
 
     test('brushes_10 does not unlock at 9 brushes', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 9);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 9,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, isNot(contains('brushes_10')));
     });
 
     test('brushes_25 unlocks at 25 brushes', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 25);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 25,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, contains('brushes_25'));
     });
 
     test('brushes_50 unlocks at 50 brushes', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 50);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 50,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, contains('brushes_50'));
     });
 
     test('brushes_100 unlocks at 100 brushes', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 100);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 100,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, contains('brushes_100'));
     });
 
     test('brushes_100 does not unlock at 99 brushes', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 99);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 99,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, isNot(contains('brushes_100')));
     });
@@ -169,13 +201,21 @@ void main() {
     });
 
     test('brushes_100 gives 5 bonus stars', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0, totalBrushes: 100);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 0,
+        totalBrushes: 100,
+      );
       final b100 = result.firstWhere((a) => a.id == 'brushes_100');
       expect(b100.bonusStars, 5);
     });
 
     test('first_brush gives 0 bonus stars', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
+      final result = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 1,
+        totalBrushes: 1,
+      );
       final first = result.firstWhere((a) => a.id == 'first_brush');
       expect(first.bonusStars, 0);
     });
@@ -190,61 +230,109 @@ void main() {
 
     // ── Multiple achievements in one call ──
 
-    test('multiple achievements unlock together when conditions are met', () async {
-      final result = await service.checkAndUnlock(streak: 7, totalStars: 25, totalBrushes: 25);
-      final ids = result.map((a) => a.id).toSet();
-      expect(ids, containsAll(['first_brush', 'streak_3', 'streak_7', 'stars_10', 'stars_25']));
-    });
+    test(
+      'multiple achievements unlock together when conditions are met',
+      () async {
+        final result = await service.checkAndUnlock(
+          streak: 7,
+          totalStars: 25,
+          totalBrushes: 25,
+        );
+        final ids = result.map((a) => a.id).toSet();
+        expect(
+          ids,
+          containsAll([
+            'first_brush',
+            'streak_3',
+            'streak_7',
+            'stars_10',
+            'stars_25',
+          ]),
+        );
+      },
+    );
 
     test('all 13 achievements unlock together at max stats', () async {
-      final result = await service.checkAndUnlock(streak: 30, totalStars: 100, totalBrushes: 100);
+      final result = await service.checkAndUnlock(
+        streak: 30,
+        totalStars: 100,
+        totalBrushes: 100,
+      );
       expect(result.length, 13);
     });
 
     // ── Already-unlocked achievements don't re-trigger ──
 
     test('already unlocked achievements are not returned again', () async {
-      final first = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
+      final first = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 1,
+        totalBrushes: 1,
+      );
       expect(first.map((a) => a.id), contains('first_brush'));
 
-      final second = await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
+      final second = await service.checkAndUnlock(
+        streak: 0,
+        totalStars: 1,
+        totalBrushes: 1,
+      );
       expect(second, isEmpty);
     });
 
-    test('only newly earned achievements are returned on progressive unlock', () async {
-      await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
+    test(
+      'only newly earned achievements are returned on progressive unlock',
+      () async {
+        await service.checkAndUnlock(streak: 0, totalStars: 1, totalBrushes: 1);
 
-      final result = await service.checkAndUnlock(streak: 3, totalStars: 3, totalBrushes: 3);
-      final ids = result.map((a) => a.id).toList();
-      expect(ids, contains('streak_3'));
-      expect(ids, isNot(contains('first_brush')));
-    });
+        final result = await service.checkAndUnlock(
+          streak: 3,
+          totalStars: 3,
+          totalBrushes: 3,
+        );
+        final ids = result.map((a) => a.id).toList();
+        expect(ids, contains('streak_3'));
+        expect(ids, isNot(contains('first_brush')));
+      },
+    );
 
     test('pre-saved achievement in prefs is not re-triggered', () async {
-      SharedPreferences.setMockInitialValues({
-        'achievement_first_brush': true,
-      });
+      SharedPreferences.setMockInitialValues({'achievement_first_brush': true});
       final svc = AchievementService();
-      final result = await svc.checkAndUnlock(streak: 0, totalStars: 5, totalBrushes: 5);
+      final result = await svc.checkAndUnlock(
+        streak: 0,
+        totalStars: 5,
+        totalBrushes: 5,
+      );
       final ids = result.map((a) => a.id).toList();
       expect(ids, isNot(contains('first_brush')));
     });
 
     // ── Achievement data integrity ──
 
-    test('every achievement has a non-empty id, title, description, and emoji', () async {
-      final result = await service.checkAndUnlock(streak: 30, totalStars: 100, totalBrushes: 100);
-      expect(result.length, 13);
-      for (final achievement in result) {
-        expect(achievement.id, isNotEmpty);
-        expect(achievement.title, isNotEmpty);
-        expect(achievement.description, isNotEmpty);
-        expect(achievement.emoji, isNotEmpty);
-      }
-    });
+    test(
+      'every achievement has a non-empty id, title, description, and emoji',
+      () async {
+        final result = await service.checkAndUnlock(
+          streak: 30,
+          totalStars: 100,
+          totalBrushes: 100,
+        );
+        expect(result.length, 13);
+        for (final achievement in result) {
+          expect(achievement.id, isNotEmpty);
+          expect(achievement.title, isNotEmpty);
+          expect(achievement.description, isNotEmpty);
+          expect(achievement.emoji, isNotEmpty);
+        }
+      },
+    );
 
     test('all achievement ids are unique', () async {
-      final result = await service.checkAndUnlock(streak: 30, totalStars: 100, totalBrushes: 100);
+      final result = await service.checkAndUnlock(
+        streak: 30,
+        totalStars: 100,
+        totalBrushes: 100,
+      );
       final ids = result.map((a) => a.id).toSet();
       expect(ids.length, result.length);
     });
@@ -265,10 +353,13 @@ void main() {
 
     // ── totalBrushes defaults to 0 (backwards compatible) ──
 
-    test('totalBrushes defaults to 0 so brush milestones do not unlock without it', () async {
-      final result = await service.checkAndUnlock(streak: 0, totalStars: 0);
-      final ids = result.map((a) => a.id).toSet();
-      expect(ids, isNot(contains('brushes_10')));
-    });
+    test(
+      'totalBrushes defaults to 0 so brush milestones do not unlock without it',
+      () async {
+        final result = await service.checkAndUnlock(streak: 0, totalStars: 0);
+        final ids = result.map((a) => a.id).toSet();
+        expect(ids, isNot(contains('brushes_10')));
+      },
+    );
   });
 }

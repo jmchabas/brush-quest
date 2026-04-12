@@ -121,13 +121,17 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     return 'voice_shop_nudge_default.mp3';
   }
 
-  Future<void> _onEvolutionTap(HeroCharacter hero, HeroEvolution evolution) async {
+  Future<void> _onEvolutionTap(
+    HeroCharacter hero,
+    HeroEvolution evolution,
+  ) async {
     final isHeroOwned = _unlockedHeroes.contains(hero.id);
     final isEvoOwned = evolution.stage == 1
         ? isHeroOwned
         : _unlockedEvolutions.contains(evolution.id);
     final currentStage = _evolutionStages[hero.id] ?? 1;
-    final isEquipped = _selectedHeroId == hero.id && currentStage == evolution.stage;
+    final isEquipped =
+        _selectedHeroId == hero.id && currentStage == evolution.stage;
 
     if (isEquipped) return;
 
@@ -148,12 +152,21 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                     borderRadius: BorderRadius.circular(8),
                     child: Image.asset(
                       'assets/images/hero_${hero.id}.png',
-                      width: 32, height: 32,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 24),
+                      width: 32,
+                      height: 32,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward, color: Colors.white70, size: 20),
+                  const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
                   const SizedBox(width: 4),
                   const Icon(Icons.star, color: Color(0xFFFFD54F), size: 24),
                 ],
@@ -168,22 +181,36 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
       if (_wallet >= hero.price) {
         if (hero.price > 0) {
-          final confirmed = await _showPurchaseConfirmation(hero.name, hero.price);
+          final confirmed = await _showPurchaseConfirmation(
+            hero.name,
+            hero.price,
+          );
           if (!confirmed) return;
         }
         final success = await _heroService.purchaseHero(hero.id);
         if (success) {
           await _heroService.selectHero(hero.id);
           unawaited(HapticFeedback.heavyImpact());
-          unawaited(AnalyticsService().logHeroUnlock(heroId: hero.id, starsAtUnlock: _rank));
+          unawaited(
+            AnalyticsService().logHeroUnlock(
+              heroId: hero.id,
+              starsAtUnlock: _rank,
+            ),
+          );
           if (mounted) _showHeroUnlockAnimation(hero);
           await _loadData();
         }
       } else {
         unawaited(HapticFeedback.lightImpact());
-        _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
+        _playSelectionVoice(
+          AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage),
+        );
         unawaited(AudioService().playVoice(await _selectNudgeVoice()));
-        _showCannotAffordSnackBar(price: hero.price, wallet: _wallet, accentColor: hero.primaryColor);
+        _showCannotAffordSnackBar(
+          price: hero.price,
+          wallet: _wallet,
+          accentColor: hero.primaryColor,
+        );
       }
       return;
     }
@@ -193,7 +220,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       await _heroService.selectHero(hero.id);
       await _heroService.setEvolutionStage(hero.id, evolution.stage);
       unawaited(HapticFeedback.mediumImpact());
-      _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
+      _playSelectionVoice(
+        AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage),
+      );
       await _loadData();
     } else if (_wallet >= evolution.price) {
       // Check sequential gating: stage 3 needs stage 2
@@ -201,7 +230,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         final prevId = '${hero.id}_stage${evolution.stage - 1}';
         if (!_unlockedEvolutions.contains(prevId)) {
           unawaited(HapticFeedback.lightImpact());
-          _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
+          _playSelectionVoice(
+            AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage),
+          );
           unawaited(AudioService().playVoice(await _selectNudgeVoice()));
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -216,25 +247,33 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                       borderRadius: BorderRadius.circular(8),
                       child: Image.asset(
                         'assets/images/heroes/hero_${hero.id}_stage${evolution.stage - 1}_star_blaster.png',
-                        width: 32, height: 32,
+                        width: 32,
+                        height: 32,
                         errorBuilder: (_, __, ___) => Image.asset(
                           'assets/images/hero_${hero.id}.png',
-                          width: 32, height: 32,
+                          width: 32,
+                          height: 32,
                         ),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(Icons.arrow_forward, color: Colors.white70, size: 18),
+                    const Icon(
+                      Icons.arrow_forward,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
                     const SizedBox(width: 6),
                     // Current stage thumbnail
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.asset(
                         'assets/images/heroes/hero_${hero.id}_stage${evolution.stage}_star_blaster.png',
-                        width: 32, height: 32,
+                        width: 32,
+                        height: 32,
                         errorBuilder: (_, __, ___) => Image.asset(
                           'assets/images/hero_${hero.id}.png',
-                          width: 32, height: 32,
+                          width: 32,
+                          height: 32,
                         ),
                       ),
                     ),
@@ -249,7 +288,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           return;
         }
       }
-      final confirmed = await _showPurchaseConfirmation(evolution.name, evolution.price);
+      final confirmed = await _showPurchaseConfirmation(
+        evolution.name,
+        evolution.price,
+      );
       if (!confirmed) return;
       final success = await _heroService.purchaseEvolution(evolution.id);
       if (success) {
@@ -260,9 +302,15 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     } else {
       unawaited(HapticFeedback.lightImpact());
-      _playSelectionVoice(AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage));
+      _playSelectionVoice(
+        AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage),
+      );
       unawaited(AudioService().playVoice(await _selectNudgeVoice()));
-      _showCannotAffordSnackBar(price: evolution.price, wallet: _wallet, accentColor: hero.primaryColor);
+      _showCannotAffordSnackBar(
+        price: evolution.price,
+        wallet: _wallet,
+        accentColor: hero.primaryColor,
+      );
     }
   }
 
@@ -276,14 +324,22 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       await _loadData();
     } else if (_wallet >= weapon.price) {
       if (weapon.price > 0) {
-        final confirmed = await _showPurchaseConfirmation(weapon.name, weapon.price);
+        final confirmed = await _showPurchaseConfirmation(
+          weapon.name,
+          weapon.price,
+        );
         if (!confirmed) return;
       }
       final success = await _weaponService.purchaseWeapon(weapon.id);
       if (success) {
         await _weaponService.selectWeapon(weapon.id);
         unawaited(HapticFeedback.heavyImpact());
-        unawaited(AnalyticsService().logWeaponUnlock(weaponId: weapon.id, starsAtUnlock: _rank));
+        unawaited(
+          AnalyticsService().logWeaponUnlock(
+            weaponId: weapon.id,
+            starsAtUnlock: _rank,
+          ),
+        );
         // Finding #8: Don't play voice here — the unlock dialog's initState
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showWeaponUnlockAnimation(weapon);
@@ -307,41 +363,78 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     _isPurchaseDialogOpen = true;
     try {
       return await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Get $itemName?',
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.star, color: Colors.amber, size: 32),
-                const SizedBox(width: 8),
-                Text('$price', style: const TextStyle(color: Colors.amber, fontSize: 32, fontWeight: FontWeight.bold)),
-              ]),
-              const SizedBox(height: 24),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Not yet', style: TextStyle(color: Colors.white54, fontSize: 18)),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00E676),
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF1A1A2E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Get $itemName?',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('YES!', style: TextStyle(color: Colors.black, fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-              ]),
-            ],
-          ),
-        ),
-      ) ?? false;
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 32),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$price',
+                        style: const TextStyle(
+                          color: Colors.amber,
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text(
+                          'Not yet',
+                          style: TextStyle(color: Colors.white54, fontSize: 18),
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF00E676),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text(
+                          'YES!',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          false;
     } finally {
       _isPurchaseDialogOpen = false;
     }
@@ -377,7 +470,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
               ),
             ),
             const SizedBox(width: 10),
-            Icon(Icons.auto_awesome, color: accentColor.withValues(alpha: 0.7), size: 20),
+            Icon(
+              Icons.auto_awesome,
+              color: accentColor.withValues(alpha: 0.7),
+              size: 20,
+            ),
           ],
         ),
         shape: RoundedRectangleBorder(
@@ -405,7 +502,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       builder: (context) => _WeaponUnlockDialog(weapon: weapon),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -601,30 +697,26 @@ class _HeroShopScreenState extends State<HeroShopScreen>
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
             ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final weapon = WeaponService.allWeapons[index];
-                final isUnlocked = _unlockedWeapons.contains(weapon.id);
-                final isSelected = _selectedWeaponId == weapon.id;
-                final canAfford = _wallet >= weapon.price;
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final weapon = WeaponService.allWeapons[index];
+              final isUnlocked = _unlockedWeapons.contains(weapon.id);
+              final isSelected = _selectedWeaponId == weapon.id;
+              final canAfford = _wallet >= weapon.price;
 
-                return _WeaponCard(
-                  weapon: weapon,
-                  isUnlocked: isUnlocked,
-                  isSelected: isSelected,
-                  canAfford: canAfford,
-                  currentStars: _wallet,
-                  onTap: () => _onWeaponTap(weapon),
-                );
-              },
-              childCount: WeaponService.allWeapons.length,
-            ),
+              return _WeaponCard(
+                weapon: weapon,
+                isUnlocked: isUnlocked,
+                isSelected: isSelected,
+                canAfford: canAfford,
+                currentStars: _wallet,
+                onTap: () => _onWeaponTap(weapon),
+              );
+            }, childCount: WeaponService.allWeapons.length),
           ),
         ),
       ],
     );
   }
-
 }
 
 class _HeroEvolutionRow extends StatelessWidget {
@@ -666,10 +758,12 @@ class _HeroEvolutionRow extends StatelessWidget {
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
-              ? [BoxShadow(
-                  color: hero.primaryColor.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                )]
+              ? [
+                  BoxShadow(
+                    color: hero.primaryColor.withValues(alpha: 0.2),
+                    blurRadius: 12,
+                  ),
+                ]
               : null,
         ),
         child: Row(
@@ -677,8 +771,11 @@ class _HeroEvolutionRow extends StatelessWidget {
             for (int i = 0; i < evolutions.length; i++) ...[
               if (i > 0) ...[
                 const SizedBox(width: 2),
-                Icon(Icons.arrow_forward_ios, size: 12,
-                  color: Colors.white.withValues(alpha: 0.25)),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 12,
+                  color: Colors.white.withValues(alpha: 0.25),
+                ),
                 const SizedBox(width: 2),
               ],
               Expanded(
@@ -690,8 +787,11 @@ class _HeroEvolutionRow extends StatelessWidget {
                       ? isHeroOwned
                       : unlockedEvolutions.contains(evolutions[i].id),
                   isEquipped: isSelected && currentStage == evolutions[i].stage,
-                  isGated: evolutions[i].stage >= 3 &&
-                      !unlockedEvolutions.contains('${hero.id}_stage${evolutions[i].stage - 1}'),
+                  isGated:
+                      evolutions[i].stage >= 3 &&
+                      !unlockedEvolutions.contains(
+                        '${hero.id}_stage${evolutions[i].stage - 1}',
+                      ),
                   wallet: wallet,
                   weaponId: selectedWeaponId,
                   onTap: () => onEvolutionTap(evolutions[i]),
@@ -737,14 +837,19 @@ class _EvolutionCellState extends State<_EvolutionCell>
   AnimationController? _pulseController;
 
   int get _displayPrice {
-    if (widget.evolution.stage == 1 && !widget.isHeroOwned) return widget.hero.price;
+    if (widget.evolution.stage == 1 && !widget.isHeroOwned) {
+      return widget.hero.price;
+    }
     return widget.evolution.price;
   }
 
   bool get _canAfford => widget.wallet >= _displayPrice;
 
   bool get _showBuyIndicator =>
-      !widget.isOwned && _canAfford && _displayPrice > 0 && !widget.isGated &&
+      !widget.isOwned &&
+      _canAfford &&
+      _displayPrice > 0 &&
+      !widget.isGated &&
       !(widget.evolution.stage > 1 && !widget.isHeroOwned);
 
   @override
@@ -781,7 +886,9 @@ class _EvolutionCellState extends State<_EvolutionCell>
   Widget build(BuildContext context) {
     final locked = !widget.isOwned;
     final showPrice = locked && _displayPrice > 0;
-    final showLock = locked && !_showBuyIndicator &&
+    final showLock =
+        locked &&
+        !_showBuyIndicator &&
         (widget.isGated || (!widget.isHeroOwned && widget.evolution.stage > 1));
 
     Widget cell = GestureDetector(
@@ -793,25 +900,31 @@ class _EvolutionCellState extends State<_EvolutionCell>
           color: widget.isEquipped
               ? widget.hero.primaryColor.withValues(alpha: 0.15)
               : _showBuyIndicator
-                  ? const Color(0xFF00E676).withValues(alpha: 0.08)
-                  : Colors.white.withValues(alpha: 0.03),
+              ? const Color(0xFF00E676).withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: widget.isEquipped
                 ? widget.hero.primaryColor.withValues(alpha: 0.7)
                 : _showBuyIndicator
-                    ? const Color(0xFF00E676).withValues(alpha: 0.6)
-                    : locked
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.white.withValues(alpha: 0.15),
-            width: widget.isEquipped ? 2 : _showBuyIndicator ? 2 : 1,
+                ? const Color(0xFF00E676).withValues(alpha: 0.6)
+                : locked
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.15),
+            width: widget.isEquipped
+                ? 2
+                : _showBuyIndicator
+                ? 2
+                : 1,
           ),
           boxShadow: _showBuyIndicator
-              ? [BoxShadow(
-                  color: const Color(0xFF00E676).withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  spreadRadius: 1,
-                )]
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ]
               : null,
         ),
         child: Column(
@@ -825,7 +938,10 @@ class _EvolutionCellState extends State<_EvolutionCell>
                 child: ColorFiltered(
                   colorFilter: locked
                       ? ColorFilter.matrix(_partialDesaturationMatrix(0.5))
-                      : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                      : const ColorFilter.mode(
+                          Colors.transparent,
+                          BlendMode.dst,
+                        ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -851,11 +967,15 @@ class _EvolutionCellState extends State<_EvolutionCell>
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF00E676).withValues(alpha: 0.85),
+                            color: const Color(
+                              0xFF00E676,
+                            ).withValues(alpha: 0.85),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF00E676).withValues(alpha: 0.5),
+                                color: const Color(
+                                  0xFF00E676,
+                                ).withValues(alpha: 0.5),
                                 blurRadius: 8,
                                 spreadRadius: 2,
                               ),
@@ -875,17 +995,17 @@ class _EvolutionCellState extends State<_EvolutionCell>
             const SizedBox(height: 4),
             // Status indicator
             if (widget.isEquipped)
-              Icon(Icons.check_circle, color: widget.hero.primaryColor, size: 18)
+              Icon(
+                Icons.check_circle,
+                color: widget.hero.primaryColor,
+                size: 18,
+              )
             else if (_showBuyIndicator)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.star,
-                    color: Color(0xFF00E676),
-                    size: 14,
-                  ),
+                  const Icon(Icons.star, color: Color(0xFF00E676), size: 14),
                   const SizedBox(width: 2),
                   Text(
                     '$_displayPrice',
@@ -939,8 +1059,9 @@ class _EvolutionCellState extends State<_EvolutionCell>
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00E676)
-                      .withValues(alpha: 0.15 + _pulseController!.value * 0.2),
+                  color: const Color(
+                    0xFF00E676,
+                  ).withValues(alpha: 0.15 + _pulseController!.value * 0.2),
                   blurRadius: 8 + _pulseController!.value * 6,
                   spreadRadius: _pulseController!.value * 2,
                 ),
@@ -1028,11 +1149,15 @@ class _WeaponCardState extends State<_WeaponCard>
             color: widget.isSelected
                 ? widget.weapon.primaryColor
                 : _showBuyIndicator
-                    ? const Color(0xFF00E676).withValues(alpha: 0.6)
-                    : widget.isUnlocked
-                        ? Colors.white.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.1),
-            width: widget.isSelected ? 3 : _showBuyIndicator ? 2 : 1,
+                ? const Color(0xFF00E676).withValues(alpha: 0.6)
+                : widget.isUnlocked
+                ? Colors.white.withValues(alpha: 0.2)
+                : Colors.white.withValues(alpha: 0.1),
+            width: widget.isSelected
+                ? 3
+                : _showBuyIndicator
+                ? 2
+                : 1,
           ),
           boxShadow: widget.isSelected
               ? [
@@ -1043,14 +1168,14 @@ class _WeaponCardState extends State<_WeaponCard>
                   ),
                 ]
               : _showBuyIndicator
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF00E676).withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : null,
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF00E676).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
         ),
         child: Stack(
           children: [
@@ -1069,8 +1194,13 @@ class _WeaponCardState extends State<_WeaponCard>
                                   Colors.transparent,
                                   BlendMode.dst,
                                 )
-                              : ColorFilter.matrix(_partialDesaturationMatrix(0.45)),
-                          child: Image.asset(widget.weapon.imagePath, fit: BoxFit.cover),
+                              : ColorFilter.matrix(
+                                  _partialDesaturationMatrix(0.45),
+                                ),
+                          child: Image.asset(
+                            widget.weapon.imagePath,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
@@ -1176,8 +1306,9 @@ class _WeaponCardState extends State<_WeaponCard>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF00E676)
-                      .withValues(alpha: 0.15 + _pulseController!.value * 0.2),
+                  color: const Color(
+                    0xFF00E676,
+                  ).withValues(alpha: 0.15 + _pulseController!.value * 0.2),
                   blurRadius: 8 + _pulseController!.value * 6,
                   spreadRadius: _pulseController!.value * 2,
                 ),
@@ -1204,10 +1335,26 @@ List<double> _partialDesaturationMatrix(double saturation) {
   const double lumB = 0.0722;
 
   return <double>[
-    lumR * invSat + saturation, lumG * invSat,               lumB * invSat,               0, 0,
-    lumR * invSat,               lumG * invSat + saturation, lumB * invSat,               0, 0,
-    lumR * invSat,               lumG * invSat,               lumB * invSat + saturation, 0, 0,
-    0,                           0,                           0,                           1, 0,
+    lumR * invSat + saturation,
+    lumG * invSat,
+    lumB * invSat,
+    0,
+    0,
+    lumR * invSat,
+    lumG * invSat + saturation,
+    lumB * invSat,
+    0,
+    0,
+    lumR * invSat,
+    lumG * invSat,
+    lumB * invSat + saturation,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 }
 
@@ -1313,7 +1460,11 @@ class _HeroUnlockDialogState extends State<_HeroUnlockDialog>
       vsync: this,
     )..forward();
 
-    AudioService().playVoice('voice_intro_hero_${widget.hero.id}.mp3', clearQueue: true, interrupt: true);
+    AudioService().playVoice(
+      'voice_intro_hero_${widget.hero.id}.mp3',
+      clearQueue: true,
+      interrupt: true,
+    );
 
     Future.delayed(const Duration(seconds: 6), () {
       if (mounted) Navigator.of(context).pop();
@@ -1343,7 +1494,10 @@ class _HeroUnlockDialogState extends State<_HeroUnlockDialog>
                   width: 120,
                   height: 120,
                   child: ClipOval(
-                    child: Image.asset(widget.hero.imagePath, fit: BoxFit.cover),
+                    child: Image.asset(
+                      widget.hero.imagePath,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -1394,7 +1548,11 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
       vsync: this,
     )..forward();
 
-    AudioService().playVoice('voice_intro_weapon_${widget.weapon.id}.mp3', clearQueue: true, interrupt: true);
+    AudioService().playVoice(
+      'voice_intro_weapon_${widget.weapon.id}.mp3',
+      clearQueue: true,
+      interrupt: true,
+    );
 
     Future.delayed(const Duration(seconds: 6), () {
       if (mounted) Navigator.of(context).pop();
@@ -1474,8 +1632,9 @@ class _PriceTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tagColor =
-        canAfford ? Colors.yellowAccent : Colors.white.withValues(alpha: 0.5);
+    final tagColor = canAfford
+        ? Colors.yellowAccent
+        : Colors.white.withValues(alpha: 0.5);
 
     return Column(
       mainAxisSize: MainAxisSize.min,

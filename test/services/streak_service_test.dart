@@ -45,14 +45,17 @@ void main() {
 
     // ── Today brush count ─────────────────────────────────────────
 
-    test('getTodayBrushCount returns correct count after multiple brushes', () async {
-      final service = StreakService();
-      await service.recordBrush();
-      await service.recordBrush();
-      await service.recordBrush();
-      final count = await service.getTodayBrushCount();
-      expect(count, 3);
-    });
+    test(
+      'getTodayBrushCount returns correct count after multiple brushes',
+      () async {
+        final service = StreakService();
+        await service.recordBrush();
+        await service.recordBrush();
+        await service.recordBrush();
+        final count = await service.getTodayBrushCount();
+        expect(count, 3);
+      },
+    );
 
     test('getTodayBrushCount returns 0 when no brushes recorded', () async {
       final service = StreakService();
@@ -60,16 +63,19 @@ void main() {
       expect(count, 0);
     });
 
-    test('getTodayBrushCount returns 0 when stored date differs from today', () async {
-      // Pre-seed with a different date
-      SharedPreferences.setMockInitialValues({
-        'today_date': '1999-01-01',
-        'today_brush_count': 5,
-      });
-      final service = StreakService();
-      final count = await service.getTodayBrushCount();
-      expect(count, 0);
-    });
+    test(
+      'getTodayBrushCount returns 0 when stored date differs from today',
+      () async {
+        // Pre-seed with a different date
+        SharedPreferences.setMockInitialValues({
+          'today_date': '1999-01-01',
+          'today_brush_count': 5,
+        });
+        final service = StreakService();
+        final count = await service.getTodayBrushCount();
+        expect(count, 0);
+      },
+    );
 
     // ── Total stars accumulation ──────────────────────────────────
 
@@ -124,23 +130,26 @@ void main() {
       expect(streak, 1);
     });
 
-    test('streak resets when last_brush_date is not yesterday or today', () async {
-      // Simulate brushing 3 days ago (streak should be broken)
-      final now = DateTime.now();
-      final threeDaysAgo = now.subtract(const Duration(days: 3));
-      final oldDate =
-          '${threeDaysAgo.year}-${threeDaysAgo.month.toString().padLeft(2, '0')}-${threeDaysAgo.day.toString().padLeft(2, '0')}';
+    test(
+      'streak resets when last_brush_date is not yesterday or today',
+      () async {
+        // Simulate brushing 3 days ago (streak should be broken)
+        final now = DateTime.now();
+        final threeDaysAgo = now.subtract(const Duration(days: 3));
+        final oldDate =
+            '${threeDaysAgo.year}-${threeDaysAgo.month.toString().padLeft(2, '0')}-${threeDaysAgo.day.toString().padLeft(2, '0')}';
 
-      SharedPreferences.setMockInitialValues({
-        'last_brush_date': oldDate,
-        'current_streak': 10,
-      });
+        SharedPreferences.setMockInitialValues({
+          'last_brush_date': oldDate,
+          'current_streak': 10,
+        });
 
-      final service = StreakService();
-      await service.recordBrush();
-      final streak = await service.getStreak();
-      expect(streak, 1); // Reset to 1 (today counts)
-    });
+        final service = StreakService();
+        await service.recordBrush();
+        final streak = await service.getStreak();
+        expect(streak, 1); // Reset to 1 (today counts)
+      },
+    );
 
     test('streak continues when last_brush_date is yesterday', () async {
       final now = DateTime.now();
@@ -159,22 +168,25 @@ void main() {
       expect(streak, 6);
     });
 
-    test('streak continues when last brush was 2 days ago (grace period)', () async {
-      final now = DateTime.now();
-      final twoDaysAgo = now.subtract(const Duration(days: 2));
-      final twoDaysAgoStr =
-          '${twoDaysAgo.year}-${twoDaysAgo.month.toString().padLeft(2, '0')}-${twoDaysAgo.day.toString().padLeft(2, '0')}';
+    test(
+      'streak continues when last brush was 2 days ago (grace period)',
+      () async {
+        final now = DateTime.now();
+        final twoDaysAgo = now.subtract(const Duration(days: 2));
+        final twoDaysAgoStr =
+            '${twoDaysAgo.year}-${twoDaysAgo.month.toString().padLeft(2, '0')}-${twoDaysAgo.day.toString().padLeft(2, '0')}';
 
-      SharedPreferences.setMockInitialValues({
-        'last_brush_date': twoDaysAgoStr,
-        'current_streak': 5,
-      });
+        SharedPreferences.setMockInitialValues({
+          'last_brush_date': twoDaysAgoStr,
+          'current_streak': 5,
+        });
 
-      final service = StreakService();
-      await service.recordBrush();
-      final streak = await service.getStreak();
-      expect(streak, 6); // Grace period: streak continues
-    });
+        final service = StreakService();
+        await service.recordBrush();
+        final streak = await service.getStreak();
+        expect(streak, 6); // Grace period: streak continues
+      },
+    );
 
     test('streak breaks when last brush was 3+ days ago (no pause)', () async {
       final now = DateTime.now();
@@ -250,22 +262,25 @@ void main() {
       expect(streak, 11); // Paused: streak continues
     });
 
-    test('getStreak returns 0 when last brush date is stale (more than yesterday)', () async {
-      final now = DateTime.now();
-      final longAgo = now.subtract(const Duration(days: 10));
-      final longAgoStr =
-          '${longAgo.year}-${longAgo.month.toString().padLeft(2, '0')}-${longAgo.day.toString().padLeft(2, '0')}';
+    test(
+      'getStreak returns 0 when last brush date is stale (more than yesterday)',
+      () async {
+        final now = DateTime.now();
+        final longAgo = now.subtract(const Duration(days: 10));
+        final longAgoStr =
+            '${longAgo.year}-${longAgo.month.toString().padLeft(2, '0')}-${longAgo.day.toString().padLeft(2, '0')}';
 
-      SharedPreferences.setMockInitialValues({
-        'last_brush_date': longAgoStr,
-        'current_streak': 7,
-      });
+        SharedPreferences.setMockInitialValues({
+          'last_brush_date': longAgoStr,
+          'current_streak': 7,
+        });
 
-      final service = StreakService();
-      // Don't record a new brush -- just check the read path
-      final streak = await service.getStreak();
-      expect(streak, 0);
-    });
+        final service = StreakService();
+        // Don't record a new brush -- just check the read path
+        final streak = await service.getStreak();
+        expect(streak, 0);
+      },
+    );
 
     test('getStreak returns stored value when last brush is today', () async {
       final now = DateTime.now();
@@ -297,7 +312,9 @@ void main() {
 
     test('isStreakPaused returns false when pause is in the past', () async {
       SharedPreferences.setMockInitialValues({
-        'streak_pause_until': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
+        'streak_pause_until': DateTime.now()
+            .subtract(const Duration(days: 1))
+            .toIso8601String(),
       });
       final service = StreakService();
       expect(await service.isStreakPaused(), false);
@@ -373,18 +390,21 @@ void main() {
       expect(history, isEmpty);
     });
 
-    test('getHistory returns brush records in reverse chronological order', () async {
-      final service = StreakService();
-      await service.recordBrush(heroId: 'blaze', worldId: 'candy_crater');
-      await service.recordBrush(heroId: 'frost', worldId: 'slime_swamp');
-      final history = await service.getHistory();
-      expect(history.length, 2);
-      // Most recent first
-      expect(history[0].heroId, 'frost');
-      expect(history[0].worldId, 'slime_swamp');
-      expect(history[1].heroId, 'blaze');
-      expect(history[1].worldId, 'candy_crater');
-    });
+    test(
+      'getHistory returns brush records in reverse chronological order',
+      () async {
+        final service = StreakService();
+        await service.recordBrush(heroId: 'blaze', worldId: 'candy_crater');
+        await service.recordBrush(heroId: 'frost', worldId: 'slime_swamp');
+        final history = await service.getHistory();
+        expect(history.length, 2);
+        // Most recent first
+        expect(history[0].heroId, 'frost');
+        expect(history[0].worldId, 'slime_swamp');
+        expect(history[1].heroId, 'blaze');
+        expect(history[1].worldId, 'candy_crater');
+      },
+    );
 
     test('getHistory records contain date and time', () async {
       final service = StreakService();
@@ -437,12 +457,15 @@ void main() {
       expect(outcome.newSlotCompleted, true);
     });
 
-    test('subsequent brush of same slot marks newSlotCompleted false', () async {
-      final service = StreakService();
-      await service.recordBrush();
-      final second = await service.recordBrush();
-      expect(second.newSlotCompleted, false);
-    });
+    test(
+      'subsequent brush of same slot marks newSlotCompleted false',
+      () async {
+        final service = StreakService();
+        await service.recordBrush();
+        final second = await service.recordBrush();
+        expect(second.newSlotCompleted, false);
+      },
+    );
 
     // ── TodaySlotsStatus ──────────────────────────────────────────
 
@@ -708,7 +731,10 @@ void main() {
     });
 
     test('migrateToWalletEconomy is idempotent', () async {
-      SharedPreferences.setMockInitialValues({'total_stars': 42, 'star_wallet': 10});
+      SharedPreferences.setMockInitialValues({
+        'total_stars': 42,
+        'star_wallet': 10,
+      });
       await StreakService.migrateToWalletEconomy();
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getInt('star_wallet'), 10); // NOT overwritten
@@ -774,7 +800,6 @@ void main() {
       await service.markFirstComebackSeen();
       expect(await service.hasSeenFirstComeback(), true);
     });
-
   });
 
   group('BonusBreakdown', () {
@@ -782,17 +807,26 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('BrushOutcome exposes dailyBonus separately from streakMultiplierBonus', () {
-      final service = StreakService();
-      final bonus = service.calculateStreakBonusDetailed(streak: 5, bothSlotsDone: true);
-      expect(bonus.dailyBonus, 1);
-      expect(bonus.streakMultiplierBonus, 1);
-      expect(bonus.total, 2);
-    });
+    test(
+      'BrushOutcome exposes dailyBonus separately from streakMultiplierBonus',
+      () {
+        final service = StreakService();
+        final bonus = service.calculateStreakBonusDetailed(
+          streak: 5,
+          bothSlotsDone: true,
+        );
+        expect(bonus.dailyBonus, 1);
+        expect(bonus.streakMultiplierBonus, 1);
+        expect(bonus.total, 2);
+      },
+    );
 
     test('7-day streak gives streakMultiplierBonus of 2', () {
       final service = StreakService();
-      final bonus = service.calculateStreakBonusDetailed(streak: 7, bothSlotsDone: false);
+      final bonus = service.calculateStreakBonusDetailed(
+        streak: 7,
+        bothSlotsDone: false,
+      );
       expect(bonus.dailyBonus, 0);
       expect(bonus.streakMultiplierBonus, 2);
       expect(bonus.total, 2);
@@ -800,7 +834,10 @@ void main() {
 
     test('no streak and single slot gives zero bonus', () {
       final service = StreakService();
-      final bonus = service.calculateStreakBonusDetailed(streak: 1, bothSlotsDone: false);
+      final bonus = service.calculateStreakBonusDetailed(
+        streak: 1,
+        bothSlotsDone: false,
+      );
       expect(bonus.dailyBonus, 0);
       expect(bonus.streakMultiplierBonus, 0);
       expect(bonus.total, 0);
@@ -808,7 +845,10 @@ void main() {
 
     test('7-day streak with both slots gives max bonus of 3', () {
       final service = StreakService();
-      final bonus = service.calculateStreakBonusDetailed(streak: 7, bothSlotsDone: true);
+      final bonus = service.calculateStreakBonusDetailed(
+        streak: 7,
+        bothSlotsDone: true,
+      );
       expect(bonus.dailyBonus, 1);
       expect(bonus.streakMultiplierBonus, 2);
       expect(bonus.total, 3);
@@ -822,27 +862,42 @@ void main() {
 
     test('daily completion bonus awards +1 when both slots done', () async {
       final service = StreakService();
-      final bonus = service.calculateStreakBonus(streak: 1, bothSlotsDone: true);
+      final bonus = service.calculateStreakBonus(
+        streak: 1,
+        bothSlotsDone: true,
+      );
       expect(bonus, 1);
     });
 
     test('streak 3+ adds +1 per brush', () async {
-      final bonus = StreakService().calculateStreakBonus(streak: 3, bothSlotsDone: false);
+      final bonus = StreakService().calculateStreakBonus(
+        streak: 3,
+        bothSlotsDone: false,
+      );
       expect(bonus, 1);
     });
 
     test('streak 7+ adds +2 per brush (replaces +1)', () async {
-      final bonus = StreakService().calculateStreakBonus(streak: 7, bothSlotsDone: false);
+      final bonus = StreakService().calculateStreakBonus(
+        streak: 7,
+        bothSlotsDone: false,
+      );
       expect(bonus, 2);
     });
 
     test('streak 7+ with both slots gives +3 total bonus', () async {
-      final bonus = StreakService().calculateStreakBonus(streak: 7, bothSlotsDone: true);
+      final bonus = StreakService().calculateStreakBonus(
+        streak: 7,
+        bothSlotsDone: true,
+      );
       expect(bonus, 3);
     });
 
     test('streak 0-2 with one slot gives no bonus', () async {
-      final bonus = StreakService().calculateStreakBonus(streak: 2, bothSlotsDone: false);
+      final bonus = StreakService().calculateStreakBonus(
+        streak: 2,
+        bothSlotsDone: false,
+      );
       expect(bonus, 0);
     });
 

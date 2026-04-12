@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
-  int _totalStars = 0;  // Ranger Rank (lifetime total)
+  int _totalStars = 0; // Ranger Rank (lifetime total)
   int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
@@ -44,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   int _evolutionStage = 1;
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
-
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -103,13 +102,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _statPulseAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.2), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 50),
-    ]).animate(
-      CurvedAnimation(parent: _statPulseController, curve: Curves.easeInOut),
-    );
-
+    _statPulseAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.2), weight: 50),
+          TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 50),
+        ]).animate(
+          CurvedAnimation(
+            parent: _statPulseController,
+            curve: Curves.easeInOut,
+          ),
+        );
   }
 
   @override
@@ -167,7 +169,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!AudioService().isMuted) {
         await Future.delayed(const Duration(seconds: 1));
         if (mounted) {
-          final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
+          final voice =
+              _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
           unawaited(AudioService().playVoice(voice));
         }
       }
@@ -185,7 +188,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     final now = DateTime.now();
-    final todayDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final todayDate =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final lastGreetingDate = await _greetingService.getLastGreetingDate();
     final yesterdaySlots = await _streakService.getYesterdaySlots();
 
@@ -195,7 +199,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       wallet: _wallet,
       todayDate: todayDate,
       lastGreetingDate: lastGreetingDate,
-      yesterdayBothDone: yesterdaySlots.morningDone && yesterdaySlots.eveningDone,
+      yesterdayBothDone:
+          yesterdaySlots.morningDone && yesterdaySlots.eveningDone,
     );
 
     if (result != null && mounted) {
@@ -203,14 +208,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       unawaited(AnalyticsService().logDailyLogin(streak: _streak));
       _showGreetingPopup(
         result,
-        pulseStreak: result.state == GreetingState.freshStart &&
-            totalBrushes > 2,
+        pulseStreak:
+            result.state == GreetingState.freshStart && totalBrushes > 2,
       );
     } else if (lastGreetingDate == todayDate && mounted) {
       // Already greeted today — play a random welcome back voice
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) {
-        final voice = _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
+        final voice =
+            _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
         unawaited(AudioService().playVoice(voice));
       }
     }
@@ -301,18 +307,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  greetingIcon,
-                  color: greetingColor,
-                  size: 56,
-                ),
+                Icon(greetingIcon, color: greetingColor, size: 56),
                 if (greeting.brushStreak >= 2) ...[
                   const SizedBox(height: 12),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.local_fire_department,
-                          color: Color(0xFFFF6D00), size: 36),
+                      const Icon(
+                        Icons.local_fire_department,
+                        color: Color(0xFFFF6D00),
+                        size: 36,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${greeting.brushStreak}',
@@ -323,8 +328,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.star,
-                          color: Color(0xFFFFD54F), size: 28),
+                      const Icon(
+                        Icons.star,
+                        color: Color(0xFFFFD54F),
+                        size: 28,
+                      ),
                     ],
                   ),
                 ],
@@ -367,11 +375,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         SizedBox(width: 4),
-                        Icon(
-                          Icons.star,
-                          color: Color(0xFFFFD54F),
-                          size: 24,
-                        ),
+                        Icon(Icons.star, color: Color(0xFFFFD54F), size: 24),
                       ],
                     ),
                   ),
@@ -380,63 +384,67 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 // Shows fire icon (streak) -> arrow -> star + bonus amount
                 if (greeting.brushStreak >= 3) ...[
                   const SizedBox(height: 12),
-                  Builder(builder: (context) {
-                    final streakBonus = greeting.brushStreak >= 7 ? 2 : 1;
-                    final pairBonus = greeting.yesterdayBothDone ? 1 : 0;
-                    final totalBonus = streakBonus + pairBonus;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFFFFD54F).withValues(alpha: 0.25),
-                            const Color(0xFFFF6D00).withValues(alpha: 0.25),
+                  Builder(
+                    builder: (context) {
+                      final streakBonus = greeting.brushStreak >= 7 ? 2 : 1;
+                      final pairBonus = greeting.yesterdayBothDone ? 1 : 0;
+                      final totalBonus = streakBonus + pairBonus;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFFFFD54F).withValues(alpha: 0.25),
+                              const Color(0xFFFF6D00).withValues(alpha: 0.25),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFFD54F,
+                            ).withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Fire icon (your streak)
+                            const Icon(
+                              Icons.local_fire_department,
+                              color: Colors.orangeAccent,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 4),
+                            // Arrow showing cause -> effect
+                            const Icon(
+                              Icons.arrow_forward,
+                              color: Color(0xFFFFD54F),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 4),
+                            // Star + bonus amount (the reward)
+                            Text(
+                              '+$totalBonus',
+                              style: const TextStyle(
+                                color: Color(0xFFFFD54F),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.star,
+                              color: Color(0xFFFFD54F),
+                              size: 24,
+                            ),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFFFD54F).withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Fire icon (your streak)
-                          const Icon(
-                            Icons.local_fire_department,
-                            color: Colors.orangeAccent,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 4),
-                          // Arrow showing cause -> effect
-                          const Icon(
-                            Icons.arrow_forward,
-                            color: Color(0xFFFFD54F),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 4),
-                          // Star + bonus amount (the reward)
-                          Text(
-                            '+$totalBonus',
-                            style: const TextStyle(
-                              color: Color(0xFFFFD54F),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.star,
-                            color: Color(0xFFFFD54F),
-                            size: 24,
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+                      );
+                    },
+                  ),
                 ],
               ],
             ),
@@ -470,12 +478,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         });
       }
     }
+
     void listener() {
       if (!AudioService().voicePipelineActiveNotifier.value) {
         AudioService().voicePipelineActiveNotifier.removeListener(listener);
         dismissWhenReady();
       }
     }
+
     // If voice is already done, dismiss with minimum delay
     if (!AudioService().voicePipelineActiveNotifier.value) {
       Future.delayed(const Duration(seconds: 5), () {
@@ -502,11 +512,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await prefs.setBool('camera_mode_configured', true);
     }
 
-    unawaited(AudioService().playVoice(
-      'voice_lets_fight.mp3',
-      clearQueue: true,
-      interrupt: true,
-    ));
+    unawaited(
+      AudioService().playVoice(
+        'voice_lets_fight.mp3',
+        clearQueue: true,
+        interrupt: true,
+      ),
+    );
     // 1500ms lets the voice finish before home screen disposes
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) _launchBrushingScreen();
@@ -599,481 +611,525 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         if (!didPop) SystemNavigator.pop();
       },
       child: Scaffold(
-      body: SpaceBackground(
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Top-left parent area button
-              Positioned(
-                top: 8,
-                left: 8,
-                child: GestureDetector(
-                  onTap: () {
-                    AudioService().playSfx('whoosh.mp3');
-                    _openSettings();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: Colors.white.withValues(alpha: 0.12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        width: 1.5,
+        body: SpaceBackground(
+          child: SafeArea(
+            child: Stack(
+              children: [
+                // Top-left parent area button
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      AudioService().playSfx('whoosh.mp3');
+                      _openSettings();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: Colors.white.withValues(alpha: 0.12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.shield, color: Colors.white, size: 20),
+                          SizedBox(height: 2),
+                          Text(
+                            'PARENTS',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: const Column(
-                      mainAxisSize: MainAxisSize.min,
+                  ),
+                ),
+                // Top-right controls
+                const Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [MuteButton()],
+                  ),
+                ),
+
+                Column(
+                  children: [
+                    const SizedBox(height: 70),
+
+                    // Title (36px, strokeWidth 3)
+                    Stack(
                       children: [
-                        Icon(Icons.shield, color: Colors.white, size: 20),
-                        SizedBox(height: 2),
                         Text(
-                          'PARENTS',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
+                          'BRUSH QUEST',
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 3,
+                                foreground: Paint()
+                                  ..style = PaintingStyle.stroke
+                                  ..strokeWidth = 3
+                                  ..color = const Color(0xFF7C4DFF),
+                              ),
+                        ),
+                        Text(
+                          'BRUSH QUEST',
+                          style: Theme.of(context).textTheme.headlineLarge
+                              ?.copyWith(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 3,
+                                shadows: [
+                                  Shadow(
+                                    color: const Color(
+                                      0xFF7C4DFF,
+                                    ).withValues(alpha: 0.8),
+                                    blurRadius: 20,
+                                  ),
+                                ],
+                              ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-              // Top-right controls
-              const Positioned(
-                top: 8,
-                right: 8,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [MuteButton()],
-                ),
-              ),
+                    const SizedBox(height: 16),
 
-              Column(
-                children: [
-                  const SizedBox(height: 70),
-
-                  // Title (36px, strokeWidth 3)
-                  Stack(
-                    children: [
-                      Text(
-                        'BRUSH QUEST',
-                        style: Theme.of(context).textTheme.headlineLarge
-                            ?.copyWith(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 3,
-                              foreground: Paint()
-                                ..style = PaintingStyle.stroke
-                                ..strokeWidth = 3
-                                ..color = const Color(0xFF7C4DFF),
-                            ),
-                      ),
-                      Text(
-                        'BRUSH QUEST',
-                        style: Theme.of(context).textTheme.headlineLarge
-                            ?.copyWith(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 3,
-                              shadows: [
-                                Shadow(
-                                  color: const Color(
-                                    0xFF7C4DFF,
-                                  ).withValues(alpha: 0.8),
-                                  blurRadius: 20,
-                                ),
-                              ],
-                            ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Stats row: streak, rank, wallet, trophies
-                  // Use Row with Expanded so all 4 pills are equal width
-                  Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(
-                    children: [
-                      // Streak pill
-                      Expanded(
-                      child: AnimatedBuilder(
-                        animation: _statPulseAnimation,
-                        builder: (context, child) {
-                          final scale = _streakPulseActive
-                              ? _statPulseAnimation.value
-                              : 1.0;
-                          return Transform.scale(scale: scale, child: child);
-                        },
-                        child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: (_streak > 0
-                                    ? Colors.orangeAccent
-                                    : _totalBrushes > 0
-                                        ? const Color(0xFFFFB74D)
-                                        : Colors.white24)
-                                .withValues(alpha: 0.6),
-                            width: 2,
-                          ),
-                          color: (_streak > 0
-                                  ? Colors.orangeAccent
-                                  : _totalBrushes > 0
-                                      ? const Color(0xFFFFB74D)
-                                      : Colors.white24)
-                              .withValues(alpha: 0.12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_streak == 0 && _totalBrushes > 0) ...[
-                              const Icon(
-                                Icons.rocket_launch,
-                                color: Color(0xFFFFB74D),
-                                size: 22,
-                              ),
-                            ] else ...[
-                              Icon(
-                                Icons.local_fire_department,
-                                color: _streak > 0
-                                    ? Colors.orangeAccent
-                                    : Colors.white.withValues(alpha: 0.3),
-                                size: 26,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '$_streak',
-                                style: TextStyle(
-                                  color: _streak > 0
-                                      ? Colors.white
-                                      : Colors.white.withValues(alpha: 0.3),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 22,
-                                  shadows: _streak > 0
-                                      ? const [
-                                          Shadow(
-                                            color: Color(0x80FF9800),
-                                            blurRadius: 8,
-                                          ),
-                                        ]
-                                      : null,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ))),
-                      const SizedBox(width: 4),
-                      // Ranger Rank pill (shield — the "pride number")
-                      Expanded(child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFF7C4DFF).withValues(alpha: 0.6),
-                            width: 2,
-                          ),
-                          color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.military_tech,
-                              color: Color(0xFF7C4DFF),
-                              size: 26,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_totalStars',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                                shadows: [
-                                  Shadow(
-                                    color: Color(0x807C4DFF),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-                      const SizedBox(width: 4),
-                      // Star Wallet pill (spendable stars)
-                      Expanded(child: Stack(
-                        clipBehavior: Clip.none,
+                    // Stats row: streak, rank, wallet, trophies
+                    // Use Row with Expanded so all 4 pills are equal width
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
                         children: [
-                          AnimatedBuilder(
-                            animation: _statPulseAnimation,
-                            builder: (context, child) {
-                              final scale = _starDeltaVisible
-                                  ? _statPulseAnimation.value
-                                  : 1.0;
-                              return Transform.scale(
-                                  scale: scale, child: child);
-                            },
-                            child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFFFD54F)
-                                    .withValues(alpha: 0.6),
-                                width: 2,
-                              ),
-                              color: const Color(0xFFFFD54F)
-                                  .withValues(alpha: 0.12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Color(0xFFFFD54F),
-                                  size: 22,
+                          // Streak pill
+                          Expanded(
+                            child: AnimatedBuilder(
+                              animation: _statPulseAnimation,
+                              builder: (context, child) {
+                                final scale = _streakPulseActive
+                                    ? _statPulseAnimation.value
+                                    : 1.0;
+                                return Transform.scale(
+                                  scale: scale,
+                                  child: child,
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '$_wallet',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 22,
-                                    shadows: [
-                                      Shadow(
-                                        color: Color(0x80FFD54F),
-                                        blurRadius: 8,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color:
+                                        (_streak > 0
+                                                ? Colors.orangeAccent
+                                                : _totalBrushes > 0
+                                                ? const Color(0xFFFFB74D)
+                                                : Colors.white24)
+                                            .withValues(alpha: 0.6),
+                                    width: 2,
+                                  ),
+                                  color:
+                                      (_streak > 0
+                                              ? Colors.orangeAccent
+                                              : _totalBrushes > 0
+                                              ? const Color(0xFFFFB74D)
+                                              : Colors.white24)
+                                          .withValues(alpha: 0.12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_streak == 0 && _totalBrushes > 0) ...[
+                                      const Icon(
+                                        Icons.rocket_launch,
+                                        color: Color(0xFFFFB74D),
+                                        size: 22,
+                                      ),
+                                    ] else ...[
+                                      Icon(
+                                        Icons.local_fire_department,
+                                        color: _streak > 0
+                                            ? Colors.orangeAccent
+                                            : Colors.white.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                        size: 26,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '$_streak',
+                                        style: TextStyle(
+                                          color: _streak > 0
+                                              ? Colors.white
+                                              : Colors.white.withValues(
+                                                  alpha: 0.3,
+                                                ),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 22,
+                                          shadows: _streak > 0
+                                              ? const [
+                                                  Shadow(
+                                                    color: Color(0x80FF9800),
+                                                    blurRadius: 8,
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )),
-                          // Floating "+N" indicator
-                          if (_showStarDelta > 0)
-                            Positioned(
-                              top: -18,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: AnimatedOpacity(
-                                  opacity: _starDeltaVisible ? 1.0 : 0.0,
-                                  duration:
-                                      const Duration(milliseconds: 400),
-                                  child: AnimatedSlide(
-                                    offset: Offset(
-                                        0, _starDeltaVisible ? 0.0 : 0.5),
-                                    duration:
-                                        const Duration(milliseconds: 400),
-                                    child: Text(
-                                      '+$_showStarDelta',
-                                      style: const TextStyle(
-                                        color: Color(0xFFFFD54F),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        shadows: [
-                                          Shadow(
-                                            color: Color(0x80000000),
-                                            blurRadius: 4,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
+                                  ],
                                 ),
                               ),
                             ),
-                        ],
-                      )),
-                      const SizedBox(width: 4),
-                      // Trophy count pill (monsters captured)
-                      Expanded(child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFFFF80AB).withValues(alpha: 0.6),
-                            width: 2,
                           ),
-                          color: const Color(0xFFFF80AB).withValues(alpha: 0.12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              'assets/images/icon_monsters.png',
-                              width: 22,
-                              height: 22,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_trophyCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                                shadows: [
-                                  Shadow(
-                                    color: Color(0x80FF80AB),
-                                    blurRadius: 8,
-                                  ),
-                                ],
+                          const SizedBox(width: 4),
+                          // Ranger Rank pill (shield — the "pride number")
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 6,
                               ),
-                            ),
-                          ],
-                        ),
-                      )),
-                    ],
-                  )),
-
-                  const Spacer(),
-
-                  // Hero as BRUSH button
-                  AnimatedBuilder(
-                    animation: Listenable.merge([
-                      _pulseAnimation,
-                      _floatAnimation,
-                      _auraController,
-                    ]),
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, _floatAnimation.value),
-                        child: Transform.scale(
-                          scale: _buttonPressed ? 0.92 : _pulseAnimation.value,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: GestureDetector(
-                      onTapDown: (_) => setState(() => _buttonPressed = true),
-                      onTapUp: (_) {
-                        setState(() => _buttonPressed = false);
-                        _startBrushing();
-                      },
-                      onTapCancel: () => setState(() => _buttonPressed = false),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Hero circle with aura
-                          AnimatedBuilder(
-                            animation: _auraController,
-                            builder: (context, child) {
-                              final auraSize = 310 + _auraController.value * 16;
-                              return Stack(
-                                alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF7C4DFF,
+                                  ).withValues(alpha: 0.6),
+                                  width: 2,
+                                ),
+                                color: const Color(
+                                  0xFF7C4DFF,
+                                ).withValues(alpha: 0.12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Outer aura glow
-                                  Container(
-                                    width: auraSize,
-                                    height: auraSize,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: _selectedHero.primaryColor
-                                              .withValues(
-                                                alpha:
-                                                    0.3 +
-                                                    _auraController.value * 0.2,
-                                              ),
-                                          blurRadius: 40,
-                                          spreadRadius: 10,
+                                  const Icon(
+                                    Icons.military_tech,
+                                    color: Color(0xFF7C4DFF),
+                                    size: 26,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$_totalStars',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22,
+                                      shadows: [
+                                        Shadow(
+                                          color: Color(0x807C4DFF),
+                                          blurRadius: 8,
                                         ),
                                       ],
                                     ),
                                   ),
-                                  // Hero circle + weapon badge with breathing animation
-                                  ScaleTransition(
-                                    scale: _breatheAnimation,
-                                    child: SizedBox(
-                                      width: 300,
-                                      height: 300,
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          Container(
-                                            width: 290,
-                                            height: 290,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: _selectedHero.primaryColor,
-                                                width: 4,
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          // Star Wallet pill (spendable stars)
+                          Expanded(
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                AnimatedBuilder(
+                                  animation: _statPulseAnimation,
+                                  builder: (context, child) {
+                                    final scale = _starDeltaVisible
+                                        ? _statPulseAnimation.value
+                                        : 1.0;
+                                    return Transform.scale(
+                                      scale: scale,
+                                      child: child,
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: const Color(
+                                          0xFFFFD54F,
+                                        ).withValues(alpha: 0.6),
+                                        width: 2,
+                                      ),
+                                      color: const Color(
+                                        0xFFFFD54F,
+                                      ).withValues(alpha: 0.12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.star,
+                                          color: Color(0xFFFFD54F),
+                                          size: 22,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '$_wallet',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 22,
+                                            shadows: [
+                                              Shadow(
+                                                color: Color(0x80FFD54F),
+                                                blurRadius: 8,
                                               ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: _selectedHero.primaryColor
-                                                      .withValues(alpha: 0.6),
-                                                  blurRadius: 30,
-                                                  spreadRadius: 5,
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                // Floating "+N" indicator
+                                if (_showStarDelta > 0)
+                                  Positioned(
+                                    top: -18,
+                                    left: 0,
+                                    right: 0,
+                                    child: Center(
+                                      child: AnimatedOpacity(
+                                        opacity: _starDeltaVisible ? 1.0 : 0.0,
+                                        duration: const Duration(
+                                          milliseconds: 400,
+                                        ),
+                                        child: AnimatedSlide(
+                                          offset: Offset(
+                                            0,
+                                            _starDeltaVisible ? 0.0 : 0.5,
+                                          ),
+                                          duration: const Duration(
+                                            milliseconds: 400,
+                                          ),
+                                          child: Text(
+                                            '+$_showStarDelta',
+                                            style: const TextStyle(
+                                              color: Color(0xFFFFD54F),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              shadows: [
+                                                Shadow(
+                                                  color: Color(0x80000000),
+                                                  blurRadius: 4,
                                                 ),
                                               ],
                                             ),
-                                            child: ClipOval(
-                                              child: HeroService.buildHeroImage(
-                                                _selectedHero.id,
-                                                stage: _evolutionStage,
-                                                weaponId: _selectedWeapon.id,
-                                                size: 180,
-                                              ),
-                                            ),
                                           ),
-                                        ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ],
-                              );
-                            },
+                              ],
+                            ),
                           ),
-                          // Voice prompt guides first-time users to tap hero
-                          const SizedBox(height: 10),
-                          Text(
-                            _selectedHero.name,
-                            style: TextStyle(
-                              color: _selectedHero.primaryColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 3,
+                          const SizedBox(width: 4),
+                          // Trophy count pill (monsters captured)
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFFFF80AB,
+                                  ).withValues(alpha: 0.6),
+                                  width: 2,
+                                ),
+                                color: const Color(
+                                  0xFFFF80AB,
+                                ).withValues(alpha: 0.12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/icon_monsters.png',
+                                    width: 22,
+                                    height: 22,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$_trophyCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22,
+                                      shadows: [
+                                        Shadow(
+                                          color: Color(0x80FF80AB),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
+                    const Spacer(),
 
-                  const Spacer(),
+                    // Hero as BRUSH button
+                    AnimatedBuilder(
+                      animation: Listenable.merge([
+                        _pulseAnimation,
+                        _floatAnimation,
+                        _auraController,
+                      ]),
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(0, _floatAnimation.value),
+                          child: Transform.scale(
+                            scale: _buttonPressed
+                                ? 0.92
+                                : _pulseAnimation.value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: GestureDetector(
+                        onTapDown: (_) => setState(() => _buttonPressed = true),
+                        onTapUp: (_) {
+                          setState(() => _buttonPressed = false);
+                          _startBrushing();
+                        },
+                        onTapCancel: () =>
+                            setState(() => _buttonPressed = false),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Hero circle with aura
+                            AnimatedBuilder(
+                              animation: _auraController,
+                              builder: (context, child) {
+                                final auraSize =
+                                    310 + _auraController.value * 16;
+                                return Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // Outer aura glow
+                                    Container(
+                                      width: auraSize,
+                                      height: auraSize,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _selectedHero.primaryColor
+                                                .withValues(
+                                                  alpha:
+                                                      0.3 +
+                                                      _auraController.value *
+                                                          0.2,
+                                                ),
+                                            blurRadius: 40,
+                                            spreadRadius: 10,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Hero circle + weapon badge with breathing animation
+                                    ScaleTransition(
+                                      scale: _breatheAnimation,
+                                      child: SizedBox(
+                                        width: 300,
+                                        height: 300,
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            Container(
+                                              width: 290,
+                                              height: 290,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: _selectedHero
+                                                      .primaryColor,
+                                                  width: 4,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: _selectedHero
+                                                        .primaryColor
+                                                        .withValues(alpha: 0.6),
+                                                    blurRadius: 30,
+                                                    spreadRadius: 5,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: ClipOval(
+                                                child:
+                                                    HeroService.buildHeroImage(
+                                                      _selectedHero.id,
+                                                      stage: _evolutionStage,
+                                                      weaponId:
+                                                          _selectedWeapon.id,
+                                                      size: 180,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                            // Voice prompt guides first-time users to tap hero
+                            const SizedBox(height: 10),
+                            Text(
+                              _selectedHero.name,
+                              style: TextStyle(
+                                color: _selectedHero.primaryColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
-                  // Secondary nav row — always visible
-                  Padding(
+                    const SizedBox(height: 20),
+
+                    const Spacer(),
+
+                    // Secondary nav row — always visible
+                    Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
@@ -1107,13 +1163,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ],
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1147,10 +1203,7 @@ class _SmallNavButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: color.withValues(alpha: 0.45), width: 1.5),
           boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.15),
-              blurRadius: 8,
-            ),
+            BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 8),
           ],
         ),
         child: Column(

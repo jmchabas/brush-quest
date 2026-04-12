@@ -21,14 +21,14 @@ void main() {
     // Mock audioplayers platform channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
   });
 
   setUp(() {
@@ -112,7 +112,9 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('BRUSH button is removed (hero tap starts brushing)', (tester) async {
+  testWidgets('BRUSH button is removed (hero tap starts brushing)', (
+    tester,
+  ) async {
     await pumpHome(tester);
 
     expect(find.text('BRUSH!'), findsNothing);
@@ -133,9 +135,7 @@ void main() {
     });
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
-    await tester.pumpWidget(
-      const MaterialApp(home: HomeScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
     // Allow _loadStats + _checkGreeting to complete
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
@@ -148,8 +148,11 @@ void main() {
     final tapHeroPlayed = voiceCalls.any(
       (c) => c.args['fileName'] == 'voice_tap_hero.mp3',
     );
-    expect(tapHeroPlayed, isTrue,
-        reason: 'First launch should play voice_tap_hero.mp3');
+    expect(
+      tapHeroPlayed,
+      isTrue,
+      reason: 'First launch should play voice_tap_hero.mp3',
+    );
 
     await tester.binding.setSurfaceSize(null);
   });

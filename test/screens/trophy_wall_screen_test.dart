@@ -22,14 +22,14 @@ void main() {
     // Mock audioplayers platform channel
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers.global'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers.global'),
+          (call) async => 1,
+        );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('xyz.luan/audioplayers'),
-      (call) async => 1,
-    );
+          const MethodChannel('xyz.luan/audioplayers'),
+          (call) async => 1,
+        );
   });
 
   setUp(() {
@@ -63,9 +63,7 @@ void main() {
     SharedPreferences.setMockInitialValues(prefs);
 
     await tester.binding.setSurfaceSize(const Size(430, 932));
-    await tester.pumpWidget(
-      const MaterialApp(home: TrophyWallScreen()),
-    );
+    await tester.pumpWidget(const MaterialApp(home: TrophyWallScreen()));
     // Let async _loadData complete
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -91,8 +89,9 @@ void main() {
 
   // ── Trophy grid renders ──────────────────────────────────────
 
-  testWidgets('trophy grid shows correct number of tiles for Candy Crater',
-      (tester) async {
+  testWidgets('trophy grid shows correct number of tiles for Candy Crater', (
+    tester,
+  ) async {
     await pumpTrophyWall(tester);
     // Candy Crater has 5 trophies. Each uncaptured trophy shows "???" text
     // at font size 13. The world selector also shows "???" at font size 9
@@ -117,8 +116,7 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('world progress counter shows for current world',
-      (tester) async {
+  testWidgets('world progress counter shows for current world', (tester) async {
     await pumpTrophyWall(tester);
     // With 0 captured in Candy Crater (5 trophies), shows "0 / 5"
     expect(find.text('0 / 5'), findsOneWidget);
@@ -127,13 +125,11 @@ void main() {
 
   // ── Captured vs uncaptured display ───────────────────────────
 
-  testWidgets('captured trophies show monster name instead of ???',
-      (tester) async {
+  testWidgets('captured trophies show monster name instead of ???', (
+    tester,
+  ) async {
     // Capture the first two Candy Crater trophies
-    await pumpTrophyWall(
-      tester,
-      capturedIds: ['cc_t1', 'cc_t2'],
-    );
+    await pumpTrophyWall(tester, capturedIds: ['cc_t1', 'cc_t2']);
     // Captured trophies show their actual names
     expect(find.text('Gummy Grub'), findsOneWidget);
     expect(find.text('Lollipop Lurker'), findsOneWidget);
@@ -149,12 +145,10 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('captured trophies update world progress counter',
-      (tester) async {
-    await pumpTrophyWall(
-      tester,
-      capturedIds: ['cc_t1', 'cc_t2'],
-    );
+  testWidgets('captured trophies update world progress counter', (
+    tester,
+  ) async {
+    await pumpTrophyWall(tester, capturedIds: ['cc_t1', 'cc_t2']);
     expect(find.text('2 / 5'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
   });
@@ -170,10 +164,7 @@ void main() {
   });
 
   testWidgets('total counter reflects captured trophies', (tester) async {
-    await pumpTrophyWall(
-      tester,
-      capturedIds: ['cc_t1', 'cc_t3', 'ss_t1'],
-    );
+    await pumpTrophyWall(tester, capturedIds: ['cc_t1', 'cc_t3', 'ss_t1']);
     // 3 captured total
     expect(find.text('3'), findsOneWidget);
     await tester.binding.setSurfaceSize(null);
@@ -181,8 +172,9 @@ void main() {
 
   // ── Uncaptured trophies show lock icon ───────────────────────
 
-  testWidgets('uncaptured trophies with no defeats show lock icon',
-      (tester) async {
+  testWidgets('uncaptured trophies with no defeats show lock icon', (
+    tester,
+  ) async {
     await pumpTrophyWall(tester);
     // Each uncaptured trophy with 0 defeats shows a lock_rounded icon
     expect(find.byIcon(Icons.lock_rounded), findsWidgets);

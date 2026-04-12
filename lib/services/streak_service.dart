@@ -10,7 +10,10 @@ class BonusBreakdown {
   final int dailyBonus;
   final int streakMultiplierBonus;
   int get total => dailyBonus + streakMultiplierBonus;
-  const BonusBreakdown({required this.dailyBonus, required this.streakMultiplierBonus});
+  const BonusBreakdown({
+    required this.dailyBonus,
+    required this.streakMultiplierBonus,
+  });
 }
 
 class BrushOutcome {
@@ -36,7 +39,10 @@ class BrushOutcome {
 class TodaySlotsStatus {
   final bool morningDone;
   final bool eveningDone;
-  const TodaySlotsStatus({required this.morningDone, required this.eveningDone});
+  const TodaySlotsStatus({
+    required this.morningDone,
+    required this.eveningDone,
+  });
 
   int get completedCount => (morningDone ? 1 : 0) + (eveningDone ? 1 : 0);
 }
@@ -107,7 +113,10 @@ class StreakService {
   /// Same as [calculateStreakBonus] but returns a [BonusBreakdown] that
   /// separates the daily-pair bonus from the streak-multiplier bonus.
   /// Used by the victory screen to animate each bonus wave separately.
-  BonusBreakdown calculateStreakBonusDetailed({required int streak, required bool bothSlotsDone}) {
+  BonusBreakdown calculateStreakBonusDetailed({
+    required int streak,
+    required bool bothSlotsDone,
+  }) {
     final dailyBonus = bothSlotsDone ? 1 : 0;
     int streakMultiplierBonus = 0;
     if (streak >= 7) {
@@ -115,16 +124,24 @@ class StreakService {
     } else if (streak >= 3) {
       streakMultiplierBonus = 1;
     }
-    return BonusBreakdown(dailyBonus: dailyBonus, streakMultiplierBonus: streakMultiplierBonus);
+    return BonusBreakdown(
+      dailyBonus: dailyBonus,
+      streakMultiplierBonus: streakMultiplierBonus,
+    );
   }
 
-  Future<BrushOutcome> recordBrush({String heroId = 'blaze', String worldId = 'candy_crater'}) async {
+  Future<BrushOutcome> recordBrush({
+    String heroId = 'blaze',
+    String worldId = 'candy_crater',
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final today = _todayString();
     final now = DateTime.now();
     final lastDate = prefs.getString(_keyLastBrushDate) ?? '';
     final slot = _slotForHour(now.hour);
-    final slotKey = slot == BrushSlot.morning ? _keyMorningDoneDate : _keyEveningDoneDate;
+    final slotKey = slot == BrushSlot.morning
+        ? _keyMorningDoneDate
+        : _keyEveningDoneDate;
     final slotAlreadyDone = prefs.getString(slotKey) == today;
     final newSlotCompleted = !slotAlreadyDone;
 
@@ -135,7 +152,9 @@ class StreakService {
     }
     // Track total brushes done today (not capped to slots)
     final storedDate = prefs.getString(_keyTodayDate) ?? '';
-    int todayCount = storedDate == today ? (prefs.getInt(_keyTodayBrushCount) ?? 0) : 0;
+    int todayCount = storedDate == today
+        ? (prefs.getInt(_keyTodayBrushCount) ?? 0)
+        : 0;
     todayCount++;
     await prefs.setInt(_keyTodayBrushCount, todayCount);
     await prefs.setString(_keyTodayDate, today);
@@ -151,7 +170,11 @@ class StreakService {
       } else {
         // Check if streak is paused before breaking it
         final pauseEnd = prefs.getString(_keyStreakPauseUntil);
-        final isPaused = pauseEnd != null && DateTime.now().isBefore(DateTime.tryParse(pauseEnd) ?? DateTime(2000));
+        final isPaused =
+            pauseEnd != null &&
+            DateTime.now().isBefore(
+              DateTime.tryParse(pauseEnd) ?? DateTime(2000),
+            );
         if (isPaused) {
           streak++; // Paused — continue streak
         } else {
@@ -199,7 +222,8 @@ class StreakService {
     // Append to history log (keep last 100 entries)
     final record = BrushRecord(
       date: today,
-      time: '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+      time:
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       heroId: heroId,
       worldId: worldId,
     );
@@ -238,7 +262,9 @@ class StreakService {
 
     // If paused, always return the stored streak
     final pauseEnd = prefs.getString(_keyStreakPauseUntil);
-    final isPaused = pauseEnd != null && DateTime.now().isBefore(DateTime.tryParse(pauseEnd) ?? DateTime(2000));
+    final isPaused =
+        pauseEnd != null &&
+        DateTime.now().isBefore(DateTime.tryParse(pauseEnd) ?? DateTime(2000));
     if (isPaused) {
       return prefs.getInt(_keyCurrentStreak) ?? 0;
     }
@@ -333,7 +359,10 @@ class StreakService {
     final prefs = await SharedPreferences.getInstance();
     final historyJson = prefs.getStringList(_keyHistory) ?? [];
     return historyJson
-        .map((json) => BrushRecord.fromJson(jsonDecode(json) as Map<String, dynamic>))
+        .map(
+          (json) =>
+              BrushRecord.fromJson(jsonDecode(json) as Map<String, dynamic>),
+        )
         .toList()
         .reversed
         .toList(); // Most recent first

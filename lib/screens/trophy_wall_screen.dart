@@ -8,7 +8,6 @@ import '../services/audio_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/trophy_detail_dialog.dart';
 
-
 class TrophyWallScreen extends StatefulWidget {
   const TrophyWallScreen({super.key});
 
@@ -84,11 +83,13 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
       unawaited(AudioService().playMusic('battle_music_loop.mp3'));
       unawaited(AudioService().setMusicVolume(0.04));
       // Play entry voice explaining the monster collection
-      unawaited(AudioService().playVoice(
-        'voice_card_album_intro.mp3',
-        clearQueue: true,
-        interrupt: true,
-      ));
+      unawaited(
+        AudioService().playVoice(
+          'voice_card_album_intro.mp3',
+          clearQueue: true,
+          interrupt: true,
+        ),
+      );
     }
   }
 
@@ -128,7 +129,11 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     } else {
       HapticFeedback.lightImpact();
       AudioService().playSfx('whoosh.mp3');
-      AudioService().playVoice('voice_keep_going.mp3', clearQueue: true, interrupt: true);
+      AudioService().playVoice(
+        'voice_keep_going.mp3',
+        clearQueue: true,
+        interrupt: true,
+      );
     }
   }
 
@@ -159,8 +164,9 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
 
     final worldTrophies = TrophyService.trophiesForWorld(_selectedWorldId);
     final worldData = WorldService.getWorldById(_selectedWorldId);
-    final worldProgress =
-        worldTrophies.where((t) => _capturedIds.contains(t.id)).length;
+    final worldProgress = worldTrophies
+        .where((t) => _capturedIds.contains(t.id))
+        .length;
 
     return Scaffold(
       body: SpaceBackground(
@@ -189,7 +195,9 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                     const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
+                        horizontal: 10,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: worldData.themeColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -211,9 +219,7 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
               ),
               const SizedBox(height: 12),
               // Trophy grid
-              Expanded(
-                child: _buildTrophyGrid(worldTrophies),
-              ),
+              Expanded(child: _buildTrophyGrid(worldTrophies)),
             ],
           ),
         ),
@@ -246,8 +252,11 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
             children: [
               Row(
                 children: [
-                  const Icon(Icons.emoji_events_rounded,
-                      color: Color(0xFFFFD54F), size: 22),
+                  const Icon(
+                    Icons.emoji_events_rounded,
+                    color: Color(0xFFFFD54F),
+                    size: 22,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     '$_totalCaptured',
@@ -288,7 +297,8 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                     value: _totalCaptured / TrophyService.allTrophies.length,
                     backgroundColor: Colors.white.withValues(alpha: 0.1),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                        Color(0xFFFFD54F)),
+                      Color(0xFFFFD54F),
+                    ),
                   ),
                 ),
               ),
@@ -327,15 +337,15 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                 color: isSelected
                     ? world.themeColor.withValues(alpha: 0.25)
                     : isUnlocked
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.white.withValues(alpha: 0.02),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white.withValues(alpha: 0.02),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected
                       ? world.themeColor.withValues(alpha: 0.8)
                       : isUnlocked
-                          ? Colors.white.withValues(alpha: 0.15)
-                          : Colors.white.withValues(alpha: 0.05),
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : Colors.white.withValues(alpha: 0.05),
                   width: isSelected ? 2 : 1,
                 ),
                 boxShadow: isSelected
@@ -377,8 +387,8 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                       color: isSelected
                           ? world.themeColor
                           : isUnlocked
-                              ? Colors.white.withValues(alpha: 0.5)
-                              : Colors.white.withValues(alpha: 0.2),
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : Colors.white.withValues(alpha: 0.2),
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1,
@@ -399,13 +409,14 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     // For 5 trophies: row1(2), row2(2), row3(1 centered = boss)
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      child: Column(
-        children: _buildTrophyRows(trophies, worldColor),
-      ),
+      child: Column(children: _buildTrophyRows(trophies, worldColor)),
     );
   }
 
-  List<Widget> _buildTrophyRows(List<TrophyMonster> trophies, Color worldColor) {
+  List<Widget> _buildTrophyRows(
+    List<TrophyMonster> trophies,
+    Color worldColor,
+  ) {
     final rows = <Widget>[];
     for (int i = 0; i < trophies.length; i += 2) {
       final isLastSingle = i + 1 >= trophies.length;
@@ -471,17 +482,19 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
               border: Border.all(
                 color: isCaptured
                     ? worldColor.withValues(
-                        alpha: 0.4 + 0.3 * _glowAnimation.value)
+                        alpha: 0.4 + 0.3 * _glowAnimation.value,
+                      )
                     : inProgress
-                        ? worldColor.withValues(alpha: 0.15)
-                        : Colors.white.withValues(alpha: 0.06),
+                    ? worldColor.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.06),
                 width: isCaptured ? (isBoss ? 2.5 : 2) : 1,
               ),
               boxShadow: isCaptured
                   ? [
                       BoxShadow(
                         color: worldColor.withValues(
-                            alpha: 0.12 + 0.12 * _glowAnimation.value),
+                          alpha: 0.12 + 0.12 * _glowAnimation.value,
+                        ),
                         blurRadius: isBoss ? 20 : 14,
                         spreadRadius: isBoss ? 3 : 1,
                       ),
@@ -495,7 +508,12 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                 SizedBox(
                   height: 100,
                   width: 100,
-                  child: _buildMonsterImage(trophy, isCaptured, inProgress, worldColor),
+                  child: _buildMonsterImage(
+                    trophy,
+                    isCaptured,
+                    inProgress,
+                    worldColor,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 // Name — use world color for consistency
@@ -507,7 +525,9 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                   style: TextStyle(
                     color: isCaptured
                         ? worldColor
-                        : Colors.white.withValues(alpha: inProgress ? 0.4 : 0.2),
+                        : Colors.white.withValues(
+                            alpha: inProgress ? 0.4 : 0.2,
+                          ),
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
@@ -526,17 +546,18 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   }
 
   Widget _buildMonsterImage(
-      TrophyMonster trophy, bool isCaptured, bool inProgress, Color worldColor) {
+    TrophyMonster trophy,
+    bool isCaptured,
+    bool inProgress,
+    Color worldColor,
+  ) {
     if (isCaptured) {
       // Show monster in its original colors — no tint overlay
       return Image.asset(
         trophy.imagePath,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => Icon(
-          Icons.bug_report,
-          size: 60,
-          color: worldColor,
-        ),
+        errorBuilder: (_, _, _) =>
+            Icon(Icons.bug_report, size: 60, color: worldColor),
       );
     } else if (inProgress) {
       // Dark silhouette with world-color tint — shape visible, identity hidden
@@ -608,7 +629,11 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     }
   }
 
-  Widget _buildProgressDots(TrophyMonster trophy, int defeatCount, Color worldColor) {
+  Widget _buildProgressDots(
+    TrophyMonster trophy,
+    int defeatCount,
+    Color worldColor,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(trophy.defeatsRequired, (i) {

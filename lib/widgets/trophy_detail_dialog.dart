@@ -79,11 +79,8 @@ class TrophyDetailDialog extends StatelessWidget {
                       width: 150,
                       height: 150,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => Icon(
-                        Icons.bug_report,
-                        size: 80,
-                        color: worldColor,
-                      ),
+                      errorBuilder: (_, _, _) =>
+                          Icon(Icons.bug_report, size: 80, color: worldColor),
                     ),
                   ],
                 ),
@@ -107,8 +104,10 @@ class TrophyDetailDialog extends StatelessWidget {
               const SizedBox(height: 4),
               // Title -- as a styled badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: worldColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
@@ -150,8 +149,11 @@ class TrophyDetailDialog extends StatelessWidget {
                     defeatCount.clamp(0, 5),
                     (_) => Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Icon(Icons.star_rounded,
-                          color: worldColor, size: 18),
+                      child: Icon(
+                        Icons.star_rounded,
+                        color: worldColor,
+                        size: 18,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -173,8 +175,10 @@ class TrophyDetailDialog extends StatelessWidget {
                   Navigator.of(context).pop();
                 },
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
