@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
 import '../services/hero_service.dart';
@@ -201,7 +200,6 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _chestOpened = false;
   _ChestReward? _reward;
   bool _showDoneButton = false;
-  Timer? _chestAutoOpenTimer;
 
   // Top bar state
   final _walletPillKey = GlobalKey();
@@ -221,15 +219,9 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _heroEvolutionStage = 1;
   String _heroWeaponId = 'star_blaster';
 
-  // Post-chest bonus reveal state
-  bool _showStreakBonus = false;
-  bool _showDailyBonus = false;
-  bool _showComebackBonus = false;
-
   // Trophy reveal state
   bool _showTrophyReveal = false;
   bool _trophyCaptured = false;
-  bool _isLegendaryEncounter = false; // endgame: random captured trophy showcase
   int _trophyDefeats = 0;
   int _trophyRequired = 0;
   TrophyMonster? _revealedTrophy;
@@ -424,7 +416,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     // t=300ms   Arc beat 1 (celebration)
     final arcIndex = _random.nextInt(_victoryArcs.length);
     final arc = _victoryArcs[arcIndex];
-    await _audio.playVoice(arc[0]); // celebration
+    await _audio.playVoice(arc[0], clearQueue: true, interrupt: true); // celebration
     if (!mounted) return;
 
     // Arc beat 2 (star earned) — start concurrently with star flight,
@@ -440,13 +432,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
     unawaited(_doneButtonController.repeat(reverse: true));
     unawaited(_chestBounceController.repeat(reverse: true));
-
-    // Auto-open chest after 4s if kid taps DONE without noticing the chest
-    _chestAutoOpenTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && !_chestOpened) {
-        _openChest();
-      }
-    });
   }
 
   void _triggerStarFlight() {
@@ -478,13 +463,6 @@ class _VictoryScreenState extends State<VictoryScreen>
         _dailyBonus > 0 ||
         _comebackBonus > 0;
     if (!hasBonuses) return;
-
-    // Show all bonus pills simultaneously
-    setState(() {
-      if (_streakMultiplierBonus > 0) _showStreakBonus = true;
-      if (_dailyBonus > 0) _showDailyBonus = true;
-      if (_comebackBonus > 0) _showComebackBonus = true;
-    });
 
     // Mark first-time milestones and determine highest-priority voice.
     // Priority: first-time milestones > repeat bonuses.
@@ -552,7 +530,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   void _openChest() {
     if (_chestOpened) return;
-    _chestAutoOpenTimer?.cancel();
     setState(() => _chestOpened = true);
     HapticFeedback.heavyImpact();
 
@@ -616,15 +593,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           await _revealBonusStars();
           voiceSlotsRemaining--;
         } else if (hasBonuses) {
-          // No slots left — show pills silently
-          if (mounted) {
-            setState(() {
-              if (_streakMultiplierBonus > 0) _showStreakBonus = true;
-              if (_dailyBonus > 0) _showDailyBonus = true;
-              if (_comebackBonus > 0) _showComebackBonus = true;
-            });
-          }
-          // Still mark first-time flags so they don't replay
+          // No slots left — still mark first-time flags so they don't replay
           if (_streakMultiplierBonus > 0) {
             if (_newStreak >= 7) {
               if (!(await _streakService.hasSeenFirstStreak7())) {
@@ -713,54 +682,6 @@ class _VictoryScreenState extends State<VictoryScreen>
             unawaited(_audio.playSfx('victory.mp3'));
             await _audio.playVoice('voice_world_complete.mp3');
             voiceSlotsRemaining--;
-          }
-        } else {
-          // ── Endgame legendary encounter ──
-          // When all trophies in the current world are captured, showcase
-          // a random already-captured trophy with a golden legendary treatment.
-          // Only show once — after that, skip straight to chest.
-          final prefs = await SharedPreferences.getInstance();
-          final hasSeenLegendary =
-              prefs.getBool('has_seen_legendary') ?? false;
-          if (!hasSeenLegendary) {
-            await prefs.setBool('has_seen_legendary', true);
-            final capturedIds = await _trophyService.getCapturedIds();
-            if (capturedIds.isNotEmpty && mounted) {
-              await Future.delayed(const Duration(milliseconds: 200));
-              if (!mounted) return;
-
-              final randomId =
-                  capturedIds[_random.nextInt(capturedIds.length)];
-              final trophy = TrophyService.allTrophies.firstWhere(
-                (t) => t.id == randomId,
-                orElse: () => TrophyService.allTrophies.first,
-              );
-
-              setState(() {
-                _showTrophyReveal = true;
-                _trophyCaptured = true;
-                _isLegendaryEncounter = true;
-                _trophyDefeats = trophy.defeatsRequired;
-                _trophyRequired = trophy.defeatsRequired;
-                _revealedTrophy = trophy;
-              });
-
-              unawaited(HapticFeedback.heavyImpact());
-              unawaited(_cardFlyController.forward());
-
-              await Future.delayed(const Duration(milliseconds: 700));
-              if (!mounted) return;
-
-              unawaited(_cardGlowController.repeat(reverse: true));
-              unawaited(_newBadgeController.forward());
-
-              // P5: Legendary encounter — voice_wow_amazing ONLY, skip card description
-              if (voiceSlotsRemaining > 0) {
-                await _audio.playVoice('voice_wow_amazing.mp3');
-                voiceSlotsRemaining--;
-              }
-              if (!mounted) return;
-            }
           }
         }
 
@@ -1029,15 +950,10 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   Widget _buildTrophyReveal() {
     final trophy = _revealedTrophy!;
-    // Legendary encounters use a golden/amber glow; normal uses green/amber
-    final Color glowColor;
-    if (_isLegendaryEncounter) {
-      glowColor = const Color(0xFFFFD54F); // golden for legendary
-    } else if (_trophyCaptured) {
-      glowColor = const Color(0xFF00E676); // green for captured
-    } else {
-      glowColor = const Color(0xFFFFAB00); // amber for hit
-    }
+    // Green for captured, amber for partial hit
+    final Color glowColor = _trophyCaptured
+        ? const Color(0xFF00E676)
+        : const Color(0xFFFFAB00);
 
     return AnimatedBuilder(
       animation: Listenable.merge([_cardFlyController, _cardGlowController]),
@@ -1062,34 +978,17 @@ class _VictoryScreenState extends State<VictoryScreen>
                       color: const Color(0xFF1A0A3E),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: _isLegendaryEncounter
-                            ? Color.lerp(
-                                const Color(0xFFFFD54F),
-                                const Color(0xFFFF6D00),
-                                glowPulse,
-                              )!.withValues(alpha: 0.8 + glowPulse * 0.2)
-                            : glowColor.withValues(alpha: 0.6 + glowPulse * 0.4),
-                        width: _isLegendaryEncounter ? 4 : 3,
+                        color: glowColor.withValues(alpha: 0.6 + glowPulse * 0.4),
+                        width: 3,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: glowColor.withValues(
-                            alpha: _isLegendaryEncounter
-                                ? 0.5 + glowPulse * 0.4
-                                : 0.3 + glowPulse * 0.3,
+                            alpha: 0.3 + glowPulse * 0.3,
                           ),
-                          blurRadius: _isLegendaryEncounter
-                              ? 30 + glowPulse * 15
-                              : 20 + glowPulse * 10,
-                          spreadRadius: _isLegendaryEncounter ? 4 : 2,
+                          blurRadius: 20 + glowPulse * 10,
+                          spreadRadius: 2,
                         ),
-                        if (_isLegendaryEncounter)
-                          BoxShadow(
-                            color: const Color(0xFFFF6D00)
-                                .withValues(alpha: 0.2 + glowPulse * 0.2),
-                            blurRadius: 40,
-                            spreadRadius: 8,
-                          ),
                       ],
                     ),
                     child: Column(
@@ -1104,40 +1003,20 @@ class _VictoryScreenState extends State<VictoryScreen>
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: _isLegendaryEncounter
-                                    ? null
-                                    : (_trophyCaptured
-                                        ? const Color(0xFF00E676)
-                                        : const Color(0xFFFFAB00)),
-                                gradient: _isLegendaryEncounter
-                                    ? const LinearGradient(
-                                        colors: [Color(0xFFFFD54F), Color(0xFFFF6D00)],
-                                      )
-                                    : null,
+                                color: _trophyCaptured
+                                    ? const Color(0xFF00E676)
+                                    : const Color(0xFFFFAB00),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (_isLegendaryEncounter)
-                                    const Padding(
-                                      padding: EdgeInsets.only(right: 4),
-                                      child: Icon(
-                                        Icons.auto_awesome,
-                                        color: Colors.white,
-                                        size: 14,
-                                      ),
-                                    ),
                                   Text(
-                                    _isLegendaryEncounter
-                                        ? 'LEGENDARY!'
-                                        : (_trophyCaptured
-                                            ? 'CAUGHT!'
-                                            : 'HIT! $_trophyDefeats/$_trophyRequired'),
-                                    style: TextStyle(
-                                      color: _isLegendaryEncounter
-                                          ? Colors.white
-                                          : Colors.black,
+                                    _trophyCaptured
+                                        ? 'CAUGHT!'
+                                        : 'HIT! $_trophyDefeats/$_trophyRequired',
+                                    style: const TextStyle(
+                                      color: Colors.black,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                     ),
@@ -1147,116 +1026,44 @@ class _VictoryScreenState extends State<VictoryScreen>
                             ),
                           ),
                         const SizedBox(height: 12),
-                        // Monster image — golden border + extra sparkles for legendary
-                        Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 140,
-                              height: 140,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                border: _isLegendaryEncounter
-                                    ? Border.all(
-                                        color: Color.lerp(
-                                          const Color(0xFFFFD54F),
-                                          const Color(0xFFFF6D00),
-                                          glowPulse,
-                                        )!.withValues(alpha: 0.9),
-                                        width: 3,
-                                      )
-                                    : null,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: glowColor.withValues(alpha: 0.3),
-                                    blurRadius: _isLegendaryEncounter ? 20 : 12,
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.asset(
-                                  trophy.imagePath,
-                                  fit: BoxFit.cover,
-                                  color: trophy.tintColor.withValues(alpha: 0.3),
-                                  colorBlendMode: BlendMode.overlay,
-                                ),
-                              ),
-                            ),
-                            // Sparkle icons for legendary encounters
-                            if (_isLegendaryEncounter) ...[
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: Opacity(
-                                  opacity: (glowPulse * 1.3).clamp(0.0, 1.0),
-                                  child: const Icon(
-                                    Icons.auto_awesome,
-                                    color: Color(0xFFFFD54F),
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 4,
-                                left: 4,
-                                child: Opacity(
-                                  opacity: ((1.0 - glowPulse) * 1.3).clamp(0.0, 1.0),
-                                  child: const Icon(
-                                    Icons.auto_awesome,
-                                    color: Color(0xFFFF6D00),
-                                    size: 14,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 8,
-                                left: 2,
-                                child: Opacity(
-                                  opacity: ((glowPulse - 0.3).abs() < 0.5
-                                      ? glowPulse
-                                      : 1.0 - glowPulse)
-                                      .clamp(0.0, 1.0),
-                                  child: const Icon(
-                                    Icons.auto_awesome,
-                                    color: Color(0xFFFFF59D),
-                                    size: 12,
-                                  ),
-                                ),
+                        // Monster image
+                        Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: glowColor.withValues(alpha: 0.3),
+                                blurRadius: 12,
                               ),
                             ],
-                          ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.asset(
+                              trophy.imagePath,
+                              fit: BoxFit.cover,
+                              color: trophy.tintColor.withValues(alpha: 0.3),
+                              colorBlendMode: BlendMode.overlay,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           trophy.name,
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: _isLegendaryEncounter
-                                ? const Color(0xFFFFD54F)
-                                : Colors.white,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
-                            shadows: _isLegendaryEncounter
-                                ? [
-                                    Shadow(
-                                      color: const Color(0xFFFFD54F)
-                                          .withValues(alpha: 0.6),
-                                      blurRadius: 10,
-                                    ),
-                                  ]
-                                : null,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _isLegendaryEncounter
-                              ? trophy.title
-                              : (_trophyCaptured ? trophy.title : 'Keep fighting!'),
+                          _trophyCaptured ? trophy.title : 'Keep fighting!',
                           style: TextStyle(
-                            color: _isLegendaryEncounter
-                                ? const Color(0xFFFF6D00)
-                                : (_trophyCaptured ? glowColor : Colors.white70),
+                            color: _trophyCaptured ? glowColor : Colors.white70,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                             letterSpacing: 2,
@@ -1301,7 +1108,7 @@ class _VictoryScreenState extends State<VictoryScreen>
       barrierColor: Colors.black.withValues(alpha: 0.7),
       builder: (ctx) => TrophyDetailDialog(
         trophy: trophy,
-        defeatCount: _isLegendaryEncounter ? trophy.defeatsRequired : _trophyDefeats,
+        defeatCount: _trophyDefeats,
         worldColor: worldColor,
       ),
     );
@@ -1317,7 +1124,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   void dispose() {
-    _chestAutoOpenTimer?.cancel();
     _audio.stopVoice();
     _confettiController.dispose();
     _doneButtonController.dispose();
@@ -1542,9 +1348,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                     // TREASURE CHEST
                     if (_showChest) _buildChest(),
-
-                    // Post-chest bonus star reveals
-                    if (_chestOpened) _buildBonusReveal(),
 
                     // LEGENDARY RANGER badge (all trophies collected)
                     if (_chestOpened &&
@@ -2451,119 +2254,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  Widget _buildBonusReveal() {
-    final bonuses = <Widget>[];
-
-    if (_showStreakBonus && _streakMultiplierBonus > 0) {
-      bonuses.add(_BonusStar(
-        icon: Icons.local_fire_department,
-        count: _streakMultiplierBonus,
-        color: _newStreak >= 7
-            ? const Color(0xFF40C4FF)
-            : Colors.deepOrange,
-      ));
-    }
-
-    if (_showDailyBonus && _dailyBonus > 0) {
-      bonuses.add(_BonusStar(
-        icon: Icons.wb_twilight,
-        count: _dailyBonus,
-        color: const Color(0xFF7C4DFF),
-      ));
-    }
-
-    if (_showComebackBonus && _comebackBonus > 0) {
-      bonuses.add(_BonusStar(
-        icon: Icons.favorite,
-        count: _comebackBonus,
-        color: const Color(0xFF69F0AE),
-      ));
-    }
-
-    if (bonuses.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: bonuses,
-      ),
-    );
-  }
-}
-
-class _BonusStar extends StatefulWidget {
-  final IconData icon;
-  final int count;
-  final Color color;
-
-  const _BonusStar({
-    required this.icon,
-    required this.count,
-    required this.color,
-  });
-
-  @override
-  State<_BonusStar> createState() => _BonusStarState();
-}
-
-class _BonusStarState extends State<_BonusStar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _scaleAnim = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scaleAnim,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(widget.icon, color: widget.color, size: 24),
-            const SizedBox(width: 6),
-            Text(
-              '+${widget.count}',
-              style: TextStyle(
-                color: widget.color,
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                shadows: [
-                  Shadow(
-                    color: widget.color.withValues(alpha: 0.6),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.star, color: widget.color, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _ConfettiPainter extends CustomPainter {
