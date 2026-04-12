@@ -11,27 +11,37 @@
 ## Workstream Status
 
 ### APP
-- **Status**: Cycle 12 shipped — 25 fixes across victory, services, UI, trophy wall, audio
-- **Last session**: 2026-04-10
-- **Last commit**: `a14dd6e` — Cycle 12
+- **Status**: Cycle 13 shipped + SUBMITTED for Play Store review (8 changes queued, 1-7 day window)
+- **Last session**: 2026-04-11
+- **Last commit**: `0402f32` — bump to v1.0.0+13 (Oliver hotfix)
+- **What happened (2026-04-11, Cycle 13 — `auto-full` mode debut)**:
+  - New `/cyclepro auto-full` mode: full 9-agent analysis + autonomous T1/T2 fixing
+  - Auto-clean: 197 dart analyze infos resolved (unawaited, catch clauses, const, etc.)
+  - 110 findings synthesized; 6 T2 auto-fixed; 20 T3 implemented across 8 streams
+  - Trophy wall: voice on locked taps, monster silhouettes (no more "???"), Pokemon-style mystery
+  - Home: military_tech badge for rank (P11), icon-first greeting popup (P1), stat animations on return
+  - Victory: bigger stats, audio crossfade fix, K.O. voice variety (5 lines)
+  - Settings: simplified Stars tab, delete cloud data button (COPPA), purchase mutex
+  - Shop: snackbar icon-only (P1), evolution arrows
+  - Onboarding P3: space theme, consistent button color
+  - **Hotfix (Oliver same-day playtest)**: removed auto-chest, fixed voice cut, removed LEGENDARY badge + bonus pills (-310 lines)
+  - 773 tests, 121.4 MB APK, 4/4 fitness gates
+- **Play Store**:
+  - v1.0.0+13 LIVE on internal testers (Apr 11 8:00 PM)
+  - All 10 policy declarations actioned (Advertising ID added today w/ AD_ID permission removed from manifest)
+  - Store listing complete (icon, feature graphic, 8 screenshots, descriptions)
+  - **8 changes submitted for Google review** — typical 1-7 day window
 - **What happened (2026-04-10, Cycle 12)**:
-  - 28 findings (1 Crit, 9 High, 10 Med, 8 Low), 25 implemented across 6 parallel streams
-  - Victory: trophy cards tappable, legendary badge interactive, forward hook guaranteed, dance/party chests +1 star
-  - Services: purchase atomicity fixed, smartSync timeout, trophy crash guard
-  - UI: delete dialog softened, mic→bolt icon, greeting 5s, camera skip, weekly dots legend, monster silhouettes
-  - Audio: 7 orphaned files removed, ambient music on map+trophies, encouragement shuffle+skip
-  - Tests: 773 (+8), 121.2 MB APK
-- **What happened (2026-04-08, Cycle 11 + 11b)**:
-  - Cycle 11: visual-only brushing cues, voice chain optimization, onboarding overhaul
-  - Cycle 11b hotfix: Oliver feedback — music lifecycle, phase voices, habit hook, stat pills, shop voice
+  - 28 findings, 25 implemented across 6 parallel streams (victory, services, UI, audio, etc.)
 - **COPPA Compliance Tracker**:
   - [x] P1.1-P1.6: All code + Firebase Console done
   - [x] P1.1 (updated): Camera defaults OFF, onboarding no longer sets camera_mode_configured
   - [x] P2.2: Privacy policy overhauled — COPPA 2025 + CCPA + data security program
-  - [ ] P2.1: Google Play Console families policy config
-- **Blocked on**: Oliver testing Cycle 12 build
-- **Next up**: Oliver tests → kid-feedback.md → monster voice audit (50 files) → Cycle 13
-- **Needs CEO decision**: Monster voice audit approach (manual vs re-generate all)
+  - [x] AD_ID permission removed from manifest (`tools:node="remove"`) — clean COPPA "No" declaration
+  - [ ] P2.1: Google Play Console families policy config (still pending — separate from app review)
+- **Blocked on**: Oliver retest of v13, Google review (in queue)
+- **Next up**: Oliver retests → Cycle 14 picks up 11 deferred T3 findings (#25-35) + new feedback
+- **Needs CEO decision**: None right now
 
 ### LANDING PAGE
 - **Status**: Live at brushquest.app — email capture LIVE via Buttondown
