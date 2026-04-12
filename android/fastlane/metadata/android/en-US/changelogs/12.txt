@@ -1,0 +1,1 @@
+Cycle 13 + COPPA fix: removed AD_ID permission auto-injected by Firebase Analytics
