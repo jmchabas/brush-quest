@@ -226,6 +226,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   int _trophyRequired = 0;
   TrophyMonster? _revealedTrophy;
   int _totalTrophies = 0;
+  bool _isShowcase =
+      false; // endgame showcase: caught monster displayed without banner
 
   // Trophy reveal animation controllers (reuse card names for compatibility)
   late AnimationController _cardFlyController;
@@ -234,11 +236,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
 
-  // Forward hook state (session-end encouragement)
-  bool _showForwardHook = false;
-  _ForwardHookType? _forwardHookType;
-  late AnimationController _forwardHookFadeController;
-  late AnimationController _forwardHookPulseController;
+  // Forward hook state (session-end encouragement — voice only)
+  bool _forwardHookFired = false;
 
   // Victory celebration arcs: 2-beat connected story
   // [beat1 = celebration, beat2 = star earned]
@@ -312,15 +311,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       vsync: this,
     );
 
-    _forwardHookFadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _forwardHookPulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
     // Safety net: guarantee DONE button appears after 10s even if animations fail.
     Timer(const Duration(seconds: 10), () {
       if (mounted && !_showDoneButton) {
@@ -371,7 +361,10 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
 
     // Award bonus stars from achievements
-    final achievementBonus = _newAchievements.fold(0, (sum, a) => sum + a.bonusStars);
+    final achievementBonus = _newAchievements.fold(
+      0,
+      (sum, a) => sum + a.bonusStars,
+    );
     if (achievementBonus > 0) {
       await _streakService.addBonusStars(achievementBonus);
       _newStars = await _streakService.getTotalStars();
@@ -382,26 +375,32 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     // Analytics: log completion + update user properties
     final analytics = AnalyticsService();
-    unawaited(analytics.logBrushSessionComplete(
-      totalHits: widget.totalHits,
-      monstersDefeated: widget.monstersDefeated,
-      starsEarned: _starsEarnedThisSession,
-      newStreak: _newStreak,
-      totalStars: _newStars,
-    ));
-    unawaited(analytics.setUserProperties(
-      lifetimeBrushes: lifetimeBrushes,
-      currentStreak: _newStreak,
-      totalStars: _newStars,
-    ));
+    unawaited(
+      analytics.logBrushSessionComplete(
+        totalHits: widget.totalHits,
+        monstersDefeated: widget.monstersDefeated,
+        starsEarned: _starsEarnedThisSession,
+        newStreak: _newStreak,
+        totalStars: _newStars,
+      ),
+    );
+    unawaited(
+      analytics.setUserProperties(
+        lifetimeBrushes: lifetimeBrushes,
+        currentStreak: _newStreak,
+        totalStars: _newStars,
+      ),
+    );
 
     if (mounted) setState(() {});
 
     // Auto-sync progress to cloud if signed in (fire-and-forget)
     if (AuthService().currentUser != null) {
-      unawaited(SyncService().uploadProgress().catchError((e) {
-        debugPrint('Cloud sync failed: $e');
-      }));
+      unawaited(
+        SyncService().uploadProgress().catchError((e) {
+          debugPrint('Cloud sync failed: $e');
+        }),
+      );
     }
 
     // ── NEW TIMING SEQUENCE ──
@@ -416,7 +415,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     // t=300ms   Arc beat 1 (celebration)
     final arcIndex = _random.nextInt(_victoryArcs.length);
     final arc = _victoryArcs[arcIndex];
-    await _audio.playVoice(arc[0], clearQueue: true, interrupt: true); // celebration
+    await _audio.playVoice(
+      arc[0],
+      clearQueue: true,
+      interrupt: true,
+    ); // celebration
     if (!mounted) return;
 
     // Arc beat 2 (star earned) — start concurrently with star flight,
@@ -441,7 +444,8 @@ class _VictoryScreenState extends State<VictoryScreen>
 
     final screenSize = MediaQuery.of(context).size;
     final pillPos = box.localToGlobal(Offset.zero);
-    final pillCenter = pillPos + Offset(box.size.width / 2, box.size.height / 2);
+    final pillCenter =
+        pillPos + Offset(box.size.width / 2, box.size.height / 2);
 
     setState(() {
       _showStarFlight = true;
@@ -459,9 +463,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   Future<void> _revealBonusStars() async {
     if (!mounted) return;
 
-    final hasBonuses = _streakMultiplierBonus > 0 ||
-        _dailyBonus > 0 ||
-        _comebackBonus > 0;
+    final hasBonuses =
+        _streakMultiplierBonus > 0 || _dailyBonus > 0 || _comebackBonus > 0;
     if (!hasBonuses) return;
 
     // Mark first-time milestones and determine highest-priority voice.
@@ -564,24 +567,27 @@ class _VictoryScreenState extends State<VictoryScreen>
 
         // ── Post-chest bonus star reveals (all pills shown simultaneously) ──
         // _revealBonusStars handles first-time detection and plays ONE voice
-        final hasBonuses = _streakMultiplierBonus > 0 ||
-            _dailyBonus > 0 ||
-            _comebackBonus > 0;
+        final hasBonuses =
+            _streakMultiplierBonus > 0 || _dailyBonus > 0 || _comebackBonus > 0;
 
         // Determine first-time milestone status before spending slots
         bool hasFirstTimeMilestone = false;
         if (_streakMultiplierBonus > 0) {
           if (_newStreak >= 7) {
-            hasFirstTimeMilestone = !(await _streakService.hasSeenFirstStreak7());
+            hasFirstTimeMilestone = !(await _streakService
+                .hasSeenFirstStreak7());
           } else {
-            hasFirstTimeMilestone = !(await _streakService.hasSeenFirstStreak3());
+            hasFirstTimeMilestone = !(await _streakService
+                .hasSeenFirstStreak3());
           }
         }
         if (!hasFirstTimeMilestone && _dailyBonus > 0) {
-          hasFirstTimeMilestone = !(await _streakService.hasSeenFirstDailyPair());
+          hasFirstTimeMilestone = !(await _streakService
+              .hasSeenFirstDailyPair());
         }
         if (!hasFirstTimeMilestone && _comebackBonus > 0) {
-          hasFirstTimeMilestone = !(await _streakService.hasSeenFirstComeback());
+          hasFirstTimeMilestone = !(await _streakService
+              .hasSeenFirstComeback());
         }
 
         // P1: First-time milestones get a voice slot
@@ -619,7 +625,9 @@ class _VictoryScreenState extends State<VictoryScreen>
 
         // ── Trophy defeat/capture ──
         if (widget.trophyTargetId != null) {
-          final result = await _trophyService.recordDefeat(widget.trophyTargetId!);
+          final result = await _trophyService.recordDefeat(
+            widget.trophyTargetId!,
+          );
           if (!mounted) return;
 
           await Future.delayed(const Duration(milliseconds: 200));
@@ -683,6 +691,37 @@ class _VictoryScreenState extends State<VictoryScreen>
             await _audio.playVoice('voice_world_complete.mp3');
             voiceSlotsRemaining--;
           }
+        } else {
+          // ── Endgame showcase: no trophy fight this brush — showcase a
+          // random already-captured trophy so the victory screen still
+          // has a monster moment. Neutral styling (no LEGENDARY badge).
+          final capturedIds = await _trophyService.getCapturedIds();
+          if (capturedIds.isNotEmpty && mounted) {
+            final randomId = capturedIds[_random.nextInt(capturedIds.length)];
+            final trophy = TrophyService.allTrophies.firstWhere(
+              (t) => t.id == randomId,
+              orElse: () => TrophyService.allTrophies.first,
+            );
+
+            setState(() {
+              _showTrophyReveal = true;
+              _trophyCaptured = true;
+              _isShowcase = true;
+              _trophyDefeats = trophy.defeatsRequired;
+              _trophyRequired = trophy.defeatsRequired;
+              _revealedTrophy = trophy;
+            });
+
+            unawaited(HapticFeedback.mediumImpact());
+            unawaited(_cardFlyController.forward());
+
+            await Future.delayed(const Duration(milliseconds: 700));
+            if (!mounted) return;
+
+            unawaited(_cardGlowController.repeat(reverse: true));
+            // No banner animation — badge is hidden in showcase mode.
+            // No auto-voice — kid taps monster to hear its description.
+          }
         }
 
         // Short pause to let the kid see the world progress (reduced from 1500ms)
@@ -713,14 +752,6 @@ class _VictoryScreenState extends State<VictoryScreen>
           if (mounted) _showAchievementSfxOnly(_newAchievements[i]);
         }
 
-        // P1: Legendary ranger voice (all heroes/weapons/trophies unlocked)
-        // This is a first-time milestone, gets priority
-        if (_totalTrophies >= TrophyService.allTrophies.length &&
-            voiceSlotsRemaining > 0 &&
-            mounted) {
-          await _audio.playVoice('voice_legend.mp3');
-        }
-
         // ── Forward hook: encourage the next brushing session ──
         if (mounted) {
           await _showForwardHookSequence();
@@ -740,35 +771,26 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
   }
 
-  /// Determine which forward hook to show and play the corresponding voice.
+  /// Determine which forward hook voice to play. No visual — voice only.
   Future<void> _showForwardHookSequence() async {
+    if (_forwardHookFired) return;
+    _forwardHookFired = true;
+
     final now = DateTime.now();
     final slots = await _streakService.getTodaySlots();
 
     _ForwardHookType? hookType;
 
     if (now.hour < 15 && !slots.eveningDone) {
-      // Morning brush done (before 3pm), evening not yet done
       hookType = _ForwardHookType.tonight;
     } else if (slots.morningDone && slots.eveningDone) {
-      // Both slots complete — full power!
       hookType = _ForwardHookType.fullPower;
     } else if (now.hour >= 15 && !slots.morningDone) {
-      // Evening brush done, morning was not done
       hookType = _ForwardHookType.morning;
     }
 
     if (hookType == null || !mounted) return;
 
-    setState(() {
-      _forwardHookType = hookType;
-      _showForwardHook = true;
-    });
-
-    unawaited(_forwardHookFadeController.forward());
-    unawaited(_forwardHookPulseController.repeat(reverse: true));
-
-    // Play the corresponding voice line
     final voiceFile = switch (hookType) {
       _ForwardHookType.tonight => 'voice_forward_tonight.mp3',
       _ForwardHookType.fullPower => 'voice_full_power.mp3',
@@ -777,183 +799,13 @@ class _VictoryScreenState extends State<VictoryScreen>
     await _audio.playVoice(voiceFile);
   }
 
-  Widget _buildForwardHook() {
-    final hookType = _forwardHookType!;
-
-    return FadeTransition(
-      opacity: CurvedAnimation(
-        parent: _forwardHookFadeController,
-        curve: Curves.easeIn,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 8, bottom: 4),
-        child: AnimatedBuilder(
-          animation: _forwardHookPulseController,
-          builder: (context, _) {
-            final pulse = _forwardHookPulseController.value;
-
-            if (hookType == _ForwardHookType.fullPower) {
-              // Golden star burst for full power
-              return _buildFullPowerBurst(pulse);
-            }
-
-            // Moon or sun icon with glow
-            final IconData icon;
-            final Color iconColor;
-            final Color glowColor;
-
-            if (hookType == _ForwardHookType.tonight) {
-              icon = Icons.nightlight_round;
-              iconColor = Colors.white;
-              glowColor = const Color(0xFF90CAF9); // soft blue-white glow
-            } else {
-              icon = Icons.wb_sunny;
-              iconColor = const Color(0xFFFFB74D); // warm amber
-              glowColor = const Color(0xFFFFE082); // warm amber glow
-            }
-
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Pulsing icon with glow
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: glowColor.withValues(
-                          alpha: 0.3 + pulse * 0.3,
-                        ),
-                        blurRadius: 16 + pulse * 8,
-                        spreadRadius: 2 + pulse * 2,
-                      ),
-                    ],
-                  ),
-                  child: Transform.scale(
-                    scale: 1.0 + pulse * 0.08,
-                    child: Icon(
-                      icon,
-                      color: iconColor,
-                      size: 40,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // +1 star badge (visual only, no text)
-                if (hookType == _ForwardHookType.tonight)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '+1',
-                        style: TextStyle(
-                          color: const Color(0xFFFFD54F),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          shadows: [
-                            Shadow(
-                              color: const Color(0xFFFFD54F)
-                                  .withValues(alpha: 0.6),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Icon(
-                        Icons.star,
-                        color: Color(0xFFFFD54F),
-                        size: 18,
-                      ),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFullPowerBurst(double pulse) {
-    // Golden star burst animation for both-slots-complete
-    return SizedBox(
-      width: 64,
-      height: 64,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Outer glow
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFFD54F).withValues(
-                    alpha: 0.4 + pulse * 0.4,
-                  ),
-                  blurRadius: 20 + pulse * 10,
-                  spreadRadius: 4 + pulse * 4,
-                ),
-                BoxShadow(
-                  color: const Color(0xFFFF6D00).withValues(
-                    alpha: 0.2 + pulse * 0.2,
-                  ),
-                  blurRadius: 30,
-                  spreadRadius: 6,
-                ),
-              ],
-            ),
-          ),
-          // Star icon
-          Transform.scale(
-            scale: 1.0 + pulse * 0.12,
-            child: const Icon(
-              Icons.auto_awesome,
-              color: Color(0xFFFFD54F),
-              size: 40,
-            ),
-          ),
-          // Smaller sparkles
-          Positioned(
-            top: 2,
-            right: 4,
-            child: Opacity(
-              opacity: (pulse * 1.3).clamp(0.0, 1.0),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Color(0xFFFF6D00),
-                size: 14,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 4,
-            left: 2,
-            child: Opacity(
-              opacity: ((1.0 - pulse) * 1.3).clamp(0.0, 1.0),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Color(0xFFFFF59D),
-                size: 12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTrophyReveal() {
     final trophy = _revealedTrophy!;
-    // Green for captured, amber for partial hit
-    final Color glowColor = _trophyCaptured
-        ? const Color(0xFF00E676)
-        : const Color(0xFFFFAB00);
+    // Green = just caught, amber = partial hit, purple = showcase from collection
+    // (showcase uses a distinct color so kid doesn't read it as "just caught again")
+    final Color glowColor = _isShowcase
+        ? const Color(0xFFB388FF)
+        : (_trophyCaptured ? const Color(0xFF00E676) : const Color(0xFFFFAB00));
 
     return AnimatedBuilder(
       animation: Listenable.merge([_cardFlyController, _cardGlowController]),
@@ -978,7 +830,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                       color: const Color(0xFF1A0A3E),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: glowColor.withValues(alpha: 0.6 + glowPulse * 0.4),
+                        color: glowColor.withValues(
+                          alpha: 0.6 + glowPulse * 0.4,
+                        ),
                         width: 3,
                       ),
                       boxShadow: [
@@ -994,14 +848,17 @@ class _VictoryScreenState extends State<VictoryScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (_newBadgeController.value > 0)
+                        if (_newBadgeController.value > 0 && !_isShowcase)
                           ScaleTransition(
                             scale: CurvedAnimation(
                               parent: _newBadgeController,
                               curve: Curves.elasticOut,
                             ),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: _trophyCaptured
                                     ? const Color(0xFF00E676)
@@ -1079,7 +936,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ? 'WORLD COMPLETE!'
                           : '${_world.name} trophies collected!',
                       style: TextStyle(
-                        color: _worldJustCompleted ? Colors.yellowAccent : Colors.white70,
+                        color: _worldJustCompleted
+                            ? Colors.yellowAccent
+                            : Colors.white70,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -1136,31 +995,30 @@ class _VictoryScreenState extends State<VictoryScreen>
     _walletBumpController.dispose();
     _heroCelebrationController.dispose();
     _heroGlowController.dispose();
-    _forwardHookFadeController.dispose();
-    _forwardHookPulseController.dispose();
     super.dispose();
   }
 
   Future<void> _goHome() async {
-    await AudioService().stopVoice();
-    // Fire forward hook before navigation if it hasn't been shown yet
-    if (!_showForwardHook) {
+    // Fire forward hook before navigation if it hasn't been shown yet.
+    // _showForwardHookSequence awaits the voice line (2-4s), so no fixed
+    // delay needed — the voice itself paces the transition. Then stop
+    // any lingering audio before navigation.
+    if (!_forwardHookFired) {
       await _showForwardHookSequence();
-      // Brief pause so the child sees/hears the hook before navigating
-      if (_showForwardHook && mounted) {
-        await Future.delayed(const Duration(milliseconds: 2500));
-      }
     }
+    await AudioService().stopVoice();
     if (!mounted) return;
-    unawaited(Navigator.of(context).pushAndRemoveUntil(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomeScreen(skipGreeting: true),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            FadeTransition(opacity: animation, child: child),
+    unawaited(
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const HomeScreen(skipGreeting: true),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+        (route) => false,
       ),
-      (route) => false,
-    ));
+    );
   }
 
   @override
@@ -1178,487 +1036,324 @@ class _VictoryScreenState extends State<VictoryScreen>
         }
       },
       child: Scaffold(
-      body: SpaceBackground(
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Confetti layer
-              AnimatedBuilder(
-                animation: _confettiController,
-                builder: (context, child) => CustomPaint(
-                  size: MediaQuery.of(context).size,
-                  painter: _ConfettiPainter(_confettiController.value),
-                ),
-              ),
-
-              // Jackpot golden overlay
-              if (_chestOpened && _reward?.type == _ChestRewardType.jackpot)
+        body: SpaceBackground(
+          child: SafeArea(
+            child: Stack(
+              children: [
+                // Confetti layer
                 AnimatedBuilder(
-                  animation: _rewardRevealController,
-                  builder: (context, _) => Container(
-                    color: const Color(
-                      0xFFFFD54F,
-                    ).withValues(alpha: _rewardRevealController.value * 0.15),
+                  animation: _confettiController,
+                  builder: (context, child) => CustomPaint(
+                    size: MediaQuery.of(context).size,
+                    painter: _ConfettiPainter(_confettiController.value),
                   ),
                 ),
 
-              Center(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Extra top padding to clear the fixed top bar
-                    const SizedBox(height: 48),
-
-                    Text(
-                      'GREAT JOB!',
-                      style: Theme.of(context).textTheme.headlineLarge
-                          ?.copyWith(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: const Color(
-                                  0xFFFFD54F,
-                                ).withValues(alpha: 0.8),
-                                blurRadius: 20,
-                              ),
-                            ],
-                          ),
+                // Jackpot golden overlay
+                if (_chestOpened && _reward?.type == _ChestRewardType.jackpot)
+                  AnimatedBuilder(
+                    animation: _rewardRevealController,
+                    builder: (context, _) => Container(
+                      color: const Color(
+                        0xFFFFD54F,
+                      ).withValues(alpha: _rewardRevealController.value * 0.15),
                     ),
+                  ),
 
-                    const SizedBox(height: 16),
+                Center(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Extra top padding to clear the fixed top bar
+                          const SizedBox(height: 48),
 
-                    // Hero celebration (replaces StarRain)
-                    AnimatedBuilder(
-                      animation: Listenable.merge([
-                        _heroScaleAnim,
-                        _heroGlowController,
-                      ]),
-                      builder: (context, _) {
-                        final glowPulse = _heroGlowController.value;
-                        return Transform.scale(
-                          scale: _heroScaleAnim.value.clamp(0.0, 1.0),
-                          child: SizedBox(
-                            width: 160,
-                            height: 160,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // Pulsing glow in hero's primary color
-                                Container(
-                                  width: 140,
-                                  height: 140,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _selectedHero.primaryColor
-                                            .withValues(alpha: 0.3 + glowPulse * 0.3),
-                                        blurRadius: 30 + glowPulse * 15,
-                                        spreadRadius: 5 + glowPulse * 5,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Hero image
-                                Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: _selectedHero.primaryColor
-                                          .withValues(alpha: 0.6 + glowPulse * 0.4),
-                                      width: 3,
+                          Text(
+                            'GREAT JOB!',
+                            style: Theme.of(context).textTheme.headlineLarge
+                                ?.copyWith(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      color: const Color(
+                                        0xFFFFD54F,
+                                      ).withValues(alpha: 0.8),
+                                      blurRadius: 20,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: _selectedHero.primaryColor
-                                            .withValues(alpha: 0.4),
-                                        blurRadius: 16,
-                                        spreadRadius: 2,
-                                      ),
-                                    ],
-                                  ),
-                                  child: ClipOval(
-                                    child: HeroService.buildHeroImage(
-                                      _selectedHero.id,
-                                      stage: _heroEvolutionStage,
-                                      weaponId: _heroWeaponId,
-                                      size: 120,
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                                // Sparkle icons at different positions
-                                Positioned(
-                                  top: 4,
-                                  right: 12,
-                                  child: Opacity(
-                                    opacity: (glowPulse * 1.2).clamp(0.0, 1.0),
-                                    child: Icon(
-                                      Icons.auto_awesome,
-                                      color: _selectedHero.primaryColor
-                                          .withValues(alpha: 0.8),
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 8,
-                                  left: 8,
-                                  child: Opacity(
-                                    opacity: ((1.0 - glowPulse) * 1.2).clamp(0.0, 1.0),
-                                    child: Icon(
-                                      Icons.auto_awesome,
-                                      color: _selectedHero.primaryColor
-                                          .withValues(alpha: 0.8),
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 20,
-                                  left: 4,
-                                  child: Opacity(
-                                    opacity: ((glowPulse - 0.3).abs() < 0.5
-                                        ? glowPulse
-                                        : 1.0 - glowPulse)
-                                        .clamp(0.0, 1.0),
-                                    child: Icon(
-                                      Icons.auto_awesome,
-                                      color: _selectedHero.primaryColor
-                                          .withValues(alpha: 0.6),
-                                      size: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
                           ),
-                        );
-                      },
-                    ),
 
-                    const SizedBox(height: 20),
+                          const SizedBox(height: 16),
 
-                    // TREASURE CHEST
-                    if (_showChest) _buildChest(),
-
-                    // LEGENDARY RANGER badge (all trophies collected)
-                    if (_chestOpened &&
-                        _totalTrophies >= TrophyService.allTrophies.length)
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.heavyImpact();
-                          _audio.playVoice('voice_legend.mp3');
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 16, left: 40, right: 40),
-                          child: AnimatedBuilder(
-                            animation: _heroGlowController,
+                          // Hero celebration (replaces StarRain)
+                          AnimatedBuilder(
+                            animation: Listenable.merge([
+                              _heroScaleAnim,
+                              _heroGlowController,
+                            ]),
                             builder: (context, _) {
-                              final pulse = _heroGlowController.value;
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16),
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color.lerp(const Color(0xFFFFD54F), const Color(0xFFFF6D00), pulse)!,
-                                      Color.lerp(const Color(0xFFFF6D00), const Color(0xFFFFD54F), pulse)!,
+                              final glowPulse = _heroGlowController.value;
+                              return Transform.scale(
+                                scale: _heroScaleAnim.value.clamp(0.0, 1.0),
+                                child: SizedBox(
+                                  width: 160,
+                                  height: 160,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Pulsing glow in hero's primary color
+                                      Container(
+                                        width: 140,
+                                        height: 140,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: _selectedHero.primaryColor
+                                                  .withValues(
+                                                    alpha:
+                                                        0.3 + glowPulse * 0.3,
+                                                  ),
+                                              blurRadius: 30 + glowPulse * 15,
+                                              spreadRadius: 5 + glowPulse * 5,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Hero image
+                                      Container(
+                                        width: 120,
+                                        height: 120,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: _selectedHero.primaryColor
+                                                .withValues(
+                                                  alpha: 0.6 + glowPulse * 0.4,
+                                                ),
+                                            width: 3,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: _selectedHero.primaryColor
+                                                  .withValues(alpha: 0.4),
+                                              blurRadius: 16,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: ClipOval(
+                                          child: HeroService.buildHeroImage(
+                                            _selectedHero.id,
+                                            stage: _heroEvolutionStage,
+                                            weaponId: _heroWeaponId,
+                                            size: 120,
+                                          ),
+                                        ),
+                                      ),
+                                      // Sparkle icons at different positions
+                                      Positioned(
+                                        top: 4,
+                                        right: 12,
+                                        child: Opacity(
+                                          opacity: (glowPulse * 1.2).clamp(
+                                            0.0,
+                                            1.0,
+                                          ),
+                                          child: Icon(
+                                            Icons.auto_awesome,
+                                            color: _selectedHero.primaryColor
+                                                .withValues(alpha: 0.8),
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 8,
+                                        left: 8,
+                                        child: Opacity(
+                                          opacity: ((1.0 - glowPulse) * 1.2)
+                                              .clamp(0.0, 1.0),
+                                          child: Icon(
+                                            Icons.auto_awesome,
+                                            color: _selectedHero.primaryColor
+                                                .withValues(alpha: 0.8),
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 20,
+                                        left: 4,
+                                        child: Opacity(
+                                          opacity:
+                                              ((glowPulse - 0.3).abs() < 0.5
+                                                      ? glowPulse
+                                                      : 1.0 - glowPulse)
+                                                  .clamp(0.0, 1.0),
+                                          child: Icon(
+                                            Icons.auto_awesome,
+                                            color: _selectedHero.primaryColor
+                                                .withValues(alpha: 0.6),
+                                            size: 14,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFFFD54F).withValues(alpha: 0.4 + pulse * 0.3),
-                                      blurRadius: 16 + pulse * 8,
-                                      spreadRadius: 2 + pulse * 2,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Transform.scale(
-                                      scale: 1.0 + pulse * 0.15,
-                                      child: Icon(
-                                        Icons.auto_awesome,
-                                        color: Colors.white.withValues(alpha: 0.9 + pulse * 0.1),
-                                        size: 32,
-                                        shadows: [
-                                          Shadow(
-                                            color: Colors.white.withValues(alpha: 0.5 + pulse * 0.5),
-                                            blurRadius: 8 + pulse * 6,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Opacity(
-                                      opacity: (pulse * 1.3).clamp(0.0, 1.0),
-                                      child: const Icon(
-                                        Icons.auto_awesome,
-                                        color: Color(0xFFFFF59D),
-                                        size: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Opacity(
-                                      opacity: ((1.0 - pulse) * 1.3).clamp(0.0, 1.0),
-                                      child: const Icon(
-                                        Icons.auto_awesome,
-                                        color: Color(0xFFFFF59D),
-                                        size: 12,
-                                      ),
-                                    ),
-                                  ],
                                 ),
                               );
                             },
                           ),
-                        ),
-                      ),
 
-                    // Trophy collection progress
-                    if (_chestOpened &&
-                        _totalTrophies < TrophyService.allTrophies.length)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: 16, left: 40, right: 40,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.emoji_events,
-                              color: Color(0xFF00E5FF),
-                              size: 22,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(7),
-                                child: SizedBox(
-                                  height: 14,
-                                  child: LinearProgressIndicator(
-                                    value: (_totalTrophies /
-                                            TrophyService.allTrophies.length)
-                                        .clamp(0.0, 1.0),
-                                    backgroundColor:
-                                        Colors.white.withValues(alpha: 0.15),
-                                    valueColor: const AlwaysStoppedAnimation(
-                                      Color(0xFF00E5FF),
+                          const SizedBox(height: 20),
+
+                          // TREASURE CHEST
+                          if (_showChest) _buildChest(),
+
+                          // Trophy collection progress
+                          if (_chestOpened &&
+                              _totalTrophies < TrophyService.allTrophies.length)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: 16,
+                                left: 40,
+                                right: 40,
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.emoji_events,
+                                    color: Color(0xFF00E5FF),
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(7),
+                                      child: SizedBox(
+                                        height: 14,
+                                        child: LinearProgressIndicator(
+                                          value:
+                                              (_totalTrophies /
+                                                      TrophyService
+                                                          .allTrophies
+                                                          .length)
+                                                  .clamp(0.0, 1.0),
+                                          backgroundColor: Colors.white
+                                              .withValues(alpha: 0.15),
+                                          valueColor:
+                                              const AlwaysStoppedAnimation(
+                                                Color(0xFF00E5FF),
+                                              ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$_totalTrophies/${TrophyService.allTrophies.length}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '$_totalTrophies/${TrophyService.allTrophies.length}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+
+                          // Trophy reveal — tappable for all trophy cards
+                          if (_showTrophyReveal && _revealedTrophy != null)
+                            GestureDetector(
+                              onTap: _showTrophyCardDetail,
+                              child: _buildTrophyReveal(),
+                            ),
+
+                          const SizedBox(height: 24),
+
+                          // Buttons (only after full reward sequence)
+                          if (_showDoneButton) ...[
+                            AnimatedBuilder(
+                              animation: _doneButtonController,
+                              builder: (context, child) => Transform.scale(
+                                scale: 1.0 + _doneButtonController.value * 0.05,
+                                child: child,
+                              ),
+                              child: GestureDetector(
+                                onTap: _goHome,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 60,
+                                    vertical: 14,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF7C4DFF),
+                                        Color(0xFF9C27B0),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(40),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFF7C4DFF,
+                                        ).withValues(alpha: 0.5),
+                                        blurRadius: 20,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.home,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'DONE',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                              letterSpacing: 4,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ],
-                        ),
-                      ),
-
-                    // Trophy reveal — tappable for all trophy cards
-                    if (_showTrophyReveal && _revealedTrophy != null)
-                      GestureDetector(
-                        onTap: _showTrophyCardDetail,
-                        child: _buildTrophyReveal(),
-                      ),
-
-                    // Forward hook: encourage the next brushing session
-                    if (_showForwardHook && _forwardHookType != null)
-                      _buildForwardHook(),
-
-                    const SizedBox(height: 24),
-
-                    // Buttons (only after full reward sequence)
-                    if (_showDoneButton) ...[
-                      AnimatedBuilder(
-                        animation: _doneButtonController,
-                        builder: (context, child) => Transform.scale(
-                          scale: 1.0 + _doneButtonController.value * 0.05,
-                          child: child,
-                        ),
-                        child: GestureDetector(
-                          onTap: _goHome,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 60,
-                              vertical: 14,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF7C4DFF), Color(0xFF9C27B0)],
-                              ),
-                              borderRadius: BorderRadius.circular(40),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFF7C4DFF,
-                                  ).withValues(alpha: 0.5),
-                                  blurRadius: 20,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.home, color: Colors.white, size: 24),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'DONE',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                        letterSpacing: 4,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 28),
-                  ],
-                ),
-                ),
-                ),
-              ),
-
-              // Fixed top bar with streak, rank, and wallet pills
-              Positioned(
-                top: 8,
-                left: 0,
-                right: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Streak pill (fire icon + streak count, orange)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: Colors.orangeAccent.withValues(alpha: 0.6),
-                          width: 2,
-                        ),
-                        color: Colors.orangeAccent.withValues(alpha: 0.12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.local_fire_department,
-                            color: Colors.orangeAccent,
-                            size: 28,
-                          ),
-                          const SizedBox(width: 4),
-                          TweenAnimationBuilder<int>(
-                            tween: IntTween(
-                              begin: _previousStreak,
-                              end: _newStreak,
-                            ),
-                            duration: const Duration(milliseconds: 1500),
-                            builder: (context, val, _) => Text(
-                              '$val',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 22,
-                                shadows: [
-                                  Shadow(
-                                    color: Color(0x80FF9800),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                          const SizedBox(height: 28),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    // Rank pill (diamond icon + total stars, purple) — secondary size
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFF7C4DFF).withValues(alpha: 0.6),
-                          width: 2,
-                        ),
-                        color: const Color(0xFF7C4DFF).withValues(alpha: 0.12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.diamond,
-                            color: Color(0xFF7C4DFF),
-                            size: 22,
-                          ),
-                          const SizedBox(width: 4),
-                          TweenAnimationBuilder<int>(
-                            tween: IntTween(
-                              begin: _previousStars,
-                              end: _newStars,
-                            ),
-                            duration: const Duration(milliseconds: 1500),
-                            builder: (context, val, _) => Text(
-                              '$val',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                                shadows: [
-                                  Shadow(
-                                    color: Color(0x807C4DFF),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Wallet pill (star icon + wallet count, yellow) with GlobalKey + glow
-                    AnimatedBuilder(
-                      animation: _walletBumpController,
-                      builder: (context, child) {
-                        final bump = Curves.elasticOut.transform(
-                          _walletBumpController.value,
-                        );
-                        return Transform.scale(
-                          scale: 1.0 + bump * 0.15,
-                          child: child,
-                        );
-                      },
-                      child: Container(
-                        key: _walletPillKey,
+                  ),
+                ),
+
+                // Fixed top bar with streak, rank, and wallet pills
+                Positioned(
+                  top: 8,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Streak pill (fire icon + streak count, orange)
+                      Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 6,
@@ -1666,36 +1361,24 @@ class _VictoryScreenState extends State<VictoryScreen>
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
-                            color: const Color(0xFFFFD54F).withValues(alpha: 0.7),
-                            width: 2.5,
+                            color: Colors.orangeAccent.withValues(alpha: 0.6),
+                            width: 2,
                           ),
-                          color: const Color(0xFFFFD54F).withValues(alpha: 0.15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFFD54F).withValues(alpha: 0.35),
-                              blurRadius: 16,
-                              spreadRadius: 2,
-                            ),
-                            BoxShadow(
-                              color: const Color(0xFFFF8F00).withValues(alpha: 0.15),
-                              blurRadius: 24,
-                              spreadRadius: 4,
-                            ),
-                          ],
+                          color: Colors.orangeAccent.withValues(alpha: 0.12),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.star,
-                              color: Color(0xFFFFD54F),
+                              Icons.local_fire_department,
+                              color: Colors.orangeAccent,
                               size: 28,
                             ),
                             const SizedBox(width: 4),
                             TweenAnimationBuilder<int>(
                               tween: IntTween(
-                                begin: _previousWallet,
-                                end: _newWallet,
+                                begin: _previousStreak,
+                                end: _newStreak,
                               ),
                               duration: const Duration(milliseconds: 1500),
                               builder: (context, val, _) => Text(
@@ -1703,11 +1386,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 24,
+                                  fontSize: 22,
                                   shadows: [
                                     Shadow(
-                                      color: Color(0xB0FFD54F),
-                                      blurRadius: 10,
+                                      color: Color(0x80FF9800),
+                                      blurRadius: 8,
                                     ),
                                   ],
                                 ),
@@ -1716,28 +1399,159 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      // Rank pill (diamond icon + total stars, purple) — secondary size
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF7C4DFF,
+                            ).withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                          color: const Color(
+                            0xFF7C4DFF,
+                          ).withValues(alpha: 0.12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.diamond,
+                              color: Color(0xFF7C4DFF),
+                              size: 22,
+                            ),
+                            const SizedBox(width: 4),
+                            TweenAnimationBuilder<int>(
+                              tween: IntTween(
+                                begin: _previousStars,
+                                end: _newStars,
+                              ),
+                              duration: const Duration(milliseconds: 1500),
+                              builder: (context, val, _) => Text(
+                                '$val',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                  shadows: [
+                                    Shadow(
+                                      color: Color(0x807C4DFF),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Wallet pill (star icon + wallet count, yellow) with GlobalKey + glow
+                      AnimatedBuilder(
+                        animation: _walletBumpController,
+                        builder: (context, child) {
+                          final bump = Curves.elasticOut.transform(
+                            _walletBumpController.value,
+                          );
+                          return Transform.scale(
+                            scale: 1.0 + bump * 0.15,
+                            child: child,
+                          );
+                        },
+                        child: Container(
+                          key: _walletPillKey,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFFFD54F,
+                              ).withValues(alpha: 0.7),
+                              width: 2.5,
+                            ),
+                            color: const Color(
+                              0xFFFFD54F,
+                            ).withValues(alpha: 0.15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFFFFD54F,
+                                ).withValues(alpha: 0.35),
+                                blurRadius: 16,
+                                spreadRadius: 2,
+                              ),
+                              BoxShadow(
+                                color: const Color(
+                                  0xFFFF8F00,
+                                ).withValues(alpha: 0.15),
+                                blurRadius: 24,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.star,
+                                color: Color(0xFFFFD54F),
+                                size: 28,
+                              ),
+                              const SizedBox(width: 4),
+                              TweenAnimationBuilder<int>(
+                                tween: IntTween(
+                                  begin: _previousWallet,
+                                  end: _newWallet,
+                                ),
+                                duration: const Duration(milliseconds: 1500),
+                                builder: (context, val, _) => Text(
+                                  '$val',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 24,
+                                    shadows: [
+                                      Shadow(
+                                        color: Color(0xB0FFD54F),
+                                        blurRadius: 10,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              // Star flight animation overlay
-              if (_showStarFlight)
-                _StarFlightOverlay(
-                  starCount: _starsEarnedThisSession.clamp(1, 5),
-                  source: _starFlightSource,
-                  target: _starFlightTarget,
-                  onStarLanded: _onStarLanded,
-                  onComplete: () {
-                    if (mounted) setState(() => _showStarFlight = false);
-                  },
-                ),
-
-            ],
+                // Star flight animation overlay
+                if (_showStarFlight)
+                  _StarFlightOverlay(
+                    starCount: _starsEarnedThisSession.clamp(1, 5),
+                    source: _starFlightSource,
+                    target: _starFlightTarget,
+                    onStarLanded: _onStarLanded,
+                    onComplete: () {
+                      if (mounted) setState(() => _showStarFlight = false);
+                    },
+                  ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -2181,14 +1995,35 @@ class _VictoryScreenState extends State<VictoryScreen>
                           ? Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.music_note, color: Colors.white, size: 28,
-                                  shadows: [Shadow(color: reward.color, blurRadius: 12)]),
+                                Icon(
+                                  Icons.music_note,
+                                  color: Colors.white,
+                                  size: 28,
+                                  shadows: [
+                                    Shadow(color: reward.color, blurRadius: 12),
+                                  ],
+                                ),
                                 const SizedBox(width: 4),
-                                const Icon(Icons.star, color: Color(0xFFFFD54F), size: 30,
-                                  shadows: [Shadow(color: Color(0xFFFFD54F), blurRadius: 12)]),
+                                const Icon(
+                                  Icons.star,
+                                  color: Color(0xFFFFD54F),
+                                  size: 30,
+                                  shadows: [
+                                    Shadow(
+                                      color: Color(0xFFFFD54F),
+                                      blurRadius: 12,
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(width: 4),
-                                Icon(Icons.music_note, color: Colors.white, size: 28,
-                                  shadows: [Shadow(color: reward.color, blurRadius: 12)]),
+                                Icon(
+                                  Icons.music_note,
+                                  color: Colors.white,
+                                  size: 28,
+                                  shadows: [
+                                    Shadow(color: reward.color, blurRadius: 12),
+                                  ],
+                                ),
                               ],
                             )
                           : Text(
@@ -2199,10 +2034,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 fontSize: 22,
                                 letterSpacing: 1.5,
                                 shadows: [
-                                  Shadow(
-                                    color: reward.color,
-                                    blurRadius: 16,
-                                  ),
+                                  Shadow(color: reward.color, blurRadius: 16),
                                   Shadow(
                                     color: reward.color.withValues(alpha: 0.6),
                                     blurRadius: 30,
@@ -2230,9 +2062,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                             fontSize: 32,
                             shadows: [
                               Shadow(
-                                color: const Color(0xFFFFD54F).withValues(
-                                  alpha: 0.8,
-                                ),
+                                color: const Color(
+                                  0xFFFFD54F,
+                                ).withValues(alpha: 0.8),
                                 blurRadius: 12,
                               ),
                             ],
@@ -2253,7 +2085,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       },
     );
   }
-
 }
 
 class _ConfettiPainter extends CustomPainter {
@@ -2383,16 +2214,16 @@ class _StarFlightOverlayState extends State<_StarFlightOverlay>
         begin: widget.source,
         end: widget.target,
         controlPoint: controlPoint,
-      ).animate(CurvedAnimation(
-        parent: _controllers[i],
-        curve: Curves.easeInOutCubic,
-      ));
+      ).animate(
+        CurvedAnimation(parent: _controllers[i], curve: Curves.easeInOutCubic),
+      );
     });
 
     _opacityAnims = _controllers.map((c) {
-      return Tween<double>(begin: 1.0, end: 0.6).animate(
-        CurvedAnimation(parent: c, curve: Curves.easeIn),
-      );
+      return Tween<double>(
+        begin: 1.0,
+        end: 0.6,
+      ).animate(CurvedAnimation(parent: c, curve: Curves.easeIn));
     }).toList();
 
     // Stagger the launches
@@ -2402,14 +2233,16 @@ class _StarFlightOverlayState extends State<_StarFlightOverlay>
   Future<void> _launchStars() async {
     for (int i = 0; i < widget.starCount; i++) {
       if (!mounted) return;
-      unawaited(_controllers[i].forward().then((_) {
-        if (!mounted) return;
-        widget.onStarLanded();
-        _landedCount++;
-        if (_landedCount >= widget.starCount) {
-          widget.onComplete();
-        }
-      }));
+      unawaited(
+        _controllers[i].forward().then((_) {
+          if (!mounted) return;
+          widget.onStarLanded();
+          _landedCount++;
+          if (_landedCount >= widget.starCount) {
+            widget.onComplete();
+          }
+        }),
+      );
       if (i < widget.starCount - 1) {
         await Future.delayed(const Duration(milliseconds: 150));
       }
@@ -2436,7 +2269,8 @@ class _StarFlightOverlayState extends State<_StarFlightOverlay>
                 if (_controllers[i].value == 0) return const SizedBox.shrink();
                 final pos = _positionAnims[i].value;
                 final opacity = _opacityAnims[i].value;
-                final scale = 1.0 - _controllers[i].value * 0.4; // shrink as it lands
+                final scale =
+                    1.0 - _controllers[i].value * 0.4; // shrink as it lands
                 return Positioned(
                   left: pos.dx - 14,
                   top: pos.dy - 14,
@@ -2449,10 +2283,7 @@ class _StarFlightOverlayState extends State<_StarFlightOverlay>
                         color: Color(0xFFFFD54F),
                         size: 28,
                         shadows: [
-                          Shadow(
-                            color: Color(0xCCFFD54F),
-                            blurRadius: 12,
-                          ),
+                          Shadow(color: Color(0xCCFFD54F), blurRadius: 12),
                         ],
                       ),
                     ),
