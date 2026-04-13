@@ -11,7 +11,6 @@ flutter_test  # testing — SDK package, never ships in release builds
 # Direct dependencies
 audioplayers  # local audio playback only, no network or tracking
 shared_preferences  # local key-value storage only, no network or user profiling
-google_fonts  # font loading; loads fonts from Google CDN — acceptable for kids apps under font-only exception
 wakelock_plus  # screen wake lock only, no data collection
 camera  # local camera access for motion detection; no data leaves device
 permission_handler  # runtime permission requests only, no data collection

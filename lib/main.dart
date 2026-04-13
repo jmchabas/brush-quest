@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -16,7 +15,6 @@ import 'widgets/asset_preloader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
   unawaited(
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
   );
@@ -84,7 +82,7 @@ class _BrushQuestAppState extends State<BrushQuestApp>
           secondary: Color(0xFF00E5FF),
           surface: Color(0xFF0D0B2E),
         ),
-        textTheme: GoogleFonts.fredokaTextTheme(ThemeData.dark().textTheme),
+        textTheme: ThemeData.dark().textTheme.apply(fontFamily: 'Fredoka'),
       ),
       home: const AssetPreloader(child: _AppEntry()),
     );
