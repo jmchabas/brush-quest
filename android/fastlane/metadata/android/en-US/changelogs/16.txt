@@ -1,0 +1,1 @@
+Crash fix: Fredoka font now bundled locally, removed google_fonts network dependency. Fixes production crashes reported in Crashlytics.
