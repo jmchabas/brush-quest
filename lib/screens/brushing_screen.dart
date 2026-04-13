@@ -430,6 +430,9 @@ class _BrushingScreenState extends State<BrushingScreen>
   bool _playedEncouragement = false;
   bool _playedMidEncouragement = false;
   bool _playedAlmostThere = false;
+  // Counts beats skipped in the current phase so we guarantee at least
+  // one encouragement plays per phase (avoids fully silent phases).
+  int _phaseBeatsSkipped = 0;
 
   // Encouragement arcs: each arc is a 3-beat connected micro-story
   // [beat1 = energizing @80%, beat2 = supportive @50%, beat3 = almost-there @20%]
@@ -1391,6 +1394,7 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   void _switchToPhase(BrushPhase newPhase) {
     _phaseTransitioning = false;
+    _phaseBeatsSkipped = 0;
     setState(() {
       _phase = newPhase;
       _phaseSecondsLeft = _phaseDuration;
@@ -1597,11 +1601,17 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   /// For experienced brushers (10+ lifetime brushes), occasionally skip
   /// individual encouragement beats to let the music carry the energy.
-  /// Returns true if the beat should be skipped.
+  /// Returns true if the beat should be skipped. Guarantees at least one
+  /// beat plays per phase: if 2 of 3 beats have already been skipped, the
+  /// third is forced to play regardless of the roll.
   bool _shouldSkipEncouragement() {
     if (_totalBrushes < 10) return false;
+    // Guarantee at least one beat plays per phase.
+    if (_phaseBeatsSkipped >= 2) return false;
     // 30% chance to skip any given beat after 10 brushes
-    return _random.nextDouble() < 0.30;
+    final skip = _random.nextDouble() < 0.30;
+    if (skip) _phaseBeatsSkipped++;
+    return skip;
   }
 
   void _spawnDamagePopup() {

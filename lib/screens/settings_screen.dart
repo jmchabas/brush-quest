@@ -65,12 +65,16 @@ class _SettingsScreenState extends State<SettingsScreen>
     _tabController.addListener(_resetInactivityTimer);
     _generateMathChallenge();
     _loadSettings();
+    // Ambient music — low volume so screen isn't silent
+    unawaited(AudioService().playMusic('battle_music_loop.mp3'));
+    unawaited(AudioService().setMusicVolume(0.04));
   }
 
   @override
   void dispose() {
     _inactivityTimer?.cancel();
     AudioService().stopVoice();
+    unawaited(AudioService().stopMusic());
     _tabController.dispose();
     _mathController.dispose();
     super.dispose();
@@ -819,6 +823,13 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
+  Future<void> _openTermsOfService() async {
+    final uri = Uri.parse('https://anemosgp.com/terms.html');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   String _formatRelativeTime(String iso8601) {
     final saved = DateTime.tryParse(iso8601);
     if (saved == null) return iso8601;
@@ -1131,7 +1142,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   context: context,
                   initialDate: now.add(const Duration(days: 1)),
                   firstDate: now.add(const Duration(days: 1)),
-                  lastDate: now.add(const Duration(days: 7)),
+                  lastDate: now.add(const Duration(days: 14)),
                   builder: (context, child) {
                     return Theme(
                       data: Theme.of(context).copyWith(
@@ -1451,6 +1462,19 @@ class _SettingsScreenState extends State<SettingsScreen>
               size: 24,
             ),
             onPressed: _openPrivacyPolicy,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _SettingCard(
+          icon: Icons.gavel_outlined,
+          title: 'Terms of Service',
+          child: IconButton(
+            icon: const Icon(
+              Icons.open_in_new,
+              color: Color(0xFF7C4DFF),
+              size: 24,
+            ),
+            onPressed: _openTermsOfService,
           ),
         ),
         const SizedBox(height: 16),
