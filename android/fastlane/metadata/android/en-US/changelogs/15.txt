@@ -1,0 +1,1 @@
+5 deferred Cycle 13 fixes: streak pause now up to 14 days, ToS link added, silence cap on encouragement arcs, settings has ambient music, auth error handling cleanup
