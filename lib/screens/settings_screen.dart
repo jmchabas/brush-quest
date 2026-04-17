@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -280,14 +281,22 @@ class _SettingsScreenState extends State<SettingsScreen>
     return result ?? false;
   }
 
-  Future<void> _handleSignIn() async {
+  Future<void> _handleGoogleSignIn() async {
+    await _handleSignInWith(_auth.signInWithGoogle);
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    await _handleSignInWith(_auth.signInWithApple);
+  }
+
+  Future<void> _handleSignInWith(Future<User?> Function() signInFn) async {
     _resetInactivityTimer();
     final consented = await _showDataConsentDialog();
     if (!consented || !mounted) return;
 
     setState(() => _signingIn = true);
     try {
-      final user = await _auth.signInWithGoogle();
+      final user = await signInFn();
       if (user != null && mounted) {
         unawaited(AnalyticsService().logSignIn());
         await _sync.smartSync();
@@ -1191,8 +1200,50 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 8),
         if (!signedIn) ...[
+          // Apple Sign-In button (iOS only, per Apple Guideline 4.8).
+          if (Platform.isIOS) ...[
+            GestureDetector(
+              onTap: _signingIn ? null : _handleAppleSignIn,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_signingIn)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.black,
+                        ),
+                      )
+                    else ...[
+                      const Icon(Icons.apple, color: Colors.black, size: 24),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Sign in with Apple',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          // Google Sign-In button (both platforms).
           GestureDetector(
-            onTap: _signingIn ? null : _handleSignIn,
+            onTap: _signingIn ? null : _handleGoogleSignIn,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(

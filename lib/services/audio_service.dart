@@ -428,14 +428,18 @@ class AudioService {
       final player = AudioPlayer();
       final isVoice = file.startsWith('voice_');
       final assetPath = isVoice ? _voiceAssetPath(file) : 'audio/$file';
+      final sourceFuture = player.setSource(AssetSource(assetPath));
       try {
-        await player
-            .setSource(AssetSource(assetPath))
-            .timeout(const Duration(milliseconds: 350));
-      } on Exception catch (_) {
+        await sourceFuture.timeout(const Duration(milliseconds: 350));
+      } on Object catch (_) {
+        // Catches TimeoutException and StateError from a late firstWhere
+        // on a closed event stream after the timeout + dispose race.
         failures++;
       }
-      unawaited(player.dispose());
+      // Swallow any late result/error from setSource so disposing the
+      // player mid-flight doesn't surface an unhandled StateError.
+      sourceFuture.ignore();
+      unawaited(player.dispose().catchError((Object _) {}));
     }
     if (failures > 0) {
       _reportAudioIssue(
