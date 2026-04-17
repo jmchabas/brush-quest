@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 import '../services/world_service.dart';
 import '../widgets/space_background.dart';
@@ -201,6 +202,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
             isCompleted: isCompleted,
             progress: progress,
             onTap: () {
+              // Immediate tactile feedback — matches every other tap target
+              // in the app (home nav, trophy tabs, shop cells). Without these
+              // the world map feels broken on tap.
+              unawaited(HapticFeedback.selectionClick());
+              unawaited(AudioService().playSfx('whoosh.mp3'));
               // Always play the world description voice
               AudioService().playVoice(
                 'voice_world_${world.id}.mp3',

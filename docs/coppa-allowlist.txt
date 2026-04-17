@@ -2,7 +2,7 @@
 # Format: package_name  # reason
 # Any dependency in pubspec.yaml NOT on this list triggers a fitness gate failure.
 #
-# Last reviewed: 2026-04-08
+# Last reviewed: 2026-04-17
 
 # Core Flutter
 flutter  # framework — SDK package, no external data collection
@@ -22,6 +22,8 @@ firebase_crashlytics  # crash reporting only; no behavioral or advertising data;
 firebase_analytics  # CONDITIONAL — currently integrated; must be configured with analytics_collection_enabled=false for child users; review before each release; flag for removal if COPPA enforcement tightens
 lottie  # local animation rendering only, no network calls at runtime
 url_launcher  # opens URLs in external browser; used for privacy policy / support links only
+sign_in_with_apple  # iOS-only OAuth (Apple Guideline 4.8 requires Sign in with Apple when offering third-party sign-in); parent-initiated, no tracking
+crypto  # transitive / iOS Apple Sign-In nonce hashing (SHA-256); pure computation, no network, no data collection
 
 # Dev/build dependencies (never shipped in release APK)
 very_good_analysis  # lint rules only, build-time tool

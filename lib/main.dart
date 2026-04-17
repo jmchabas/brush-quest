@@ -37,6 +37,11 @@ void main() async {
 
   await StreakService.migrateToWalletEconomy();
 
+  // Belt-and-suspenders: clear the shared purchase mutex on every cold start so
+  // a prior crash between the set-true and the finally block can't silently
+  // brick all subsequent purchases for the app's lifetime.
+  StreakService.isPurchasing = false;
+
   runApp(const BrushQuestApp());
 }
 

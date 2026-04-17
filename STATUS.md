@@ -11,9 +11,9 @@
 ## Workstream Status
 
 ### APP
-- **Status**: Cycle 13 shipped + SUBMITTED for Play Store review (8 changes queued, 1-7 day window)
-- **Last session**: 2026-04-11
-- **Last commit**: `0402f32` — bump to v1.0.0+13 (Oliver hotfix)
+- **Status**: Cycle 14 complete — 13 T1/T2 autofixes landed, ~35 T3 items queued for Jim review. v1.0.0+18 ready to deploy.
+- **Last session**: 2026-04-17
+- **Last commit**: `8e0d3a0` — bump to v1.0.0+17 (audioplayers race fix)
 - **What happened (2026-04-11, Cycle 13 — `auto-full` mode debut)**:
   - New `/cyclepro auto-full` mode: full 9-agent analysis + autonomous T1/T2 fixing
   - Auto-clean: 197 dart analyze infos resolved (unawaited, catch clauses, const, etc.)
@@ -39,9 +39,26 @@
   - [x] P2.2: Privacy policy overhauled — COPPA 2025 + CCPA + data security program
   - [x] AD_ID permission removed from manifest (`tools:node="remove"`) — clean COPPA "No" declaration
   - [ ] P2.1: Google Play Console families policy config (still pending — separate from app review)
-- **Blocked on**: Oliver retest of v13, Google review (in queue)
-- **Next up**: Oliver retests → Cycle 14 picks up 11 deferred T3 findings (#25-35) + new feedback
-- **Needs CEO decision**: None right now
+- **What happened (2026-04-17, Cycle 14 — `auto-full max=3`, stopped after pass 1)**:
+  - Phase 0 caught CI red on main (format regression v16/v17) — fixed before analysis
+  - 9 agents → 144 findings → 13 T1/T2 auto-implemented
+  - Music volume restore bug fix (audio no longer surges 3-4x after voice on home/map/shop/trophy)
+  - Daily bonus nav-timing fix (claims on brush-return path + app resume, not only via greeting)
+  - Evolution auto-equip guard (no more silent hero switch on evo purchase)
+  - `isPurchasing` mutex stuck-flag reset on cold start
+  - Consent dialog now discloses Firebase Analytics + Crashlytics (COPPA)
+  - Restore + Start-Fresh dialogs warn about data loss
+  - Sign-in 30s timeout + typed TimeoutException
+  - Settings gate re-lock now dismisses open popups
+  - World map planet tap + trophy wall locked-chip gain SFX/haptic/voice (P3, P7)
+  - Home screen `WidgetsBindingObserver` for app-resume refresh
+  - Greeting popup listener leak fixed
+  - Featured weapon tappable → picker voice
+  - COPPA allowlist updated for iOS Apple Sign-In deps
+  - 774 tests, 120.4 MB APK (-1.0 MB vs C13), 4/4 fitness gates
+- **Blocked on**: Oliver retest of v17 + v18, Google review (in queue since C13)
+- **Next up**: v1.0.0+18 deploy to internal testing. After Oliver retest → Cycle 15 tackles T3 priorities: shop tabs (4-agent convergence), P2 chronic (home next-unlock teaser), onboarding P2 rebuild, Weapons tab dead zone.
+- **Needs CEO decision**: T3-19 shop tabs symmetry direction (add `_FeaturedHeroDisplay` vs remove Weapons card)
 
 ### LANDING PAGE
 - **Status**: Live at brushquest.app — email capture LIVE via Buttondown

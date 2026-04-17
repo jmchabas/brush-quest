@@ -28,7 +28,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
@@ -67,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadStats();
 
     _pulseController = AnimationController(
@@ -116,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     AudioService().stopVoice();
     AudioService().stopMusic();
     _pulseController.dispose();
@@ -124,6 +127,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _breatheController.dispose();
     _statPulseController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh wallet/streak/etc. when the app comes back to the foreground so
+    // cross-device Firestore writes (e.g. a brush completed on another tablet)
+    // are reflected immediately without requiring explicit navigation.
+    if (state == AppLifecycleState.resumed && mounted) {
+      unawaited(_refreshStats());
+    }
+  }
+
+  /// Refresh stats without re-triggering greeting / music. Used on app resume.
+  Future<void> _refreshStats() async {
+    final wallet = await _streakService.getWallet();
+    final rank = await _streakService.getRangerRank();
+    final streak = await _streakService.getStreak();
+    final totalBrushes = await _streakService.getTotalBrushes();
+    final trophyCount = await _trophyService.getTotalCaptured();
+    if (!mounted) return;
+    setState(() {
+      _totalStars = rank;
+      _wallet = wallet;
+      _streak = streak;
+      _totalBrushes = totalBrushes;
+      _trophyCount = trophyCount;
+    });
+    // Daily bonus is idempotent by date — safe to attempt on every resume.
+    unawaited(_claimAndAnimateDailyBonus());
   }
 
   Future<void> _loadStats() async {
@@ -174,6 +206,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           unawaited(AudioService().playVoice(voice));
         }
       }
+      // Ensure daily bonus is claimed on the brush-return path too, not only
+      // on the greeting-popup path — otherwise a session where the kid opens
+      // the app post-brush via an unusual route loses the bonus for the day.
+      unawaited(_claimAndAnimateDailyBonus());
       return;
     }
 
@@ -272,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       GreetingState.freshStart => const Color(0xFF00E5FF),
     };
 
-    showDialog<void>(
+    final dialogFuture = showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (dialogContext) => Dialog(
@@ -451,24 +487,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-    ).then((_) {
-      // Stop any pending voice when dialog dismisses (barrier tap or auto)
-      AudioService().stopVoice();
-      // Pulse streak pill if this was a fresh-start greeting
-      if (pulseStreak && mounted) {
-        setState(() => _streakPulseActive = true);
-        _statPulseController.forward(from: 0).then((_) {
-          if (mounted) setState(() => _streakPulseActive = false);
-        });
-      }
-    });
-    // Auto-dismiss when voice finishes + 0.5s (minimum 5s)
+    );
+    // Track whether the voice-pipeline listener is still attached so the
+    // dialog's .then cleanup can always detach it. Without this, if the dialog
+    // is dismissed (barrier tap / auto-dismiss) before the voice ends, the
+    // listener stays attached to the singleton notifier forever — a quiet leak
+    // that accumulates one orphaned listener per greeting.
+    final audio = AudioService();
+    var listenerAttached = false;
     final showTime = DateTime.now();
     void dismissWhenReady() {
       if (!mounted) return;
       final elapsed = DateTime.now().difference(showTime);
       if (elapsed < const Duration(seconds: 5)) {
-        // Ensure minimum display time
         Future.delayed(const Duration(seconds: 5) - elapsed, () {
           if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
         });
@@ -480,19 +511,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
 
     void listener() {
-      if (!AudioService().voicePipelineActiveNotifier.value) {
-        AudioService().voicePipelineActiveNotifier.removeListener(listener);
+      if (!audio.voicePipelineActiveNotifier.value) {
+        audio.voicePipelineActiveNotifier.removeListener(listener);
+        listenerAttached = false;
         dismissWhenReady();
       }
     }
 
-    // If voice is already done, dismiss with minimum delay
-    if (!AudioService().voicePipelineActiveNotifier.value) {
+    dialogFuture.then((_) {
+      if (listenerAttached) {
+        audio.voicePipelineActiveNotifier.removeListener(listener);
+        listenerAttached = false;
+      }
+      audio.stopVoice();
+      if (pulseStreak && mounted) {
+        setState(() => _streakPulseActive = true);
+        _statPulseController.forward(from: 0).then((_) {
+          if (mounted) setState(() => _streakPulseActive = false);
+        });
+      }
+    });
+
+    if (!audio.voicePipelineActiveNotifier.value) {
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
       });
     } else {
-      AudioService().voicePipelineActiveNotifier.addListener(listener);
+      audio.voicePipelineActiveNotifier.addListener(listener);
+      listenerAttached = true;
     }
   }
 

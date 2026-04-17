@@ -56,6 +56,12 @@ class AudioService {
   static const double _musicVolume = 0.18;
   static const double _musicDuckedVolume = 0.08;
 
+  /// Active music target volume. Tracks the most recent caller-set level
+  /// (via [setMusicVolume] or the default in [playMusic]) so ducking can
+  /// restore to the correct per-screen ambient level instead of clobbering
+  /// it with a hardcoded constant.
+  double _musicTargetVolume = _musicVolume;
+
   bool get isMuted => _muted;
   bool get isVoicePlaying => _voicePlaying;
   bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
@@ -621,7 +627,7 @@ class AudioService {
   void _restoreMusicVolume() {
     if (!_musicPlaying || _musicTransitioning) return;
     try {
-      _musicPlayer.setVolume(_musicVolume);
+      _musicPlayer.setVolume(_musicTargetVolume);
     } on Exception catch (_) {}
   }
 
@@ -642,9 +648,10 @@ class AudioService {
     try {
       _musicPlayer = AudioPlayer();
       _musicPlaying = true;
+      _musicTargetVolume = _musicVolume;
       await _musicPlayer.setSource(AssetSource('audio/$fileName'));
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-      await _musicPlayer.setVolume(_musicVolume);
+      await _musicPlayer.setVolume(_musicTargetVolume);
       await _musicPlayer.resume();
       _musicTransitioning = false;
     } on Exception catch (e) {
@@ -683,9 +690,11 @@ class AudioService {
   }
 
   Future<void> setMusicVolume(double volume) async {
+    final clamped = volume.clamp(0.0, 1.0);
+    _musicTargetVolume = clamped;
     if (_musicTransitioning || !_musicPlaying) return;
     try {
-      await _musicPlayer.setVolume(volume.clamp(0.0, 1.0));
+      await _musicPlayer.setVolume(clamped);
     } on Exception catch (_) {}
   }
 

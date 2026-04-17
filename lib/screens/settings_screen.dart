@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -85,6 +84,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     _inactivityTimer?.cancel();
     _inactivityTimer = Timer(const Duration(seconds: 60), () {
       if (mounted) {
+        // Pop any open popups (destructive confirms, restore warnings, etc.)
+        // before re-locking the gate. Without this, a parent who leaves the
+        // device mid-confirm could come back — after re-lock — to a primed
+        // delete-progress or reset-cloud button that just needs one tap.
+        // PopupRoute covers AlertDialog, showDialog, bottom sheets.
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).popUntil((route) => route is! PopupRoute);
         setState(() {
           _parentUnlocked = false;
           _mathController.clear();
@@ -240,6 +248,11 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             const SizedBox(height: 12),
             const Text(
+              'Brush Quest also collects anonymous app usage and crash data (via Google Firebase Analytics and Crashlytics) so we can fix bugs and improve the game. Nothing is used for advertising or personalization.',
+              style: TextStyle(color: Colors.white60, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            const Text(
               'No personal information about your child is collected. You can delete all data, including cloud data, by resetting progress in Settings.',
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
@@ -296,7 +309,10 @@ class _SettingsScreenState extends State<SettingsScreen>
 
     setState(() => _signingIn = true);
     try {
-      final user = await signInFn();
+      // 30s timeout guards against a hung/abandoned OAuth flow that would
+      // otherwise leave the spinner spinning forever and block every
+      // downstream sign-in attempt.
+      final user = await signInFn().timeout(const Duration(seconds: 30));
       if (user != null && mounted) {
         unawaited(AnalyticsService().logSignIn());
         await _sync.smartSync();
@@ -316,6 +332,23 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           );
         }
+      }
+    } on TimeoutException catch (_) {
+      debugPrint('Sign-in timed out after 30s');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Sign-in took too long. Please try again.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: Colors.orangeAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
       }
     } on Exception catch (e) {
       debugPrint('Sign-in failed: $e');
@@ -512,7 +545,9 @@ class _SettingsScreenState extends State<SettingsScreen>
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'This will replace your local progress with the version saved in the cloud.',
+          'This replaces today\'s local progress with what\'s in the cloud. '
+          'If your child brushed on this device and it hasn\'t synced yet, '
+          'that session will be lost. Continue?',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -595,7 +630,9 @@ class _SettingsScreenState extends State<SettingsScreen>
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'This will reset all game progress — stars, heroes, weapons, streaks, and achievements. This cannot be undone.',
+          'This will reset all game progress — stars, heroes, weapons, streaks, and achievements. '
+          'If your child plays on another device, their progress there will be gone next time they sign in. '
+          'This cannot be undone.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -1201,12 +1238,14 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(height: 8),
         if (!signedIn) ...[
           // Apple Sign-In button (iOS only, per Apple Guideline 4.8).
-          if (Platform.isIOS) ...[
+          if (AuthService().isAppleSignInAvailable) ...[
             GestureDetector(
               onTap: _signingIn ? null : _handleAppleSignIn,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),

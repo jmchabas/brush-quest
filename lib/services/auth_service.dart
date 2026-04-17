@@ -76,16 +76,16 @@ class AuthService {
         nonce: hashedNonce,
       );
 
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: appleCredential.identityToken,
-        rawNonce: rawNonce,
-      );
+      final oauthCredential = OAuthProvider(
+        'apple.com',
+      ).credential(idToken: appleCredential.identityToken, rawNonce: rawNonce);
 
       final authResult = await _auth.signInWithCredential(oauthCredential);
 
       // Apple only sends the name on the FIRST sign-in. Persist it.
       final user = authResult.user;
-      if (user != null && (user.displayName == null || user.displayName!.isEmpty)) {
+      if (user != null &&
+          (user.displayName == null || user.displayName!.isEmpty)) {
         final givenName = appleCredential.givenName ?? '';
         final familyName = appleCredential.familyName ?? '';
         final fullName = '$givenName $familyName'.trim();
@@ -108,7 +108,8 @@ class AuthService {
 
   Future<void> signOut() async {
     // Only disconnect Google if the user signed in via Google.
-    final isGoogleProvider = _auth.currentUser?.providerData.any(
+    final isGoogleProvider =
+        _auth.currentUser?.providerData.any(
           (info) => info.providerId == 'google.com',
         ) ??
         false;
@@ -126,7 +127,9 @@ class AuthService {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
-        .join();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
   }
 }

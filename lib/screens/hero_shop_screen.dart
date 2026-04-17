@@ -295,8 +295,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (!confirmed) return;
       final success = await _heroService.purchaseEvolution(evolution.id);
       if (success) {
-        await _heroService.selectHero(hero.id);
-        await _heroService.setEvolutionStage(hero.id, evolution.stage);
+        // Only auto-equip the purchased evolution if the child already has
+        // this hero selected. Otherwise the hero silently switches — e.g.
+        // Shadow-selected kid buys Blaze stage2 "just to own it" and their
+        // equipped hero flips to Blaze with no confirmation or voice.
+        final currentHero = await _heroService.getSelectedHero();
+        if (currentHero.id == hero.id) {
+          await _heroService.setEvolutionStage(hero.id, evolution.stage);
+        }
         unawaited(HapticFeedback.heavyImpact());
         await _loadData();
       }
@@ -1367,72 +1373,82 @@ class _FeaturedWeaponDisplay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: GlassCard(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        child: Row(
-          children: [
-            // Weapon image
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: weapon.primaryColor.withValues(alpha: 0.6),
-                  width: 3,
+      // Featured weapon was decorative with no onTap — a non-reader's only
+      // signal that the description text exists is voice. Wire tap to the
+      // picker voice so "what does my weapon do?" is discoverable.
+      child: GestureDetector(
+        onTap: () {
+          final voice = AudioService().weaponPickerVoiceFor(weapon.id);
+          AudioService().playVoice(voice, clearQueue: true, interrupt: true);
+          HapticFeedback.selectionClick();
+        },
+        child: GlassCard(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          child: Row(
+            children: [
+              // Weapon image
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: weapon.primaryColor.withValues(alpha: 0.6),
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: weapon.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: weapon.primaryColor.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    spreadRadius: 2,
-                  ),
-                ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(17),
+                  child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
+                ),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(17),
-                child: Image.asset(weapon.imagePath, fit: BoxFit.cover),
-              ),
-            ),
-            const SizedBox(width: 20),
-            // Weapon info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    weapon.name,
-                    style: TextStyle(
-                      color: weapon.primaryColor,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    weapon.description,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 14,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.greenAccent.withValues(alpha: 0.8),
-                        size: 16,
+              const SizedBox(width: 20),
+              // Weapon info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      weapon.name,
+                      style: TextStyle(
+                        color: weapon.primaryColor,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      weapon.description,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.greenAccent.withValues(alpha: 0.8),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

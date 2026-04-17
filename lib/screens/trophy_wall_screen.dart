@@ -328,6 +328,14 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                 : () {
                     HapticFeedback.lightImpact();
                     AudioService().playSfx('whoosh.mp3');
+                    // Match the locked-trophy-tile pattern (C13) so a
+                    // non-reader tapping a locked world chip hears why
+                    // nothing changed, not silent-feeling nothing.
+                    AudioService().playVoice(
+                      'voice_keep_going.mp3',
+                      clearQueue: true,
+                      interrupt: true,
+                    );
                   },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
