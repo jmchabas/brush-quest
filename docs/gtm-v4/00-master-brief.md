@@ -71,7 +71,7 @@
 ## Metrics not yet tracked (gaps to name in PRDs that need them)
 
 - Marketing attribution (UTM + Play referrer match)
-- Retention cohorts (D1/D7/D30 WAK) — data exists, no dashboard
+- Retention cohorts (D1/D7/D30 weekly-active kids, abbreviated **WAK**) — data exists, no dashboard
 - Per-channel install attribution
 - Parent touchpoints (email capture source, QR scan source)
 
