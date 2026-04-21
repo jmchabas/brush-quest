@@ -82,9 +82,10 @@ evaluator, and synth agent will receive.
 
 ### Step 2: Research phase — dispatch 5 lens agents in parallel
 
-Dispatch 5 Agent tool calls in a SINGLE message (parallel execution). Each
-agent uses `subagent_type: general-purpose` except L4 which needs web
-access.
+Dispatch 5 Agent tool calls in a SINGLE message (parallel execution). All 5
+agents use `subagent_type: general-purpose` — this subagent type already has
+WebSearch and WebFetch available, which L4's pattern-matching template
+explicitly directs the agent to use for web research.
 
 For each lens, the prompt is a concatenation of:
 1. The lens template file contents (e.g., `docs/gtm-v4/01-templates/lens-digital-native.md`)
