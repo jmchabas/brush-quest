@@ -184,3 +184,82 @@ Commit:
 git add <node-path>/_synth-final.md
 git commit -m "loop(<node-path>): synth-final — plan frozen"
 ```
+
+### Step 6: Termination gate
+
+Read `<node-path>/_synth-final.md`. For each bet in Tier-1 and Tier-2,
+determine which branch:
+
+**Branch A — PRD-executable now.** The gate passes when ALL of the following
+are demonstrably present in the Synth-final's description of this bet:
+1. Measurable goal with specific metric + window.
+2. Context fully specified (can an executor agent act without Jim?).
+3. Every input named with location (path, credential id, MCP id, prior PRD).
+4. Acceptance criteria are checkable (no "looks good").
+5. Tools required exist or are explicitly flagged as TO-BUILD (which becomes
+   a blocking PRD of its own).
+6. Escalation triggers specified.
+
+If all 6 pass → **Emit a PRD** at `<node-path>/prds/PRD-GTM-<slug>-NNN.md`
+using the `docs/gtm-v4/01-templates/prd-template.md` structure. Fill in
+every section based on the Synth-final's description of this bet. Commit.
+
+**Branch B — Needs child loop.** Any of the 6 fails → **Emit a meta-PRD** at
+`<node-path>/_meta-prd-<slug>.md` that serves as the charter for the child
+loop on this bet. The meta-PRD names: (a) the child question to answer,
+(b) what the child loop must produce, (c) which of the 6 criteria above are
+missing that the child loop will resolve.
+
+**Tier-3 bets** get neither — they stay in `_synth-final.md`'s Tier-3 list
+with their trigger condition. No PRD, no meta-PRD.
+
+For this task, dispatch one Agent tool call with `subagent_type:
+general-purpose`. Prompt includes the Synth-final, the PRD template, and
+instructions to read through each bet and emit the appropriate file(s).
+The agent writes PRDs + meta-PRDs directly.
+
+After the agent returns, read `<node-path>/prds/` and `<node-path>/` for
+the emitted files. Verify at least one artifact per Tier-1/2 bet exists.
+
+Commit:
+
+```bash
+git add <node-path>/prds/ <node-path>/_meta-prd-*.md 2>/dev/null
+git commit -m "loop(<node-path>): termination gate — PRDs + meta-PRDs emitted"
+```
+
+### Step 7: Emit `_status.yaml`
+
+Write `<node-path>/_status.yaml`:
+
+```yaml
+node: <node-path>
+depth: <int, derived from path depth under docs/gtm-v4/>
+created: <YYYY-MM-DD of first loop — keep if exists>
+last_loop_completed: <YYYY-MM-DD of today>
+last_pulse: null           # filled when Loop A ships
+active_prds: <count of PRDs in prds/ with status in [draft, approved, in-flight]>
+completed_prds: <count with status: done>
+active_experiments: 0      # placeholder until experiments execute
+learnings_count: 0         # placeholder
+children:                  # directories under this node with _status.yaml
+  - <child-path>
+tier: <this node's tier at its parent — pull from parent's _synth-final.md>
+open_escalations: <count of _escalation.md files here or in descendants>
+```
+
+Commit:
+
+```bash
+git add <node-path>/_status.yaml
+git commit -m "loop(<node-path>): status emitted"
+```
+
+### Step 8: Summary + notification
+
+After all steps:
+1. Print a one-line summary: `Loop at <node-path> complete. N PRDs emitted,
+   M meta-PRDs queued, K Tier-3 parked.`
+2. Ping Jim via Telegram: `tg send "GTM loop complete: <node-path> — <summary>"`
+3. If any escalation was written during the loop, include it in the ping
+   with a link to the file.
