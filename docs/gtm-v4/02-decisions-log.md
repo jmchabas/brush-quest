@@ -37,3 +37,29 @@ executable PRDs) addresses execution bottleneck. v3 research still has value.
 - Loop artifacts tree-structured at `docs/gtm-v4/<node-path>/`.
 - Phase 1 ships with validation loop only (trunk loop runs next, as first real use).
 - Feedback loops (A/B/C), experiments execution, dashboard are follow-on plans.
+
+## Phase 1 complete (2026-04-21)
+
+Validation loop at `trunk/marketing/ugc/instagram-reels` executed end-to-end.
+Machinery works: 5 diverse lens outputs, honest Synth-1/2 tiered portfolio,
+3 distinct evaluator voices, termination gate emitted 2 PRDs + 6 meta-PRDs
+(refused to fake-emit PRDs for under-specified bets).
+
+### Key emergent insight from the validation run
+
+L5 first-principles math reshaped the entire portfolio: the Play Store
+internal-testing URL is a 5-step enrollment flow that looks like phishing
+to non-technical parents. `tester_signup_rate` is likely <10%, not the
+25%+ implicit in other lenses' funnels. Every Reels-facing bet now routes
+through a `brushquest.app` email-capture bridge with auto-enroll at
+public launch. This is a BINDING decision for all children of this node.
+
+### Follow-on plans required
+
+1. **Trunk loop (question B)** — run `/gtm-factory new-loop trunk "Reach 1,000 WAK by 2026-07-20 on $1–2K via agentic execution"` and emit pillar-level meta-PRDs.
+2. **Loop A — pulse agent** — spec §6; Railway trigger at `jobs.json` in `~/Projects/claude-telegram-bridge/src/jobs.json`; idempotency by ISO week.
+3. **Loop B — re-rank triggers + partial re-synth** — spec §6.
+4. **Loop C — template meta-eval** — after 5+ loops exist.
+5. **Experiments execution runtime** — spec §5; experiment-analyzer agent; `experiments-executor` wrapper.
+6. **Dashboard at `brushquest.app/GTM-dashboard`** — spec §8; `frontend-design` skill.
+7. **Child loops spawned by this validation's 6 meta-PRDs** — reddit-pipeline, creator-scouting, attribution-schema, buttondown-firebase-bridge, ig-posting-pipeline, play-publishing-api. Running these before Tier-1 Reels bets can fire as executable PRDs.
