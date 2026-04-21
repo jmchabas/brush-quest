@@ -263,3 +263,36 @@ After all steps:
 2. Ping Jim via Telegram: `tg send "GTM loop complete: <node-path> — <summary>"`
 3. If any escalation was written during the loop, include it in the ping
    with a link to the file.
+
+### Escalation valve (invoked from any step)
+
+If during any step, a lens agent, evaluator, or synth agent identifies strong
+evidence that a parent decision (from an ancestor `_synth-final.md`) is
+invalidated by new information, the loop halts and emits:
+
+```markdown
+# Escalation — <node-path>
+
+## Date
+YYYY-MM-DD
+
+## Parent decision challenged
+<quote from ancestor _synth-final.md>
+
+## Evidence
+<the new information>
+
+## Proposed revision
+<what the ancestor would need to change>
+
+## Blocking
+<what's halted waiting on resolution>
+```
+
+Write to `<node-path>/_escalation.md`. Then:
+1. Commit the escalation doc.
+2. `tg send "GTM escalation at <node-path>: <one-line summary>"`.
+3. STOP the loop. Do not run subsequent steps.
+
+Escalations should be rare. If multiple fire in short succession, flag a
+template problem (future Loop C input).
