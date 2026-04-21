@@ -965,6 +965,10 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Future<void> _dismissWorldIntro() async {
     _worldIntroTimer?.cancel();
+    // Stop the world mission-briefing voice so it doesn't bleed into the
+    // countdown screen. _exitWorldIntro already stops voice on its first-brush
+    // redirect path; the normal tap-to-fight path was missing this call.
+    unawaited(_audio.stopVoice());
 
     if (!mounted) return;
     setState(() {
@@ -1128,11 +1132,18 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = BrushPhase.countdown;
       _sessionStage = SessionStage.countdown;
     });
-    // C15 T3-31: the old voice_countdown.mp3 said "3-2-1-GO!" in ~1.3s while
-    // the visual/beep cadence was 3s — voice "go!" landed 2.5s BEFORE the
-    // actual GO. Kids learned the voice was lying. Replaced with pure beeps
-    // on each tick + a single "Go!" voice at the moment the GO text shows,
-    // so audio and visual align.
+    // C15 T3-31 removed voice_countdown.mp3 because the baked "3-2-1-GO!"
+    // fired ~2.5s before the actual GO. C16 SS2 restores the count as three
+    // separate files (Three/Two/One), each played on its own tick alongside
+    // the beep — Oliver's retest caught that a silent countdown feels broken.
+    // Kick off the "Three!" voice immediately so it lands with the first beep
+    // (visible value is already 3 when the countdown screen appears).
+    _audio.playSfx('countdown_beep.mp3');
+    _audio.playVoice(
+      'voice_three.mp3',
+      clearQueue: true,
+      interrupt: true,
+    );
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -1141,6 +1152,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
         _audio.playSfx('countdown_beep.mp3');
+        _audio.playVoice(
+          _countdownValue == 2 ? 'voice_two.mp3' : 'voice_one.mp3',
+          clearQueue: true,
+          interrupt: true,
+        );
       } else {
         timer.cancel();
         setState(() {

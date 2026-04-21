@@ -59,6 +59,11 @@ class _HomeScreenState extends State<HomeScreen>
   int _showStarDelta = 0;
   bool _starDeltaVisible = false;
   bool _streakPulseActive = false;
+  // Guard against rapid repeat taps on the hero. Oliver (v19) reported
+  // needing "multiple taps" to start brushing — there's an intentional short
+  // delay after tap before navigation (for the whoosh + voice to land) and
+  // a re-tap in that window would previously queue a second brush launch.
+  bool _brushTapLocked = false;
   // True for ~4s after a brush session completes (only when entering home via
   // skipGreeting from victory). Drives the "last brush ✓" affirmation sticker
   // near the hero — a persistent visual proof that the last session counted,
@@ -312,10 +317,13 @@ class _HomeScreenState extends State<HomeScreen>
     }
     HapticFeedback.mediumImpact();
 
+    // Non-flame icons for streak2to4 / streak5to9 so the top icon doesn't
+    // duplicate the flame shown in the streak row below (Oliver v19: "2 times
+    // the same graphics"). Fire theme preserved via color, not icon.
     final greetingIcon = switch (greeting.state) {
       GreetingState.justStarted => Icons.rocket_launch,
-      GreetingState.streak2to4 => Icons.local_fire_department,
-      GreetingState.streak5to9 => Icons.local_fire_department,
+      GreetingState.streak2to4 => Icons.rocket_launch,
+      GreetingState.streak5to9 => Icons.bolt,
       GreetingState.streak10to19 => Icons.star,
       GreetingState.streak20plus => Icons.emoji_events,
       GreetingState.returning => Icons.waving_hand,
@@ -394,6 +402,20 @@ class _HomeScreenState extends State<HomeScreen>
                         size: 28,
                       ),
                     ],
+                  ),
+                  // Parent-facing caption so the popup is readable at a glance
+                  // (Oliver v19: "nothing written for the parent to understand").
+                  // Kids can't read this but it never replaces the icon + voice
+                  // that kids actually parse.
+                  const SizedBox(height: 4),
+                  Text(
+                    '${greeting.brushStreak} days in a row!',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ],
                 // Comeback badge — returning user with broken streak
@@ -519,18 +541,32 @@ class _HomeScreenState extends State<HomeScreen>
     // that accumulates one orphaned listener per greeting.
     final audio = AudioService();
     var listenerAttached = false;
+    // Tracks whether the dialog was closed by the auto-dismiss path (voice
+    // ended + floor elapsed) vs user tap on the barrier. If the kid tapped
+    // the barrier, they were trying to reach the hero behind it — the .then
+    // block interprets that as "start brushing" so it takes a single tap.
+    var autoDismissed = false;
     final showTime = DateTime.now();
+    void scheduleAutoDismiss(Duration delay) {
+      Future.delayed(delay, () {
+        if (!mounted) return;
+        autoDismissed = true;
+        Navigator.of(context, rootNavigator: true).maybePop();
+      });
+    }
+
     void dismissWhenReady() {
       if (!mounted) return;
       final elapsed = DateTime.now().difference(showTime);
-      if (elapsed < const Duration(seconds: 5)) {
-        Future.delayed(const Duration(seconds: 5) - elapsed, () {
-          if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
-        });
+      // Reduced from 5s — the old floor kept the dialog up even after the
+      // voice ended, making the home screen feel frozen. 2s is enough to
+      // register the greeting but short enough that the kid doesn't
+      // re-tap thinking nothing happened.
+      const floor = Duration(seconds: 2);
+      if (elapsed < floor) {
+        scheduleAutoDismiss(floor - elapsed);
       } else {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
-        });
+        scheduleAutoDismiss(const Duration(milliseconds: 500));
       }
     }
 
@@ -554,12 +590,15 @@ class _HomeScreenState extends State<HomeScreen>
           if (mounted) setState(() => _streakPulseActive = false);
         });
       }
+      // User-initiated dismiss → kid was tapping the hero behind the dialog.
+      // Honor that intent by launching the brush flow on this single tap.
+      if (!autoDismissed && mounted) {
+        _startBrushing();
+      }
     });
 
     if (!audio.voicePipelineActiveNotifier.value) {
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted) Navigator.of(context, rootNavigator: true).maybePop();
-      });
+      scheduleAutoDismiss(const Duration(seconds: 2));
     } else {
       audio.voicePipelineActiveNotifier.addListener(listener);
       listenerAttached = true;
@@ -567,6 +606,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _startBrushing() {
+    if (_brushTapLocked) return;
+    _brushTapLocked = true;
     HapticFeedback.heavyImpact();
     AudioService().playSfx('whoosh.mp3');
     _startBrushingFlow();
@@ -589,8 +630,10 @@ class _HomeScreenState extends State<HomeScreen>
         interrupt: true,
       ),
     );
-    // 1500ms lets the voice finish before home screen disposes
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    // Tightened from 1500ms — home isn't disposed on push, so the lets-fight
+    // voice keeps playing across the transition. 400ms is enough for the
+    // whoosh SFX to land before nav without stalling the kid.
+    Future.delayed(const Duration(milliseconds: 400), () {
       if (mounted) _launchBrushingScreen();
     });
   }
@@ -625,6 +668,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         )
         .then((_) async {
+          _brushTapLocked = false;
           final prevWallet = _wallet;
           final prevStreak = _streak;
           await _loadStats();

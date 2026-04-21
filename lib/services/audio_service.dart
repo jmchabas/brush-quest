@@ -203,6 +203,12 @@ class AudioService {
     'voice_locked_soon.mp3',
     'voice_locked_save_stars.mp3',
     'voice_go_brushing.mp3',
+    // C16 SS2: per-tick countdown voices aligned to the beep cadence —
+    // replaces the silent beeps-only countdown shipped in v19. Kids (and
+    // Oliver's retest) expect to hear someone count.
+    'voice_three.mp3',
+    'voice_two.mp3',
+    'voice_one.mp3',
     'voice_lets_fight.mp3',
     'voice_chest_wow.mp3',
     'voice_chest_dance_v2.mp3',
