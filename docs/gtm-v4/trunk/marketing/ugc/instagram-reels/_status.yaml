@@ -1,0 +1,21 @@
+node: trunk/marketing/ugc/instagram-reels
+depth: 4
+created: 2026-04-20
+last_loop_completed: 2026-04-20
+last_pulse: null
+active_prds: 2
+completed_prds: 0
+active_experiments: 0
+learnings_count: 0
+children: []
+tier: null              # this node is a standalone C-pass validation, no parent tier yet
+open_escalations: 0
+meta_prds_open: 6
+loop_kind: c-pass-validation
+notes: >
+  First loop through the GTM PRD Factory machinery. All 6 steps executed
+  (context brief, 5 lens research, Synth-1, 3 evaluators, Synth-2, termination
+  gate). 2 PRDs emitted as executable (T1d warm-network, T2d Substack). 6
+  meta-PRDs queued for child loops (reddit-pipeline, creator-scouting,
+  attribution-schema, buttondown-firebase-bridge, ig-posting-pipeline,
+  play-publishing-api).
