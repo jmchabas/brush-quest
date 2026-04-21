@@ -11,9 +11,27 @@
 ## Workstream Status
 
 ### APP
-- **Status**: Cycle 14 complete — 13 T1/T2 autofixes landed, ~35 T3 items queued for Jim review. v1.0.0+18 ready to deploy.
-- **Last session**: 2026-04-17
-- **Last commit**: `8e0d3a0` — bump to v1.0.0+17 (audioplayers race fix)
+- **Status**: Cycle 16 complete + v1.0.0+20 LIVE on internal testing — Oliver approved v20. Next focus shifting to Play Store listing completeness audit (production-launch prep).
+- **Last session**: 2026-04-21
+- **Last commit**: `e0f6f7d` — Cycle 16 v20: 4 v19 regression fixes from Oliver retest (countdown voice, hero tap, world voice bleed, greeting clarity)
+- **What happened (2026-04-21, Cycle 16 — Oliver v19 regression fixes)**:
+  - SS1 hero multi-tap → `_brushTapLocked` flag + 1500ms→400ms post-tap delay + greeting barrier auto-launches brush
+  - SS2 countdown voice restored → recorded "Three!/Two!/One!" via ElevenLabs George, one per tick alongside the beep (C15 had ripped voice_countdown.mp3 because its baked "3-2-1-GO!" fired 2.5s before GO)
+  - SS3 world voice bleed → `_dismissWorldIntro` now calls `stopVoice()` (was missing; `_exitWorldIntro` already had it)
+  - SS4 greeting clarity → streak 2-9 icon no longer duplicates the flame below; added "N days in a row!" caption for parents
+  - 784 tests pass (+3 from new audio assets), dart analyze clean, 4/4 fitness gates
+  - v1.0.0+20 verified via Play Developer API: `status=completed`, auto-publishing to testers
+- **What happened (2026-04-20, Cycle 15 — 13 T3 UX fixes from C14 findings)**:
+  - Critical: chest-tap mandatory on victory (T3-32) — removed immediate-DONE setState, kept 60s safety timer as stuck fallback
+  - Shop symmetry: new `_FeaturedHeroDisplay` widget mirroring weapons; amber "+N" delta readout on evolution cells when price-wallet ≤ 3 (C14 4-agent convergent)
+  - Trophy wall: dropped "???" text on uncaptured trophies; silhouette PNG carries the mystery (no label needed for non-readers)
+  - Home polish: amplified hero aura ring (size swing 16→30px, 1.4s loop), post-brush ✓ sticker for 4s, PARENTS shield → lock_outline icon
+  - World intro auto-advance: voice-driven (2s after voice ends, 5s floor, 10s cap) instead of hardcoded 10s
+  - Settings gate: stopMusic on entry (parents get silence/focus)
+  - Audio pool: 7 new Buddy voices — `voice_home_return_{1-4}` (dedicated home-return pool, not exertion reruns), `voice_locked_{soon,save_stars}`, `voice_go_brushing` ("Go!" aligned to actual GO moment)
+  - 781 tests pass, 120.6 MB APK, 4/4 fitness gates
+- **What happened (2026-04-17, Cycle 14 — `auto-full max=3`, stopped after pass 1)**:
+  - Phase 0 caught CI red on main (format regression v16/v17) — fixed before analysis
 - **What happened (2026-04-11, Cycle 13 — `auto-full` mode debut)**:
   - New `/cyclepro auto-full` mode: full 9-agent analysis + autonomous T1/T2 fixing
   - Auto-clean: 197 dart analyze infos resolved (unawaited, catch clauses, const, etc.)
@@ -56,9 +74,9 @@
   - Featured weapon tappable → picker voice
   - COPPA allowlist updated for iOS Apple Sign-In deps
   - 774 tests, 120.4 MB APK (-1.0 MB vs C13), 4/4 fitness gates
-- **Blocked on**: Oliver retest of v17 + v18, Google review (in queue since C13)
-- **Next up**: v1.0.0+18 deploy to internal testing. After Oliver retest → Cycle 15 tackles T3 priorities: shop tabs (4-agent convergence), P2 chronic (home next-unlock teaser), onboarding P2 rebuild, Weapons tab dead zone.
-- **Needs CEO decision**: T3-19 shop tabs symmetry direction (add `_FeaturedHeroDisplay` vs remove Weapons card)
+- **Blocked on**: Crashlytics monitor on v20 (~24h window for countdown voice changes — 3 voice calls/second is the highest-risk piece this cycle)
+- **Next up**: **Play Store listing completeness audit** for production-launch prep. Enumerate via Play Developer API: track state, store listing fields, content rating, Data Safety, Families/COPPA declaration, privacy policy URL, screenshots (may need v20 refresh), feature graphic. Report blockers + ordered execution plan before generating missing artifacts via `/gtm-prep`.
+- **Needs CEO decision**: None currently — production-launch criteria (what tracks, rollout %, target audience scope) will surface during the listing audit
 
 ### LANDING PAGE
 - **Status**: Live at brushquest.app — email capture LIVE via Buttondown

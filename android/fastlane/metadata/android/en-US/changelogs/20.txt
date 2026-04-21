@@ -1,0 +1,6 @@
+v20 — Responsiveness & clarity fixes
+
+• Countdown "Three, Two, One!" voice restored (was silent beeps in v19)
+• Hero button now one tap to start brushing (was ghosting re-taps)
+• World intro voice no longer bleeds into the countdown
+• Daily welcome popup shows "N days in a row!" for parents, clearer icons
