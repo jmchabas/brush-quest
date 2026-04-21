@@ -79,3 +79,108 @@ evaluator, and synth agent will receive.
    mkdir -p <node-path>/_evals
    # prds/ and _experiments/ only created if loop output produces them
    ```
+
+### Step 2: Research phase — dispatch 5 lens agents in parallel
+
+Dispatch 5 Agent tool calls in a SINGLE message (parallel execution). Each
+agent uses `subagent_type: general-purpose` except L4 which needs web
+access.
+
+For each lens, the prompt is a concatenation of:
+1. The lens template file contents (e.g., `docs/gtm-v4/01-templates/lens-digital-native.md`)
+2. The assembled context brief written in Step 1
+3. An instruction to write its output to a specific file path:
+   "Write your output to `<node-path>/_research/L1-digital-native.md`. Use
+   the output structure specified in the template. Do not write anywhere else."
+
+The 5 agents and their output paths:
+
+| Agent | Template | Output path |
+|-------|----------|-------------|
+| L1 | `docs/gtm-v4/01-templates/lens-digital-native.md` | `<node-path>/_research/L1-digital-native.md` |
+| L2 | `docs/gtm-v4/01-templates/lens-bold-contrarian.md` | `<node-path>/_research/L2-bold-contrarian.md` |
+| L3 | `docs/gtm-v4/01-templates/lens-frugal-scrappy.md` | `<node-path>/_research/L3-frugal-scrappy.md` |
+| L4 | `docs/gtm-v4/01-templates/lens-pattern-matching.md` | `<node-path>/_research/L4-pattern-matching.md` |
+| L5 | `docs/gtm-v4/01-templates/lens-first-principles.md` | `<node-path>/_research/L5-first-principles.md` |
+
+After all 5 agents return:
+- Verify all 5 output files exist and are non-empty.
+- Skim each to confirm the lens voice is distinct (a smoke check; if L1 and
+  L3 produce near-identical output, flag a template problem and stop).
+
+Commit the 5 research files:
+
+```bash
+git add <node-path>/_research/
+git commit -m "loop(<node-path>): 5 lens research outputs"
+```
+
+### Step 3: Synth-1
+
+Dispatch a single Agent tool call with `subagent_type: general-purpose`.
+
+Prompt is a concatenation of:
+1. The Synth-1 template: `docs/gtm-v4/01-templates/synth-1-prompt.md`
+2. The assembled context brief
+3. The 5 research files (read and inlined or handed by path — prefer inline)
+4. An instruction: "Write your output to `<node-path>/_synth-v1.md`."
+
+After the agent returns, verify the output file exists, is non-empty, and
+contains Tier-1, Tier-2, Tier-3 section headings. If any missing, re-dispatch
+with an explicit correction instruction (once); if still missing, stop and
+escalate via `tg send`.
+
+Commit:
+
+```bash
+git add <node-path>/_synth-v1.md
+git commit -m "loop(<node-path>): synth-1 portfolio draft"
+```
+
+### Step 4: Evaluator phase — dispatch 3 persona agents in parallel
+
+Dispatch 3 Agent tool calls in a SINGLE message (parallel).
+`subagent_type: general-purpose`.
+
+For each evaluator, the prompt is:
+1. The evaluator template file contents
+2. The assembled context brief
+3. The Synth-1 output (inlined)
+4. An instruction to write to the specific output path
+
+| Agent | Template | Output path |
+|-------|----------|-------------|
+| E1 | `docs/gtm-v4/01-templates/evaluator-cfo.md` | `<node-path>/_evals/E1-cfo.md` |
+| E2 | `docs/gtm-v4/01-templates/evaluator-target-parent.md` | `<node-path>/_evals/E2-target-parent.md` |
+| E3 | `docs/gtm-v4/01-templates/evaluator-solo-founder-agent.md` | `<node-path>/_evals/E3-solo-founder-agent.md` |
+
+Verify all 3 files exist and contain distinct feedback (smoke check: if two
+evaluators produce near-identical critiques, flag template problem).
+
+Commit:
+
+```bash
+git add <node-path>/_evals/
+git commit -m "loop(<node-path>): 3 evaluator outputs"
+```
+
+### Step 5: Synth-2 — final plan
+
+Dispatch a single Agent tool call with `subagent_type: general-purpose`.
+
+Prompt is a concatenation of:
+1. `docs/gtm-v4/01-templates/synth-2-prompt.md`
+2. The assembled context brief
+3. Synth-1 output
+4. All 3 evaluator outputs
+5. Instruction: "Write your output to `<node-path>/_synth-final.md`."
+
+After the agent returns, verify the file exists and contains the termination
+gate section (step 6 depends on it).
+
+Commit:
+
+```bash
+git add <node-path>/_synth-final.md
+git commit -m "loop(<node-path>): synth-final — plan frozen"
+```
