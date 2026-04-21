@@ -1,0 +1,35 @@
+node: trunk
+depth: 1
+created: 2026-04-21
+last_loop_completed: 2026-04-21
+last_pulse: null
+active_prds: 2
+completed_prds: 0
+active_experiments: 0
+learnings_count: 0
+children:
+  - trunk/marketing/ugc/instagram-reels    # C-pass validation loop (completed 2026-04-20)
+tier: null                                  # trunk is the root
+open_escalations: 0
+meta_prds_open: 6
+loop_kind: trunk-portfolio
+pillars:
+  tier_1:
+    - name: Pillar 1 — Retention instrumentation + ASO
+      readiness: PRD-executable
+      spawns: [PRD-GTM-trunk-instrumentation-aso-001]
+    - name: Pillar 2 — Pediatric dentist partnerships (hygienist handoff)
+      readiness: needs-child-loop
+      spawns: [_meta-prd-pillar-2-dentists]
+    - name: Pillar 3 — Earned media + CSM (Editor's Choice demoted to T3)
+      readiness: needs-child-loop
+      spawns: [_meta-prd-pillar-3a-earned-media]
+  tier_2_experiments_count: 5
+  tier_3_parked_count: 8
+notes: >
+  First trunk loop (question B). Target reframed honestly per evaluators:
+  400-600 WAK realistic, 1,000 WAK stretch at ~40% confidence. Key binding
+  decisions: Cycle 16 deferred so Pillar 1 instrumentation ships Week 1;
+  CAC ceiling ~$0.10 (95%+ organic); no paid CPI at this stage; destination-
+  URL bridge page mandatory; hygienist verbal handoff is acceptance
+  criterion for dentist pillar (not passive flyer placement).
