@@ -47,7 +47,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   }
 
-  testWidgets('home stats row has uniform 22px font and parent shield icon', (
+  testWidgets('home stats row has uniform 22px font and parent lock icon', (
     tester,
   ) async {
     await pumpHomeScreen(tester);
@@ -59,8 +59,9 @@ void main() {
     final streakText = tester.widget<Text>(find.text('3'));
     expect(streakText.style?.fontSize, 22);
 
-    // Parent area uses shield icon with PARENTS label
-    expect(find.byIcon(Icons.shield), findsOneWidget);
+    // Parent area uses lock icon with PARENTS label (P11: literal icon —
+    // the parent gate screen shows a lock, so home matches for P7 consistency)
+    expect(find.byIcon(Icons.lock_outline), findsOneWidget);
     expect(find.text('PARENTS'), findsOneWidget);
     // MuteButton shows volume_up when not muted
     expect(find.byIcon(Icons.volume_up), findsOneWidget);

@@ -916,7 +916,11 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   Future<void> _startWorldIntro() async {
     // Always show world intro — it's the mission briefing moment.
-    // Kid can tap to skip; auto-advances after 10 seconds.
+    // Auto-advance fires ~2s AFTER the world voice finishes (minimum 5s total,
+    // max 10s as a safety cap). Old behavior was a hardcoded 10s timer that
+    // force-advanced regardless of voice progress — invisible countdown to a
+    // non-reader (P10 violation). Tying to voice completion means the pacing
+    // actually matches what the kid just heard.
     _worldIntroTimer?.cancel();
     setState(() {
       _showWorldIntro = true;
@@ -924,11 +928,38 @@ class _BrushingScreenState extends State<BrushingScreen>
     });
     _playWorldMissionBriefing();
 
-    // Auto-advance after 10 seconds; tap anywhere skips immediately
-    _worldIntroTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted && _showWorldIntro) {
-        _dismissWorldIntro();
+    final introStart = DateTime.now();
+    final notifier = _audio.voicePipelineActiveNotifier;
+    bool voiceEndListenerAttached = false;
+    void onVoiceEnd() {
+      if (notifier.value) return;
+      if (voiceEndListenerAttached) {
+        notifier.removeListener(onVoiceEnd);
+        voiceEndListenerAttached = false;
       }
+      final elapsed = DateTime.now().difference(introStart);
+      // Grace window after voice finishes so the kid sees the planet briefly
+      // before advancing; clamped to a 5s floor.
+      const floor = Duration(seconds: 5);
+      final remaining = elapsed < floor ? floor - elapsed : Duration.zero;
+      final delay = remaining + const Duration(seconds: 2);
+      _worldIntroTimer?.cancel();
+      _worldIntroTimer = Timer(delay, () {
+        if (mounted && _showWorldIntro) _dismissWorldIntro();
+      });
+    }
+
+    notifier.addListener(onVoiceEnd);
+    voiceEndListenerAttached = true;
+
+    // Safety cap: if voice never fires (muted, missing asset) OR pipeline
+    // gets stuck, hard-cap at 10s so the screen never traps the kid.
+    _worldIntroTimer = Timer(const Duration(seconds: 10), () {
+      if (voiceEndListenerAttached) {
+        notifier.removeListener(onVoiceEnd);
+        voiceEndListenerAttached = false;
+      }
+      if (mounted && _showWorldIntro) _dismissWorldIntro();
     });
   }
 
@@ -1097,7 +1128,11 @@ class _BrushingScreenState extends State<BrushingScreen>
       _phase = BrushPhase.countdown;
       _sessionStage = SessionStage.countdown;
     });
-    _audio.playVoice('voice_countdown.mp3', clearQueue: true, interrupt: true);
+    // C15 T3-31: the old voice_countdown.mp3 said "3-2-1-GO!" in ~1.3s while
+    // the visual/beep cadence was 3s — voice "go!" landed 2.5s BEFORE the
+    // actual GO. Kids learned the voice was lying. Replaced with pure beeps
+    // on each tick + a single "Go!" voice at the moment the GO text shows,
+    // so audio and visual align.
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -1114,6 +1149,11 @@ class _BrushingScreenState extends State<BrushingScreen>
         });
         HapticFeedback.heavyImpact();
         _audio.playSfx('countdown_beep.mp3');
+        _audio.playVoice(
+          'voice_go_brushing.mp3',
+          clearQueue: true,
+          interrupt: true,
+        );
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted) _startBrushing();
         });
@@ -1178,7 +1218,14 @@ class _BrushingScreenState extends State<BrushingScreen>
       }
       if (_phaseSecondsLeft == almostAt && !_playedAlmostThere) {
         _playedAlmostThere = true;
-        if (!_shouldSkipEncouragement()) {
+        // C15 T3-28: suppress the 20%-progress beat if less than 3s remains
+        // in the phase — otherwise the phase transition's clearQueue kills
+        // this voice mid-word. Kid hears a clean end-of-phase transition
+        // instead of a chopped utterance. Note: relies on _phaseSecondsLeft
+        // (integer seconds remaining); the voice itself is ~2-3s long, so
+        // even at the 20% mark we can cut off if the phase tail is tight.
+        final phaseTailIsTight = _phaseSecondsLeft < 3;
+        if (!phaseTailIsTight && !_shouldSkipEncouragement()) {
           _audio.playVoice(_encouragementArcs[_currentArcIndex][2]);
         }
       }

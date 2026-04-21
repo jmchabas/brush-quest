@@ -65,9 +65,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     _tabController.addListener(_resetInactivityTimer);
     _generateMathChallenge();
     _loadSettings();
-    // Ambient music — low volume so screen isn't silent
-    unawaited(AudioService().playMusic('battle_music_loop.mp3'));
-    unawaited(AudioService().setMusicVolume(0.04));
+    // Parent gate + settings play NO music — parents need silence/focus while
+    // solving the math challenge, and the screen itself is admin territory,
+    // not a kid-facing space. Ambient music was jarring on gate entry.
+    unawaited(AudioService().stopMusic());
   }
 
   @override

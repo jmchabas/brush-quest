@@ -59,10 +59,21 @@ class _HomeScreenState extends State<HomeScreen>
   int _showStarDelta = 0;
   bool _starDeltaVisible = false;
   bool _streakPulseActive = false;
+  // True for ~4s after a brush session completes (only when entering home via
+  // skipGreeting from victory). Drives the "last brush ✓" affirmation sticker
+  // near the hero — a persistent visual proof that the last session counted,
+  // not just the ephemeral wallet-delta float.
+  bool _postBrushAffirmation = false;
+  Timer? _affirmationTimer;
+  // C15 T3-30: dedicated home-return voice pool, recorded specifically for the
+  // "you just came back to the home screen" context in the Buddy (George)
+  // voice. Previous pool borrowed `voice_keep_it_up` + `voice_go_go_go` from
+  // mid-brush encouragement — coach-shouting-at-exercise tone, wrong context.
   static const _welcomeBackVoices = [
-    'voice_welcome_back.mp3',
-    'voice_keep_it_up.mp3',
-    'voice_go_go_go.mp3',
+    'voice_home_return_1.mp3',
+    'voice_home_return_2.mp3',
+    'voice_home_return_3.mp3',
+    'voice_home_return_4.mp3',
   ];
 
   @override
@@ -88,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
 
     _auraController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1400),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -118,6 +129,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _affirmationTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     AudioService().stopVoice();
     AudioService().stopMusic();
@@ -185,6 +197,18 @@ class _HomeScreenState extends State<HomeScreen>
         _totalBrushes = totalBrushes;
         _trophyCount = trophyCount;
       });
+      // Post-brush affirmation — when we arrive via skipGreeting from victory,
+      // pulse the wallet pill and show a "✓" sticker near the hero for ~4s so
+      // the kid sees tangible evidence that the last session registered. The
+      // victory screen's wallet-delta float is ephemeral; this sticks around.
+      if (widget.skipGreeting && totalBrushes > 0) {
+        unawaited(_statPulseController.forward(from: 0));
+        setState(() => _postBrushAffirmation = true);
+        _affirmationTimer?.cancel();
+        _affirmationTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _postBrushAffirmation = false);
+        });
+      }
       unawaited(_checkGreeting());
       // Ambient music on home screen (very low volume)
       unawaited(AudioService().playMusic('battle_music_loop.mp3'));
@@ -686,7 +710,11 @@ class _HomeScreenState extends State<HomeScreen>
                       child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.shield, color: Colors.white, size: 20),
+                          Icon(
+                            Icons.lock_outline,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                           SizedBox(height: 2),
                           Text(
                             'PARENTS',
@@ -1080,8 +1108,13 @@ class _HomeScreenState extends State<HomeScreen>
                             AnimatedBuilder(
                               animation: _auraController,
                               builder: (context, child) {
+                                // More pronounced aura for the "tap me" affordance.
+                                // Larger size swing + stronger alpha swing makes
+                                // the hero read as actively tappable rather than
+                                // a static portrait (C14 Agent-1 finding: hero
+                                // had no visual tap affordance).
                                 final auraSize =
-                                    310 + _auraController.value * 16;
+                                    310 + _auraController.value * 30;
                                 return Stack(
                                   alignment: Alignment.center,
                                   children: [
@@ -1098,10 +1131,14 @@ class _HomeScreenState extends State<HomeScreen>
                                                   alpha:
                                                       0.3 +
                                                       _auraController.value *
-                                                          0.2,
+                                                          0.4,
                                                 ),
-                                            blurRadius: 40,
-                                            spreadRadius: 10,
+                                            blurRadius:
+                                                40 +
+                                                _auraController.value * 18,
+                                            spreadRadius:
+                                                10 +
+                                                _auraController.value * 6,
                                           ),
                                         ],
                                       ),
@@ -1163,6 +1200,39 @@ class _HomeScreenState extends State<HomeScreen>
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 3,
+                              ),
+                            ),
+                            // "Last brush ✓" affirmation sticker — only visible
+                            // for ~4s after the kid returns from a completed
+                            // brush. Gives tangible proof that the session
+                            // registered, beyond the ephemeral wallet float.
+                            // Icon-only by design (non-reader).
+                            const SizedBox(height: 8),
+                            AnimatedOpacity(
+                              duration: const Duration(milliseconds: 400),
+                              opacity: _postBrushAffirmation ? 1.0 : 0.0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF00E676,
+                                  ).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF00E676,
+                                    ).withValues(alpha: 0.5),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.check_circle,
+                                  color: Color(0xFF00E676),
+                                  size: 20,
+                                ),
                               ),
                             ),
                           ],

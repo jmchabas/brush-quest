@@ -656,11 +656,25 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   }
 
   Widget _buildEvolutionGrid() {
+    final selectedHero = HeroService.allHeroes.firstWhere(
+      (h) => h.id == _selectedHeroId,
+      orElse: () => HeroService.allHeroes.first,
+    );
+    final selectedStage = _evolutionStages[selectedHero.id] ?? 1;
+
+    // +1 item for the featured hero header at index 0 (C15 T3-19 symmetry
+    // with Weapons tab). The remaining indices map to the hero roster.
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      itemCount: HeroService.allHeroes.length,
+      itemCount: HeroService.allHeroes.length + 1,
       itemBuilder: (context, index) {
-        final hero = HeroService.allHeroes[index];
+        if (index == 0) {
+          return _FeaturedHeroDisplay(
+            hero: selectedHero,
+            stage: selectedStage,
+          );
+        }
+        final hero = HeroService.allHeroes[index - 1];
         final isHeroOwned = _unlockedHeroes.contains(hero.id);
         final isSelected = _selectedHeroId == hero.id;
         final currentStage = _evolutionStages[hero.id] ?? 1;
@@ -858,6 +872,18 @@ class _EvolutionCellState extends State<_EvolutionCell>
       !widget.isGated &&
       !(widget.evolution.stage > 1 && !widget.isHeroOwned);
 
+  /// C15 T3-20: "getting close" amber state. Triggered when the kid is within
+  /// 3 stars of affording an item — gives them a tangible "one more brush!"
+  /// hook. Only applies to locked-but-reachable cells (not gated, hero owned
+  /// if this is a stage 2+ evolution).
+  bool get _showAlmostThere =>
+      !widget.isOwned &&
+      !_canAfford &&
+      _displayPrice > 0 &&
+      (_displayPrice - widget.wallet) <= 3 &&
+      !widget.isGated &&
+      !(widget.evolution.stage > 1 && !widget.isHeroOwned);
+
   @override
   void initState() {
     super.initState();
@@ -907,6 +933,8 @@ class _EvolutionCellState extends State<_EvolutionCell>
               ? widget.hero.primaryColor.withValues(alpha: 0.15)
               : _showBuyIndicator
               ? const Color(0xFF00E676).withValues(alpha: 0.08)
+              : _showAlmostThere
+              ? const Color(0xFFFFD54F).withValues(alpha: 0.07)
               : Colors.white.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -914,6 +942,8 @@ class _EvolutionCellState extends State<_EvolutionCell>
                 ? widget.hero.primaryColor.withValues(alpha: 0.7)
                 : _showBuyIndicator
                 ? const Color(0xFF00E676).withValues(alpha: 0.6)
+                : _showAlmostThere
+                ? const Color(0xFFFFD54F).withValues(alpha: 0.5)
                 : locked
                 ? Colors.white.withValues(alpha: 0.08)
                 : Colors.white.withValues(alpha: 0.15),
@@ -921,6 +951,8 @@ class _EvolutionCellState extends State<_EvolutionCell>
                 ? 2
                 : _showBuyIndicator
                 ? 2
+                : _showAlmostThere
+                ? 1.5
                 : 1,
           ),
           boxShadow: _showBuyIndicator
@@ -928,6 +960,14 @@ class _EvolutionCellState extends State<_EvolutionCell>
                   BoxShadow(
                     color: const Color(0xFF00E676).withValues(alpha: 0.3),
                     blurRadius: 10,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : _showAlmostThere
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFFFD54F).withValues(alpha: 0.2),
+                    blurRadius: 8,
                     spreadRadius: 1,
                   ),
                 ]
@@ -1017,6 +1057,30 @@ class _EvolutionCellState extends State<_EvolutionCell>
                     '$_displayPrice',
                     style: const TextStyle(
                       color: Color(0xFF00E676),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              )
+            else if (_showAlmostThere)
+              // "Getting close" state (T3-20) — amber star + remaining delta
+              // with a "+" prefix to distinguish from the full price readout.
+              // Kid sees "+2" = "two more brushes and it's yours."
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.star,
+                    color: Color(0xFFFFD54F),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '+${_displayPrice - widget.wallet}',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD54F),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1427,6 +1491,105 @@ class _FeaturedWeaponDisplay extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       weapon.description,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Colors.greenAccent.withValues(alpha: 0.8),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mirrors _FeaturedWeaponDisplay on the Heroes tab (C15 T3-19: 4-agent
+/// converged finding — shop tabs were asymmetric, Weapons had a featured
+/// card and Heroes was grid-only). Shows the currently selected hero with
+/// name + description + tap-to-voice-describe.
+class _FeaturedHeroDisplay extends StatelessWidget {
+  final HeroCharacter hero;
+  final int stage;
+
+  const _FeaturedHeroDisplay({required this.hero, required this.stage});
+
+  @override
+  Widget build(BuildContext context) {
+    // Evolution stage-specific art when available, fallback to base hero art.
+    final evolvedPath =
+        'assets/images/heroes/hero_${hero.id}_stage${stage}_star_blaster.png';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: GestureDetector(
+        onTap: () {
+          final voice = AudioService().heroPickerVoiceFor(hero.id);
+          AudioService().playVoice(voice, clearQueue: true, interrupt: true);
+          HapticFeedback.selectionClick();
+        },
+        child: GlassCard(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          child: Row(
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: hero.primaryColor.withValues(alpha: 0.6),
+                    width: 3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: hero.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(17),
+                  child: Image.asset(
+                    evolvedPath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        Image.asset(hero.imagePath, fit: BoxFit.cover),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hero.name,
+                      style: TextStyle(
+                        color: hero.primaryColor,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hero.description,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 14,

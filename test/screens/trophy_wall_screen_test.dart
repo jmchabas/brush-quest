@@ -93,26 +93,13 @@ void main() {
     tester,
   ) async {
     await pumpTrophyWall(tester);
-    // Candy Crater has 5 trophies. Each uncaptured trophy shows "???" text
-    // at font size 13. The world selector also shows "???" at font size 9
-    // for locked worlds, so we filter by finding trophy-specific "???" only.
-    // With 0 captured, all 5 trophy names should be "???".
-    // We verify by looking for the progress dots that each uncaptured
-    // trophy displays — each trophy has defeatsRequired dots.
-    // Alternatively, check that lock_rounded icons appear (uncaptured
-    // trophies with 0 defeats show lock_rounded).
-    // Simpler: the world name "CANDY CRATER" confirms we're on the right
-    // world, and we can count trophy tiles by their container structure.
-    //
-    // Best approach: count Text widgets with "???" that have fontSize 13
-    // (trophy names) vs fontSize 9 (world selector).
-    final trophyQuestionMarks = find.byWidgetPredicate(
-      (widget) =>
-          widget is Text &&
-          widget.data == '???' &&
-          widget.style?.fontSize == 13,
-    );
-    expect(trophyQuestionMarks, findsNWidgets(5));
+    // C15: "???" text removed per Jim's call — uncaptured tiles now show
+    // grayed silhouettes with no name text (icon-only for non-readers).
+    // So the assertion is: zero trophy-slot Text widgets with "???" text,
+    // AND zero captured-name Text widgets (since capturedIds is empty).
+    expect(find.text('???'), findsNothing);
+    // Captured names aren't present yet — verify the world name header is.
+    expect(find.text('CANDY CRATER'), findsWidgets);
     await tester.binding.setSurfaceSize(null);
   });
 
@@ -125,7 +112,7 @@ void main() {
 
   // ── Captured vs uncaptured display ───────────────────────────
 
-  testWidgets('captured trophies show monster name instead of ???', (
+  testWidgets('captured trophies show monster name, uncaptured show no text', (
     tester,
   ) async {
     // Capture the first two Candy Crater trophies
@@ -133,15 +120,9 @@ void main() {
     // Captured trophies show their actual names
     expect(find.text('Gummy Grub'), findsOneWidget);
     expect(find.text('Lollipop Lurker'), findsOneWidget);
-    // Remaining 3 trophy names still show "???" (font size 13)
-    // (World selector also has "???" at font size 9 for locked worlds)
-    final trophyQuestionMarks = find.byWidgetPredicate(
-      (widget) =>
-          widget is Text &&
-          widget.data == '???' &&
-          widget.style?.fontSize == 13,
-    );
-    expect(trophyQuestionMarks, findsNWidgets(3));
+    // C15: uncaptured tiles no longer render "???" — they show silhouette
+    // only. Verify zero "???" Text widgets anywhere on screen.
+    expect(find.text('???'), findsNothing);
     await tester.binding.setSurfaceSize(null);
   });
 

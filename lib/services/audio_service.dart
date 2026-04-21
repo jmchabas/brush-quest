@@ -89,6 +89,33 @@ class AudioService {
 
   static const _hitSounds = ['zap.mp3', 'whoosh.mp3'];
 
+  /// Pool of voices played when the kid taps a locked item (hero card,
+  /// locked trophy, locked world chip). C15 T3-33: rotating a pool instead of
+  /// hammering `voice_keep_going.mp3` every tap keeps the experience fresh
+  /// when a kid rapidly taps several locked cells in a row.
+  static const _lockedTapVoices = [
+    'voice_keep_going.mp3',
+    'voice_locked_soon.mp3',
+    'voice_locked_save_stars.mp3',
+  ];
+  DateTime? _lastLockedTapAt;
+  int _lockedTapIndex = 0;
+
+  /// Play a locked-tap nudge, cycling through [_lockedTapVoices]. Debounced
+  /// at 2s — if the kid taps 4 locked items in a row, they hear 1 voice
+  /// followed by 3 quiet taps, not an overlapping wall of sound.
+  void playLockedTapVoice() {
+    final now = DateTime.now();
+    if (_lastLockedTapAt != null &&
+        now.difference(_lastLockedTapAt!) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastLockedTapAt = now;
+    final file = _lockedTapVoices[_lockedTapIndex];
+    _lockedTapIndex = (_lockedTapIndex + 1) % _lockedTapVoices.length;
+    playVoice(file, clearQueue: true, interrupt: true);
+  }
+
   static const _encouragementVoices = [
     'voice_keep_going.mp3',
     'voice_youre_doing_great.mp3',
@@ -168,6 +195,14 @@ class AudioService {
     'voice_top_left.mp3',
     'voice_top_right.mp3',
     'voice_welcome_back.mp3',
+    // C15 T3-30 home-return pool (dedicated greetings, not exertion reruns)
+    'voice_home_return_1.mp3',
+    'voice_home_return_2.mp3',
+    'voice_home_return_3.mp3',
+    'voice_home_return_4.mp3',
+    'voice_locked_soon.mp3',
+    'voice_locked_save_stars.mp3',
+    'voice_go_brushing.mp3',
     'voice_lets_fight.mp3',
     'voice_chest_wow.mp3',
     'voice_chest_dance_v2.mp3',

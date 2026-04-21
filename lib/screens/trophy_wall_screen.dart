@@ -129,11 +129,8 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
     } else {
       HapticFeedback.lightImpact();
       AudioService().playSfx('whoosh.mp3');
-      AudioService().playVoice(
-        'voice_keep_going.mp3',
-        clearQueue: true,
-        interrupt: true,
-      );
+      // C15 T3-33 — rotated/debounced pool (no more single-line hammering).
+      AudioService().playLockedTapVoice();
     }
   }
 
@@ -328,14 +325,10 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                 : () {
                     HapticFeedback.lightImpact();
                     AudioService().playSfx('whoosh.mp3');
-                    // Match the locked-trophy-tile pattern (C13) so a
-                    // non-reader tapping a locked world chip hears why
-                    // nothing changed, not silent-feeling nothing.
-                    AudioService().playVoice(
-                      'voice_keep_going.mp3',
-                      clearQueue: true,
-                      interrupt: true,
-                    );
+                    // C15 T3-33: rotate through the shared locked-tap pool
+                    // (debounced 2s) instead of hammering voice_keep_going on
+                    // every tap — kid hears variety across rapid tap sessions.
+                    AudioService().playLockedTapVoice();
                   },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
@@ -387,21 +380,23 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                           color: Colors.white.withValues(alpha: 0.2),
                         ),
                   const SizedBox(height: 2),
-                  Text(
-                    isUnlocked
-                        ? world.name.split(' ').first.toUpperCase()
-                        : '???',
-                    style: TextStyle(
-                      color: isSelected
-                          ? world.themeColor
-                          : isUnlocked
-                          ? Colors.white.withValues(alpha: 0.5)
-                          : Colors.white.withValues(alpha: 0.2),
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
+                  // Locked world: no "???" label — the lock icon + dimmed
+                  // silhouette say "not yet" without inviting a non-reader to
+                  // parse question marks. Reserve height so rows stay aligned.
+                  if (isUnlocked)
+                    Text(
+                      world.name.split(' ').first.toUpperCase(),
+                      style: TextStyle(
+                        color: isSelected
+                            ? world.themeColor
+                            : Colors.white.withValues(alpha: 0.5),
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 11),
                 ],
               ),
             ),
@@ -524,22 +519,24 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Name — use world color for consistency
-                Text(
-                  isCaptured ? trophy.name : '???',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isCaptured
-                        ? worldColor
-                        : Colors.white.withValues(
-                            alpha: inProgress ? 0.4 : 0.2,
-                          ),
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                // Name — shown ONLY when captured. For uncaptured/in-progress
+                // cards the grayed-out silhouette itself is the cue; dropping
+                // the "???" label matches the no-text-for-non-readers rule.
+                // Reserve height so captured + uncaptured rows stay aligned.
+                if (isCaptured)
+                  Text(
+                    trophy.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: worldColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                else
+                  const SizedBox(height: 16),
                 // Progress dots for uncaptured (visual only — no text)
                 if (!isCaptured) ...[
                   const SizedBox(height: 6),
@@ -568,35 +565,27 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
             Icon(Icons.bug_report, size: 60, color: worldColor),
       );
     } else if (inProgress) {
-      // Dark silhouette with world-color tint — shape visible, identity hidden
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              worldColor.withValues(alpha: 0.8),
-              BlendMode.srcATop,
-            ),
-            child: Opacity(
-              opacity: 0.35,
-              child: Image.asset(
-                trophy.imagePath,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => Icon(
-                  Icons.bug_report,
-                  size: 60,
-                  color: worldColor.withValues(alpha: 0.3),
-                ),
-              ),
+      // Grayed-out + partially transparent monster PNG — shape visible so the
+      // kid can see "oh that's the one I'm close to," identity hidden enough
+      // to preserve the reveal moment. No question-mark overlay (Jim C15 call:
+      // silhouettes alone carry the mystery).
+      return ColorFiltered(
+        colorFilter: ColorFilter.mode(
+          worldColor.withValues(alpha: 0.8),
+          BlendMode.srcATop,
+        ),
+        child: Opacity(
+          opacity: 0.35,
+          child: Image.asset(
+            trophy.imagePath,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => Icon(
+              Icons.bug_report,
+              size: 60,
+              color: worldColor.withValues(alpha: 0.3),
             ),
           ),
-          // Subtle question mark overlay to hint at mystery
-          Icon(
-            Icons.help_outline_rounded,
-            size: 32,
-            color: worldColor.withValues(alpha: 0.25),
-          ),
-        ],
+        ),
       );
     } else {
       // Fully locked — dark silhouette showing monster shape

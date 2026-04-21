@@ -81,10 +81,10 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('parent area shield icon is present', (tester) async {
+  testWidgets('parent area lock icon is present', (tester) async {
     await pumpHome(tester);
 
-    expect(find.byIcon(Icons.shield), findsOneWidget);
+    expect(find.byIcon(Icons.lock_outline), findsOneWidget);
     expect(find.text('PARENTS'), findsOneWidget);
 
     await tester.binding.setSurfaceSize(null);

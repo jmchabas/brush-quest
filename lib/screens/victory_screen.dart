@@ -200,6 +200,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _chestOpened = false;
   _ChestReward? _reward;
   bool _showDoneButton = false;
+  Timer? _doneSafetyTimer;
 
   // Top bar state
   final _walletPillKey = GlobalKey();
@@ -311,8 +312,14 @@ class _VictoryScreenState extends State<VictoryScreen>
       vsync: this,
     );
 
-    // Safety net: guarantee DONE button appears after 10s even if animations fail.
-    Timer(const Duration(seconds: 10), () {
+    // C15 T3-32: chest-tap is mandatory — the DONE button used to appear at
+    // the 10s mark (or immediately after arc beat 1, below) regardless of
+    // whether the kid had tapped the chest. Oliver/Jim: opening the chest is
+    // "a big step that the user loves"; don't let the kid skip past it.
+    // Extended safety net (60s) stays as a stuck-user fallback only — not a
+    // skip path. The chest itself is pulsing and obvious; a responsive kid
+    // will tap it in seconds. Stored on `this` so dispose() can cancel it.
+    _doneSafetyTimer = Timer(const Duration(seconds: 60), () {
       if (mounted && !_showDoneButton) {
         _audio.playSfx('whoosh.mp3');
         setState(() => _showDoneButton = true);
@@ -427,13 +434,12 @@ class _VictoryScreenState extends State<VictoryScreen>
     unawaited(_audio.playVoice(arc[1])); // "+1 star!" (fire-and-forget)
     _triggerStarFlight();
 
-    // Show DONE button + chest immediately while beat2 plays
+    // Show the CHEST only — DONE must stay hidden until the chest is opened
+    // and its reward sequence completes (C15 T3-32). Without the DONE button
+    // visible, the chest is the only forward affordance and the kid gets the
+    // full reveal pleasure before advancing.
     unawaited(_audio.playSfx('whoosh.mp3'));
-    setState(() {
-      _showDoneButton = true;
-      _showChest = true;
-    });
-    unawaited(_doneButtonController.repeat(reverse: true));
+    setState(() => _showChest = true);
     unawaited(_chestBounceController.repeat(reverse: true));
   }
 
@@ -983,6 +989,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   void dispose() {
+    _doneSafetyTimer?.cancel();
     _audio.stopVoice();
     _confettiController.dispose();
     _doneButtonController.dispose();
