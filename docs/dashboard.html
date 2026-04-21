@@ -324,15 +324,15 @@
     <h1>Brush Quest</h1>
     <div class="meta">
         <div>Branch: <code>main</code></div>
-        <div>235 commits</div>
-        <div>Updated: 2026-04-17 18:30</div>
+        <div>296 commits</div>
+        <div>Updated: 2026-04-21 18:30</div>
     </div>
 </div>
 
 <div class="priority-banner">
     <div class="label">Current #1 Priority</div>
-    <div class="text">App approved by Google Play. Get it to real kids, collect feedback, iterate fast.</div>
-    <div class="phase">Phase: 0 — Internal Testing (v1.0.0+17 LIVE on Play Store) + iOS scaffold in progress</div>
+    <div class="text">Monitor Cycle 16 v20 (Oliver regression fixes) on Crashlytics. GTM-v4 Phase 2 + iOS TestFlight prep next.</div>
+    <div class="phase">Phase: 0 — Internal Testing (Cycle 16 v20 shipped) + GTM-v4 trunk loop active + iOS TestFlight pending org approval (expected 2026-04-24)</div>
 </div>
 
 <div class="section-title">Workstreams</div>
@@ -349,11 +349,11 @@
                 <span class="ws-name">APP</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">v1.0.0+17 (Cycle 14) LIVE on Play Store. iOS platform now scaffolded with Sign in with Apple — cross-platform strategy active.</div>
+            <div class="status-line">Cycle 16 v20 shipped — 4 regression fixes from Oliver's v19 retest (hero tap lock, countdown voice restored, world-intro voice bleed, greeting dialog readability). 784 tests pass, dart analyze clean.</div>
 
-            <div class="field"><span class="label">Last commit:</span> <code>`829d836` — docs: Sign in with Apple design spec</code></div>
-            <div class="field"><span class="label">What happened:</span> Major cross-platform milestone — added iOS platform scaffold with Sign in with Apple auth. Shipped Cycle 14 with 13 T1/T2 auto-fixes (audio, lifecycle, parent trust, consistency) as v1.0.0+17.</div>
-            <div class="field"><span class="label">Next up:</span> Monitor v17 on internal testing, prep iOS TestFlight, continue collecting tester feedback</div>
+            <div class="field"><span class="label">Last commit:</span> <code>`e0f6f7d` — Cycle 16 v20: 4 regression fixes from Oliver v19 retest</code></div>
+            <div class="field"><span class="label">What happened:</span> Cycle 16 v20 shipped with 4 fixes from Oliver's v19 retest: hero tap lock on daily greeting, countdown "3,2,1" voice restored, world-intro voice no longer bleeds into countdown, greeting dialog caption + unique icons per streak tier.</div>
+            <div class="field"><span class="label">Next up:</span> Monitor v20 Crashlytics, iOS TestFlight prep (Apple Business org approval expected 2026-04-24), Cycle 17</div>
             
         </div>
         <div class="card">
@@ -437,11 +437,11 @@
                 <span class="ws-name">DEV CYCLE</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">Cycle 14 shipped as v1.0.0+17 — 13 T1/T2 auto-fixes across audio, lifecycle, parent trust, consistency</div>
+            <div class="status-line">Cycle 16 v20 shipped — 4 regression fixes from Oliver's v19 retest (784 tests pass, analyze clean)</div>
 
-            <div class="field"><span class="label">Last commit:</span> <code>`0c2a721` — Cycle 14: 13 T1/T2 auto-fixes — audio, lifecycle, parent trust, consistency</code></div>
-            <div class="field"><span class="label">What happened:</span> Cycle 14 landed with 13 tier-1/tier-2 auto-fixes (audio, lifecycle, parent trust, consistency). Version bumped to v1.0.0+17. iOS platform scaffold added in parallel.</div>
-            <div class="field"><span class="label">Next up:</span> Cycle 15 — monitor v17 telemetry, iterate on tester feedback, iOS TestFlight prep</div>
+            <div class="field"><span class="label">Last commit:</span> <code>`e0f6f7d` — Cycle 16 v20: 4 regression fixes from Oliver v19 retest</code></div>
+            <div class="field"><span class="label">What happened:</span> Cycle 16 v20 addressed 4 regressions Oliver found on v19 retest: SS1 hero tap lock on greeting, SS2 countdown voice restored via per-tick files, SS3 world-intro voice stop, SS4 streak greeting icons + caption.</div>
+            <div class="field"><span class="label">Next up:</span> Cycle 17 — monitor v20 Crashlytics, iOS TestFlight prep (org approval expected 2026-04-24), next Oliver feedback round</div>
             
         </div>
         <div class="card">
@@ -449,11 +449,11 @@
                 <span class="ws-name">STRATEGY</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">Phase 0 plan complete, operational system built</div>
-            <div class="blocked">BLOCKED: Nothing — waiting for workstreams to execute</div>
-            <div class="field"><span class="label">Last commit:</span> <code>—</code></div>
-            <div class="field"><span class="label">What happened:</span> Created 5-phase master plan (STRATEGY.md). Built cross-session coordination system. Defined operational cadence.</div>
-            <div class="field"><span class="label">Next up:</span> First Monday weekly brief</div>
+            <div class="status-line">GTM-v4 Phase 1 closed — portfolio frozen at 3 Tier-1 pillars, target reframed 400-600 WAK. 3 Substack pitches drafted (PRD-007). instagram-executor-agent smoke-tested.</div>
+
+            <div class="field"><span class="label">Last commit:</span> <code>`86d938d` — docs(gtm-v4): trunk status + 3 Substack pitches drafted (PRD-007)</code></div>
+            <div class="field"><span class="label">What happened:</span> GTM-v4 trunk loop closed Phase 1: portfolio frozen (3 Tier-1 pillars), 3 Substack pitches drafted, instagram-executor-agent stub passed smoke test.</div>
+            <div class="field"><span class="label">Next up:</span> GTM-v4 Phase 2 — execute on frozen portfolio; first Substack pitches sent</div>
             
         </div>
         <div class="card">
@@ -475,19 +475,19 @@
     
         <div class="cycle-stats">
             <div class="stat">
-                <div class="num">14</div>
+                <div class="num">16</div>
                 <div class="lbl">Last Cycle</div>
             </div>
             <div class="stat">
-                <div class="num">13</div>
-                <div class="lbl">T1/T2 Fixes</div>
+                <div class="num">4</div>
+                <div class="lbl">Regression Fixes</div>
             </div>
             <div class="stat">
-                <div class="num">2</div>
+                <div class="num">1</div>
                 <div class="lbl">Deferred</div>
             </div>
             <div class="stat">
-                <div class="num">588</div>
+                <div class="num">784</div>
                 <div class="lbl">Tests</div>
             </div>
             <div class="stat">
@@ -496,11 +496,11 @@
             </div>
         </div>
         <div class="cycle-latest">
-            <div class="field"><span class="label">Date:</span> 2026-04-17</div>
-            <div class="field"><span class="label">Mode:</span> auto-fix (T1/T2 — audio, lifecycle, parent trust, consistency)</div>
-            <div class="field"><span class="label">Version:</span> v1.0.0+17</div>
-            <div class="field"><span class="label">Commit:</span> <code>0c2a721</code></div>
-        </div><div class="cycle-trend"><span class="label">Trend:</span> <span class="trend-point">C2: 588 tests, 86.4MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C3: 591 tests, 86.6MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C4: 588 tests, 85.7MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C13: 12 commits, v1.0.0+10</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C14: 13 T1/T2 fixes, v1.0.0+17</span></div>
+            <div class="field"><span class="label">Date:</span> 2026-04-21</div>
+            <div class="field"><span class="label">Mode:</span> regression-fix (Oliver v19 retest — hero tap, countdown voice, world-intro audio, greeting readability)</div>
+            <div class="field"><span class="label">Version:</span> v1.0.0+20</div>
+            <div class="field"><span class="label">Commit:</span> <code>e0f6f7d</code></div>
+        </div><div class="cycle-trend"><span class="label">Trend:</span> <span class="trend-point">C3: 591 tests, 86.6MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C4: 588 tests, 85.7MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C13: 12 commits, v1.0.0+10</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C14: 13 T1/T2 fixes, v1.0.0+17</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C16 v20: 4 Oliver regression fixes, 784 tests</span></div>
         <div class="cycle-insight">
             <span class="label">Benchmark insight (Chomper Chums):</span> Chomper Chums uses animated character reactions as immediate feedback during brushing — the character visibly reacts to brushing speed with facial expressions (happy/sad/excited). In Brush Quest, mons
         </div>
@@ -509,13 +509,18 @@
             <div class="deferred-item">#2: Companion voice retirement — Jim said no unless strongly needed. Arc suppression (Cycle 3) is working.</div>
         </div>
         <div class="cycle-next">
-            Next: <strong>Cycle 15</strong> — monitor v17 telemetry, iOS TestFlight prep, next round of tester feedback
+            Next: <strong>Cycle 17</strong> — monitor v20 Crashlytics, iOS TestFlight prep (org approval expected 2026-04-24), next Oliver feedback round
         </div>
 </div>
 
 <div class="section-title">Active Decisions</div>
 <div class="decisions">
-    
+
+        <div class="decision">
+            <span class="dec-title">D-005: GTM-v4 portfolio frozen — 3 Tier-1 pillars, 400-600 WAK target (2026-04-21)</span>
+            <span class="dec-status" style="color:#00e676">ACTIVE</span>
+            <div class="dec-detail">Trunk loop closed Phase 1. Portfolio frozen at 3 Tier-1 pillars; target reframed to 400-600 Weekly Active Kids. 3 Substack pitches drafted (PRD-007). instagram-executor-agent stub passed smoke test. Phase 2 = execution on frozen portfolio.</div>
+        </div>
         <div class="decision">
             <span class="dec-title">D-001: Ship to Play Store before v7 polish (2026-03-14)</span>
             <span class="dec-status" style="color:#00e676">DONE — v1.0.0+10 approved by Google Play, live for internal testers (2026-04-12)</span>
@@ -584,6 +589,42 @@
 <div class="section-title">Recent Activity</div>
 <div class="panel">
 
+        <div class="git-entry">
+            <code class="hash">e0f6f7d</code>
+            <span>Cycle 16 v20: 4 regression fixes from Oliver v19 retest</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">86d938d</code>
+            <span>docs(gtm-v4): trunk status + 3 Substack pitches drafted (PRD-007)</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">7602710</code>
+            <span>loop(trunk): termination gate — 2 PRDs + 6 meta-PRDs</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">8d391e1</code>
+            <span>loop(trunk): synth-final — portfolio frozen (3 Tier-1 pillars, target reframed 400-600 WAK)</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">8c23feb</code>
+            <span>loop(trunk): 3 evaluator outputs</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">294c7e5</code>
+            <span>loop(trunk): synth-1 portfolio draft + live writer research for PRD-007</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">3018a76</code>
+            <span>loop(trunk): question + context brief + 5 lens research outputs</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">2510b1d</code>
+            <span>docs(gtm-v4): Phase 1 closed — validation shipped; follow-on plans listed</span>
+        </div>
+        <div class="git-entry">
+            <code class="hash">4bfeb50</code>
+            <span>feat(gtm-v4): instagram-executor-agent stub + successful smoke test</span>
+        </div>
         <div class="git-entry">
             <code class="hash">829d836</code>
             <span>docs: Sign in with Apple design spec</span>
@@ -718,7 +759,7 @@
         </div>
 </div>
 
-<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-04-17 18:30 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
+<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-04-21 18:30 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
 
 </body>
 </html>
