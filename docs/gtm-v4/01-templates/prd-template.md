@@ -106,7 +106,11 @@ parent_node: trunk/marketing/ugc/instagram-reels
 tier: 1
 status: draft
 owner_agent: instagram-executor-agent
-budget: { dollars: 0, tokens: 500000, agent_hours: 8, jim_hours: 45 }
+budget:
+  dollars: 0
+  tokens: 500000
+  agent_hours: 8
+  jim_hours: 45
 timeline:
   start: 2026-04-25
   checkpoints: [2026-04-28, 2026-05-01, 2026-05-05]
