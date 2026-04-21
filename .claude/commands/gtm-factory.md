@@ -296,3 +296,34 @@ Write to `<node-path>/_escalation.md`. Then:
 
 Escalations should be rare. If multiple fire in short succession, flag a
 template problem (future Loop C input).
+
+## Subcommand: `status`
+
+Print a tree snapshot of `docs/gtm-v4/` showing every node with its status.
+
+Algorithm:
+1. Find all `_status.yaml` files under `docs/gtm-v4/`.
+2. Parse each; print indented by path depth.
+3. For each node, print: path, last_loop_completed, active_prds, tier,
+   open_escalations.
+4. At the end, list all open escalation files and all active PRDs across
+   the tree.
+
+Output format (plaintext, not rendered):
+
+```
+docs/gtm-v4/
+├─ trunk/                    [loop: 2026-05-01  PRDs: 0  tier: –  esc: 0]
+│  ├─ marketing/             [loop: 2026-05-02  PRDs: 0  tier: 1  esc: 0]
+│  │  └─ ugc/
+│  │     └─ instagram-reels/ [loop: 2026-05-03  PRDs: 2  tier: 1  esc: 0]
+│  └─ partnerships/          [loop: –           PRDs: 0  tier: 2  esc: 0]
+
+Active PRDs (2):
+- PRD-GTM-instagram-reels-001  draft  owner: instagram-executor-agent
+- PRD-GTM-instagram-reels-002  draft  owner: instagram-executor-agent
+
+Open escalations (0).
+```
+
+No agent dispatch needed. Pure file-read + format.
