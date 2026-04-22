@@ -325,14 +325,14 @@
     <div class="meta">
         <div>Branch: <code>main</code></div>
         <div>296 commits</div>
-        <div>Updated: 2026-04-21 18:30</div>
+        <div>Updated: 2026-04-22 16:54</div>
     </div>
 </div>
 
 <div class="priority-banner">
     <div class="label">Current #1 Priority</div>
-    <div class="text">Monitor Cycle 16 v20 (Oliver regression fixes) on Crashlytics. GTM-v4 Phase 2 + iOS TestFlight prep next.</div>
-    <div class="phase">Phase: 0 — Internal Testing (Cycle 16 v20 shipped) + GTM-v4 trunk loop active + iOS TestFlight pending org approval (expected 2026-04-24)</div>
+    <div class="text">Capture v20 screenshots from emulator + upload to Play Store listing (Alpha closed test track live).</div>
+    <div class="phase">Phase: 0 — Alpha Closed Test live (US/CA/UK/AU) + public tester group open + captioned screenshots ready — listing needs fresh v20 captures</div>
 </div>
 
 <div class="section-title">Workstreams</div>
@@ -349,11 +349,11 @@
                 <span class="ws-name">APP</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">Cycle 16 v20 shipped — 4 regression fixes from Oliver's v19 retest (hero tap lock, countdown voice restored, world-intro voice bleed, greeting dialog readability). 784 tests pass, dart analyze clean.</div>
+            <div class="status-line">Alpha closed test track LIVE on Play Console (US/CA/UK/AU). Public tester Google Group created with open self-enrollment. Firebase auth resolved for v20 Crashlytics access.</div>
 
             <div class="field"><span class="label">Last commit:</span> <code>`e0f6f7d` — Cycle 16 v20: 4 regression fixes from Oliver v19 retest</code></div>
-            <div class="field"><span class="label">What happened:</span> Cycle 16 v20 shipped with 4 fixes from Oliver's v19 retest: hero tap lock on daily greeting, countdown "3,2,1" voice restored, world-intro voice no longer bleeds into countdown, greeting dialog caption + unique icons per streak tier.</div>
-            <div class="field"><span class="label">Next up:</span> Monitor v20 Crashlytics, iOS TestFlight prep (Apple Business org approval expected 2026-04-24), Cycle 17</div>
+            <div class="field"><span class="label">What happened:</span> Configured Alpha closed test track in 4 countries (US/CA/UK/AU), created public brush-quest-testers@googlegroups.com with open self-enrollment, resolved Firebase auth blocker for Crashlytics (Chrome + jmchabas@gmail.com). Built PIL caption script (Fredoka Medium, 3px stroke, 69pt, 16% band) and rendered all 8 captioned screenshots.</div>
+            <div class="field"><span class="label">Next up:</span> Capture fresh v20 screenshots from emulator (listing missing dashboard), upload Play Store listing, iOS TestFlight prep (org approval expected 2026-04-24)</div>
             
         </div>
         <div class="card">
@@ -437,11 +437,11 @@
                 <span class="ws-name">DEV CYCLE</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">Cycle 16 v20 shipped — 4 regression fixes from Oliver's v19 retest (784 tests pass, analyze clean)</div>
+            <div class="status-line">Cycle 16 v20 shipped — 4 regression fixes from Oliver's v19 retest (784 tests pass, analyze clean). GTM pivot: Alpha closed test track + tester group live.</div>
 
             <div class="field"><span class="label">Last commit:</span> <code>`e0f6f7d` — Cycle 16 v20: 4 regression fixes from Oliver v19 retest</code></div>
-            <div class="field"><span class="label">What happened:</span> Cycle 16 v20 addressed 4 regressions Oliver found on v19 retest: SS1 hero tap lock on greeting, SS2 countdown voice restored via per-tick files, SS3 world-intro voice stop, SS4 streak greeting icons + caption.</div>
-            <div class="field"><span class="label">Next up:</span> Cycle 17 — monitor v20 Crashlytics, iOS TestFlight prep (org approval expected 2026-04-24), next Oliver feedback round</div>
+            <div class="field"><span class="label">What happened:</span> 10 sessions on Play Store listing work: Alpha closed test track (4 countries), public tester Google Group, Firebase/Crashlytics auth resolved, PIL caption script + 8 captioned screenshots rendered.</div>
+            <div class="field"><span class="label">Next up:</span> Cycle 17 — re-capture v20 screenshots (listing missing dashboard), upload listing, iOS TestFlight prep (org approval expected 2026-04-24), next Oliver feedback round</div>
             
         </div>
         <div class="card">
@@ -509,13 +509,18 @@
             <div class="deferred-item">#2: Companion voice retirement — Jim said no unless strongly needed. Arc suppression (Cycle 3) is working.</div>
         </div>
         <div class="cycle-next">
-            Next: <strong>Cycle 17</strong> — monitor v20 Crashlytics, iOS TestFlight prep (org approval expected 2026-04-24), next Oliver feedback round
+            Next: <strong>Cycle 17</strong> — capture v20 screenshots from emulator + upload Play Store listing (Alpha track live), monitor Crashlytics, iOS TestFlight prep (org approval expected 2026-04-24)
         </div>
 </div>
 
 <div class="section-title">Active Decisions</div>
 <div class="decisions">
 
+        <div class="decision">
+            <span class="dec-title">D-006: Alpha closed test track + public tester Group (2026-04-22)</span>
+            <span class="dec-status" style="color:#00e676">ACTIVE</span>
+            <div class="dec-detail">Configured Alpha closed test track on Play Console in 4 countries (US/CA/UK/AU). Created public Google Group brush-quest-testers@googlegroups.com with open self-enrollment for tester onboarding. Firebase auth resolved for v20 Crashlytics access (Chrome + jmchabas@gmail.com).</div>
+        </div>
         <div class="decision">
             <span class="dec-title">D-005: GTM-v4 portfolio frozen — 3 Tier-1 pillars, 400-600 WAK target (2026-04-21)</span>
             <span class="dec-status" style="color:#00e676">ACTIVE</span>
@@ -582,6 +587,13 @@
             <td>2026-03-14</td>
             <td>Losing potential early adopters</td>
             <td style="color:#00e676">DONE — Buttondown, platform-aware forms, QR code for desktop</td>
+        </tr>
+        <tr>
+            <td>Play Store listing missing dashboard screenshot</td>
+            <td>APP</td>
+            <td>2026-04-22</td>
+            <td>Blocks listing upload for Alpha track</td>
+            <td style="color:#ffd740">OPEN — pivoting to re-capture fresh v20 screenshots from emulator</td>
         </tr>
     </table>
 </div>
@@ -759,7 +771,7 @@
         </div>
 </div>
 
-<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-04-21 18:30 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
+<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-04-22 16:54 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
 
 </body>
 </html>
