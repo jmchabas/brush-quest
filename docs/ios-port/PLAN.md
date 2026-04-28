@@ -28,19 +28,9 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 > Without these, none of Phase 1's iOS build/test tasks can run.
 
-- [ ] (T1·J) **0-1.** Install Xcode from Mac App Store (~50 GB, 1–2 hr download). Either run `sudo mas install 497799835` in terminal, or open App Store → search "Xcode" → Get.
-  - Acceptance: `xcodebuild -version` returns a real version; `xcode-select -p` returns `/Applications/Xcode.app/Contents/Developer`.
-- [ ] (T1·J) **0-2.** After Xcode install: open it once to accept the GUI license dialog. Then run in terminal:
-    ```
-    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-    sudo xcodebuild -license accept
-    sudo xcodebuild -runFirstLaunch
-    ```
-  - Acceptance: `xcode-select -p` returns `/Applications/Xcode.app/Contents/Developer`; `xcrun simctl list devices` returns iPhone simulators.
-  - Depends on: 0-1 (Xcode.app exists at /Applications/Xcode.app — confirmed 2026-04-28).
-- [ ] (T1·C) **0-3.** Run `flutter doctor`. Confirm iOS toolchain reports green.
-  - Acceptance: `flutter doctor` shows iOS section ✓ (or only known-acceptable warnings).
-  - Depends on: 0-2.
+- [x] (T1·J) **0-1.** Xcode 26.4.1 installed (verified via `flutter doctor` 2026-04-28).
+- [x] (T1·J) **0-2.** License accepted, first-launch complete (builds compile, simulators available).
+- [x] (T1·C) **0-3.** `flutter doctor` 2026-04-28: all green, no issues. Xcode iOS toolchain ✓.
 
 ---
 
@@ -64,19 +54,13 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T1·C) **1A-1.** Updated `lib/services/analytics_service.dart` comment block to reflect the *permanent* Kids Category decision. Done 2026-04-28; `dart analyze` clean.
 
-- [ ] (T1·C) **1A-2.** Run `flutter pub get` to generate `ios/Podfile` and `ios/Podfile.lock`.
-  - Acceptance: `ios/Podfile` exists; `flutter analyze` clean.
+- [x] (T1·C) **1A-2.** DONE. `ios/Podfile` + `Podfile.lock` exist; `flutter analyze` clean (verified 2026-04-28).
 
-- [ ] (T2·C) **1A-3.** Add `post_install` hook to `ios/Podfile` excluding `FirebaseAnalytics` and `GoogleAppMeasurement` frameworks from the iOS build.
-  - Acceptance: `flutter build ios --no-codesign` succeeds; `find build/ios -name "*.framework"` does NOT include `FirebaseAnalytics.framework` or `GoogleAppMeasurement.framework`.
-  - Depends on: 1A-2.
+- [x] (T2·C) **1A-3.** DONE. Podfile `post_install` excludes FirebaseAnalytics, GoogleAppMeasurement, FirebaseCrashlytics, FirebaseCrashlyticsSwift via SKIP_INSTALL + MACH_O_TYPE=staticlib. Verified zero matching frameworks in `Runner.app/Frameworks/` 2026-04-28.
 
-- [ ] (T2·C) **1A-4.** Set `TARGETED_DEVICE_FAMILY = 1` in `ios/Runner.xcodeproj/project.pbxproj` (iPhone-only for v1; v1.1 will add iPad-optimized layouts).
-  - Acceptance: build setting reflects `1` (iPhone), not `1,2` (Universal).
+- [x] (T2·C) **1A-4.** DONE. `TARGETED_DEVICE_FAMILY = 1` in pbxproj (verified 2026-04-28).
 
-- [ ] (T1·C) **1A-5.** Run `flutter analyze`. Fix any iOS-only warnings.
-  - Acceptance: zero analyzer issues.
-  - Depends on: 1A-2.
+- [x] (T1·C) **1A-5.** DONE 2026-04-28: `flutter analyze` → "No issues found!"
 
 - [x] (T2·C) **1A-6.** First successful iOS build (Simulator) — 2026-04-28. `flutter build ios --no-codesign --simulator --debug` → 12s pod install + 302s Xcode build, exit 0. Required iOS deployment target bump from 13.0 → 15.0 (Firebase 12.x requirement) — bumped in `ios/Podfile` and pbxproj. Built bundle at `build/ios/iphonesimulator/Runner.app`.
   - **Kids Category framework verification:**
@@ -92,17 +76,19 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1C — iOS Info.plist + privacy strings + ATT guard
 
-- [ ] (T2·C) **1C-1.** Audit `ios/Runner/Info.plist`. Add:
-  - `NSCameraUsageDescription` — "Brush Quest uses the front camera to detect brushing motion. Video is processed on-device only and never recorded or sent anywhere."
-  - `NSMicrophoneUsageDescription` — only if camera plugin demands it (iOS sometimes pulls this transitively).
-  - `UIBackgroundModes` → `audio` — so battle music survives screen-blank during brushing.
-  - **VERIFY ABSENT:** `NSUserTrackingUsageDescription` (any presence = ATT prompt = automatic Kids Category rejection).
-  - **VERIFY ABSENT:** `GADApplicationIdentifier` (Google Ads identifier, must not be present).
-  - Acceptance: required keys present; forbidden keys absent; `flutter build ios --no-codesign` succeeds without missing-key errors.
-  - Depends on: 1A-3.
+- [~] (T2·C) **1C-1.** PARTIAL 2026-04-28:
+  - ✅ `NSCameraUsageDescription` present — but copy is generic ("Brush Quest uses the camera to detect brushing motion during gameplay."). **Tier 3 propose:** tighten to plan's recommended: "Brush Quest uses the front camera to detect brushing motion. Video is processed on-device only and never recorded or sent anywhere." Reviewer-friendly; emphasizes on-device only.
+  - ✅ `NSMicrophoneUsageDescription` present (camera/audioplayers may pull it transitively).
+  - ✅ `UIBackgroundModes` → `audio` ADDED 2026-04-28 (was missing — music would have stopped on screen blank).
+  - ✅ `NSUserTrackingUsageDescription` ABSENT (verified via grep — see 1C-2).
+  - ✅ `GADApplicationIdentifier` ABSENT (verified).
+  - **Open:** Tier 3 camera-string proposal awaits Jim's approval.
 
-- [ ] (T1·C) **1C-2.** Add a one-shot grep guard to documentation: `grep -rE "NSUserTracking|AppTrackingTransparency|GADApplicationIdentifier" ios/` must return zero. Document this command in this plan as a pre-submission check (referenced from 3A-0).
-  - Acceptance: command returns zero matches; recorded as a Phase 3 gate.
+- [x] (T1·C) **1C-2.** DONE 2026-04-28. Pre-submission grep gate is the one-liner used in 3A-0:
+  ```bash
+  grep -rE "NSUserTracking|AppTrackingTransparency|GADApplicationIdentifier" ios/
+  ```
+  Verified: zero matches today. Re-run before every TestFlight upload.
 
 ### 1D — iOS audio sanity check
 
@@ -166,9 +152,8 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1I — Firebase Auth/Firestore Pod audit (NEW — Kids Category transitive deps)
 
-- [ ] (T2·C) **1I-1.** After Pods are installed (post 1A-2), `cd ios && pod install` then run `pod deintegrate && pod install` once. Inspect `Podfile.lock` for any pod containing `GoogleAppMeasurement`, `GoogleAds`, `FirebaseAnalytics`, `FirebaseRemoteConfig` as a transitive dep of `firebase_auth` or `cloud_firestore`. Pin pod versions to the latest known-good versions that exclude these.
-  - Acceptance: `Podfile.lock` does NOT include `GoogleAppMeasurement` after the post_install hook (1A-3) executes.
-  - Depends on: 1A-3.
+- [x] (T2·C) **1I-1.** DONE 2026-04-28 with corrected acceptance criterion. `Podfile.lock` DOES list `GoogleAppMeasurement` (9x) and `FirebaseAnalytics` (6x) as transitive Pod entries — that is unavoidable while the Dart packages stay in `pubspec.yaml` (Android needs them). The original criterion ("Podfile.lock must not include GoogleAppMeasurement") was wrong as written.
+  - **Real acceptance criterion (binary-level, used in 3A-1):** `find build/ios/iphonesimulator/Runner.app -iname "*analytics*" -o -iname "*appmeasurement*" -o -iname "*crashlytics*"` returns ZERO matches. Verified today: zero matches. The Podfile post_install SKIP_INSTALL + MACH_O_TYPE=staticlib correctly prevents these from being embedded in the .app bundle.
 
 ### 1J — Privacy Policy update (existing policy at brushquest.app/privacy-policy.html needs iOS edits, NOT a rewrite)
 
@@ -246,10 +231,10 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1R — Build/version sync convention (NEW)
 
-- [ ] (T1·C) **1R-1.** Document version convention in `docs/ios-port/versioning.md`: pubspec `version: X.Y.Z+N` drives both Android `versionCode = N` AND iOS `CFBundleVersion = N`. Marketing version `X.Y.Z` is shared. Bump rule: `+N` increments on every uploaded build (TestFlight or Play Store), never reused, monotonic across both stores.
-  - Acceptance: doc written; current version `1.0.0+20` flagged as the baseline; next iOS upload will be `1.0.0+21`.
-- [ ] (T2·C) **1R-2.** Verify `ios/Runner/Info.plist` reads `CFBundleVersion` from the pubspec via Flutter's standard `$(FLUTTER_BUILD_NUMBER)` substitution. (Flutter scaffolds it correctly by default — verify it wasn't customized.)
-  - Acceptance: `Info.plist` uses `$(FLUTTER_BUILD_NUMBER)` and `$(FLUTTER_BUILD_NAME)`.
+- [x] (T1·C) **1R-1.** DONE. `docs/ios-port/versioning.md` exists, covers convention + bump rule + verification commands. Baseline `1.0.0+20`, next iOS upload `1.0.0+21`.
+- [x] (T2·C) **1R-2.** DONE 2026-04-28. Verified `ios/Runner/Info.plist`:
+  - Line 22: `CFBundleShortVersionString` → `$(FLUTTER_BUILD_NAME)` ✓
+  - Line 26: `CFBundleVersion` → `$(FLUTTER_BUILD_NUMBER)` ✓
 
 ### 1S — Trademark + bundle ID conflict search (NEW)
 
@@ -268,13 +253,11 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T2·C) **1U-1.** Edited `~/Projects/dev-cycle/commands/cyclepro.md`: added "iOS-conditional code" to the Tier 1 "DO NOT touch" list AND a cross-reference in the Tier 3 list. Cycle 14 deletion incident noted as the why.
 - [x] (T1·C) **1U-2.** Added iOS build + grep gates to fitness gates section: `flutter build ios --no-codesign --simulator`, ATT/IDFA grep, GoogleAppMeasurement Pod check. Hard-fail gates when an iOS-touching commit lands.
-- [ ] (T1·C) **1U-3.** Add header comment to `lib/services/auth_service.dart`, `lib/services/analytics_service.dart`, and any future iOS-conditional service:
-    ```dart
-    // CYCLE-PROTECT: Contains iOS-conditional code. Do not auto-remove
-    // "unused" imports, methods, or branches without iOS build verification.
-    // See docs/ios-port/PLAN.md.
-    ```
-  - Acceptance: comment present at top of every iOS-conditional file.
+- [x] (T1·C) **1U-3.** DONE 2026-04-28. CYCLE-PROTECT headers present on:
+  - `lib/services/auth_service.dart:1-3` (Sign in with Apple)
+  - `lib/services/analytics_service.dart:1-5` (Platform.isAndroid gate)
+  - `lib/main.dart:1-4` (Crashlytics error handler gate, added today)
+  Add the same header to any future iOS-conditional file.
 
 ### 1V — iOS Test Infrastructure (NEW — supersedes Layer 2 from earlier discussion)
 

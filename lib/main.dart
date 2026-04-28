@@ -1,3 +1,8 @@
+// CYCLE-PROTECT: Crashlytics error handlers are gated to Platform.isAndroid
+// because the FirebaseCrashlytics native framework is stripped from the iOS
+// binary for Apple Kids Category compliance. Don't unwrap the gate without
+// verifying the Run Script still strips Crashlytics. See docs/ios-port/PLAN.md.
+
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:ui';
