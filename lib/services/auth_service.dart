@@ -1,3 +1,7 @@
+// CYCLE-PROTECT: This file contains iOS-conditional code (Sign in with Apple).
+// Do not auto-remove "unused" imports, methods, or branches without verifying
+// `flutter build ios --no-codesign` still succeeds. See docs/ios-port/PLAN.md.
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';

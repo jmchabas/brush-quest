@@ -1,3 +1,9 @@
+// CYCLE-PROTECT: This file contains iOS-conditional code (Platform.isAndroid
+// gate for Apple Kids Category compliance). Do not auto-remove "unused"
+// imports, methods, or branches without verifying iOS build + the no-third-
+// party-analytics requirement. See docs/ios-port/PLAN.md and
+// decision_ios_kids_category.md.
+
 import 'dart:io';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -15,8 +21,8 @@ class AnalyticsService {
     if (_initialized) return;
     _initialized = true;
 
-    // Disable analytics on iOS for v1 to reduce Kids Category rejection risk.
-    // Re-enable after first App Store approval.
+    // Permanently disabled on iOS — Apple Kids Category prohibits third-party
+    // analytics SDKs. See decision_ios_kids_category.md and docs/ios-port/PLAN.md.
     _enabled = Platform.isAndroid;
     await _analytics.setAnalyticsCollectionEnabled(_enabled);
     if (!_enabled) return;
