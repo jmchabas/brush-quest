@@ -325,14 +325,14 @@
     <div class="meta">
         <div>Branch: <code>main</code></div>
         <div>296 commits</div>
-        <div>Updated: 2026-04-24 18:30</div>
+        <div>Updated: 2026-04-28 20:45</div>
     </div>
 </div>
 
 <div class="priority-banner">
     <div class="label">Current #1 Priority</div>
-    <div class="text">Capture v20 screenshots from emulator + upload to Play Store listing (Alpha closed test track live).</div>
-    <div class="phase">Phase: 0 — Alpha Closed Test live (US/CA/UK/AU) + public tester group open + captioned screenshots ready — listing needs fresh v20 captures</div>
+    <div class="text">Wait Public Beta review (24-48h) + resolve iOS name conflict with existing "Brush Quest" iOS app.</div>
+    <div class="phase">Phase: Android Public Beta submitted + iOS port planning — 50-task / 4-phase iOS plan locked, 11 compliance gaps mapped (SIWA, parental gates, privacy manifests, COPPA)</div>
 </div>
 
 <div class="section-title">Workstreams</div>
@@ -349,12 +349,12 @@
                 <span class="ws-name">APP</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">v20 stable on Play Store — 0 crashes in 24h across 4 users. Alpha closed test track LIVE (US/CA/UK/AU). 30s promo video cut from screen recording.</div>
+            <div class="status-line">Android Public Beta submitted to Play Console (10 listing changes, 26s promo v5, Closed Testing US/CA/UK/AU + Early Access). Crashlytics: 17 users / 30d, 0 crashes on v20.</div>
 
             <div class="field"><span class="label">Last commit:</span> <code>`e0f6f7d` — Cycle 16 v20: 4 regression fixes from Oliver v19 retest</code></div>
-            <div class="field"><span class="label">What happened:</span> Verified v20 build stability via Crashlytics — 0 crashes in 24h across 4 users. Flagged pre-v20 `audioplayers._completePrepared` issue for Cycle 17 backlog. Cut 30s promo video from 1:55 screen recording (trimmed brushing, extended world intro +1-2s, layered parent VO over reduced game audio).</div>
-            <div class="field"><span class="label">Next up:</span> Finish promo video polish, capture fresh v20 screenshots from emulator (listing missing dashboard), upload Play Store listing, iOS TestFlight prep</div>
-            
+            <div class="field"><span class="label">What happened:</span> Major dual-track launch day. Public Beta submitted: title "Kids Toothbrush", 8 captioned screenshots, 26s promo v5 with 6-voice ElevenLabs narration. iOS port plan locked at `docs/ios-port/PLAN.md` (50+ tasks, 4 phases, 11 compliance gaps mapped). Privacy policy updated for Kids Category. Stability holding — 17 users / 30d, 0 crashes.</div>
+            <div class="field"><span class="label">Next up:</span> Wait Public Beta review (24-48h), resolve iOS name conflict (existing "Brush Quest" iOS app), Apple Business org verification (case #102880286319, May 4 ETA)</div>
+
         </div>
         <div class="card">
             <div class="card-header">
@@ -437,24 +437,24 @@
                 <span class="ws-name">DEV CYCLE</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">Cycle 16 v20 stable in production — 0 crashes in 24h across 4 users. Cycle 17 backlog building: audioplayers._completePrepared (pre-v20 only).</div>
+            <div class="status-line">Cycle 16 v20 stable — 17 users / 30d, 0 crashes. GTM restructured to decouple Android Phase 1 from iOS port.</div>
 
             <div class="field"><span class="label">Last commit:</span> <code>`e0f6f7d` — Cycle 16 v20: 4 regression fixes from Oliver v19 retest</code></div>
-            <div class="field"><span class="label">What happened:</span> v20 Crashlytics verification: 0 crashes in 24h across 4 users. Flagged pre-v20 `audioplayers._completePrepared` crash for Cycle 17 backlog (can deprioritize if install base rolls forward). Marketing work: 30s promo video cut.</div>
-            <div class="field"><span class="label">Next up:</span> Cycle 17 — re-capture v20 screenshots, upload listing, iOS TestFlight prep, audioplayers._completePrepared investigation, next Oliver feedback round</div>
-            
+            <div class="field"><span class="label">What happened:</span> Android Public Beta submitted (10 listing changes). iOS port plan locked (50 tasks, 4 phases, 11 compliance gaps). GTM restructured into `docs/launch/CROSS-PLATFORM-GTM.md` + `docs/android-launch/PLAN.md`. Crashlytics: 17 users / 30d, 0 crashes on v20.</div>
+            <div class="field"><span class="label">Next up:</span> Cycle 17 — Public Beta review wait (24-48h), iOS port Phase 1 (SIWA + parental gates + privacy manifests), name conflict resolution, Apple Business verification follow-through</div>
+
         </div>
         <div class="card">
             <div class="card-header">
                 <span class="ws-name">STRATEGY</span>
-                <span class="status-dot" style="background:#00e676"></span>
+                <span class="status-dot" style="background:#ffd740"></span>
             </div>
-            <div class="status-line">GTM-v4 Phase 1 closed — portfolio frozen at 3 Tier-1 pillars, target reframed 400-600 WAK. 3 Substack pitches drafted (PRD-007). instagram-executor-agent smoke-tested.</div>
+            <div class="status-line">Dual-platform launch path defined. Android Phase 1 decoupled from iOS port. iOS name conflict discovered with existing app — needs differentiation.</div>
 
             <div class="field"><span class="label">Last commit:</span> <code>`86d938d` — docs(gtm-v4): trunk status + 3 Substack pitches drafted (PRD-007)</code></div>
-            <div class="field"><span class="label">What happened:</span> GTM-v4 trunk loop closed Phase 1: portfolio frozen (3 Tier-1 pillars), 3 Substack pitches drafted, instagram-executor-agent stub passed smoke test.</div>
-            <div class="field"><span class="label">Next up:</span> GTM-v4 Phase 2 — execute on frozen portfolio; first Substack pitches sent</div>
-            
+            <div class="field"><span class="label">What happened:</span> GTM restructured: `docs/launch/CROSS-PLATFORM-GTM.md` + `docs/android-launch/PLAN.md`. iOS port plan locked at `docs/ios-port/PLAN.md` (4 phases, 11 compliance gaps, Kids 6-8 + Education category, manual release, v1 iPhone-only). Apple Business org verification escalated (case #102880286319, May 4 ETA).</div>
+            <div class="field"><span class="label">Next up:</span> Resolve iOS name conflict, await Apple Business verification, then begin iOS Phase 1 (SIWA + parental gates + privacy manifests + COPPA)</div>
+
         </div>
         <div class="card">
             <div class="card-header">
@@ -498,9 +498,9 @@
         <div class="cycle-latest">
             <div class="field"><span class="label">Date:</span> 2026-04-21</div>
             <div class="field"><span class="label">Mode:</span> regression-fix (Oliver v19 retest — hero tap, countdown voice, world-intro audio, greeting readability)</div>
-            <div class="field"><span class="label">Version:</span> v1.0.0+20</div>
+            <div class="field"><span class="label">Version:</span> v1.0.0+20 (17 users / 30d, 0 crashes)</div>
             <div class="field"><span class="label">Commit:</span> <code>e0f6f7d</code></div>
-        </div><div class="cycle-trend"><span class="label">Trend:</span> <span class="trend-point">C3: 591 tests, 86.6MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C4: 588 tests, 85.7MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C13: 12 commits, v1.0.0+10</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C14: 13 T1/T2 fixes, v1.0.0+17</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C16 v20: 4 Oliver regression fixes, 784 tests</span></div>
+        </div><div class="cycle-trend"><span class="label">Trend:</span> <span class="trend-point">C3: 591 tests, 86.6MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C4: 588 tests, 85.7MB</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C13: 12 commits, v1.0.0+10</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C14: 13 T1/T2 fixes, v1.0.0+17</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C16 v20: 4 Oliver regression fixes, 784 tests</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">2026-04-28: Public Beta submitted, iOS port plan locked (50 tasks, 4 phases)</span></div>
         <div class="cycle-insight">
             <span class="label">Benchmark insight (Chomper Chums):</span> Chomper Chums uses animated character reactions as immediate feedback during brushing — the character visibly reacts to brushing speed with facial expressions (happy/sad/excited). In Brush Quest, mons
         </div>
@@ -510,13 +510,23 @@
             <div class="deferred-item">#3: `audioplayers._completePrepared` crash — pre-v20 builds only; can deprioritize if install base rolls forward to v20.</div>
         </div>
         <div class="cycle-next">
-            Next: <strong>Cycle 17</strong> — capture v20 screenshots from emulator + upload Play Store listing (Alpha track live), finish promo video, iOS TestFlight prep, audioplayers._completePrepared investigation
+            Next: <strong>Cycle 17</strong> — wait Public Beta review (24-48h), resolve iOS name conflict, Apple Business org verification (case #102880286319, May 4 ETA), then iOS Phase 1 (SIWA + parental gates + privacy manifests + COPPA), audioplayers._completePrepared investigation
         </div>
 </div>
 
 <div class="section-title">Active Decisions</div>
 <div class="decisions">
 
+        <div class="decision">
+            <span class="dec-title">D-008: iOS port plan locked — 4 phases, Kids 6-8 + Education, manual release, v1 iPhone-only (2026-04-28)</span>
+            <span class="dec-status" style="color:#00e676">ACTIVE</span>
+            <div class="dec-detail">`docs/ios-port/PLAN.md` locks the iOS port at 50+ tasks across 4 phases with 11 compliance gaps mapped (Sign in with Apple, parental gates, privacy manifests, COPPA). Targets Kids 6-8 + Education category, manual release, v1 iPhone-only. Name conflict discovered with existing "Brush Quest" iOS app — needs differentiation.</div>
+        </div>
+        <div class="decision">
+            <span class="dec-title">D-007: Decouple Android Phase 1 from iOS port (2026-04-28)</span>
+            <span class="dec-status" style="color:#00e676">ACTIVE</span>
+            <div class="dec-detail">GTM restructured into `docs/launch/CROSS-PLATFORM-GTM.md` + `docs/android-launch/PLAN.md`. Android Public Beta ships independent of iOS readiness; iOS follows after Apple Business verification + name conflict resolution.</div>
+        </div>
         <div class="decision">
             <span class="dec-title">D-006: Alpha closed test track + public tester Group (2026-04-22)</span>
             <span class="dec-status" style="color:#00e676">ACTIVE</span>
@@ -594,7 +604,21 @@
             <td>APP</td>
             <td>2026-04-22</td>
             <td>Blocks listing upload for Alpha track</td>
-            <td style="color:#ffd740">OPEN — pivoting to re-capture fresh v20 screenshots from emulator</td>
+            <td style="color:#00e676">DONE — 8 captioned screenshots + 26s promo v5 submitted in Public Beta listing</td>
+        </tr>
+        <tr>
+            <td>Apple Business org verification</td>
+            <td>Jim</td>
+            <td>2026-04-28</td>
+            <td>Blocks iOS App Store Connect setup</td>
+            <td style="color:#ffd740">OPEN — case #102880286319 escalated, May 4 ETA</td>
+        </tr>
+        <tr>
+            <td>iOS name conflict — existing "Brush Quest" iOS app</td>
+            <td>Jim</td>
+            <td>2026-04-28</td>
+            <td>Blocks iOS App Store listing</td>
+            <td style="color:#ffd740">OPEN — needs differentiation (tagline, suffix, or rename)</td>
         </tr>
     </table>
 </div>
@@ -772,7 +796,7 @@
         </div>
 </div>
 
-<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-04-24 18:30 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
+<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-04-28 20:45 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
 
 </body>
 </html>
