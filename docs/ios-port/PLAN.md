@@ -158,8 +158,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1H — PrivacyInfo.xcprivacy manifest audit (NEW — hard upload rejection if missing)
 
-- [ ] (T2·C) **1H-1.** Audit every iOS-relevant Flutter plugin in `pubspec.yaml` for a bundled `PrivacyInfo.xcprivacy`. Plugins to check: `path_provider`, `shared_preferences`, `connectivity_plus`, `package_info_plus`, `sqflite`, `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_crashlytics`, `firebase_analytics` (Android-only via Pod exclusion but still in pubspec), `wakelock_plus`, `camera`, `permission_handler`, `audioplayers`, `google_sign_in`, `sign_in_with_apple`, `crypto`, `google_fonts`. Output: a table mapping plugin → has-manifest? → version-with-manifest if upgrade needed.
-  - Acceptance: table written to `docs/ios-port/privacy-manifest-audit.md`; every plugin has a verdict.
+- [x] (T2·C) **1H-1.** Audit complete — `docs/ios-port/privacy-manifest-audit.md`. 9/15 iOS plugins ship a manifest; 1 needs a fix (`audioplayers_darwin 6.3.0` ships none); 5 are not on Apple's required list; Firebase pods bring their own.
 
 - [ ] (T2·C) **1H-2.** For any plugin without a manifest, bump to a version that has one. If no such version exists, document the workaround (fork, vendor, or replace).
   - Acceptance: `flutter pub get` succeeds; pubspec updated; audit document marks every entry resolved.
@@ -197,16 +196,14 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1K — Privacy Nutrition Labels worksheet
 
-- [ ] (T2·C) **1K-1.** Create `docs/ios-port/privacy-labels.md`. Worksheet for Apple's 14 data categories. Default to "Not Collected" for Kids Category alignment; flag any items needing Jim input. Pre-fill best estimates from current Firestore schema.
-  - Acceptance: file exists; every category has a declared value; "needs input" items flagged.
+- [x] (T2·C) **1K-1.** Worksheet drafted at `docs/ios-port/privacy-labels.md`. Every Apple category declared. Email + User ID + Gameplay Content collected (linked, not for tracking, App Functionality only). All Tracking declarations: NO.
 
 - [ ] (T3·J) **1K-2.** Jim reviews `privacy-labels.md`, confirms or corrects each entry.
   - Depends on: 1K-1.
 
 ### 1L — App Store Connect listing copy
 
-- [ ] (T2·C) **1L-1.** Create `docs/ios-port/store-listing.md` with sections: App Name (≤30 char), Subtitle (≤30), Promotional Text (≤170), Description (≤4000), Keywords (≤100, comma-separated), Support URL, Marketing URL, Primary Category = `Kids → Ages 6-8`, Secondary Category = `Education`. Draft from existing Play Store listing, adapted to App Store limits.
-  - Acceptance: file exists; every required field has a draft; no field exceeds character limit.
+- [x] (T2·C) **1L-1.** Listing draft at `docs/ios-port/store-listing.md`. Title "Brush Quest: Space Rangers" (26/30), subtitle "Toothbrushing Hero Adventure" (28/30), description ~2,950/4,000, keywords 99/100. Primary=Kids 6-8, Secondary=Education.
 
 - [ ] (T3·J) **1L-2.** Jim reviews and approves/edits each field.
   - Depends on: 1L-1.
@@ -269,10 +266,8 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1U — /cyclepro iOS protection (NEW — prevent the Russian-roulette deletion problem)
 
-- [ ] (T2·C) **1U-1.** Edit `~/Projects/dev-cycle/commands/cyclepro.md` Tier 1 autonomy section: add rule that any "fix" touching `ios/**`, files containing `Platform.isIOS`, or pubspec lines with iOS-only packages (`sign_in_with_apple`, `crypto` references in iOS-conditional code) is **demoted to Tier 3** and requires Jim's explicit approval. Even if the underlying lint is normally Tier 1.
-  - Acceptance: cyclepro.md edited; the new rule appears in the Tier 1 section AND in the Tier 3 section as a cross-reference.
-- [ ] (T1·C) **1U-2.** Add `flutter build ios --no-codesign --simulator` and `flutter test integration_test/ -d <iPhone Simulator>` (the latter once 1P exists) to the cyclepro fitness gate suite. Cycle cannot pass if iOS build fails.
-  - Acceptance: cyclepro.md fitness-gate section lists the iOS gates explicitly.
+- [x] (T2·C) **1U-1.** Edited `~/Projects/dev-cycle/commands/cyclepro.md`: added "iOS-conditional code" to the Tier 1 "DO NOT touch" list AND a cross-reference in the Tier 3 list. Cycle 14 deletion incident noted as the why.
+- [x] (T1·C) **1U-2.** Added iOS build + grep gates to fitness gates section: `flutter build ios --no-codesign --simulator`, ATT/IDFA grep, GoogleAppMeasurement Pod check. Hard-fail gates when an iOS-touching commit lands.
 - [ ] (T1·C) **1U-3.** Add header comment to `lib/services/auth_service.dart`, `lib/services/analytics_service.dart`, and any future iOS-conditional service:
     ```dart
     // CYCLE-PROTECT: Contains iOS-conditional code. Do not auto-remove
