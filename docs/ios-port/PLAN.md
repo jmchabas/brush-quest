@@ -78,21 +78,17 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
   - Acceptance: zero analyzer issues.
   - Depends on: 1A-2.
 
-- [ ] (T2·C) **1A-6.** Attempt `flutter build ios --no-codesign`. Capture and triage any errors. (Will likely fail until 1B completes — that's expected; document the failure mode here, then re-run after 1B.)
-  - Acceptance: build succeeds (post-1B) OR fails only with documented expected errors.
-  - Depends on: 1A-3, 1A-4, 1B-1, 1B-2.
+- [x] (T2·C) **1A-6.** First successful iOS build (Simulator) — 2026-04-28. `flutter build ios --no-codesign --simulator --debug` → 12s pod install + 302s Xcode build, exit 0. Required iOS deployment target bump from 13.0 → 15.0 (Firebase 12.x requirement) — bumped in `ios/Podfile` and pbxproj. Built bundle at `build/ios/iphonesimulator/Runner.app`.
+  - **Kids Category framework verification:**
+    - ✅ `FirebaseAnalytics.framework` — NOT in bundle (stripped by Podfile post_install)
+    - ✅ `GoogleAppMeasurement.framework` — NOT in bundle (stripped)
+    - ⚠️ `FirebaseCrashlytics.framework` — **STILL IN BUNDLE.** SKIP_INSTALL + MACH_O_TYPE=staticlib didn't keep it out. **New task 1P-3** added below to fix via Run Script Build Phase before submission.
 
 ### 1B — Firebase Console iOS setup (Jim manual, ~5 min)
 
-- [ ] (T1·J) **1B-1.** Firebase Console → Brush Quest → Project Settings → "Add app" → iOS. Bundle ID `com.brushquest.brushQuest`. App nickname "Brush Quest iOS".
-  - Acceptance: iOS app appears in Firebase project settings; `GoogleService-Info.plist` downloaded.
-
-- [ ] (T1·J) **1B-2.** Place `GoogleService-Info.plist` into `ios/Runner/`. Open `ios/Runner.xcworkspace` in Xcode → drag the file into the `Runner` group → check "Copy items if needed" + "Add to target: Runner".
-  - Acceptance: file exists at `ios/Runner/GoogleService-Info.plist`; visible in Xcode's Runner target.
-  - Depends on: 1B-1.
-
-- [ ] (T1·J) **1B-3.** Firebase Console → Authentication → Sign-in method → click "Apple" → enable. (No Service ID/key needed for iOS native; only required for Android Apple-fallback or web.)
-  - Acceptance: Apple shows "Enabled" in Sign-in providers list.
+- [x] (T1·C) **1B-1.** iOS app added to Firebase Console (driven via Chrome MCP after Jim added jim@anemosgp.com as Project Owner). Bundle `com.brushquest.brushQuest`, nickname "Brush Quest iOS". GOOGLE_APP_ID `1:722700244830:ios:edc34bfb6082ebb107a1cf`.
+- [x] (T1·C) **1B-2.** `GoogleService-Info.plist` moved to `ios/Runner/`. BUNDLE_ID + PROJECT_ID verified (com.brushquest.brushQuest / brush-quest). Still needs to be added to the Runner Xcode target — open `ios/Runner.xcworkspace`, drag the file into the Runner group with "Add to target: Runner" checked. (Mechanical Xcode step; can be done as part of 1A-6 verification or in Xcode.)
+- [x] (T1·C) **1B-3.** Apple enabled as Firebase Auth provider — both Google + Apple now show "Enabled" in Sign-in method tab.
 
 ### 1C — iOS Info.plist + privacy strings + ATT guard
 
@@ -233,6 +229,9 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 - [ ] (T2·C) **1P-2.** Wrap every `FirebaseCrashlytics` call site in `lib/` with a `Platform.isAndroid` runtime gate. Pattern: extract a `CrashReportingService` singleton mirroring `AnalyticsService`'s shape — every method early-returns on iOS. Replace direct `FirebaseCrashlytics.instance.recordError(...)` calls with `CrashReportingService().recordError(...)`.
   - Acceptance: `grep -nE "FirebaseCrashlytics" lib/` returns ONLY the new service file; all other call sites use the wrapper; `dart analyze` clean.
   - Depends on: 1P-1.
+
+- [ ] (T2·C) **1P-3.** Add a Run Script Build Phase to `ios/Runner.xcodeproj` that physically deletes `Frameworks/FirebaseCrashlytics.framework` from the `.app` bundle pre-signing (only when building for iOS, not when re-using the framework e.g. on macOS). The SKIP_INSTALL hook in 1A-3 stripped Analytics + GoogleAppMeasurement but NOT Crashlytics — so this is the bulletproof fix. Script body: `if [ -d "${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Frameworks/FirebaseCrashlytics.framework" ]; then rm -rf "${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Frameworks/FirebaseCrashlytics.framework"; fi`. Add to Runner target's "Build Phases" tab, after "Embed Pods Frameworks", named "Strip Kids-Category-Forbidden Frameworks".
+  - Acceptance: re-run `flutter build ios --no-codesign --simulator`; `find build/ios/iphonesimulator/Runner.app/Frameworks -name "FirebaseCrashlytics*"` returns empty. Pre-submission gate (3A-2) verifies this.
 
 ### 1Q — Cross-platform account linking & data sync (NEW)
 

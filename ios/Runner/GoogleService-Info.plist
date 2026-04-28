@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>722700244830-reuomeurm7s9rh3ue5b2fkthb7gqnglk.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.722700244830-reuomeurm7s9rh3ue5b2fkthb7gqnglk</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>722700244830-92o3j3k7f2kj5pdalmr331ml1mbu982f.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBhXpED7N_pFRon9izzLJdw4eeK026FrHk</string>
+	<key>GCM_SENDER_ID</key>
+	<string>722700244830</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.brushquest.brushQuest</string>
+	<key>PROJECT_ID</key>
+	<string>brush-quest</string>
+	<key>STORAGE_BUCKET</key>
+	<string>brush-quest.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:722700244830:ios:edc34bfb6082ebb107a1cf</string>
+</dict>
+</plist>
