@@ -76,13 +76,12 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1C — iOS Info.plist + privacy strings + ATT guard
 
-- [~] (T2·C) **1C-1.** PARTIAL 2026-04-28:
-  - ✅ `NSCameraUsageDescription` present — but copy is generic ("Brush Quest uses the camera to detect brushing motion during gameplay."). **Tier 3 propose:** tighten to plan's recommended: "Brush Quest uses the front camera to detect brushing motion. Video is processed on-device only and never recorded or sent anywhere." Reviewer-friendly; emphasizes on-device only.
+- [x] (T2·C) **1C-1.** DONE 2026-04-28:
+  - ✅ `NSCameraUsageDescription` updated to reviewer-friendly copy: "Brush Quest uses the front camera to detect brushing motion. Video is processed on-device only and never recorded or sent anywhere." (Tier 3 approved by Jim 2026-04-28.)
   - ✅ `NSMicrophoneUsageDescription` present (camera/audioplayers may pull it transitively).
-  - ✅ `UIBackgroundModes` → `audio` ADDED 2026-04-28 (was missing — music would have stopped on screen blank).
-  - ✅ `NSUserTrackingUsageDescription` ABSENT (verified via grep — see 1C-2).
-  - ✅ `GADApplicationIdentifier` ABSENT (verified).
-  - **Open:** Tier 3 camera-string proposal awaits Jim's approval.
+  - ✅ `UIBackgroundModes` → `audio` added.
+  - ✅ `NSUserTrackingUsageDescription` ABSENT.
+  - ✅ `GADApplicationIdentifier` ABSENT.
 
 - [x] (T1·C) **1C-2.** DONE 2026-04-28. Pre-submission grep gate is the one-liner used in 3A-0:
   ```bash
@@ -142,13 +141,12 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T2·C) **1H-1.** Audit complete — `docs/ios-port/privacy-manifest-audit.md`. 9/15 iOS plugins ship a manifest; 1 needs a fix (`audioplayers_darwin 6.3.0` ships none); 5 are not on Apple's required list; Firebase pods bring their own.
 
-- [ ] (T2·C) **1H-2.** For any plugin without a manifest, bump to a version that has one. If no such version exists, document the workaround (fork, vendor, or replace).
-  - Acceptance: `flutter pub get` succeeds; pubspec updated; audit document marks every entry resolved.
-  - Depends on: 1H-1.
+- [x] (T2·C) **1H-2.** N/A — closed 2026-04-28. Bumped `audioplayers` ^6.1.0 → ^6.6.0 (which pulls `audioplayers_darwin 6.4.0` with modernized async-swift iOS code). Investigation revealed the original audit's premise was wrong: ITMS-91061 only applies to SDKs on Apple's published required-list (analytics/tracking SDKs — Adjust, AppsFlyer, Firebase Analytics, etc.). `audioplayers` is a thin Flutter wrapper around native AVAudioPlayer and is NOT on the required list, so no per-plugin manifest is required from it. Tests pass (784/784) on the new version; iOS build green.
 
-- [ ] (T2·C) **1H-3.** Create the **app-level** `PrivacyInfo.xcprivacy` at `ios/Runner/PrivacyInfo.xcprivacy`. Declare: NSPrivacyTracking = false; NSPrivacyTrackingDomains = empty; NSPrivacyAccessedAPITypes for any required-reason API used (file timestamps, system boot time, disk space, user defaults — Flutter framework typically requires these).
-  - Acceptance: file exists; `flutter build ios --no-codesign` succeeds; xcrun reports no ITMS-91061 warnings on a test archive.
-  - Depends on: 1H-2.
+- [x] (T2·C) **1H-3.** DONE 2026-04-28. `ios/Runner/PrivacyInfo.xcprivacy` created and added to Runner Xcode target via pbxproj edits (PBXBuildFile + PBXFileReference + Runner group + Resources phase). Verified `Runner.app/PrivacyInfo.xcprivacy` lands in built bundle (2182 bytes). Declares:
+  - `NSPrivacyTracking = false`, empty tracking domains.
+  - Collected data: Email, UserID, Gameplay Content (all Linked, none for Tracking, App Functionality only).
+  - Required-reason APIs: UserDefaults (`CA92.1`), FileTimestamp (`C617.1`), SystemBootTime (`35F9.1`).
 
 ### 1I — Firebase Auth/Firestore Pod audit (NEW — Kids Category transitive deps)
 

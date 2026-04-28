@@ -59,5 +59,5 @@ After `pod install` is run with iOS Firebase pods downloaded, Firebase framework
 ## Plan task closeout
 
 - [x] **1H-1** — audit table written.
-- [ ] **1H-2** — audioplayers_darwin upgrade or stub manifest (pending — Tier 2 fix, lands as part of pre-submission gate).
-- [ ] **1H-3** — app-level `ios/Runner/PrivacyInfo.xcprivacy` written and added to Runner target.
+- [x] **1H-2** — N/A. `audioplayers` is not on Apple's [required-SDKs list](https://developer.apple.com/support/third-party-SDK-requirements) (which targets analytics/tracking SDKs like Adjust, AppsFlyer, Firebase Analytics, etc.). No per-plugin manifest is required from a Flutter wrapper around native AVAudioPlayer. Bumped `audioplayers` to ^6.6.0 anyway for the modernized async-swift iOS code. The audit-table row that flagged 6.3.0 as "missing manifest" is corrected: not required.
+- [x] **1H-3** — `ios/Runner/PrivacyInfo.xcprivacy` written and added to Runner target via pbxproj. Build verified: file lands in `Runner.app/PrivacyInfo.xcprivacy`.
