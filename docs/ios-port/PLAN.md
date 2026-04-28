@@ -52,7 +52,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 - [x] Apple button wired in `lib/screens/settings_screen.dart:1242`, gated by `AuthService().isAppleSignInAvailable` (iOS only)
 - [x] `com.apple.developer.applesignin` capability in `ios/Runner/Runner.entitlements`
 - [x] `AnalyticsService` runtime-gated with `Platform.isAndroid` in `lib/services/analytics_service.dart` — every log method early-returns on iOS
-- [x] Apple Business org enrollment submitted (Apr 17, 2026), case `102880286319`, awaiting verification (ETA Mon May 4)
+- [x] Apple Business org enrollment submitted (Apr 17, 2026), case `102880286319` — **VERIFIED 2026-04-28** by Holly (Apple senior advisor) after document resubmission. Unblocks Apple Developer Program enrollment.
 
 ---
 
@@ -226,12 +226,13 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 - [ ] (T2·C) **1P-1.** Add `FirebaseCrashlytics` and `FirebaseCrashlyticsSwift` to the Podfile `post_install` hook frameworks-to-exclude (alongside `FirebaseAnalytics` from 1A-3). Result: iOS binary contains zero Google Crashlytics code.
   - Acceptance: `find build/ios -name "FirebaseCrashlytics*"` returns empty after `flutter build ios --no-codesign`.
   - Depends on: 1A-3.
-- [ ] (T2·C) **1P-2.** Wrap every `FirebaseCrashlytics` call site in `lib/` with a `Platform.isAndroid` runtime gate. Pattern: extract a `CrashReportingService` singleton mirroring `AnalyticsService`'s shape — every method early-returns on iOS. Replace direct `FirebaseCrashlytics.instance.recordError(...)` calls with `CrashReportingService().recordError(...)`.
-  - Acceptance: `grep -nE "FirebaseCrashlytics" lib/` returns ONLY the new service file; all other call sites use the wrapper; `dart analyze` clean.
+- [~] (T2·C) **1P-2.** PARTIAL 2026-04-28: minimal `Platform.isAndroid` gate added to `lib/main.dart:27-31` (the only Crashlytics call sites — `FlutterError.onError` and `PlatformDispatcher.instance.onError` registrations). Eliminates iOS runtime risk. The cleaner `CrashReportingService` extraction is deferred — only do it if more Crashlytics call sites get added.
+  - Acceptance (current): `grep -nE "FirebaseCrashlytics" lib/` shows only `main.dart` import + 2 calls inside `if (Platform.isAndroid)`; `dart analyze` clean; iOS build succeeds.
   - Depends on: 1P-1.
 
-- [ ] (T2·C) **1P-3.** Add a Run Script Build Phase to `ios/Runner.xcodeproj` that physically deletes `Frameworks/FirebaseCrashlytics.framework` from the `.app` bundle pre-signing (only when building for iOS, not when re-using the framework e.g. on macOS). The SKIP_INSTALL hook in 1A-3 stripped Analytics + GoogleAppMeasurement but NOT Crashlytics — so this is the bulletproof fix. Script body: `if [ -d "${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Frameworks/FirebaseCrashlytics.framework" ]; then rm -rf "${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Frameworks/FirebaseCrashlytics.framework"; fi`. Add to Runner target's "Build Phases" tab, after "Embed Pods Frameworks", named "Strip Kids-Category-Forbidden Frameworks".
-  - Acceptance: re-run `flutter build ios --no-codesign --simulator`; `find build/ios/iphonesimulator/Runner.app/Frameworks -name "FirebaseCrashlytics*"` returns empty. Pre-submission gate (3A-2) verifies this.
+- [x] (T2·C) **1P-3.** DONE 2026-04-28. Run Script Build Phase "Strip Kids-Category-Forbidden Frameworks" added to Runner target after `[CP] Copy Pods Resources`. Verified via `flutter build ios --no-codesign --simulator --debug`: zero `*crashlytics*` files in `Runner.app/` (case-insensitive). FirebaseAnalytics, GoogleAppMeasurement also absent.
+  - **Regression note:** When the Strip phase was added in Xcode, the standard Flutter `Run Script` phase (UUID `9740EEB61CF901F6004384FC`, runs `xcode_backend.sh build` before Sources compile) was inadvertently deleted from the Runner target's buildPhases. Symptom: `import Flutter` fails — "Unable to resolve module dependency: 'Flutter'", "'Flutter/Flutter.h' file not found". Fix: re-added both the buildPhases reference and the PBXShellScriptBuildPhase definition. Watch for this if any future Xcode UI editing of build phases happens.
+  - **Followup risk (1P-2 still open):** `lib/main.dart:27,29` calls `FirebaseCrashlytics.instance` unguarded. The outer `try/on Exception` catches `MissingPluginException` at startup, but the registered error callbacks fire OUTSIDE that try and would re-throw on iOS. Either (a) wrap with `Platform.isAndroid`, or (b) extract `CrashReportingService` per 1P-2.
 
 ### 1Q — Cross-platform account linking & data sync (NEW)
 
