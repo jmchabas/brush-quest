@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io' show Platform;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -594,19 +595,32 @@ class AudioService {
         }
 
         try {
-          await _voicePlayer.stop();
+          // Don't stop() before play() — audioplayers replaces the source
+          // automatically. Calling stop() here cuts the previous voice
+          // mid-sentence on iOS when the queue advances. PLAN.md 1D-2.
           await _voicePlayer.setVolume(1.0);
           await _voicePlayer.play(
             AssetSource(_voiceAssetPath(request.fileName)),
           );
-          final completed = await Future.any<bool>([
+          // Wait for true completion or the safety timeout. On Android we
+          // also listen for `PlayerState.stopped` so external `stopVoice()`
+          // calls (screen transitions) recover instantly without waiting
+          // the 15s timeout. On iOS the player transitions through
+          // `stopped` during normal playback, which would cause voice cuts
+          // — see PLAN.md 1D-2 (symptom: "Let's..." cut mid-word).
+          final futures = <Future<bool>>[
             _voicePlayer.onPlayerComplete.first.then((_) => true),
-            _voicePlayer.onPlayerStateChanged
-                .where((s) => s == PlayerState.stopped)
-                .first
-                .then((_) => false),
             Future.delayed(const Duration(seconds: 15), () => false),
-          ]);
+          ];
+          if (Platform.isAndroid) {
+            futures.add(
+              _voicePlayer.onPlayerStateChanged
+                  .where((s) => s == PlayerState.stopped)
+                  .first
+                  .then((_) => false),
+            );
+          }
+          final completed = await Future.any<bool>(futures);
           if (!completed) {
             _reportAudioIssue(
               operation: 'voice_timeout',
