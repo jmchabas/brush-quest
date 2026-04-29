@@ -1,0 +1,9 @@
+# Intermediate ffmpeg artifacts — rebuild via ../build_ios_preview.sh
+vo_combined.mp3
+music_26s.mp3
+final_audio.m4a
+main_22s.mp4
+endcard_4s.mp4
+video_26s_1080.mp4
+muxed_1080.mp4
+concat.txt

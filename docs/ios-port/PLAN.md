@@ -228,8 +228,12 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 ### 1T — App Store preview video (NEW — optional but high-impact)
 
 - [x] (T2·C) **1T-1.** DONE 2026-04-28. `marketing/video/promo_v5_26s.mp4` (1080×2410, 26s) re-encoded to 6.7" iPhone App Preview spec (1290×2796, H.264 + AAC, 26s) at `marketing/screenshots/ios/preview_6.7.mp4`. Strategy: scale-to-width then crop center-vertical 2796 from 2880, preserving the most visually loaded portion of the frame. Poster frame at 12s mark saved to `marketing/screenshots/ios/preview_6.7_poster.png` (1290×2796). Built with ffmpeg `-preset slow -crf 18` for visual quality vs file size (~17MB). Awaits Jim review (1T-2).
-- [ ] (T3·J) **1T-2.** Jim reviews + approves.
-  - Depends on: 1T-1.
+- [x] (T3·J) **1T-2.** APPROVED 2026-04-29. Re-cut from the original promo for App Store compliance + voice quality:
+  - End-card visual: "Get it on Google Play" → **"Free. No ads. No tracking."** (yellow pill on space-navy bg). Apple App Previews play inside the App Store, so no CTA needed; privacy positioning is the actual differentiator.
+  - Voiceover: re-recorded all 6 lines with **George** (ElevenLabs "Warm, Captivating Storyteller", same voice as in-app Buddy) replacing the AI-flat Sarah voice. Closer line changed to "Brush Quest. Free, with no ads or tracking." matching the end-card pill.
+  - Music underbed dropped to 0.10 (was 0.55 in Play Store version) so VO is dominant.
+  - Reproducible via `marketing/video/build_ios_preview.sh`.
+  - Final: `marketing/screenshots/ios/preview_6.7.mp4`, 1290×2796, 25.4s, ~17 MB; poster at `preview_6.7_poster.png`.
 
 ### 1U — /cyclepro iOS protection (NEW — prevent the Russian-roulette deletion problem)
 
