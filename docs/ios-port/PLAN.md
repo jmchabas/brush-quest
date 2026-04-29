@@ -295,8 +295,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
   - Acceptance: `flutter build ios --no-codesign` continues to succeed; opening in Xcode shows the team selected.
   - Depends on: 2A-2.
 
-- [ ] (T1·J) **2B-2.** Create a private GitHub repo `brush-quest-match` for Fastlane Match certificates.
-  - Acceptance: empty private repo exists.
+- [x] (T1·J) **2B-2.** DONE 2026-04-29. Empty private repo created via `gh repo create jmchabas/brush-quest-match --private` → https://github.com/jmchabas/brush-quest-match. `ios/fastlane/Matchfile` `git_url` placeholder replaced with `git@github.com:jmchabas/brush-quest-match.git` (SSH form so CI auth via deploy key works).
 
 - [ ] (T2·C) **2B-3.** Update `ios/fastlane/Matchfile` with the real Match repo URL. Run `fastlane match init` and `fastlane match development`.
   - Acceptance: development cert + provisioning profile created and stored in match repo.
