@@ -185,8 +185,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T2·C) **1M-2.** DONE 2026-04-28. `marketing/screenshots/generate_ios_screenshots.py` (PIL Lanczos resize + pad with `#0A0E27` to iPhone target heights). 24 PNGs written under `marketing/screenshots/ios/{6.9,6.7,6.5}/captioned_NN_*.png` at exact dimensions (1320×2868, 1290×2796, 1242×2688), `hasAlpha: no`. Captions preserved, just letterboxed top+bottom with the app's space background — visually consistent.
 
-- [ ] (T3·J) **1M-3.** Jim reviews for visual consistency.
-  - Depends on: 1M-2.
+- [x] (T3·J) **1M-3.** APPROVED 2026-04-29. Jim reviewed all 24 PNGs (3 sizes × 8 captions) in Finder. All approved including caption #8 "10 worlds to conquer" (the one apparent inconsistency with the App Store description's no-feature-counts framing — accepted because screenshots are visual marketing, not searchable text body).
 
 ### 1N — App Store icon
 
