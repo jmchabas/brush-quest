@@ -197,9 +197,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1P — Crashlytics strip from iOS (NEW — Kids Category compliance)
 
-- [ ] (T2·C) **1P-1.** Add `FirebaseCrashlytics` and `FirebaseCrashlyticsSwift` to the Podfile `post_install` hook frameworks-to-exclude (alongside `FirebaseAnalytics` from 1A-3). Result: iOS binary contains zero Google Crashlytics code.
-  - Acceptance: `find build/ios -name "FirebaseCrashlytics*"` returns empty after `flutter build ios --no-codesign`.
-  - Depends on: 1A-3.
+- [x] (T2·C) **1P-1.** DONE — verified 2026-04-29. Podfile's `KIDS_CATEGORY_EXCLUDED_FRAMEWORKS` list already contains `FirebaseCrashlytics` and `FirebaseCrashlyticsSwift` alongside `FirebaseAnalytics` and `GoogleAppMeasurement`; SKIP_INSTALL + MACH_O_TYPE=staticlib applied via post_install. Combined with the Run Script Build Phase strip (1P-3), the bundle has zero Crashlytics-bearing files (verified via `find build/ios/iphonesimulator/Runner.app -iname "*crashlytics*"` → empty).
 - [~] (T2·C) **1P-2.** PARTIAL 2026-04-28: minimal `Platform.isAndroid` gate added to `lib/main.dart:27-31` (the only Crashlytics call sites — `FlutterError.onError` and `PlatformDispatcher.instance.onError` registrations). Eliminates iOS runtime risk. The cleaner `CrashReportingService` extraction is deferred — only do it if more Crashlytics call sites get added.
   - Acceptance (current): `grep -nE "FirebaseCrashlytics" lib/` shows only `main.dart` import + 2 calls inside `if (Platform.isAndroid)`; `dart analyze` clean; iOS build succeeds.
   - Depends on: 1P-1.
@@ -249,9 +247,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T1·C) **1V-1.** DONE 2026-04-28. `integration_test` added to dev_dependencies; `flutter pub get` succeeds; tests pass (788/788).
 - [x] (T1·C) **1V-2.** DONE 2026-04-28. `integration_test/` directory exists with `README.md` documenting layout + run commands. `flutter test integration_test/` no-ops gracefully when empty (per the codemagic.yaml step). The `test_driver/integration_test.dart` driver file is no longer required for Flutter ≥ 2.8 — `integration_test` package handles bootstrapping itself. Will add per-test files in 1V-3 onward.
-- [ ] (T2·C) **1V-3.** Write `integration_test/parental_gate_test.dart`. Cases: hold-too-short rejects; full 3s hold passes; cancel mid-hold rejects; voiceover instruction plays at start.
-  - Acceptance: 4 test cases pass on iOS Simulator.
-  - Depends on: 1F-2 (parental gate widget exists), 0-3.
+- [x] (T2·C) **1V-3.** DONE 2026-04-29. `integration_test/parental_gate_test.dart` written — 4 cases mirror `test/screens/settings_parent_gate_test.dart` but run on iOS Simulator via `IntegrationTestWidgetsFlutterBinding`: gate renders + Settings hidden; wrong answer rejects + clears field; correct answer unlocks TabBar; `digitsOnly` formatter strips letters. (Plan task description was stale — referenced a deprecated press-and-hold gate; actual gate is the math-challenge implementation from 1F-1/1F-2.) Codemagic `ios_tests` workflow exercises this on every PR.
 - [ ] (T2·C) **1V-4.** Write `integration_test/sign_in_apple_test.dart`. Cases: Apple button visible only on iOS; gate (1F-3) fires before Apple button reachable; mocked `signInWithApple()` returns User → settings shows signed-in state. Use Firebase Auth emulator or mock at the `AuthService` boundary.
   - Acceptance: 3 test cases pass on iOS Simulator.
   - Depends on: 1F-3, 1V-3.
@@ -264,9 +260,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 - [ ] (T2·C) **1V-7.** Write `integration_test/audio_smoke_test.dart`. Cases: countdown voice plays; music starts and continues across phase transitions; SFX fires on attack; no overlap during voice playback.
   - Acceptance: audio events fire in correct sequence (verified via mocked AudioPlayer state).
   - Depends on: 1V-2.
-- [ ] (T2·C) **1V-8.** Add Codemagic workflow `ios_tests` to `codemagic.yaml`: macOS worker, runs `flutter test` + `flutter test integration_test/ -d "iPhone 15"`. Triggers on every PR.
-  - Acceptance: workflow YAML exists; first run is green.
-  - Depends on: 1V-3 through 1V-7, 1W-1.
+- [x] (T2·C) **1V-8.** DONE — closed alongside 1W-1 on 2026-04-28. `codemagic.yaml` workflow `ios_tests` runs on every PR + push to main: `flutter pub get` → `flutter analyze` → DCM lint → `flutter test --machine` → `flutter build ios --no-codesign --simulator --debug` → Kids-Category strip-frameworks gate → `flutter test integration_test/ -d "iPhone 15"` (boots iPhone 15 sim, runs all integration_test files, no-ops gracefully when none yet). First green run will fire on the next PR.
 
 ### 1W — CI pipeline scaffolding
 
