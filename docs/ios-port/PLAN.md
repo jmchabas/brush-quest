@@ -124,11 +124,10 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1G — In-app Account Deletion (NEW — Guideline 5.1.1(v) hard requirement)
 
-- [~] (T3·C) **1G-1.** PROPOSED 2026-04-28. Full UX written at `docs/ios-port/delete-account-ux.md`: button placement (red destructive style under Sign Out, hidden when not signed in), two-step AlertDialog confirmation with explicit list of what gets deleted, deletion pipeline ordering (Apple revoke → Firestore delete → Firebase Auth deleteUser → local prefs clear), per-failure-mode SnackBar copy, three open questions for Jim (button wording, local-data behavior, hidden-vs-visible when not signed in). Awaits Jim sign-off before 1G-2 implementation begins.
+- [x] (T3·C) **1G-1.** APPROVED 2026-04-29. Jim's choices: button label = `Delete Account`; clear local heroes/weapons/stars on this device too (only `onboarding_completed` survives); hide button when not signed in.
 
-- [ ] (T2·C) **1G-2.** Add `deleteAccount()` to `AuthService`. Steps: (1) call SIWA token revoke Cloud Function (1G-3) for Apple users; (2) delete `/users/{uid}` Firestore doc; (3) call `FirebaseAuth.deleteUser()`; (4) clear local `shared_preferences`.
-  - Acceptance: method exists, fully tested with mocks; Tier 3 sign-off from Jim.
-  - Depends on: 1G-1, 1G-3.
+- [~] (T2·C) **1G-2.** IMPLEMENTED 2026-04-29. `AuthService.deleteAccount()` runs the four-step pipeline: (1) Apple SIWA token revoke is a TODO marked `2A-3` (the Cloud Function in `functions/src/index.js` is currently stubbed; replace before any Phase 2 TestFlight build), (2) Firestore `/users/{uid}` delete, (3) `user.delete()` (throws `FirebaseAuthException(requires-recent-login)` if session is too old — caller surfaces a re-auth SnackBar), (4) local `SharedPreferences` clear preserving `onboarding_completed`. Throws on the first cloud-side failure so local data stays intact for retry. Mocked unit tests deferred to 1V-5 integration test.
+  - **Status: ~ (partial).** Marked `[~]` because Apple SIWA revoke is not actually called yet. Closes when 2A-3 lands.
 
 - [~] (T2·C) **1G-3.** STUB IN PLACE 2026-04-28 — full implementation deferred to Phase 2 (2A-3) since the Apple SIWA `.p8` key requires Apple Developer Program activation. Files:
   - `functions/package.json` (Node 20, firebase-functions, jsonwebtoken)
@@ -137,9 +136,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
   - `firebase.json`: functions block added (codebase `default`, runtime `nodejs20`).
   Plan task 2A-3 wires up real secrets after enrollment. Stub MUST be replaced before any Phase 2 TestFlight build users can install (compliance check happens at App Store review, not runtime).
 
-- [ ] (T2·C) **1G-4.** Wire "Delete Account" button in Settings UI behind parental gate.
-  - Acceptance: button present, calls `deleteAccount()`, shows progress + completion state.
-  - Depends on: 1G-2, 1F-3.
+- [x] (T2·C) **1G-4.** DONE 2026-04-29. `Delete Account` button added under `Sign out` / `Delete cloud data` in the Account section of `lib/screens/settings_screen.dart` (signed-in branch only — hidden when not signed in). Two-step destructive flow mirrors `_resetProgress`: (1) warning AlertDialog with explicit list of what gets deleted, (2) math confirmation dialog (random `A × B` with red `DELETE ACCOUNT` action), (3) loading state via `_signingIn`, (4) SnackBar on success/failure with the per-failure-mode copy from the proposal. Routes to home screen on success. Behind the parental gate per 1F-3 (the entire Settings tree is gated). 788 tests pass; iOS build green.
 
 ### 1H — PrivacyInfo.xcprivacy manifest audit (NEW — hard upload rejection if missing)
 
@@ -161,17 +158,9 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 > **Discovered 2026-04-28:** A comprehensive COPPA-compliant Privacy Policy already exists at https://brushquest.app/privacy-policy.html (effective 2026-04-01). Source file is `docs/privacy-policy.html` in this repo. Site is GitHub Pages (Squarespace-managed domain `brushquest.app`). It already covers data collected, COPPA section, deletion process, contact email. **What's missing for iOS:** (a) Apple Sign-In not mentioned in third-party services section; (b) Analytics + Crashlytics listed as Firebase services without noting they're Android-only; (c) age range "4–8" doesn't match the App Store Kids age band 6-8; (d) contact email inconsistency (policy says jim@anemosgp.com, support email is support@brushquest.app per `reference_landing_page_deploy.md`).
 
-- [ ] (T3·C) **1J-1.** Edit `docs/privacy-policy.html`:
-  - Section 5 (Third-Party Services): add Apple Sign-In as a service used on iOS only, link to Apple's privacy policy.
-  - Section 5: note that Firebase Analytics + Crashlytics are present on Android only (stripped from iOS binary for Kids Category compliance).
-  - Section 6 (COPPA): change "ages 4–8" → "ages 6–8" to align with App Store Kids age band. (Or keep 4–8 and explain the 6-8 App Store band is the closest available — Jim decides.)
-  - Contact email block: pick one — `support@brushquest.app` (recommended, customer-facing) or `privacy@brushquest.app` (privacy-specific) or `jim@anemosgp.com` (legacy). Use the same address consistently throughout the policy.
-  - Bump effective date to today.
-  - Acceptance: edits drafted in a PR or branch; Jim reviews before pushing to main.
+- [x] (T3·C) **1J-1.** DONE — content was already shipped in commit `734865f` (privacy policy v2): Apple Sign-In added to Section 5; Analytics + Crashlytics noted as Android-only with iOS-strip explanation; age band normalized to "ages 6–8" throughout; contact email = `support@brushquest.app` consistently; effective date 2026-04-28.
 
-- [ ] (T3·J) **1J-2.** After 1J-1 approval: deploy to brushquest.app via the deploy workflow in `reference_landing_page_deploy.md` (merge branch → main, push). Verify https://brushquest.app/privacy-policy.html serves the new content.
-  - Acceptance: live URL returns 200 with new content; cache-busting confirmed.
-  - Depends on: 1J-1.
+- [x] (T3·J) **1J-2.** DONE — verified 2026-04-29 that https://brushquest.app/privacy-policy.html serves the v2 content (diff vs local: zero). The earlier deploy already shipped it.
 
 - [x] (T2·C) **1J-3.** DONE (already implemented before audit). `lib/screens/settings_screen.dart:866` `_openPrivacyPolicy()` launches `https://brushquest.app/privacy-policy.html` via `url_launcher` with `LaunchMode.externalApplication`. Wired at `:262` and `:1555`. Terms of Service link also present (`_openTermsOfService` → `anemosgp.com/terms.html`). Both behind the parental gate per 1F-3.
 

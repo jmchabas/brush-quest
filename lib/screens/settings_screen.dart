@@ -444,6 +444,237 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
+  /// Apple Guideline 5.1.1(v) — fully delete the account in-app.
+  /// Two-step destructive flow mirrors `_resetProgress`: warning dialog →
+  /// math confirmation → execute → SnackBar. Behind the parental gate per
+  /// 1F-3. See docs/ios-port/delete-account-ux.md.
+  Future<void> _handleDeleteAccount() async {
+    _resetInactivityTimer();
+    if (!mounted) return;
+
+    // Step 1: Warning dialog with explicit list of what gets deleted.
+    final wantsContinue = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Delete your account?',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'This will permanently delete:\n'
+          '• Your saved heroes and weapons\n'
+          '• Your stars and Ranger Rank\n'
+          '• Your brushing streak history\n'
+          '• Your cloud backup\n\n'
+          "Your child's local progress on this device will also be cleared. "
+          'This action cannot be undone.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'CONTINUE',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (wantsContinue != true || !mounted) return;
+
+    // Step 2: Math confirmation (mirrors _resetProgress so users know the pattern).
+    final mathA = 3 + DateTime.now().millisecond % 6;
+    final mathB = 3 + DateTime.now().second % 4;
+    final mathController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        String? error;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            backgroundColor: const Color(0xFF1A0A3E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              'Are you sure?',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'To confirm, solve this:',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '$mathA × $mathB = ?',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: mathController,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '?',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.redAccent),
+                      ),
+                    ),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    error!,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'CANCEL',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  final ans = int.tryParse(mathController.text.trim());
+                  if (ans == (mathA * mathB)) {
+                    Navigator.pop(ctx, true);
+                  } else {
+                    setDialogState(() {
+                      error = 'Wrong answer!';
+                      mathController.clear();
+                    });
+                  }
+                },
+                child: const Text(
+                  'DELETE ACCOUNT',
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    mathController.dispose();
+    if (confirmed != true || !mounted) return;
+
+    // Show progress overlay during the deletion pipeline.
+    setState(() => _signingIn = true);
+
+    try {
+      await _auth.deleteAccount();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Account deleted. Your data has been removed.',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: const Color(0xFF7C4DFF),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      // Bounce back to home; the auth listener + cleared prefs will reflect
+      // the guest state (and `onboarding_completed` survives so the kid
+      // doesn't redo the tutorial).
+      unawaited(
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (_) => false,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final message = e.code == 'requires-recent-login'
+          ? 'Please sign out, sign in again, then try deleting.'
+          : "Account couldn't be deleted. Try again or contact support@brushquest.app.";
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } on Exception catch (e) {
+      debugPrint('Delete Account failed: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            "Couldn't delete cloud data. Try again on a stable connection.",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _signingIn = false);
+    }
+  }
+
   Future<void> _handleDeleteCloudData() async {
     _resetInactivityTimer();
     final confirmed = await showDialog<bool>(
@@ -1396,6 +1627,19 @@ class _SettingsScreenState extends State<SettingsScreen>
                             style: TextStyle(
                               color: Colors.redAccent,
                               fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        // Apple Guideline 5.1.1(v) — full account deletion
+                        // path. Hidden when not signed in (proposal 1G-1).
+                        TextButton(
+                          onPressed: _signingIn ? null : _handleDeleteAccount,
+                          child: const Text(
+                            'Delete Account',
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
