@@ -39,6 +39,26 @@ class FakeAudioService extends AudioService {
 
   final List<AudioCall> calls = [];
 
+  /// Names of every voice line invoked, in call order. Additive tracking for
+  /// 1V-7 audio smoke tests — does not replace [calls], just summarizes voice.
+  final List<String> playedVoiceLines = [];
+
+  /// Names of every SFX invoked, in call order. Additive tracking for 1V-7.
+  final List<String> playedSfx = [];
+
+  /// Sequence of music lifecycle events: 'start', 'duck', 'restore', 'stop'.
+  /// Mirrors the real service's ducking behaviour around voice playback.
+  final List<String> musicEvents = [];
+
+  /// Timestamp of the most recent play call per kind. Keys: 'voice_start',
+  /// 'voice_end', 'sfx', 'music_start', 'music_stop'. Useful for asserting
+  /// that SFX never fall inside the [voice_start, voice_end] window.
+  final Map<String, DateTime> lastPlayCallTimes = {};
+
+  /// Per-call timeline of voice and SFX invocations, used by smoke tests to
+  /// assert ordering and overlap windows. Each entry is (kind, name, time).
+  final List<({String kind, String name, DateTime at})> playTimeline = [];
+
   bool _muted = false;
   bool _voicePlaying = false;
   bool _musicPlaying = false;
@@ -69,6 +89,17 @@ class FakeAudioService extends AudioService {
   /// Clear recorded calls (useful between test stages).
   void clearCalls() => calls.clear();
 
+  /// Reset all assertion-friendly tracking state (added for 1V-7). Leaves the
+  /// existing [calls] log untouched so legacy tests that mix [clearCalls] and
+  /// the new helpers keep working; call [clearCalls] explicitly if needed.
+  void resetTracking() {
+    playedVoiceLines.clear();
+    playedSfx.clear();
+    musicEvents.clear();
+    lastPlayCallTimes.clear();
+    playTimeline.clear();
+  }
+
   // ── Overrides ─────────────────────────────────────────────────
 
   @override
@@ -96,7 +127,10 @@ class FakeAudioService extends AudioService {
   Future<void> playSfx(String fileName) async {
     calls.add(AudioCall('playSfx', {'fileName': fileName}));
     if (_muted) return;
-    // No-op beyond recording.
+    final now = DateTime.now();
+    playedSfx.add(fileName);
+    lastPlayCallTimes['sfx'] = now;
+    playTimeline.add((kind: 'sfx', name: fileName, at: now));
   }
 
   @override
@@ -126,17 +160,26 @@ class FakeAudioService extends AudioService {
       calls.add(const AudioCall('_voiceInterrupted'));
       _voicePlaying = false;
     }
+    final voiceStart = DateTime.now();
+    playedVoiceLines.add(fileName);
+    lastPlayCallTimes['voice_start'] = voiceStart;
+    playTimeline.add((kind: 'voice_start', name: fileName, at: voiceStart));
     _voicePlaying = true;
     // Simulate ducking: record it so tests can verify the sequence.
     if (_musicPlaying) {
       _musicVolume = 0.08;
       calls.add(AudioCall('_musicDucked', {'volume': _musicVolume}));
+      musicEvents.add('duck');
     }
     // Simulate instant completion.
     _voicePlaying = false;
+    final voiceEnd = DateTime.now();
+    lastPlayCallTimes['voice_end'] = voiceEnd;
+    playTimeline.add((kind: 'voice_end', name: fileName, at: voiceEnd));
     if (_musicPlaying) {
       _musicVolume = 0.18;
       calls.add(AudioCall('_musicRestored', {'volume': _musicVolume}));
+      musicEvents.add('restore');
     }
   }
 
@@ -161,6 +204,8 @@ class FakeAudioService extends AudioService {
     _musicPlaying = true;
     _musicVolume = 0.18;
     _currentMusicFile = fileName;
+    musicEvents.add('start');
+    lastPlayCallTimes['music_start'] = DateTime.now();
   }
 
   @override
@@ -179,8 +224,13 @@ class FakeAudioService extends AudioService {
   @override
   Future<void> stopMusic() async {
     calls.add(const AudioCall('stopMusic'));
+    final wasPlaying = _musicPlaying;
     _musicPlaying = false;
     _currentMusicFile = null;
+    if (wasPlaying) {
+      musicEvents.add('stop');
+      lastPlayCallTimes['music_stop'] = DateTime.now();
+    }
   }
 
   @override

@@ -830,7 +830,16 @@ class _BrushingScreenState extends State<BrushingScreen>
     final evolutionStage = await _heroService.getEvolutionStage(hero.id);
     final trophyTarget = await _trophyService.getNextUncaptured(world.id);
     final prefs = await SharedPreferences.getInstance();
-    final duration = prefs.getInt('phase_duration') ?? 20;
+    // Test-only fast-brush hook: pass --dart-define=BRUSHING_PHASE_SECONDS=N
+    // (e.g. 1) to override per-phase duration for integration tests. 0 (the
+    // default) means "no override" — production behavior is byte-identical.
+    // See integration_test/brush_session_e2e_test.dart (plan task 1V-6).
+    const phaseOverride = int.fromEnvironment(
+      'BRUSHING_PHASE_SECONDS',
+    );
+    final duration = phaseOverride > 0
+        ? phaseOverride
+        : (prefs.getInt('phase_duration') ?? 20);
     if (mounted) {
       setState(() {
         _hero = hero;

@@ -168,8 +168,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T2·C) **1K-1.** Worksheet drafted at `docs/ios-port/privacy-labels.md`. Every Apple category declared. Email + User ID + Gameplay Content collected (linked, not for tracking, App Functionality only). All Tracking declarations: NO.
 
-- [ ] (T3·J) **1K-2.** Jim reviews `privacy-labels.md`, confirms or corrects each entry.
-  - Depends on: 1K-1.
+- [x] (T3·J) **1K-2.** APPROVED 2026-04-29. Jim reviewed; one fix applied: Name row corrected from "No" → "Yes (Linked, App Functionality)" since `auth_service.dart:91-100` does persist parent's `displayName` from Apple/Google sign-in. Children's-data-flag context: parent-provided data inherits child-data treatment under Kids Category (no exemption). All other declarations confirmed truthful.
 
 ### 1L — App Store Connect listing copy
 

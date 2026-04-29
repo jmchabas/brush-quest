@@ -24,7 +24,7 @@ If sign-in is never used → answer would be NO. But Apple wants the policy to r
 
 | Data Type | Collected? | Linked to user? | Used for tracking? | Purpose | Notes |
 |---|---|---|---|---|---|
-| Name | **No** | n/a | n/a | n/a | Apple Sign-In may share a name; we persist it as `displayName` only if shared. Same for Google Sign-In. Treated as "linked to user" only when sign-in occurs. ⇒ **Yes, linked, App Functionality** |
+| Name | **Yes** | Linked | No | App Functionality | Parent's name only, only when they sign in with Google or Apple. Persisted as `displayName` (`auth_service.dart:91-100`). Apple Hide-My-Email path: name still shared if user grants `fullName` scope. Never collected from children — sign-in is gated behind the math parental check. |
 | Email Address | **Yes** | Linked | No | App Functionality | Parent's email from Google or Apple sign-in. Apple Hide-My-Email relay supported. |
 | Phone Number | No | — | — | — | Never collected |
 | Physical Address | No | — | — | — | Never collected |
