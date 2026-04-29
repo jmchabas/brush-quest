@@ -115,10 +115,12 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 - [x] (T2·C) **1F-1.** Math gate UX exists: "$mathA × $mathB = ?" numeric input field with auto-focus. Adult-difficulty (multi-digit multiplication a child can't trivially solve).
 - [x] (T2·C) **1F-2.** Gate widget implemented at `settings_screen.dart:1790`.
 - [x] (T2·C) **1F-3.** Gate wired in front of Settings entry, which encloses Apple Sign-In button, Google Sign-In button, Save to Cloud, Restore from Cloud, Reset All Progress, Replay Tutorial. Each surface inherits gating from Settings entry.
-- [ ] (T2·C) **1F-4.** Audit every other code path that opens an external URL, sends an email, or starts an account-creation flow OUTSIDE settings_screen.dart. Verify each is also gated. Likely surfaces to inspect: any "rate the app" link, "share with friend" link, in-app credits/about screen.
-  - Acceptance: written audit in `docs/ios-port/parental-gate-audit.md` listing every gated surface and its gating mechanism; any unprotected surface gets a follow-up task.
-- [ ] (T2·C) **1F-5.** Add a widget test for the math gate (`test/screens/settings_parent_gate_test.dart`): wrong answer rejects + retries; correct answer unlocks; cancel exits Settings. Use `_mathController` programmatically.
-  - Acceptance: test file exists, 3+ test cases pass.
+- [x] (T2·C) **1F-4.** DONE 2026-04-28. `docs/ios-port/parental-gate-audit.md` written. Result: PASS — every external URL / sign-in / cloud-sync / reset / replay-tutorial surface lives inside `settings_screen.dart` behind the math gate. No "rate the app", "share with friend", "credits", "mailto", or external WebView surfaces exist in `lib/`. Re-run grep gate before each pre-submission build.
+- [x] (T2·C) **1F-5.** DONE 2026-04-28. `test/screens/settings_parent_gate_test.dart` — 4 tests pass:
+  - shows math challenge before settings content
+  - wrong answer rejects + regenerates challenge + clears field
+  - correct answer unlocks (TabBar with Dashboard/Settings/Stars/Guide renders)
+  - input field rejects non-digit characters (digitsOnly formatter)
 
 ### 1G — In-app Account Deletion (NEW — Guideline 5.1.1(v) hard requirement)
 
@@ -169,9 +171,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
   - Acceptance: live URL returns 200 with new content; cache-busting confirmed.
   - Depends on: 1J-1.
 
-- [ ] (T2·C) **1J-3.** Add a "Privacy Policy" link in Settings (in-app), opening `https://brushquest.app/privacy-policy.html` via `url_launcher` (Safari View Controller on iOS). Apple reviewers check this is reachable from inside the app, not just the App Store listing.
-  - Acceptance: Settings → "Privacy Policy" link present and tappable; verified on iOS Simulator.
-  - Depends on: 1J-2.
+- [x] (T2·C) **1J-3.** DONE (already implemented before audit). `lib/screens/settings_screen.dart:866` `_openPrivacyPolicy()` launches `https://brushquest.app/privacy-policy.html` via `url_launcher` with `LaunchMode.externalApplication`. Wired at `:262` and `:1555`. Terms of Service link also present (`_openTermsOfService` → `anemosgp.com/terms.html`). Both behind the parental gate per 1F-3.
 
 ### 1K — Privacy Nutrition Labels worksheet
 
