@@ -71,7 +71,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 ### 1B — Firebase Console iOS setup (Jim manual, ~5 min)
 
 - [x] (T1·C) **1B-1.** iOS app added to Firebase Console (driven via Chrome MCP after Jim added jim@anemosgp.com as Project Owner). Bundle `com.brushquest.brushQuest`, nickname "Brush Quest iOS". GOOGLE_APP_ID `1:722700244830:ios:edc34bfb6082ebb107a1cf`.
-- [x] (T1·C) **1B-2.** `GoogleService-Info.plist` moved to `ios/Runner/`. BUNDLE_ID + PROJECT_ID verified (com.brushquest.brushQuest / brush-quest). Still needs to be added to the Runner Xcode target — open `ios/Runner.xcworkspace`, drag the file into the Runner group with "Add to target: Runner" checked. (Mechanical Xcode step; can be done as part of 1A-6 verification or in Xcode.)
+- [x] (T1·C) **1B-2.** DONE. `GoogleService-Info.plist` at `ios/Runner/`, added to Runner Xcode target (PBXBuildFile + PBXFileReference + Resources phase). **Plus**: `lib/firebase_options.dart` updated 2026-04-29 with the iOS branch (`apiKey`, `appId=1:722700244830:ios:edc34bfb6082ebb107a1cf`, `iosClientId=722700244830-reuomeurm7s9rh3ue5b2fkthb7gqnglk.apps.googleusercontent.com`, `iosBundleId=com.brushquest.brushQuest`) — without this, `Firebase.initializeApp` threw `UnsupportedError` at runtime on iOS, crashing the app before any UI rendered. Discovered during 1D-1 Simulator hand-walk.
 - [x] (T1·C) **1B-3.** Apple enabled as Firebase Auth provider — both Google + Apple now show "Enabled" in Sign-in method tab.
 
 ### 1C — iOS Info.plist + privacy strings + ATT guard
@@ -91,12 +91,17 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1D — iOS audio sanity check
 
-- [ ] (T2·C) **1D-1.** `flutter run -d <iOS Simulator>`. Test brushing screen end-to-end. Capture iOS-specific audio glitches (audioplayers behavior on iOS differs from Android — pre-v20 saw `_completePrepared` issues).
-  - Acceptance: full brushing session plays — countdown voice, music loop, SFX, encouragements — without crashes or stuck-silent state. Document any observed issues here.
-  - Depends on: 1A-6, 1B-2.
+- [x] (T2·C) **1D-1.** RUN 2026-04-29 on iPhone 17 Pro Max sim (iOS 26.4) with `BRUSHING_PHASE_SECONDS=5`. Full session completed home → brushing → victory; +1 brush, +2 stars recorded correctly. Visuals + game state logic work. **Three iOS-specific issues observed:**
+  1. **App crashed at startup before any audio could play** — `Firebase.initializeApp` threw `UnsupportedError` because `lib/firebase_options.dart` only had Android in its switch (default branch threw). The `Exception` catch in `main.dart` doesn't catch `Error`. **Fixed inline 2026-04-29:** added the iOS branch with values from `ios/Runner/GoogleService-Info.plist` (`apiKey`, `appId=1:722700244830:ios:edc34bfb6082ebb107a1cf`, `iosClientId`, `iosBundleId=com.brushquest.brushQuest`). This was task **1B-2** — marked done previously based on the plist being added to Xcode target, but the Dart side was never updated. Plan task 1B-2 entry below has been corrected.
+  2. **Swift task continuation leak in `audioplayers_darwin` 6.4.0** — Xcode console: `SWIFT TASK CONTINUATION MISUSE: setUpPlayerItemStatusObservation(_:) leaked its continuation without resuming it. This may cause tasks waiting on it to remain suspended forever.` This is the new async-swift code path that was the reason we bumped from 6.3.0 → 6.6.0/darwin-6.4.0 in commit `e911c6b`. The bump turned out to NOT be required (the audit-driven "missing privacy manifest" premise was wrong — see 1H-2). The bug it introduced is real.
+  3. **All 11 voice plays timed out** — `flutter: audio issue: op=voice_timeout file=voice_X.mp3 err=none` for every voice line attempted (onboarding voices 2/3, lets_fight x2, 5 brushing arc beats, victory beat). Plus `preload_partial err=failed_files_2` at startup. Visuals proceed normally but voice lines aren't completing — consistent with continuation leak (issue #2): the play call hangs, never fires `onComplete`, the voice timeout fallback fires.
 
-- [ ] (T3·C) **1D-2.** If issues from 1D-1 aren't already in the Cycle 17 backlog, propose fixes (do not implement without Jim's sign-off — audio is Tier 3).
-  - Depends on: 1D-1.
+- [~] (T3·C) **1D-2.** PROPOSED FIX (awaiting Jim's Tier-3 sign-off — audio is hard Tier 3). **Recommendation: revert `audioplayers` to ^6.3.0** in `pubspec.yaml` (was bumped to ^6.6.0 in commit `e911c6b` for a non-issue). Rationale:
+  - Original bump was driven by the assumption `audioplayers_darwin 6.3.0` was missing a required `PrivacyInfo.xcprivacy`. Investigation showed `audioplayers` is NOT on Apple's required-SDK list for ITMS-91061 (it's a Flutter wrapper around native AVAudioPlayer, not an analytics/tracking SDK). No manifest is required from it. The bump was unnecessary.
+  - 6.3.0 worked fine on Android (used in v20 production). The async-swift refactor in 6.4.0 introduces the continuation leak observed in 1D-1.
+  - Trade-off of reverting: we lose the "Async swift code, align release functionality" iOS modernization in 6.6.0. Acceptable — that change wasn't motivated by a real Brush Quest need.
+  - Alternatives if Jim doesn't want to revert: (a) wait for upstream `audioplayers` to fix the Swift continuation leak, (b) fork + patch locally. Both worse than reverting.
+  - Implementation (after sign-off): change `audioplayers: ^6.6.0` → `audioplayers: ^6.3.0` in `pubspec.yaml`, run `flutter pub get`, re-run 1D-1, confirm zero `audio issue` events on iOS.
 
 ### 1E — Sign in with Apple end-to-end test
 
