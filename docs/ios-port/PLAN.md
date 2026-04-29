@@ -124,8 +124,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1G — In-app Account Deletion (NEW — Guideline 5.1.1(v) hard requirement)
 
-- [ ] (T3·C) **1G-1.** Propose UX: "Delete Account" button in Settings → Account section, behind parental gate (1F-3). Confirmation step ("This will permanently delete your hero progress and stars. Are you sure?"). Required to be reachable in-app, NOT routed to email/support.
-  - Acceptance: written proposal; Jim approves.
+- [~] (T3·C) **1G-1.** PROPOSED 2026-04-28. Full UX written at `docs/ios-port/delete-account-ux.md`: button placement (red destructive style under Sign Out, hidden when not signed in), two-step AlertDialog confirmation with explicit list of what gets deleted, deletion pipeline ordering (Apple revoke → Firestore delete → Firebase Auth deleteUser → local prefs clear), per-failure-mode SnackBar copy, three open questions for Jim (button wording, local-data behavior, hidden-vs-visible when not signed in). Awaits Jim sign-off before 1G-2 implementation begins.
 
 - [ ] (T2·C) **1G-2.** Add `deleteAccount()` to `AuthService`. Steps: (1) call SIWA token revoke Cloud Function (1G-3) for Apple users; (2) delete `/users/{uid}` Firestore doc; (3) call `FirebaseAuth.deleteUser()`; (4) clear local `shared_preferences`.
   - Acceptance: method exists, fully tested with mocks; Tier 3 sign-off from Jim.
@@ -241,9 +240,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1T — App Store preview video (NEW — optional but high-impact)
 
-- [ ] (T2·C) **1T-1.** Adapt the existing 30s promo video (cut yesterday from the 1:55 screen recording) to App Store preview video specs: 15–30 seconds, MP4 H.264, portrait orientation matching iPhone screenshot size, no subtitles required, audio optional.
-  - Acceptance: `marketing/screenshots/ios/preview.mp4` exists at the correct spec; thumbnail frame selected at the most visually striking moment.
-  - Depends on: existing promo video at `marketing/video/`.
+- [x] (T2·C) **1T-1.** DONE 2026-04-28. `marketing/video/promo_v5_26s.mp4` (1080×2410, 26s) re-encoded to 6.7" iPhone App Preview spec (1290×2796, H.264 + AAC, 26s) at `marketing/screenshots/ios/preview_6.7.mp4`. Strategy: scale-to-width then crop center-vertical 2796 from 2880, preserving the most visually loaded portion of the frame. Poster frame at 12s mark saved to `marketing/screenshots/ios/preview_6.7_poster.png` (1290×2796). Built with ffmpeg `-preset slow -crf 18` for visual quality vs file size (~17MB). Awaits Jim review (1T-2).
 - [ ] (T3·J) **1T-2.** Jim reviews + approves.
   - Depends on: 1T-1.
 
