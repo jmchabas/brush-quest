@@ -327,6 +327,17 @@ class _VictoryScreenState extends State<VictoryScreen>
       }
     });
 
+    // PLAN.md 1D-2 fix 3: re-trigger music on victory entry. brushing_screen's
+    // _finishBrushing stops music before the navigation; without this, the
+    // victory screen plays voices over total silence, and on iOS the music
+    // never resumes on home either. Start at low volume so it sits under the
+    // celebration voices without competing.
+    Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      unawaited(_audio.playMusic('battle_music_loop.mp3'));
+      unawaited(_audio.setMusicVolume(0.10));
+    });
+
     _recordAndAnimate();
   }
 

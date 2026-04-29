@@ -215,9 +215,22 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
       unawaited(_checkGreeting());
-      // Ambient music on home screen (very low volume)
-      unawaited(AudioService().playMusic('battle_music_loop.mp3'));
-      unawaited(AudioService().setMusicVolume(0.06));
+      // Ambient music on home screen (very low volume).
+      // PLAN.md 1D-2 fix 3: serialize playMusic + setMusicVolume so the
+      // volume isn't applied to the previous (disposed) player. Without
+      // the await chain the calls race and on iOS the home screen ends
+      // up silent after a victory→home transition. Schedule via post-
+      // frame so the home animation isn't blocked by the asset load.
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await AudioService().playMusic('battle_music_loop.mp3');
+        if (!mounted) return;
+        await AudioService().setMusicVolume(0.06);
+        // Belt-and-suspenders: if the new player ended up in a stuck
+        // state (iOS audioplayers occasionally fails post-dispose), the
+        // health check inside ensureMusicPlaying restarts it.
+        unawaited(AudioService().ensureMusicPlaying());
+      });
     }
   }
 
