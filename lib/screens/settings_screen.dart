@@ -1238,50 +1238,9 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 8),
         if (!signedIn) ...[
-          // Apple Sign-In button (iOS only, per Apple Guideline 4.8).
-          if (AuthService().isAppleSignInAvailable) ...[
-            GestureDetector(
-              onTap: _signingIn ? null : _handleAppleSignIn,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_signingIn)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.black,
-                        ),
-                      )
-                    else ...[
-                      const Icon(Icons.apple, color: Colors.black, size: 24),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Sign in with Apple',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          // Google Sign-In button (both platforms).
+          // Google Sign-In button (both platforms — primary, since most
+          // users including iOS users prefer Google as the everyday account
+          // and same-account Firebase Auth UID is stable cross-device).
           GestureDetector(
             onTap: _signingIn ? null : _handleGoogleSignIn,
             child: Container(
@@ -1321,6 +1280,50 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
             ),
           ),
+          // Apple Sign-In button (iOS only, per Apple Guideline 4.8 — must
+          // be offered alongside other social logins; placement secondary).
+          if (AuthService().isAppleSignInAvailable) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _signingIn ? null : _handleAppleSignIn,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_signingIn)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.black,
+                        ),
+                      )
+                    else ...[
+                      const Icon(Icons.apple, color: Colors.black, size: 24),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Sign in with Apple',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             'Save your progress to the cloud',

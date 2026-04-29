@@ -1,16 +1,34 @@
 # Cross-Platform Account Linking — Decision
 
 **Plan task:** 1Q-1
-**Status:** Proposal awaiting Jim approval (Tier 3).
+**Status:** APPROVED 2026-04-28.
 **Date:** 2026-04-28
 
 ## The question
 
 When a child uses Brush Quest on Android (signed in with Google) and the same family later installs on iOS (signs in with Apple), should the two sign-ins resolve to **the same Firebase user** (account linking) or **two separate Firebase users** (no linking)?
 
-## Recommendation
+## Decision
 
-**No linking for v1.** Each sign-in method = its own Firebase user. Each platform's saved progress lives under that platform's user ID. Document this clearly in onboarding + Settings so parents know to use the **same sign-in method on each device** for save sync.
+**No linking for v1.** Rely on Firebase Auth's stable per-provider UID: same Google account on iOS and Android resolves to the same Firebase user automatically (no code needed). Same Apple ID across iPhones — same Firebase user. The cross-provider case (Apple on iOS + Google on Android, same person) is rare in our target audience and is not promised in v1.
+
+### Why this turned out simple
+
+The original framing assumed "Apple-on-iOS + Google-on-Android" would be the dominant cross-platform pattern, with linking required to bridge them. In practice:
+
+- Most users don't own both an iPhone AND an Android — single-OS households are the norm.
+- iOS users frequently choose Google Sign-In as the primary because Google is their everyday account; Apple Sign-In is offered to satisfy Apple Policy 4.8 but isn't typically picked by users who care about cross-device.
+- Apple Sign-In on Android is technically possible but UX-painful — users who chose Apple on iOS generally stay in iOS.
+
+So the realistic happy path is Google-on-both → Firebase UID stable → "just works" with zero linking code.
+
+### iOS button order
+
+Google appears FIRST on iOS, Apple Sign-In second. Both are visible to satisfy Apple Policy 4.8, but Google is presented as the primary because it serves the dominant cross-device pattern. Implemented at `lib/screens/settings_screen.dart:1240`.
+
+### Settings copy
+
+No new cross-device-mechanics note added. The existing subtitle "Save your progress to the cloud" stays — it's a passive call-to-action without making cross-platform claims that would mislead users in the rare cross-provider case.
 
 ## Why no linking
 
@@ -48,6 +66,6 @@ Once a TestFlight build is in hand:
 - If TestFlight users complain about cross-platform progress not syncing → revisit linking in v1.1 with a proper consent flow and conflict resolution UX.
 - If a child genuinely needs progress to follow them across Android Google → iOS Apple, the v1 workaround is: parent signs in with **Google** on the iPhone too (Google Sign-In works on iOS via `google_sign_in_ios`).
 
-## Sign-off needed
+## Sign-off
 
-Jim to confirm this is the v1 strategy. Once approved, Cycle 17 can add the 1-line Settings note (Tier 3 copy change) and 1Q-2 can run on the first TestFlight build.
+Jim approved 2026-04-28. iOS Settings button order swapped to Google-first; no new copy added; 1Q-2 (cross-platform sync test) runs on first TestFlight build.

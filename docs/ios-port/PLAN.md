@@ -221,7 +221,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1Q — Cross-platform account linking & data sync (NEW)
 
-- [~] (T3·C) **1Q-1.** PROPOSED 2026-04-28. Decision drafted at `docs/ios-port/account-linking.md`. Recommends **no linking for v1** — each sign-in method = own Firebase user; parents told via 1-line Settings note to "sign in with the same method on each device". Trade-off table includes Apple Hide-my-Email reliability concern, Kids Category review surface, and data-loss risk of conflict resolution. Awaits Jim's sign-off before 1Q-2 runs and before the 1-line Settings copy add (Cycle 17 Tier 3).
+- [x] (T3·C) **1Q-1.** APPROVED 2026-04-28. Decision: **no linking for v1.** Firebase Auth's stable per-provider UID handles the dominant cross-device case (same Google account on iPhone + Android → same Firebase user, automatic). The cross-provider case (Apple-iOS + Google-Android same person) is rare in target audience and not promised in v1. iOS Settings button order swapped to **Google first, Apple second** at `lib/screens/settings_screen.dart:1240` (Apple still required by Policy 4.8 but presented as secondary). No new Settings copy added — existing "Save your progress to the cloud" subtitle stays. See `docs/ios-port/account-linking.md`.
 - [ ] (T2·C) **1Q-2.** Once Phase 2 TestFlight build is up, run cross-platform sync test: same Firestore user signs in on Android + iPhone Simulator simultaneously, verify hero/streak/star data syncs both ways within ~2 sec.
   - Acceptance: data write on platform A appears on platform B before next manual reload.
   - Depends on: 1Q-1, 2D-3.
