@@ -9,7 +9,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  audioplayers: ^6.6.0
+  # Pinned to ^6.3.0: audioplayers_darwin 6.4.0+ has a Swift task continuation
+  # leak in setUpPlayerItemStatusObservation that hangs voice playback on iOS.
+  # 6.3.0 ships clean on Android v20 production audio. The 6.6.0 bump in
+  # commit e911c6b was driven by a misread of Apple's ITMS-91061 scope;
+  # audioplayers is not on Apple's required-SDK list, so no privacy manifest
+  # is required from it. Revisit once bluefireteam ships a fix for the
+  # continuation leak. See docs/ios-port/PLAN.md tasks 1D-1, 1D-2, 1H-2.
+  audioplayers: ^6.3.0
   shared_preferences: ^2.3.0
   wakelock_plus: ^1.4.0
   camera: ^0.11.0+2
@@ -24,6 +31,15 @@ dependencies:
   url_launcher: ^6.3.1
   sign_in_with_apple: ^6.1.0
   crypto: ^3.0.6
+
+# Force the iOS-side audioplayers implementation to 6.3.0 exactly.
+# audioplayers ^6.3.0 transitively allows darwin 6.4.0+, which has the
+# Swift task continuation leak in setUpPlayerItemStatusObservation that
+# hangs voice playback on iOS (see PLAN.md tasks 1D-1, 1D-2). Pinning
+# the transitive directly is the surgical fix; remove this override
+# once bluefireteam ships a fixed audioplayers_darwin upstream.
+dependency_overrides:
+  audioplayers_darwin: 6.3.0
 
 dev_dependencies:
   flutter_test:
