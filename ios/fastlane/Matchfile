@@ -1,0 +1,20 @@
+# Fastlane Match configuration for Brush Quest iOS.
+#
+# Phase 1: this file is a placeholder. The `git_url` will point to a real
+# private repo once it's created in plan task 2B-2.
+# Phase 2: replace `git_url` with the actual `git@github.com:jmchabas/brush-quest-match.git`
+# (or whichever owner/repo Jim creates), then run:
+#
+#   bundle exec fastlane match init
+#   bundle exec fastlane match development
+#   bundle exec fastlane match appstore
+#
+# See plan task 2B-3 / 2B-4.
+
+git_url("PLACEHOLDER_REPLACE_AT_2B-3")
+storage_mode("git")
+
+type("development")
+
+app_identifier(["com.brushquest.brushQuest"])
+team_id("PLACEHOLDER_REPLACE_AT_2A-2")

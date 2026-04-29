@@ -28,6 +28,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   very_good_analysis: ^7.0.0
   glados: ^1.1.1
   dart_code_linter: ^4.0.1

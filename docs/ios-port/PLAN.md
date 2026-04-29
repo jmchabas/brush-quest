@@ -189,8 +189,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1M — iPhone screenshots
 
-- [ ] (T2·C) **1M-1.** Create `docs/ios-port/screenshots.md`: required iPhone screenshot sizes (6.9" — 1320×2868, 6.7" — 1290×2796, 6.5" — 1242×2688, 5.5" — 1242×2208), the 8 captioned Play Store screenshots already in `marketing/screenshots/`, and a mapping of which adapt to which iPhone size.
-  - Acceptance: file exists with size table + adaptation map.
+- [x] (T2·C) **1M-1.** DONE 2026-04-28. `docs/ios-port/screenshots.md` written: required iPhone sizes table (6.9" required, 6.7"/6.5" recommended, 5.5" not required for iOS 15.0+), source asset inventory, two adaptation strategies (resize-then-pad-with-#0A0E27 vs native re-shoot), output paths, and the 1M-2 generator-script spec.
 
 - [ ] (T2·C) **1M-2.** Generate iPhone-aspect-ratio versions of the 8 captioned screenshots into `marketing/screenshots/ios/`. Maintain caption styling.
   - Acceptance: 8 screenshots × required sizes, all at exact pixel dimensions.
@@ -201,8 +200,11 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1N — App Store icon
 
-- [ ] (T2·C) **1N-1.** Generate a 1024×1024 App Store icon from the existing app icon source. **No transparency, no rounded corners** (Apple rounds them). Save to `ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png`. Verify all required sizes exist (20pt @2x/@3x, 29pt @2x/@3x, 40pt @2x/@3x, 60pt @2x/@3x).
-  - Acceptance: every required size populated; `flutter build ios --no-codesign` doesn't warn about missing icons.
+- [x] (T2·C) **1N-1.** DONE (already shipped in scaffold, verified 2026-04-28).
+  - `Icon-App-1024x1024@1x.png` exists, 1024×1024, `hasAlpha: no` ✓
+  - All 15 required iPhone icon sizes present (20pt/29pt/40pt @1x/@2x/@3x + 60pt @2x/@3x + iPad-compatible 76pt + 83.5pt @2x).
+  - `Contents.json` references all of them.
+  - iOS build green with no missing-icon warnings.
 
 ### 1P — Crashlytics strip from iOS (NEW — Kids Category compliance)
 
@@ -261,10 +263,8 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 > Go-deep: 5 integration tests, full coverage of the iOS-critical paths.
 
-- [ ] (T1·C) **1V-1.** Add `integration_test:` to dev_dependencies in `pubspec.yaml` (Flutter ships it; just declare it).
-  - Acceptance: `flutter pub get` succeeds; `integration_test/` is the standard location.
-- [ ] (T1·C) **1V-2.** Create `integration_test/` directory with `test_driver/integration_test.dart` boilerplate.
-  - Acceptance: `flutter test integration_test/` runs (even with no tests yet).
+- [x] (T1·C) **1V-1.** DONE 2026-04-28. `integration_test` added to dev_dependencies; `flutter pub get` succeeds; tests pass (788/788).
+- [x] (T1·C) **1V-2.** DONE 2026-04-28. `integration_test/` directory exists with `README.md` documenting layout + run commands. `flutter test integration_test/` no-ops gracefully when empty (per the codemagic.yaml step). The `test_driver/integration_test.dart` driver file is no longer required for Flutter ≥ 2.8 — `integration_test` package handles bootstrapping itself. Will add per-test files in 1V-3 onward.
 - [ ] (T2·C) **1V-3.** Write `integration_test/parental_gate_test.dart`. Cases: hold-too-short rejects; full 3s hold passes; cancel mid-hold rejects; voiceover instruction plays at start.
   - Acceptance: 4 test cases pass on iOS Simulator.
   - Depends on: 1F-2 (parental gate widget exists), 0-3.
@@ -286,11 +286,8 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1W — CI pipeline scaffolding
 
-- [ ] (T2·C) **1W-1.** Create `codemagic.yaml` at repo root with iOS build workflow placeholders. Signing config marked `# Phase 2: signing`.
-  - Acceptance: file exists; syntactically valid; placeholders clearly marked.
-
-- [ ] (T2·C) **1W-2.** Create `ios/fastlane/` with `Fastfile` and `Matchfile` (Match repo URL placeholder).
-  - Acceptance: skeleton exists; `bundle install` (if Ruby/bundler ready) succeeds.
+- [x] (T2·C) **1W-1.** DONE 2026-04-28. `codemagic.yaml` written. Workflow `ios_tests` runs on PR + push to main: pub get, flutter analyze, DCM lint, flutter test, iOS build (no codesign), Kids-Category strip-frameworks gate (rejects build if forbidden frameworks land in bundle), then `flutter test integration_test/` (no-ops if empty). Phase 2 `ios_release` workflow scaffolded as a commented block — uncomment after 2A-1 / 2B-3 / 2C-1.
+- [x] (T2·C) **1W-2.** DONE 2026-04-28. `ios/Gemfile` + `ios/fastlane/Fastfile` + `ios/fastlane/Matchfile` created. Two read-only match lanes (`match_dev`, `match_release`) defined. Phase 2 `beta` and `release` lanes scaffolded as commented blocks. Matchfile has explicit `PLACEHOLDER_REPLACE_AT_2B-3` markers for `git_url` and `team_id` so 2A-2 / 2B-2 substitutions are mechanical.
 
 ---
 

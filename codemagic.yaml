@@ -1,0 +1,106 @@
+# Codemagic CI/CD pipeline for Brush Quest.
+#
+# Phase 1 (current): unsigned build + tests on every PR. Used to catch
+# regressions before TestFlight uploads.
+# Phase 2 (post Apple Developer Program enrollment): real signing via
+# Fastlane Match, TestFlight upload, App Store submission lanes.
+#
+# See docs/ios-port/PLAN.md tasks 1V-8 (integration test workflow), 1W-1
+# (this file), 2D-1 (Phase 2 signing config), 2D-2 (first signed build).
+
+workflows:
+  ios_tests:
+    name: iOS unit + integration tests
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    triggering:
+      events:
+        - pull_request
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Set up Flutter & dependencies
+        script: |
+          flutter --version
+          flutter config --no-analytics
+          flutter pub get
+      - name: Static analysis
+        script: |
+          flutter analyze
+      - name: DCM lint
+        script: |
+          dart run dart_code_linter:metrics analyze lib --reporter=console
+      - name: Unit + widget tests
+        script: |
+          flutter test --machine > test-output.json
+        test_report: test-output.json
+      - name: iOS build (no codesign)
+        script: |
+          flutter build ios --no-codesign --simulator --debug
+      - name: Strip-frameworks gate (Kids Category)
+        script: |
+          set -e
+          # Pre-submission gate from docs/ios-port/PLAN.md task 3A-0..3A-2.
+          if grep -rE "NSUserTracking|AppTrackingTransparency|GADApplicationIdentifier" ios/ ; then
+            echo "FAIL: forbidden privacy keys detected in ios/" >&2
+            exit 1
+          fi
+          if find build/ios/iphonesimulator/Runner.app -iname "*crashlytics*" -o -iname "*googleappmeasurement*" -o -iname "firebase_analytics*.framework" | grep -q . ; then
+            echo "FAIL: Kids-Category-forbidden frameworks landed in bundle" >&2
+            find build/ios/iphonesimulator/Runner.app -iname "*crashlytics*" -o -iname "*googleappmeasurement*" -o -iname "firebase_analytics*.framework"
+            exit 1
+          fi
+          echo "PASS: no forbidden frameworks in iOS bundle"
+      - name: Integration tests on iPhone Simulator
+        script: |
+          # Boot the simulator, then run integration_test/.
+          # 1V-3..1V-7 will be added incrementally; this step no-ops gracefully if dir is empty.
+          if [ -d "integration_test" ] && [ "$(ls -A integration_test/*.dart 2>/dev/null)" ]; then
+            xcrun simctl boot "iPhone 15" 2>/dev/null || true
+            flutter test integration_test/ -d "iPhone 15"
+          else
+            echo "No integration tests yet; skipping."
+          fi
+    artifacts:
+      - build/ios/iphonesimulator/Runner.app
+      - test-output.json
+
+  # Phase 2: signing
+  # ios_release:
+  #   name: iOS signed build (TestFlight)
+  #   instance_type: mac_mini_m2
+  #   max_build_duration: 60
+  #   environment:
+  #     flutter: stable
+  #     xcode: latest
+  #     cocoapods: default
+  #     groups:
+  #       - app_store_credentials   # Add via Codemagic UI: APP_STORE_CONNECT_*
+  #       - match_credentials       # Add via Codemagic UI: MATCH_PASSWORD, MATCH_GIT_*
+  #     vars:
+  #       BUNDLE_ID: "com.brushquest.brushQuest"
+  #       APP_STORE_APPLE_ID: ""    # Filled after 2C-1 (App Store Connect record)
+  #   triggering:
+  #     events:
+  #       - tag
+  #     tag_patterns:
+  #       - pattern: 'ios-v*'
+  #         include: true
+  #   scripts:
+  #     - name: Match — fetch certs + profiles
+  #       script: |
+  #         cd ios && bundle install && bundle exec fastlane match appstore --readonly
+  #     - name: Build signed IPA
+  #       script: |
+  #         flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+  #     - name: Upload to TestFlight
+  #       script: |
+  #         cd ios && bundle exec fastlane pilot upload --ipa ../build/ios/ipa/*.ipa
+  #   artifacts:
+  #     - build/ios/ipa/*.ipa

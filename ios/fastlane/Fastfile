@@ -1,0 +1,51 @@
+# Fastlane configuration for Brush Quest iOS.
+#
+# Phase 1 (current): scaffolded. No active lanes — `match` repo URL placeholder.
+# Phase 2 (post Apple Developer Program enrollment, plan task 2B): wire up
+# `match` against the `brush-quest-match` private repo, then enable the
+# `beta` and `release` lanes below.
+#
+# Plan references: 1W-2 (this file), 2B-3 / 2B-4 (match init), 2D-1..2D-3
+# (TestFlight upload).
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Sync development certs + profiles from match repo"
+  lane :match_dev do
+    match(type: "development", readonly: true)
+  end
+
+  desc "Sync App Store certs + profiles from match repo"
+  lane :match_release do
+    match(type: "appstore", readonly: true)
+  end
+
+  # Phase 2 — uncomment after 2B-3 / 2B-4 land
+  # desc "Build a signed IPA + upload to TestFlight"
+  # lane :beta do
+  #   match(type: "appstore", readonly: true)
+  #   build_app(
+  #     workspace: "Runner.xcworkspace",
+  #     scheme: "Runner",
+  #     export_method: "app-store",
+  #     output_directory: "../build/ios/ipa"
+  #   )
+  #   upload_to_testflight(
+  #     skip_waiting_for_build_processing: true,
+  #     skip_submission: true
+  #   )
+  # end
+
+  # desc "Submit current TestFlight build for App Store review"
+  # lane :release do
+  #   deliver(
+  #     submit_for_review: true,
+  #     automatic_release: false,
+  #     force: true,
+  #     skip_screenshots: true,
+  #     skip_metadata: true,
+  #     skip_binary_upload: true
+  #   )
+  # end
+end
