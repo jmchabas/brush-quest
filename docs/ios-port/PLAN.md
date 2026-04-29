@@ -131,9 +131,12 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
   - Acceptance: method exists, fully tested with mocks; Tier 3 sign-off from Jim.
   - Depends on: 1G-1, 1G-3.
 
-- [ ] (T2·C) **1G-3.** Create Firebase Cloud Function `revokeAppleToken` that calls Apple's `https://appleid.apple.com/auth/revoke` endpoint with the SIWA private key. (Required by Apple — Firebase `deleteUser()` does NOT revoke the SIWA refresh token.) Store the Apple key as a Cloud Function secret.
-  - Acceptance: Cloud Function deployed to Firebase; integration test with a test Apple account succeeds; revocation returns HTTP 200.
-  - Depends on: 2A-1 (need Apple Developer Program for the Apple key) — **so this task is partially Phase 2.** Stub it in Phase 1 with TODO; finish in Phase 2.
+- [~] (T2·C) **1G-3.** STUB IN PLACE 2026-04-28 — full implementation deferred to Phase 2 (2A-3) since the Apple SIWA `.p8` key requires Apple Developer Program activation. Files:
+  - `functions/package.json` (Node 20, firebase-functions, jsonwebtoken)
+  - `functions/src/index.js` exports `revokeAppleToken` HTTPS callable. Auth-gated. Returns `{revoked: false, stub: true}` and logs a warning. Phase 2 implementation is in a commented block (JWT signed with ES256 against APPLE_PRIVATE_KEY → POST https://appleid.apple.com/auth/revoke with `client_id`/`client_secret`/`token`/`token_type_hint`).
+  - `functions/.gitignore`: node_modules, .env, .firebaserc.
+  - `firebase.json`: functions block added (codebase `default`, runtime `nodejs20`).
+  Plan task 2A-3 wires up real secrets after enrollment. Stub MUST be replaced before any Phase 2 TestFlight build users can install (compliance check happens at App Store review, not runtime).
 
 - [ ] (T2·C) **1G-4.** Wire "Delete Account" button in Settings UI behind parental gate.
   - Acceptance: button present, calls `deleteAccount()`, shows progress + completion state.
@@ -191,9 +194,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T2·C) **1M-1.** DONE 2026-04-28. `docs/ios-port/screenshots.md` written: required iPhone sizes table (6.9" required, 6.7"/6.5" recommended, 5.5" not required for iOS 15.0+), source asset inventory, two adaptation strategies (resize-then-pad-with-#0A0E27 vs native re-shoot), output paths, and the 1M-2 generator-script spec.
 
-- [ ] (T2·C) **1M-2.** Generate iPhone-aspect-ratio versions of the 8 captioned screenshots into `marketing/screenshots/ios/`. Maintain caption styling.
-  - Acceptance: 8 screenshots × required sizes, all at exact pixel dimensions.
-  - Depends on: 1M-1.
+- [x] (T2·C) **1M-2.** DONE 2026-04-28. `marketing/screenshots/generate_ios_screenshots.py` (PIL Lanczos resize + pad with `#0A0E27` to iPhone target heights). 24 PNGs written under `marketing/screenshots/ios/{6.9,6.7,6.5}/captioned_NN_*.png` at exact dimensions (1320×2868, 1290×2796, 1242×2688), `hasAlpha: no`. Captions preserved, just letterboxed top+bottom with the app's space background — visually consistent.
 
 - [ ] (T3·J) **1M-3.** Jim reviews for visual consistency.
   - Depends on: 1M-2.
@@ -221,10 +222,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 1Q — Cross-platform account linking & data sync (NEW)
 
-- [ ] (T3·C) **1Q-1.** Decide linking model: do we treat Google-on-Android + Apple-on-iOS as the *same Firebase user* (account linking) or separate users (no linking)?
-  - Tradeoff: linking requires Firebase `linkWithCredential` flow + email verification UX. No-linking is simpler but loses progress when a kid switches platforms.
-  - Recommendation: **No linking for v1.** Every sign-in method = its own Firebase user. Document this in onboarding so parents understand "sign in with the same method on each device for save sync."
-  - Acceptance: decision documented in `docs/ios-port/account-linking.md`; Jim approves.
+- [~] (T3·C) **1Q-1.** PROPOSED 2026-04-28. Decision drafted at `docs/ios-port/account-linking.md`. Recommends **no linking for v1** — each sign-in method = own Firebase user; parents told via 1-line Settings note to "sign in with the same method on each device". Trade-off table includes Apple Hide-my-Email reliability concern, Kids Category review surface, and data-loss risk of conflict resolution. Awaits Jim's sign-off before 1Q-2 runs and before the 1-line Settings copy add (Cycle 17 Tier 3).
 - [ ] (T2·C) **1Q-2.** Once Phase 2 TestFlight build is up, run cross-platform sync test: same Firestore user signs in on Android + iPhone Simulator simultaneously, verify hero/streak/star data syncs both ways within ~2 sec.
   - Acceptance: data write on platform A appears on platform B before next manual reload.
   - Depends on: 1Q-1, 2D-3.
