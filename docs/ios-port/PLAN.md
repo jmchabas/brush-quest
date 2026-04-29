@@ -174,8 +174,10 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 - [x] (T2·C) **1L-1.** Listing draft at `docs/ios-port/store-listing.md`. Title "Brush Quest: Space Rangers" (26/30), subtitle "Toothbrushing Hero Adventure" (28/30), description ~2,950/4,000, keywords 99/100. Primary=Kids 6-8, Secondary=Education.
 
-- [ ] (T3·J) **1L-2.** Jim reviews and approves/edits each field.
-  - Depends on: 1L-1.
+- [x] (T3·J) **1L-2.** APPROVED 2026-04-29. Three edits applied:
+  - Subtitle: "Brushing without battles" → "Make brushing the easy part" (avoids conflict-themed vocabulary in Kids Category review)
+  - Dropped "kids 4+ can play independently" line for uniform 6-8 age-band framing (voiceover-only design still mentioned via "no reading required")
+  - Confirmed: feature-count numbers stay out (parent-lens framing); 1P-3 strip claim verified truthful via zero `*crashlytics*` in built bundle
 
 ### 1M — iPhone screenshots
 
