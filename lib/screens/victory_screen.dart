@@ -330,12 +330,16 @@ class _VictoryScreenState extends State<VictoryScreen>
     // PLAN.md 1D-2 fix 3: re-trigger music on victory entry. brushing_screen's
     // _finishBrushing stops music before the navigation; without this, the
     // victory screen plays voices over total silence, and on iOS the music
-    // never resumes on home either. Start at low volume so it sits under the
-    // celebration voices without competing.
-    Timer(const Duration(milliseconds: 500), () {
+    // never resumes on home either. 1500ms delay gives iOS audioplayers time
+    // to fully release the prior music player before we create a new one
+    // (rapid stop+dispose+create cycles silently fail on iOS Simulator).
+    Timer(const Duration(milliseconds: 1500), () async {
       if (!mounted) return;
-      unawaited(_audio.playMusic('battle_music_loop.mp3'));
-      unawaited(_audio.setMusicVolume(0.10));
+      await _audio.playMusic('battle_music_loop.mp3');
+      if (!mounted) return;
+      await _audio.setMusicVolume(0.10);
+      if (!mounted) return;
+      unawaited(_audio.ensureMusicPlaying());
     });
 
     _recordAndAnimate();

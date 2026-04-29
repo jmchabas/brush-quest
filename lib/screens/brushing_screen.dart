@@ -1068,10 +1068,14 @@ class _BrushingScreenState extends State<BrushingScreen>
   }
 
   void _playWorldMissionBriefing() {
+    // PLAN.md 1D-2: don't interrupt — let the home-tap "Let's fight!" voice
+    // finish naturally before the world briefing plays. Previously the
+    // interrupt:true cut "Let's fight!" mid-word on iOS (~400ms in,
+    // audible as "time..." then silence). clearQueue still drops any
+    // OTHER stale items waiting behind, just not the in-flight voice.
     _audio.playVoice(
       'voice_world_${_world.id}.mp3',
       clearQueue: true,
-      interrupt: true,
     );
   }
 
