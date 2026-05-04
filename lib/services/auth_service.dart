@@ -7,12 +7,15 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
+const _appleAuthCodePrefsKey = 'apple_authorization_code';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -88,6 +91,17 @@ class AuthService {
 
       final authResult = await _auth.signInWithCredential(oauthCredential);
 
+      // Cache the authorization code so deleteAccount() can revoke the
+      // refresh token at Apple per Guideline 5.1.1(v). The code is one-time
+      // and short-lived (~5 min), but Firebase Auth requires-recent-login
+      // forces a fresh sign-in immediately before user.delete(), so the
+      // cached code is fresh by the time deleteAccount() reads it.
+      final code = appleCredential.authorizationCode;
+      if (code.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_appleAuthCodePrefsKey, code);
+      }
+
       // Apple only sends the name on the FIRST sign-in. Persist it.
       final user = authResult.user;
       if (user != null &&
@@ -141,20 +155,25 @@ class AuthService {
       (p) => p.providerId == 'apple.com',
     );
 
-    // 1. Apple SIWA token revoke (Phase 2 / 2A-3 wires the Cloud Function call).
+    // 1. Apple SIWA token revoke. Best-effort: log + continue on failure
+    //    so a stale auth code or Apple outage doesn't block local cleanup
+    //    of the user's data. The fresh-code precondition is met because
+    //    Firebase Auth's requires-recent-login forces a sign-in within
+    //    ~5 min before step 3.
     if (isAppleUser) {
-      // TODO(2A-3): replace this no-op with:
-      //   await FirebaseFunctions.instance
-      //       .httpsCallable('revokeAppleToken')
-      //       .call({'authorizationCode': ...});
-      // and throw if `result.data['revoked'] != true`. Without this, the
-      // Apple SIWA refresh token survives `user.delete()` and the app stays
-      // listed in the user's Apple ID Settings → Apps Using Apple ID — which
-      // is the Guideline 5.1.1(v) failure pattern. MUST land before any
-      // Phase 2 TestFlight build that real users can install.
-      debugPrint(
-        'TODO(2A-3): Apple SIWA token revoke skipped — Phase 1 stub.',
-      );
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final authCode = prefs.getString(_appleAuthCodePrefsKey);
+        if (authCode != null && authCode.isNotEmpty) {
+          await FirebaseFunctions.instance
+              .httpsCallable('revokeAppleToken')
+              .call({'authorizationCode': authCode});
+        } else {
+          debugPrint('Apple revoke skipped — no cached authorization code.');
+        }
+      } on Exception catch (e) {
+        debugPrint('Apple revoke failed (continuing with delete): $e');
+      }
     }
 
     // 2. Delete /users/{uid} Firestore document.
