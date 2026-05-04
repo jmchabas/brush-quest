@@ -1,14 +1,21 @@
 # Fastlane configuration for Brush Quest iOS.
 #
-# Phase 1 (current): scaffolded. No active lanes — `match` repo URL placeholder.
-# Phase 2 (post Apple Developer Program enrollment, plan task 2B): wire up
-# `match` against the `brush-quest-match` private repo, then enable the
-# `beta` and `release` lanes below.
+# Lanes:
+#   match_dev      Sync development certs + profiles (read-only)
+#   match_release  Sync App Store certs + profiles (read-only)
+#   beta           Upload an existing IPA to TestFlight (App Store
+#                  Apple ID 6766338116). Build the IPA first via:
+#                    flutter build ipa --release \
+#                      --export-options-plist=ios/ExportOptions.plist
+#                  Then run `fastlane beta` from ios/.
 #
-# Plan references: 1W-2 (this file), 2B-3 / 2B-4 (match init), 2D-1..2D-3
+# Plan references: 1W-2 (this file), 2B-3/2B-4 (match), 2D-2/2D-3
 # (TestFlight upload).
 
 default_platform(:ios)
+
+APP_STORE_APPLE_ID = "6766338116"
+APP_IDENTIFIER = "com.brushquest.brushQuest"
 
 platform :ios do
   desc "Sync development certs + profiles from match repo"
@@ -21,31 +28,27 @@ platform :ios do
     match(type: "appstore", readonly: true)
   end
 
-  # Phase 2 — uncomment after 2B-3 / 2B-4 land
-  # desc "Build a signed IPA + upload to TestFlight"
-  # lane :beta do
-  #   match(type: "appstore", readonly: true)
-  #   build_app(
-  #     workspace: "Runner.xcworkspace",
-  #     scheme: "Runner",
-  #     export_method: "app-store",
-  #     output_directory: "../build/ios/ipa"
-  #   )
-  #   upload_to_testflight(
-  #     skip_waiting_for_build_processing: true,
-  #     skip_submission: true
-  #   )
-  # end
+  desc "Upload the IPA at ../build/ios/ipa/*.ipa to TestFlight."
+  desc "Auth path:"
+  desc "  - If APP_STORE_CONNECT_API_KEY_ID/ISSUER_ID/PRIVATE_KEY env vars are set,"
+  desc "    use the API key (preferred for CI / Codemagic)."
+  desc "  - Else, fall back to FASTLANE_USER + interactive 2FA prompt."
+  lane :beta do
+    if ENV["APP_STORE_CONNECT_API_KEY_ID"] && ENV["APP_STORE_CONNECT_ISSUER_ID"]
+      app_store_connect_api_key(
+        key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+        issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+        key_filepath: ENV["APP_STORE_CONNECT_PRIVATE_KEY_PATH"],
+        in_house: false,
+      )
+    end
 
-  # desc "Submit current TestFlight build for App Store review"
-  # lane :release do
-  #   deliver(
-  #     submit_for_review: true,
-  #     automatic_release: false,
-  #     force: true,
-  #     skip_screenshots: true,
-  #     skip_metadata: true,
-  #     skip_binary_upload: true
-  #   )
-  # end
+    upload_to_testflight(
+      app_identifier: APP_IDENTIFIER,
+      apple_id: APP_STORE_APPLE_ID,
+      ipa: "../build/ios/ipa/brush_quest.ipa",
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+    )
+  end
 end
