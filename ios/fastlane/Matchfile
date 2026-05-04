@@ -11,7 +11,7 @@
 #
 # See plan task 2B-3 / 2B-4.
 
-git_url("git@github.com:jmchabas/brush-quest-match.git")
+git_url("https://github.com/jmchabas/brush-quest-match.git")
 storage_mode("git")
 
 type("development")
