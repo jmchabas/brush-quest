@@ -14,12 +14,16 @@
  *   APPLE_SIWA_TEAM_ID    — env, Team ID from developer.apple.com → Membership
  *   APPLE_SIWA_CLIENT_ID  — env, app's bundle ID (com.brushquest.brushQuest)
  *
+ * 2nd Gen functions: onCall is from firebase-functions/v2/https. Client-side
+ * `httpsCallable` from the cloud_functions Flutter plugin works identically.
+ *
  * See:
  * - docs/ios-port/PLAN.md task 2A-3
  * - https://developer.apple.com/documentation/sign_in_with_apple/revoke_tokens
  */
 
-const functions = require('firebase-functions');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { logger } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const jwt = require('jsonwebtoken');
@@ -28,11 +32,14 @@ admin.initializeApp();
 
 const APPLE_SIWA_KEY_P8 = defineSecret('APPLE_SIWA_KEY_P8');
 
-exports.revokeAppleToken = functions
-  .runWith({ secrets: [APPLE_SIWA_KEY_P8] })
-  .https.onCall(async (data, context) => {
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
+exports.revokeAppleToken = onCall(
+  {
+    secrets: [APPLE_SIWA_KEY_P8],
+    region: 'us-central1',
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError(
         'unauthenticated',
         'revokeAppleToken requires an authenticated caller.',
       );
@@ -44,15 +51,16 @@ exports.revokeAppleToken = functions
     const privateKey = APPLE_SIWA_KEY_P8.value();
 
     if (!keyId || !teamId || !clientId || !privateKey) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'failed-precondition',
         'Apple SIWA config missing — see PLAN.md task 2A-3.',
       );
     }
 
+    const data = request.data || {};
     const tokenToRevoke = data.authorizationCode || data.refreshToken;
     if (!tokenToRevoke) {
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'invalid-argument',
         'authorizationCode or refreshToken is required.',
       );
@@ -84,16 +92,17 @@ exports.revokeAppleToken = functions
 
     if (!res.ok) {
       const body = await res.text();
-      functions.logger.error('Apple revoke failed', {
+      logger.error('Apple revoke failed', {
         status: res.status,
         body,
-        uid: context.auth.uid,
+        uid: request.auth.uid,
       });
-      throw new functions.https.HttpsError(
+      throw new HttpsError(
         'internal',
         `Apple revoke failed: ${res.status}`,
       );
     }
 
     return { revoked: true };
-  });
+  },
+);
