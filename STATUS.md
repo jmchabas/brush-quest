@@ -2,18 +2,63 @@
 <!-- Every session reads this at start. Every session updates its section at end. -->
 <!-- Jim says "update the status board" → session updates its workstream below. -->
 
-**Current #1 Priority**: Kid testing → collect Cycle 12 feedback
+**Current #1 Priority**: Await Google review (Public Beta 2026-04-28) → launch Nicole-Facebook + NextDoor distribution once URL is live. Parallel: Apple Business **VERIFIED 2026-04-28** → enroll Apple Developer Program ($99/yr) to unblock iOS Phase 2.
 **CEO Streak**: Week 0 (starting fresh)
-**Phase**: 1 — Internal Testing (Play Store LIVE)
+**Phase**: 1 → 1.5 transition — Internal Testing LIVE; Closed testing submitted for review; iOS port unblocked
 
 ---
 
 ## Workstream Status
 
 ### APP
-- **Status**: Cycle 16 complete + v1.0.0+20 LIVE on internal testing — Oliver approved v20. Next focus shifting to Play Store listing completeness audit (production-launch prep).
-- **Last session**: 2026-04-21
-- **Last commit**: `e0f6f7d` — Cycle 16 v20: 4 v19 regression fixes from Oliver retest (countdown voice, hero tap, world voice bleed, greeting clarity)
+- **Status**: Play Store listing overhaul + Closed testing track fully configured — **10 changes submitted for Google review 2026-04-23**. v20 still LIVE on internal testing.
+- **Last session**: 2026-04-23
+- **Last commit**: `e0f6f7d` — Cycle 16 v20 (no new commits today — all work was in Play Console + marketing assets)
+- **What happened (2026-04-28, Early Access track "Public Beta" set up + 7 changes submitted for review)**:
+  - **Pivot from Open Testing → Early Access** — Open Testing track requires countries with a Production release (we don't have one); Google's recommended replacement for pre-Production public beta is the Early Access track.
+  - **Reddit GTM dead end (lesson)** — r/Daddit auto-removed for self-promo (rule #3), r/AlphaAndBetaUsers auto-removed by Reddit's site-wide spam filter (low-karma + external-link signal). Reddit not viable for new accounts; pivoting to non-karma channels.
+  - **Public Beta track configured**: 4 countries (US/CA/UK/AU), v20 release with parent-outcome notes, Open invites enabled (unlimited users, no email gate, no group gate), feedback channel `jim@anemosgp.com`. 7 changes submitted for review 2026-04-28.
+  - **Once approved (~24-48h)**: Public Play Store install URL will be available — that's what goes into Nicole's Facebook post + NextDoor + pediatric dentist flyers. Replaces the Google Group friction gate as the primary distribution channel.
+  - **Reddit monitor decommissioned** (cron `c0f628a0` deleted; post is dead).
+- **What happened (2026-04-27, Promo video shipped + linked in Play Store listing)**:
+  - **30s vertical promo video** (`marketing/video/promo_v5_26s.mp4`, 26s, 10MB, 1080×2410):
+    - 6-segment structure: Home (4s) → World Map (3s) → Hero Shop (3s) → Brushing (7s) → Victory (5s) → End card (4s)
+    - Static stills (clean Play Store screenshots) for menu segments — no source-recording transition bleed
+    - Source video footage for brushing + victory beats
+    - Custom end card PNG generated via `marketing/video/endcard.py` (yellow BRUSH QUEST logo + "Get it on Google Play" pill)
+  - **Parent voiceover (ElevenLabs Sarah, 6 lines layered with sidechain ducking — base 55%, ducks to 30% under VO)**:
+    - 0.5s "Turn bedtime brushing into the part your kid can't wait for."
+    - 4.4s "Choose a world to conquer."
+    - 7.3s "Pick a hero. Start the quest."
+    - 11.5s "Every stroke powers their hero."
+    - 17.7s "Celebrate the brush. Open the chest for a surprise."
+    - 22.5s "Brush Quest. Free on Google Play."
+  - **5 iterations** (v1 raw cut → v5 final): v1 source-cut + 3 clips, v2 layered VO, v3 reordered to home-first sequence, v4 swapped menus to clean stills (fixed scene-bleed bug), v5 added world+victory VO lines
+  - **YouTube uploaded** as Unlisted on personal channel (jmchabas@gmail.com): https://youtube.com/watch?v=XwkGoLBKW4A — Audience set to "Not made for kids" (parent-narrated marketing, install CTA targets adults)
+  - **Play Console listing updated** + 1 change submitted for Google review
+- **What happened (2026-04-23, Play Store listing overhaul + Closed testing setup)**:
+  - **Store listing audit + edits** (3 fields changed):
+    - Title → `Brush Quest: Kids Toothbrush` (28/30 chars, +Kids/Toothbrush keywords for ASO)
+    - Short desc → `Make toothbrushing the part kids beg for — not fight.` (53/80)
+    - Full desc grammar polish: victory line comma fix; credit line rewrite (`Built by a dad in California with his two sons (ages 7 and 3)`)
+  - **8 new branded phone screenshots** captioned with Fredoka Medium + black+yellow band + 3px stroke, built via `marketing/screenshots/v2/caption_v2.py`:
+    - #1 Home: "Pick a hero. Start the quest"
+    - #2 World Map: "10 worlds to conquer"
+    - #3 Heroes: "Heroes earned by brushing"
+    - #4 Brushing: "Voice-guided — no reading needed"
+    - #5 Victory: "Every brush defeats a monster" (NEW — closes the missing story beat)
+    - #6 Parent Dashboard: "A progress dashboard for parents" (NEW — the dashboard view wasn't in old listing)
+    - #7 Settings: "Grows with ages 3–12"
+    - #8 Monsters: "Catch all 50 cavity monsters"
+  - **Closed testing track "Alpha" fully configured**:
+    - Release: promoted v20 (1.0.0) from library (no new build needed)
+    - Countries: US / CA / UK / AU (unsynced from Production)
+    - Tester gate: public Google Group — `brush-quest-testers@googlegroups.com` (anyone-can-join, managers-only membership view for parent privacy)
+    - Feedback channel: `jim@anemosgp.com`
+    - Release notes: parent-outcome-first ("Turn nightly toothbrushing from a battle into the part your kid looks forward to...")
+  - **Google Group created** — `https://groups.google.com/g/brush-quest-testers` (public signup URL, live now)
+  - **All 10 changes submitted to Google for review** — typical 2–48h window for kids apps
+  - Personal jmchabas@ dev account confirmed blocked (identity + phone unverified) — deferred, Brush Quest is cleanly on the AnemosGP org account
 - **What happened (2026-04-21, Cycle 16 — Oliver v19 regression fixes)**:
   - SS1 hero multi-tap → `_brushTapLocked` flag + 1500ms→400ms post-tap delay + greeting barrier auto-launches brush
   - SS2 countdown voice restored → recorded "Three!/Two!/One!" via ElevenLabs George, one per tick alongside the beep (C15 had ripped voice_countdown.mp3 because its baked "3-2-1-GO!" fired 2.5s before GO)
@@ -74,9 +119,9 @@
   - Featured weapon tappable → picker voice
   - COPPA allowlist updated for iOS Apple Sign-In deps
   - 774 tests, 120.4 MB APK (-1.0 MB vs C13), 4/4 fitness gates
-- **Blocked on**: Crashlytics monitor on v20 (~24h window for countdown voice changes — 3 voice calls/second is the highest-risk piece this cycle)
-- **Next up**: **Play Store listing completeness audit** for production-launch prep. Enumerate via Play Developer API: track state, store listing fields, content rating, Data Safety, Families/COPPA declaration, privacy policy URL, screenshots (may need v20 refresh), feature graphic. Report blockers + ordered execution plan before generating missing artifacts via `/gtm-prep`.
-- **Needs CEO decision**: None currently — production-launch criteria (what tracks, rollout %, target audience scope) will surface during the listing audit
+- **Blocked on**: Google review of 10 queued changes (submitted 2026-04-23). Crashlytics on v20 still worth monitoring.
+- **Next up**: (1) Record promo video for listing (adb screenrecord + voiceover, upload YouTube unlisted, paste URL); (2) Prep tester-invite GTM copy for when Closed testing activates (Substack post, social, parenting forums); (3) Oliver v20 retest confirmation; (4) iOS TestFlight prep when Apple Business approves (~2026-04-24).
+- **Needs CEO decision**: When Closed testing goes live — how aggressive to promote the Google Group signup link vs keep it quiet until UX is more polished? Current answer is "public Google Group URL ready to share, but drip via trusted channels first (Substack)."
 
 ### LANDING PAGE
 - **Status**: Live at brushquest.app — email capture LIVE via Buttondown
@@ -148,6 +193,48 @@
 - **Blocked on**: Nothing
 - **Next up**: Complete identity + phone verification, then create app listing
 - **Estimated cost**: ~$1,040 year 1, ~$935/year ongoing (CA franchise tax is $800/yr, Play Store $25 one-time)
+
+### APPLE BUSINESS / iOS LAUNCH
+- **Status**: ✅ Apple Business org **VERIFIED 2026-04-28**. ✅ Apple Developer Program **PURCHASED 2026-05-04** (Order W1578089183, $99/yr) — Apple processing, Team ID pending. Phase 1 of iOS port substantially complete; Phase 2 unblocks the moment Team ID lands.
+- **Last session**: 2026-05-04
+- **What happened (2026-05-04)**:
+  - Apple Developer Program License Agreement signed at 18:49 UTC; $99/yr membership purchased at 18:51 UTC (Order W1578089183, billed to jmchabas@gmail.com / 3101 Lincoln Ave Alameda).
+  - Apple email status: "Your order is being processed." Team ID assignment expected within minutes to 24h.
+  - Once Team ID known: run `scripts/capture_team_id.sh <TEAM_ID>` to wire it into pbxproj DEVELOPMENT_TEAM + ios/fastlane/Matchfile + REGISTRY.md (script is idempotent + sandbox-tested).
+  - Phase 2 cascade then unblocks: 2A-3 SIWA `.p8` key generation → Cloud Function fill-in → 2B-3/2B-4 fastlane match init → 2C-1 App Store Connect listing → 2D-2 first signed iOS build → TestFlight upload.
+- **What happened (2026-04-29)**:
+  - Closed all four Tier 3 review items: privacy labels (1K-2), store listing (1L-2 — subtitle now "Make brushing the easy part"), iPhone screenshots (1M-3), App Preview video (1T-2 — re-cut with George VO + privacy end card).
+  - Created `brush-quest-match` private GitHub repo (2B-2) via `gh repo create`.
+  - Diagnosed iOS audio bugs in 1D-1 hand-walk: firebase_options.dart had no iOS branch (fixed inline); audioplayers_darwin 6.4.0 had Swift continuation leak (reverted to 6.3.0 via dependency_overrides; upstream issue filed at bluefireteam/audioplayers#1982); 3 voice timeouts + music-on-home-after-Done remain Simulator-flaky.
+- **What happened (2026-04-28, earlier in this multi-session series)**:
+  - Apple Business org verified by Holly (case `102880286319`).
+  - 28 plan tasks closed including: Crashlytics framework strip via Run Script + Podfile post_install, app-level PrivacyInfo.xcprivacy, audio strict-async revert, BRUSHING_FAST_MODE flag for integration tests, full iPhone screenshot pipeline (24 PNGs at 1320×2868/1290×2796/1242×2688), App Preview video at 1290×2796, codemagic.yaml + Fastlane skeleton, Cloud Function stub for Apple SIWA token revoke, integration tests (parental_gate, brush_session_e2e, audio_smoke).
+- **Blocked on**: Apple to assign Team ID (passive wait, expected within 24h).
+- **Next up (when Team ID lands)**:
+  1. Run `bash scripts/capture_team_id.sh <TEAM_ID>` from brush-quest repo
+  2. Generate Sign in with Apple `.p8` key at developer.apple.com → Keys (2A-3), wire it into `functions/src/index.js` revokeAppleToken
+  3. Run `cd ios && bundle exec fastlane match development` then `match appstore` (2B-3/2B-4)
+  4. Create App Store Connect listing record (2C-1, manual via App Store Connect web — paste from `docs/ios-port/store-listing.md`)
+  5. Trigger first signed iOS build via Codemagic (2D-2) → TestFlight upload (2D-3)
+  6. On real iPhone via TestFlight: validate audio behavior (3 voice timeouts + music-on-home-after-Done were Simulator-only? — this is the test)
+- **Needs CEO decision**: None — execute the post-Team-ID runbook in `docs/ios-port/phase-2-runbook.md`.
+
+#### Original entry (Apple Business approval 2026-04-28)
+- **Last session**: 2026-04-28
+- **What happened (2026-04-28)**:
+  - Apple sent "Unable to verify" email at 8:39am PT requesting additional documentation
+  - Holly (senior advisor, Apple Deployment Program) took over case at 8:43am PT
+  - Jim resubmitted via secure upload + business.apple.com → Settings → Organization → Verify Now: Passport, Driver License, Articles of Organization, CP575G (EIN), Operating Agreement
+  - Holly approved enrollment at 12:58pm PT — Apple confirmation email "AnemosGP LLC is verified on Apple Business" received 12:52pm PT
+  - 11-day total turnaround (submitted 2026-04-17, verified 2026-04-28)
+- **What this unblocks**:
+  - Apple Developer Program organizational enrollment using D-U-N-S 144980774 (no more SMS-verification blocker that derailed personal Apple ID path)
+  - Managed Apple Account creation for App Store Connect access
+  - Phase 2 of `docs/ios-port/PLAN.md` (signing, TestFlight, App Store submission)
+- **Holly's parting note**: Add a second administrator for account recovery — https://support.apple.com/guide/apple-business-manager/manually-add-users-axme2e2158c6/web
+- **Blocked on**: Nothing
+- **Next up**: (1) Add backup admin in business.apple.com → People; (2) Set up Google Workspace federation so managed accounts auth via Google (avoids Apple SMS); (3) Create managed Apple Account for jim@anemosgp.com; (4) Enroll in Apple Developer Program at developer.apple.com/programs ($99/yr, D-U-N-S 144980774); (5) Continue iOS Phase 1 code-side tasks per `docs/ios-port/PLAN.md` (Podfile post_install for Crashlytics strip, Info.plist privacy strings, etc.).
+- **Needs CEO decision**: None — execute the post-approval checklist.
 
 ### AMAZON APPSTORE
 - **Status**: Developer account registration — identity verification pending

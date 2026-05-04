@@ -293,8 +293,7 @@ Format per task: `- [status] (tier·owner) ID. Title — short note`
 
 ### 2A — Apple Developer Program enrollment
 
-- [ ] (T1·J) **2A-1.** Sign in to developer.apple.com with `appledev@anemosgp.com`. Enroll in Apple Developer Program → Organization. Use D-U-N-S `144980774`. Pay $99/yr.
-  - Acceptance: Team ID assigned; `appledev@anemosgp.com` is Account Holder.
+- [~] (T1·J) **2A-1.** PARTIAL 2026-05-04. License agreement signed, $99/yr membership purchased (Order W1578089183 — billed to jmchabas@gmail.com). Apple email at order time: "Your order is being processed." Team ID typically appears within minutes to 24h at developer.apple.com/account/#/membership — flip to done once captured. Acceptance: Team ID assigned; `appledev@anemosgp.com` is Account Holder.
 
 - [ ] (T1·C) **2A-2.** Capture Team ID. Add to `decision_ios_kids_category.md` memory under a new "Apple Developer credentials" section.
   - Depends on: 2A-1.
