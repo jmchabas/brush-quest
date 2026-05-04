@@ -17,4 +17,4 @@ storage_mode("git")
 type("development")
 
 app_identifier(["com.brushquest.brushQuest"])
-team_id("PLACEHOLDER_REPLACE_AT_2A-2")
+team_id("J846H79L2X")
