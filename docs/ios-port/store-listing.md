@@ -25,59 +25,55 @@ Count: 156/170 ✓
 ```
 Brushing battles? We get it.
 
-Brush Quest is a 2-minute toothbrushing app made by a dad for his own kids — and shared with other families who are tired of the nightly negotiation.
+Brush Quest is a 2-minute toothbrushing app made by a dad for his own kids - and shared with other families tired of the nightly negotiations ;-)
 
-Your child picks a Ranger, picks a weapon, and battles the Cavity Monsters threatening their teeth. The mouth-guide overlay quietly teaches WHERE to brush — not just how long. By the time the timer's up, all four areas of the mouth have been covered, the boss monster is defeated, and your kid is asking to brush again tomorrow.
+The goal: a brushing habit that survives. After a few days with Brush Quest, kids stop fighting it and start asking to brush. All built for kids (no ads, no tracking)
 
-That's the goal. A habit that survives.
-
-────────────────────────────────────
+------------------------------------
 WHAT PARENTS GET
-────────────────────────────────────
+------------------------------------
+• A 2-minute routine that doesn't need negotiating. The app sets the pace; you don't.
+• Real coverage. The app guides your child across all 6 parts of their mouth, quadrant by quadrant.
+• They actually have to brush. The app uses motion to detect real brushing.
+• Habit built in. Every session ends with a treasure chest opening, a captured cavity monster added to their growing collection, and a friendly nudge to come back next morning or night.
+• Cloud backup if you want progress to follow them (parent-only, behind a math problem).
+• Works fully offline. No account required to use the app.
+• Designed for ages 6-8. Younger and older siblings often play happily too.
 
-• A 2-minute brushing routine that doesn't need negotiation
-• Real coverage: the on-screen mouth guide teaches kids WHERE to brush, quadrant by quadrant — the part most timers skip
-• Streaks and small celebrations build the habit through positive reinforcement, not pressure
-• Optional cloud backup if you want progress to follow your child between devices (parent-only, behind a math problem)
-• Works fully offline — no account required to use the app
-• Designed for ages 6-8; younger and older siblings often play happily too
-
-────────────────────────────────────
+------------------------------------
 WHAT YOUR CHILD SEES
-────────────────────────────────────
+------------------------------------
+• A fun, entertaining experience: heroes they pick, gears they choose, and new worlds to discover
+• An experience guided step by step by the voice they like.
+• Treasures and cavity monsters to collect.
 
-A friendly guide who knows their name. A boss monster shaking with every brush stroke. Voiced encouragements throughout — no reading required.
+Two minutes goes by fast!
 
-The brushing zone shifts on screen so they always know where their toothbrush should be. Two minutes goes by fast.
-
-────────────────────────────────────
+------------------------------------
 PRIVACY YOU CAN ACTUALLY VERIFY
-────────────────────────────────────
-
+------------------------------------
 Brush Quest is submitted to the Apple Kids Category. We made deliberate choices to align with that:
-
-• No advertising. No advertising SDKs of any kind, on iOS or anywhere else.
-• No third-party analytics or crash-reporting in the iOS app — stripped at build time. Not "configured off." Not in the binary at all.
-• No advertising IDs. No App Tracking Transparency prompt — because we don't track.
+• No advertising. No advertising SDKs of any kind.
+• No third-party analytics or crash-reporting in the iOS app - stripped at build time.
+• No App Tracking Transparency prompt - because we don't track.
 • Sign-in is optional and behind a parental gate. Children cannot create accounts, link to social services, or follow external links.
 • No social features, no chat, no in-app purchases, no subscriptions.
 
 Plain-English privacy policy: https://brushquest.app/privacy-policy.html
 
-────────────────────────────────────
+------------------------------------
 FROM THE MAKER
-────────────────────────────────────
-
+------------------------------------
 I built Brush Quest for my own kids because I was tired of fighting them about brushing every night. It's free. It's ad-free. It's the kind of app I'd want on my own children's devices.
 
 If it's helping at your house, I'd love to hear about it.
 
-— Jim
+Jim
 support@brushquest.app
 AnemosGP LLC
 ```
 
-Approximate count: ~2,300 / 4,000 ✓ (~30% shorter than the previous draft — the feature list cuts went there.)
+Approximate count: ~2,300 / 4,000 ✓ (v3 final — Jim's tightening 2026-05-09: punchier What-Parents-Get bullets, kids' section converted to bullets, "All built for kids (no ads, no tracking)" up top, ASCII dividers + hyphens for App Store validator compliance).
 
 ## Keywords (≤100 characters, comma-separated, NO spaces around commas)
 

@@ -1,0 +1,6 @@
+file 'v4_a_home.mp4'
+file 'v4_b_worldmap.mp4'
+file 'v4_c_heroshop.mp4'
+file 'v3_d_brushing.mp4'
+file 'v3_e_victory.mp4'
+file 'v3_f_endcard.mp4'
