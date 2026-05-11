@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/mouth_guide.dart';
 import '../widgets/space_background.dart';
@@ -26,6 +27,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   /// True when replaying tutorial from settings (user has brushed before).
   bool _isReplay = false;
+
+  /// True while the OS camera permission dialog is in-flight on the
+  /// camera page, so we can disable both buttons and show a spinner.
+  bool _cameraBusy = false;
 
   late AnimationController _pulseController;
   late AnimationController _floatController;
@@ -108,7 +113,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void _nextPage() {
     HapticFeedback.lightImpact();
     _audio.playSfx('whoosh.mp3');
-    if (_currentPage < 2) {
+    if (_currentPage < 3) {
       _pageController.animateToPage(
         _currentPage + 1,
         duration: const Duration(milliseconds: 400),
@@ -165,6 +170,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       0 => 'voice_onboarding_1.mp3',
       1 => 'voice_onboarding_2.mp3',
       2 => 'voice_onboarding_3.mp3',
+      3 => 'voice_camera_prompt.mp3',
       _ => 'voice_onboarding_1.mp3',
     };
     _audio.playVoice(voiceFile, clearQueue: true, interrupt: true);
@@ -217,6 +223,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       _buildWelcomePage(),
                       _buildHowToPlayPage(),
                       _buildMouthGuidePage(),
+                      _buildCameraPage(),
                     ],
                   ),
                 ),
@@ -901,10 +908,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         children: [
-          // Page dots
+          // Page dots — 4 pages now (welcome, how-to, mouth, camera).
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(3, (i) {
+            children: List.generate(4, (i) {
               final isActive = i == _currentPage;
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -921,17 +928,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             }),
           ),
           const SizedBox(height: 24),
-          // Next / Start button
-          GestureDetector(
-            onTap: _currentPage < 2 ? _nextPage : _completeOnboarding,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                final scale = _currentPage == 2
-                    ? 1.0 + _pulseController.value * 0.04
-                    : 1.0;
-                return Transform.scale(scale: scale, child: child);
-              },
+          // NEXT button on pages 0-2. Page 3 (camera) has its own
+          // GROWN-UP TAP HERE / Maybe later actions in the page body.
+          if (_currentPage < 3)
+            GestureDetector(
+              onTap: _nextPage,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 width: double.infinity,
@@ -949,41 +950,376 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                   ],
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (_currentPage == 2)
-                      const Icon(
-                        Icons.rocket_launch,
-                        color: Colors.white,
-                        size: 24,
-                      )
-                    else
-                      const SizedBox.shrink(),
-                    if (_currentPage == 2) const SizedBox(width: 8),
                     Text(
-                      _currentPage == 2 ? "LET'S GO!" : 'NEXT',
-                      style: const TextStyle(
+                      'NEXT',
+                      style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 4,
                       ),
                     ),
-                    if (_currentPage < 2) ...[
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.arrow_forward,
-                        color: Colors.white,
-                        size: 24,
+                    SizedBox(width: 8),
+                    Icon(
+                      Icons.arrow_forward,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            // Reserve roughly the same vertical space so the dots don't jump.
+            const SizedBox(height: 60),
+        ],
+      ),
+    );
+  }
+
+  /// Page 4 (index 3) — camera permission ask, gated behind a parental
+  /// math gate. Mirrors the COPPA-aware Settings flow (consent dialog +
+  /// explicit OS permission ask). "Maybe later" leaves all camera prefs
+  /// untouched so the Home nudge / first-brush prompt can fire later.
+  Widget _buildCameraPage() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Spacer(flex: 1),
+          AnimatedBuilder(
+            animation: _glowController,
+            builder: (context, child) {
+              final glowAlpha = 0.3 + _glowController.value * 0.5;
+              return Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const RadialGradient(
+                    colors: [Color(0xFF00E5FF), Color(0xFF1A237E)],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(
+                        0xFF00E5FF,
+                      ).withValues(alpha: glowAlpha),
+                      blurRadius: 30,
+                      spreadRadius: 8,
+                    ),
+                  ],
+                ),
+                child: child,
+              );
+            },
+            child: const Icon(
+              Icons.videocam_rounded,
+              color: Colors.white,
+              size: 80,
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'ASK A\nGROWN-UP',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.1,
+              letterSpacing: 2,
+              shadows: [
+                Shadow(
+                  color: const Color(0xFF00E5FF).withValues(alpha: 0.8),
+                  blurRadius: 20,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Want monsters to react when you brush?\nA grown-up can turn on the camera!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 16,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 28),
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              final scale = 1.0 + _pulseController.value * 0.04;
+              return Transform.scale(scale: scale, child: child);
+            },
+            child: GestureDetector(
+              onTap: _cameraBusy ? null : _handleCameraEnable,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 18,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF00E5FF), Color(0xFF1976D2)],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_cameraBusy)
+                        const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        )
+                      else
+                        const Icon(
+                          Icons.videocam_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _cameraBusy ? 'WORKING...' : 'TURN ON CAMERA',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
+          const SizedBox(height: 14),
+          TextButton(
+            onPressed: _cameraBusy ? null : _handleCameraSkip,
+            child: Text(
+              'Maybe later',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 16,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+          const Spacer(flex: 2),
         ],
+      ),
+    );
+  }
+
+  /// Parent-gated camera enable: math gate → consent dialog → OS permission
+  /// → flip prefs → complete onboarding. Any cancel along the way returns
+  /// to the camera page without changing camera state.
+  Future<void> _handleCameraEnable() async {
+    if (_cameraBusy) return;
+    unawaited(HapticFeedback.lightImpact());
+    unawaited(_audio.playSfx('whoosh.mp3'));
+
+    final passedGate = await _showParentGate();
+    if (passedGate != true || !mounted) return;
+
+    final consented = await _showCameraConsentDialog();
+    if (consented != true || !mounted) return;
+
+    setState(() => _cameraBusy = true);
+    final status = await Permission.camera.request();
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    // Parent passed gate + consent → they've made an informed choice.
+    // Suppress both the first-brush in-flow prompt AND the Home nudge
+    // regardless of OS grant outcome. (The Home nudge is a discoverability
+    // tool for users who SKIPPED onboarding, not a recovery surface for
+    // OS-level denial — that's what Settings is for.)
+    await prefs.setBool('camera_mode_configured', true);
+    await prefs.setBool('camera_prompt_shown', true);
+    await prefs.setBool('home_camera_nudge_shown', true);
+    if (status.isGranted) {
+      await prefs.setBool('camera_enabled', true);
+    }
+
+    if (!mounted) return;
+    setState(() => _cameraBusy = false);
+
+    await _completeOnboarding();
+  }
+
+  /// "Maybe later" — leave camera prefs untouched so the Home nudge
+  /// (and first-brush prompt for legacy flows) can still fire.
+  Future<void> _handleCameraSkip() async {
+    unawaited(HapticFeedback.lightImpact());
+    unawaited(_audio.playSfx('whoosh.mp3'));
+    await _completeOnboarding();
+  }
+
+  /// Simple parental gate. Single-digit multiplication is trivial for a
+  /// grown-up and beyond a typical 4–7 year old. Mirrors the COPPA
+  /// "parent gate" pattern used by Apple-Kids-approved apps.
+  Future<bool?> _showParentGate() {
+    return showDialog<bool>(
+      context: context,
+      // No barrier-dismiss: an accidental tap just outside an answer
+      // button (Android emulator regression Jim hit) shouldn't silently
+      // bail and bounce the user back to the camera page.
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'GROWN-UP CHECK',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            letterSpacing: 2,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Tap the answer:',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'What is 7 × 8?',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                for (final answer in const [48, 56, 64])
+                  _ParentGateChoice(
+                    answer: answer,
+                    isCorrect: answer == 56,
+                    onTap: (correct) => Navigator.pop(ctx, correct),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mirrors `_toggleCamera`'s consent dialog in settings_screen.dart so
+  /// the parent sees the same legal copy regardless of where they enable.
+  Future<bool?> _showCameraConsentDialog() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Brushing Detection',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: const Text(
+          'The camera detects brushing motion so the hero moves at the '
+          'pace of the brush strokes. No images are stored, recorded, or '
+          'sent anywhere. Processing happens entirely on this device.',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'ENABLE',
+              style: TextStyle(
+                color: Color(0xFF00E5FF),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentGateChoice extends StatelessWidget {
+  final int answer;
+  final bool isCorrect;
+  final ValueChanged<bool> onTap;
+
+  const _ParentGateChoice({
+    required this.answer,
+    required this.isCorrect,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onTap(isCorrect),
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF7C4DFF).withValues(alpha: 0.3),
+          border: Border.all(color: const Color(0xFF7C4DFF), width: 2),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$answer',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }

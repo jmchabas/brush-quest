@@ -839,7 +839,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     );
     final duration = phaseOverride > 0
         ? phaseOverride
-        : (prefs.getInt('phase_duration') ?? 20);
+        : (prefs.getInt('phase_duration') ?? 15);
     if (mounted) {
       setState(() {
         _hero = hero;

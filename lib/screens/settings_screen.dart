@@ -24,7 +24,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen>
     with TickerProviderStateMixin {
-  int _phaseDuration = 20;
+  int _phaseDuration = 15;
   bool _cameraEnabled = false;
   int _totalBrushes = 0;
   int _bestStreak = 0;
@@ -142,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
     if (mounted) {
       setState(() {
-        _phaseDuration = prefs.getInt('phase_duration') ?? 20;
+        _phaseDuration = prefs.getInt('phase_duration') ?? 15;
         _cameraEnabled = prefs.getBool('camera_enabled') ?? false;
         _totalBrushes = prefs.getInt('total_brushes') ?? 0;
         _bestStreak = prefs.getInt('best_streak') ?? 0;
@@ -185,9 +185,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ),
           content: const Text(
-            'The camera detects brushing motion to drive the game. '
-            'No images are stored, recorded, or sent anywhere. '
-            'Processing happens entirely on this device.',
+            'The camera detects brushing motion so the hero moves at the '
+            'pace of the brush strokes. No images are stored, recorded, or '
+            'sent anywhere. Processing happens entirely on this device.',
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
           actions: [
@@ -1055,6 +1055,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       'card_dup_bonus_threshold',
       'camera_mode_configured',
       'camera_prompt_shown',
+      'home_camera_nudge_shown',
       'voice_style',
       'onboarding_completed',
       'camera_enabled',

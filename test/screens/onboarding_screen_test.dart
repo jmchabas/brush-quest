@@ -53,7 +53,7 @@ void main() {
 
   // ── Page rendering ───────────────────────────────────────────
 
-  testWidgets('onboarding renders 3 pages with NEXT button on page 1', (
+  testWidgets('onboarding renders welcome page with NEXT button', (
     tester,
   ) async {
     await pumpOnboarding(tester);
@@ -65,49 +65,53 @@ void main() {
     // NEXT button visible on first page
     expect(find.text('NEXT'), findsOneWidget);
 
-    // LET'S GO! not visible on first page
-    expect(find.text("LET'S GO!"), findsNothing);
+    // Camera page CTA not visible on first page
+    expect(find.text('TURN ON CAMERA'), findsNothing);
 
     await tester.binding.setSurfaceSize(null);
   });
 
   // ── Page navigation ──────────────────────────────────────────
 
-  testWidgets('NEXT button advances to page 2', (tester) async {
+  testWidgets('NEXT button still shows on pages 2 and 3', (tester) async {
     await pumpOnboarding(tester);
 
-    // Tap NEXT to go to page 2
+    // Page 1 → 2
     await tester.tap(find.text('NEXT'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-
-    // Page 2 should still show NEXT (not LET'S GO)
     expect(find.text('NEXT'), findsOneWidget);
-    expect(find.text("LET'S GO!"), findsNothing);
+
+    // Page 2 → 3
+    await tester.tap(find.text('NEXT'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('NEXT'), findsOneWidget);
 
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('page 3 shows LET\'S GO button', (tester) async {
-    await pumpOnboarding(tester);
+  testWidgets(
+    'page 4 (camera) shows TURN ON CAMERA and Maybe later, no NEXT',
+    (tester) async {
+      await pumpOnboarding(tester);
 
-    // Navigate to page 2
-    await tester.tap(find.text('NEXT'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+      // Advance to page 4 (camera page, index 3)
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.text('NEXT'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+      }
 
-    // Navigate to page 3
-    await tester.tap(find.text('NEXT'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+      // Camera page CTAs visible
+      expect(find.text('TURN ON CAMERA'), findsOneWidget);
+      expect(find.text('Maybe later'), findsOneWidget);
+      // NEXT button hidden on the camera page
+      expect(find.text('NEXT'), findsNothing);
 
-    // LET'S GO! should be visible on page 3
-    expect(find.text("LET'S GO!"), findsOneWidget);
-    // NEXT should not be present on page 3
-    expect(find.text('NEXT'), findsNothing);
-
-    await tester.binding.setSurfaceSize(null);
-  });
+      await tester.binding.setSurfaceSize(null);
+    },
+  );
 
   // ── Voice narration ──────────────────────────────────────────
 
@@ -156,19 +160,32 @@ void main() {
       reason: 'Page 3 narration should play after swiping',
     );
 
+    // Navigate to page 4 (camera page) — should narrate voice_camera_prompt
+    fakeAudio.clearCalls();
+    await tester.tap(find.text('NEXT'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final cameraPageVoices = fakeAudio
+        .callsFor('playVoice')
+        .where((c) => c.args['fileName'] == 'voice_camera_prompt.mp3');
+    expect(
+      cameraPageVoices.isNotEmpty,
+      isTrue,
+      reason: 'Camera page narration should play after swiping',
+    );
+
     await tester.binding.setSurfaceSize(null);
   });
 
   // ── Page indicator dots ──────────────────────────────────────
 
-  testWidgets('3 page indicator dots are rendered', (tester) async {
+  testWidgets('4 page indicator dots are rendered', (tester) async {
     await pumpOnboarding(tester);
 
-    // 3 AnimatedContainer dots in the bottom nav
-    // The dots are rendered as AnimatedContainers with specific widths
-    // (active = 28, inactive = 10). On page 1, we expect 1 active + 2 inactive.
+    // 4 AnimatedContainer dots in the bottom nav (active = 28, inactive = 10).
+    // On page 1, we expect 1 active + 3 inactive.
     final animatedContainers = find.byType(AnimatedContainer);
-    // At least 3 dots should be present (may have more AnimatedContainers)
     expect(animatedContainers, findsWidgets);
 
     await tester.binding.setSurfaceSize(null);

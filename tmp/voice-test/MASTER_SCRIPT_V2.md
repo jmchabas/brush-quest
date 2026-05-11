@@ -345,3 +345,5 @@ voice_milestone_70 | "Seventy stars. You're becoming a legend, ranger."
 voice_milestone_80 | "Eighty stars. The monsters don't stand a chance."
 voice_milestone_90 | "Ninety stars. Almost there. The galaxy is watching."
 voice_legend | "You've done it. Every hero, every weapon, every monster. You are a true Space Ranger Legend."
+
+voice_camera_prompt | "One more thing. Want the monsters to react when you brush? Ask a grown-up to turn on the camera."

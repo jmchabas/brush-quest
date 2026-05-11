@@ -70,6 +70,13 @@ class _HomeScreenState extends State<HomeScreen>
   // not just the ephemeral wallet-delta float.
   bool _postBrushAffirmation = false;
   Timer? _affirmationTimer;
+  // One-time discoverability nudge for the camera. Fires after onboarding
+  // for users who haven't yet enabled camera in Settings (or skipped the
+  // parent-gated camera page). Persists until the kid taps BRUSH (started
+  // anyway), the parent enables camera in Settings, or the chip is tapped
+  // (which routes straight into Settings). Once dismissed, suppressed by
+  // the `home_camera_nudge_shown` pref.
+  bool _showCameraNudge = false;
   // C15 T3-30: dedicated home-return voice pool, recorded specifically for the
   // "you just came back to the home screen" context in the Buddy (George)
   // voice. Previous pool borrowed `voice_keep_it_up` + `voice_go_go_go` from
@@ -215,6 +222,7 @@ class _HomeScreenState extends State<HomeScreen>
         });
       }
       unawaited(_checkGreeting());
+      unawaited(_maybeShowCameraNudge());
       // Ambient music on home screen (very low volume).
       // PLAN.md 1D-2 fix 3: serialize playMusic + setMusicVolume so the
       // volume isn't applied to the previous (disposed) player. Without
@@ -232,6 +240,30 @@ class _HomeScreenState extends State<HomeScreen>
         unawaited(AudioService().ensureMusicPlaying());
       });
     }
+  }
+
+  /// Post-onboarding nudge pointing parents to the PARENTS button for
+  /// camera setup. Persists until the kid taps BRUSH, the parent enables
+  /// camera in Settings, or the chip itself is tapped (routes to Settings).
+  /// Re-runs on every Home arrival so returning from Settings with camera
+  /// now enabled correctly hides the chip.
+  Future<void> _maybeShowCameraNudge() async {
+    final prefs = await SharedPreferences.getInstance();
+    final onboarded = prefs.getBool('onboarding_completed') ?? false;
+    final cameraOn = prefs.getBool('camera_enabled') ?? false;
+    final alreadyShown = prefs.getBool('home_camera_nudge_shown') ?? false;
+    final shouldShow = onboarded && !cameraOn && !alreadyShown;
+    if (shouldShow == _showCameraNudge) return;
+    if (!mounted) return;
+    setState(() => _showCameraNudge = shouldShow);
+  }
+
+  /// Persist dismissal so the chip doesn't reappear next session.
+  Future<void> _dismissCameraNudge() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('home_camera_nudge_shown', true);
+    if (!mounted) return;
+    setState(() => _showCameraNudge = false);
   }
 
   Future<void> _checkGreeting() async {
@@ -623,6 +655,9 @@ class _HomeScreenState extends State<HomeScreen>
     _brushTapLocked = true;
     HapticFeedback.heavyImpact();
     AudioService().playSfx('whoosh.mp3');
+    // Kid is starting a session without camera enabled — they had their
+    // chance, persist the dismissal so the chip doesn't re-fire next time.
+    if (_showCameraNudge) unawaited(_dismissCameraNudge());
     _startBrushingFlow();
   }
 
@@ -796,6 +831,75 @@ class _HomeScreenState extends State<HomeScreen>
                     children: [MuteButton()],
                   ),
                 ),
+
+                // Camera-discoverability nudge, docked in the empty space
+                // immediately to the right of the PARENTS lock. The PARENTS
+                // row (y=8-~52) is unoccupied between PARENTS (x=8-~68) and
+                // the Mute button (right-anchored), and the centered title
+                // doesn't start until y=70 — so the chip sits cleanly above
+                // the title and visually annotates PARENTS itself. Icon-only
+                // so it fits in the gap; the back-arrow points the eye left
+                // toward the lock the parent should tap.
+                if (_showCameraNudge)
+                  Positioned(
+                    top: 14,
+                    left: 80,
+                    child: GestureDetector(
+                      onTap: () async {
+                        unawaited(HapticFeedback.lightImpact());
+                        await _dismissCameraNudge();
+                        if (mounted) _openSettings();
+                      },
+                      child: AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, child) {
+                          final scale = 1.0 + _pulseController.value * 0.06;
+                          return Transform.scale(
+                            scale: scale,
+                            alignment: Alignment.centerLeft,
+                            child: child,
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF00E5FF,
+                            ).withValues(alpha: 0.95),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF00E5FF,
+                                ).withValues(alpha: 0.6),
+                                blurRadius: 14,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.arrow_back_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.videocam_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
 
                 Column(
                   children: [

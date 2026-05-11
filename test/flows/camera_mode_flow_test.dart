@@ -17,17 +17,44 @@ void main() {
     expect(source.contains('_launchBrushingScreen()'), isTrue);
   });
 
-  test('onboarding does NOT silently enable camera (COPPA)', () {
+  test('onboarding camera page is parent-gated (COPPA)', () {
     final source = File(
       'lib/screens/onboarding_screen.dart',
     ).readAsStringSync();
 
-    // Camera must not be silently enabled during onboarding (COPPA compliance).
-    // Parents opt in via Settings where a consent dialog is shown.
-    expect(source.contains('Camera motion mode'), isFalse);
+    // Camera in onboarding MUST be gated behind both a parental check and
+    // the same consent dialog used in Settings. The kid alone cannot consent
+    // under COPPA, so the page funnels the parent through:
+    //   1. A "GROWN-UP CHECK" parental gate (math problem),
+    //   2. The "Brushing Detection" consent dialog (mirrors Settings copy),
+    //   3. An OS-level Permission.camera.request() prompt.
+    // Setting camera_enabled=true is only legal after the OS grant.
     expect(
-      source.contains("prefs.setBool('camera_mode_configured', true)"),
-      isFalse,
+      source.contains('GROWN-UP CHECK'),
+      isTrue,
+      reason: 'Onboarding must show a parental gate before enabling camera',
+    );
+    expect(
+      source.contains('Brushing Detection'),
+      isTrue,
+      reason: 'Onboarding must show the same consent dialog as Settings',
+    );
+    expect(
+      source.contains('No images are stored'),
+      isTrue,
+      reason:
+          'Consent dialog must include the on-device-only / no-storage disclosure',
+    );
+    expect(
+      source.contains('Permission.camera.request()'),
+      isTrue,
+      reason: 'Onboarding must trigger an OS permission prompt, not bypass it',
+    );
+    expect(
+      source.contains("if (status.isGranted)"),
+      isTrue,
+      reason:
+          'camera_enabled must only be set when the OS permission was granted',
     );
   });
 
