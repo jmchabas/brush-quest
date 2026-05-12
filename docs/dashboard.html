@@ -325,14 +325,14 @@
     <div class="meta">
         <div>Branch: <code>main</code></div>
         <div>298 commits</div>
-        <div>Updated: 2026-05-11 18:30</div>
+        <div>Updated: 2026-05-12 18:30</div>
     </div>
 </div>
 
 <div class="priority-banner">
     <div class="label">Current #1 Priority</div>
-    <div class="text">Await tester feedback on iOS v22 (Jan, Antoine, Matt), then click Add for Review in App Store Connect.</div>
-    <div class="phase">Phase: Dual-platform v22 shipped — Android v22 in Play Store production review (worldwide) + iOS v22 on TestFlight with 3 external testers</div>
+    <div class="text">Await TestFlight Beta Review approval, then re-invite Antoine/Matt/Jan to TestFlight.</div>
+    <div class="phase">Phase: Dual-platform v22 in review — Android v22 in Play Store production review (worldwide) + iOS v22 awaiting TestFlight Beta Review approval; v23 audio hotfix on Android internal track</div>
 </div>
 
 <div class="section-title">Workstreams</div>
@@ -349,11 +349,12 @@
                 <span class="ws-name">APP</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">v22 shipped to Play Store production review + iOS TestFlight (2026-05-11). 788 tests pass. First simultaneous Android+iOS release.</div>
+            <div class="status-line">v1.0.0+23 audio StateError hotfix shipped to Android internal track (v22 stays in Play Store production review). TestFlight Beta Review submitted.</div>
 
-            <div class="field"><span class="label">Last commit:</span> <code>`460e1db` — parent-gated camera onboarding + home nudge (1.0.0+22)</code></div>
-            <div class="field"><span class="label">What happened:</span> Dual-platform v22 cycle shipped. Android v22 submitted to Play Store production review (worldwide via Play Console UI). iOS v22 uploaded to TestFlight 07:48 via `fastlane beta` + ASC API key 4YY7329MH5; 3 testers invited (Jan Deloach, Antoine Markarian, Matt Ganser). Parent-gated camera onboarding (4th page) + home camera-discoverability nudge + 20s→15s default brush phase + new `voice_camera_prompt.mp3` audio asset shipped.</div>
-            <div class="field"><span class="label">Next up:</span> Await tester feedback then click Add for Review in App Store Connect; monitor Play Store production review</div>
+            <div class="field"><span class="label">Last commit:</span> <code>`78b9ec2` — chore: bump to 1.0.0+23 for audio StateError fix</code></div>
+            <div class="field"><span class="label">What happened:</span> Hotfix day. Patched `audio_service.dart:630` AudioPlayer StateError crash (changed `Exception` → `Object` to catch broader error types), bumped 1.0.0+22 → +23, rebuilt AAB and deployed to Android internal track only (v22 left undisturbed in Play Store production review). Cleaned ASC records; diagnosed TestFlight build 22 was blocked by a missing Beta Review approval; started Beta Review submission for Antoine/Matt/Jan.</div>
+            <div class="field"><span class="label">Last:</span> v1.0.0+23 audio StateError hotfix to Android internal track + TestFlight Beta Review submitted (2026-05-12)</div>
+            <div class="field"><span class="label">Next up:</span> Await TestFlight Beta Review approval, then re-invite Antoine/Matt/Jan to TestFlight; monitor Play Store production review</div>
 
         </div>
         <div class="card">
@@ -437,11 +438,11 @@
                 <span class="ws-name">DEV CYCLE</span>
                 <span class="status-dot" style="background:#00e676"></span>
             </div>
-            <div class="status-line">v22 dual-platform release shipped — Android in Play Store production review + iOS on TestFlight. 788 tests pass.</div>
+            <div class="status-line">v23 audio StateError hotfix shipped to Android internal track. v22 still in Play Store production review + iOS TestFlight Beta Review pending.</div>
 
-            <div class="field"><span class="label">Last commit:</span> <code>`460e1db` — parent-gated camera onboarding + home nudge (1.0.0+22)</code></div>
-            <div class="field"><span class="label">What happened:</span> Dual-platform v22 cycle shipped. Android v22 submitted to Play Store production review (worldwide via Play Console UI — API has no setter). iOS v22 uploaded to TestFlight via `fastlane beta` + ASC API key 4YY7329MH5; 3 testers invited (Jan, Antoine, Matt). Parent-gated camera onboarding + home camera nudge + 20s→15s default brush phase + new `voice_camera_prompt.mp3` audio asset.</div>
-            <div class="field"><span class="label">Next up:</span> Await iOS tester feedback then Add for Review in ASC; monitor Play Store production review; iterate on Phase 1 metrics</div>
+            <div class="field"><span class="label">Last commit:</span> <code>`78b9ec2` — chore: bump to 1.0.0+23 for audio StateError fix</code></div>
+            <div class="field"><span class="label">What happened:</span> Side-channel hotfix: `audio_service.dart:630` AudioPlayer StateError caught via broader `Object` instead of `Exception`. Bump 1.0.0+22 → +23, AAB rebuilt and pushed to Android internal track only (v22 leaves Play Store production review undisturbed). TestFlight invites for Antoine/Matt/Jan diagnosed — build 22 was blocked on missing Beta Review approval; submission started.</div>
+            <div class="field"><span class="label">Next up:</span> Await TestFlight Beta Review approval → re-invite Antoine/Matt/Jan; monitor Play Store production review; iterate on Phase 1 metrics</div>
 
         </div>
         <div class="card">
@@ -496,11 +497,11 @@
             </div>
         </div>
         <div class="cycle-latest">
-            <div class="field"><span class="label">Date:</span> 2026-05-11</div>
-            <div class="field"><span class="label">Mode:</span> dual-platform release (parent-gated camera onboarding + home nudge + 20s→15s default brush phase)</div>
-            <div class="field"><span class="label">Version:</span> v1.0.0+22 (Android in production review, iOS on TestFlight)</div>
-            <div class="field"><span class="label">Commit:</span> <code>460e1db</code></div>
-        </div><div class="cycle-trend"><span class="label">Trend:</span> <span class="trend-point">C13: 12 commits, v1.0.0+10</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C14: 13 T1/T2 fixes, v1.0.0+17</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C16 v20: 4 Oliver regression fixes, 784 tests</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">2026-04-28: Public Beta submitted, iOS port plan locked</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">2026-05-11 v22: dual-platform release — Android production review + iOS TestFlight (3 testers), 788 tests</span></div>
+            <div class="field"><span class="label">Date:</span> 2026-05-12</div>
+            <div class="field"><span class="label">Mode:</span> side-channel hotfix (audio StateError caught broader; internal track + TestFlight Beta Review submitted)</div>
+            <div class="field"><span class="label">Version:</span> v1.0.0+23 (Android internal track; v22 still in Play Store production review + iOS TestFlight Beta Review pending)</div>
+            <div class="field"><span class="label">Commit:</span> <code>78b9ec2</code></div>
+        </div><div class="cycle-trend"><span class="label">Trend:</span> <span class="trend-point">C13: 12 commits, v1.0.0+10</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C14: 13 T1/T2 fixes, v1.0.0+17</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">C16 v20: 4 Oliver regression fixes, 784 tests</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">2026-04-28: Public Beta submitted, iOS port plan locked</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">2026-05-11 v22: dual-platform release — Android production review + iOS TestFlight (3 testers), 788 tests</span> <span style="color:#333"> &rarr; </span> <span class="trend-point">2026-05-12 v23: audio StateError hotfix → Android internal track + TestFlight Beta Review submitted</span></div>
         <div class="cycle-insight">
             <span class="label">Benchmark insight (Chomper Chums):</span> Chomper Chums uses animated character reactions as immediate feedback during brushing — the character visibly reacts to brushing speed with facial expressions (happy/sad/excited). In Brush Quest, mons
         </div>
@@ -510,7 +511,7 @@
             <div class="deferred-item">#3: `audioplayers._completePrepared` crash — pre-v20 builds only; can deprioritize if install base rolls forward to v20.</div>
         </div>
         <div class="cycle-next">
-            Next: <strong>Post-v22</strong> — await iOS tester feedback (Jan, Antoine, Matt), click Add for Review in App Store Connect, monitor Play Store production approval, iterate on early Phase 1 metrics
+            Next: <strong>Post-v23 hotfix</strong> — await TestFlight Beta Review approval, then re-invite Antoine/Matt/Jan; monitor Play Store production review of v22; iterate on early Phase 1 metrics
         </div>
 </div>
 
@@ -625,12 +626,23 @@
             <td>Blocks iOS App Store listing</td>
             <td style="color:#ffd740">OPEN — needs differentiation (tagline, suffix, or rename)</td>
         </tr>
+        <tr>
+            <td>TestFlight build 22 missing Beta Review approval</td>
+            <td>Jim</td>
+            <td>2026-05-12</td>
+            <td>Blocks Antoine/Matt/Jan from receiving TestFlight invites</td>
+            <td style="color:#ffd740">OPEN — Beta Review submission started 2026-05-12</td>
+        </tr>
     </table>
 </div>
 
 <div class="section-title">Recent Activity</div>
 <div class="panel">
 
+        <div class="git-entry">
+            <code class="hash">78b9ec2</code>
+            <span>chore: bump to 1.0.0+23 for audio StateError fix (internal/TestFlight only)</span>
+        </div>
         <div class="git-entry">
             <code class="hash">460e1db</code>
             <span>parent-gated camera onboarding + home nudge (1.0.0+22)</span>
@@ -809,7 +821,7 @@
         </div>
 </div>
 
-<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-05-11 18:30 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
+<div style="text-align:center;padding:32px 24px;border-top:1px solid #1a1a3a;margin-top:32px;font-size:13px;color:#666;">Snapshot generated 2026-05-12 18:30 &mdash; <a href="https://anemosgp.com/victories.html" style="color:#00e5ff;text-decoration:none;">View Build Log</a></div>
 
 </body>
 </html>
