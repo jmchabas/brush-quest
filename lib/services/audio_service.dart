@@ -627,7 +627,11 @@ class AudioService {
               fileName: request.fileName,
             );
           }
-        } on Exception catch (e) {
+        } on Object catch (e) {
+          // Object (not Exception): catches StateError "Bad state: No element"
+          // from `_voicePlayer.onPlayerComplete.first` when the stream closes
+          // before emitting (player disposed/stopped mid-await). Same race as
+          // the preload guard above.
           _reportAudioIssue(
             operation: 'voice_play_failed',
             fileName: request.fileName,
