@@ -685,18 +685,26 @@ class _VictoryScreenState extends State<VictoryScreen>
           unawaited(_cardGlowController.repeat(reverse: true));
           unawaited(_newBadgeController.forward());
 
-          // P2: Trophy captured — voice_card_new + card description
-          if (result.captured && voiceSlotsRemaining > 0) {
+          // P2: Trophy captured. The per-trophy naming voice ("Abyss Crawler,
+          // the depth creeper...") IS the reward reveal — it must always play
+          // so the kid hears what they caught. Previously it was slot-gated
+          // and got starved when chest + bonus voices exhausted the 3-slot
+          // budget before reaching here, so the trophy was never named (Jim's
+          // v24 feedback). Now the naming voice is guaranteed; the generic
+          // "new monster card" intro stays slot-gated. Both fire-and-forget so
+          // a non-completing voice can't stall the DONE reveal (see issue-1
+          // fix: never gate visual flow on voice completion).
+          if (result.captured) {
             unawaited(HapticFeedback.heavyImpact());
-            await _audio.playVoice('voice_card_new.mp3');
-            voiceSlotsRemaining--;
-            // Card description gets its own slot
+            final cardVoiceId = widget.trophyTargetId!.replaceAll('_t', '_0');
             if (voiceSlotsRemaining > 0) {
-              final cardVoiceId = widget.trophyTargetId!.replaceAll('_t', '_0');
-              await _audio.playVoice('voice_card_$cardVoiceId.mp3');
+              unawaited(_audio.playVoice('voice_card_new.mp3'));
               voiceSlotsRemaining--;
             }
-          } else if (!result.captured) {
+            // Naming voice — always queued, not slot-gated.
+            unawaited(_audio.playVoice('voice_card_$cardVoiceId.mp3'));
+            if (voiceSlotsRemaining > 0) voiceSlotsRemaining--;
+          } else {
             unawaited(_audio.playVoice('voice_keep_going.mp3'));
             // "keep going" is short, counts as a slot
             if (voiceSlotsRemaining > 0) voiceSlotsRemaining--;
