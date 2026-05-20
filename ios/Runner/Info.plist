@@ -55,6 +55,19 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.722700244830-reuomeurm7s9rh3ue5b2fkthb7gqnglk</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>722700244830-reuomeurm7s9rh3ue5b2fkthb7gqnglk.apps.googleusercontent.com</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Brush Quest uses the front camera to detect brushing motion. Video is processed on-device only and never recorded or sent anywhere.</string>
 	<key>NSMicrophoneUsageDescription</key>

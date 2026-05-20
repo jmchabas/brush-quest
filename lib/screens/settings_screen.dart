@@ -333,6 +333,24 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           );
         }
+      } else if (mounted) {
+        // Silent-failure path: AuthService catches Exceptions and returns null
+        // for both user-cancel and underlying errors (missing entitlements,
+        // unregistered URL scheme, etc.). Without this branch the spinner
+        // just stops and the user sees nothing.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Sign-in was canceled or didn\'t complete. Please try again.',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: Colors.orangeAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
       }
     } on TimeoutException catch (_) {
       debugPrint('Sign-in timed out after 30s');
