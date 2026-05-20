@@ -80,8 +80,16 @@ class _BrushQuestAppState extends State<BrushQuestApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused) {
+      // Backgrounded on both platforms — kill all audio.
+      AudioService().stopAllAudio();
+    } else if (state == AppLifecycleState.inactive && !Platform.isIOS) {
+      // Android: 'inactive' precedes paused. Kill audio.
+      // iOS: 'inactive' is transient (Control Center pull, notification banner,
+      // system alert, brief overlays). Killing audio here + stopAllAudio's
+      // _musicPlaying=false made audio appear permanently dead after every
+      // minor interruption. AVAudioSession interruption recovery in
+      // AppDelegate.swift handles real iOS interruptions (calls, Siri).
       AudioService().stopAllAudio();
     }
     // On resumed: do NOT auto-restart music.
