@@ -43,9 +43,16 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         _progress.addAll(progress);
         _unlocked.addAll(unlocked);
       });
-      // Ambient music — low volume so voice lines stay clear
-      unawaited(AudioService().playMusic('battle_music_loop.mp3'));
-      unawaited(AudioService().setMusicVolume(0.04));
+      // Ambient music — low volume so voice lines stay clear.
+      // Serialize playMusic + setMusicVolume (proven pattern from
+      // home_screen.dart:232-241) so the volume isn't applied to the prior
+      // disposed player on iOS. Without await, on iOS the world map can
+      // end up silent after a back-from-brushing transition.
+      await AudioService().playMusic('battle_music_loop.mp3');
+      if (!mounted) return;
+      await AudioService().setMusicVolume(0.04);
+      if (!mounted) return;
+      unawaited(AudioService().ensureMusicPlaying());
 
       // Play intro voice only once per app session, then world description
       if (!_introPlayedThisSession) {

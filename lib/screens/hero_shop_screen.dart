@@ -66,9 +66,19 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         );
       }
     });
-    // Ambient music — low volume so voice lines stay clear
-    AudioService().playMusic('battle_music_loop.mp3');
-    AudioService().setMusicVolume(0.05);
+    // Ambient music — low volume so voice lines stay clear.
+    // Serialize playMusic + setMusicVolume via postFrame so initState isn't
+    // blocked and the calls don't race on iOS (proven pattern from
+    // home_screen.dart:232-241). Without await, on iOS the volume gets
+    // applied to the prior disposed player and the new shop player is silent.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await AudioService().playMusic('battle_music_loop.mp3');
+      if (!mounted) return;
+      await AudioService().setMusicVolume(0.05);
+      if (!mounted) return;
+      unawaited(AudioService().ensureMusicPlaying());
+    });
     AnalyticsService().logShopVisit();
   }
 
