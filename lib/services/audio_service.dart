@@ -48,6 +48,11 @@ class AudioService {
   bool _musicPlaying = false;
   bool _musicTransitioning = false;
   String? _currentMusicFile;
+  // Snapshot of what music to restore after an app-lifecycle pause (phone
+  // sleep, backgrounding). stopAllAudio clears _musicPlaying, so we capture
+  // the file + volume BEFORE stopping and replay them on resume.
+  String? _musicFileBeforePause;
+  double? _musicVolumeBeforePause;
   String _voiceStyle = 'buddy';
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
   final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
@@ -822,6 +827,34 @@ class AudioService {
 
   /// Whether music was actively playing (for lifecycle save/restore).
   bool get isMusicPlaying => _musicPlaying;
+
+  /// Stop all audio for an app-lifecycle pause (phone sleep / background),
+  /// snapshotting the current music file + volume so [resumeAfterWake] can
+  /// restore them. Use this instead of [stopAllAudio] on lifecycle events.
+  Future<void> stopAllAudioForLifecycle() async {
+    if (_musicPlaying && _currentMusicFile != null) {
+      _musicFileBeforePause = _currentMusicFile;
+      _musicVolumeBeforePause = _musicTargetVolume;
+    } else {
+      _musicFileBeforePause = null;
+      _musicVolumeBeforePause = null;
+    }
+    await stopAllAudio();
+  }
+
+  /// Restart the music that was playing before the last lifecycle pause.
+  /// No-op if nothing was playing or the user muted while backgrounded.
+  /// Screens don't rebuild on app-resume, so without this music stays dead
+  /// after the phone wakes (Jim's v24 Android feedback).
+  Future<void> resumeAfterWake() async {
+    final file = _musicFileBeforePause;
+    final vol = _musicVolumeBeforePause;
+    _musicFileBeforePause = null;
+    _musicVolumeBeforePause = null;
+    if (_muted || file == null) return;
+    await playMusic(file);
+    if (vol != null) await setMusicVolume(vol);
+  }
 
   void _reportAudioIssue({
     required String operation,

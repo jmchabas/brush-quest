@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../route_observer.dart';
 import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
@@ -29,7 +30,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
@@ -140,7 +141,25 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  /// Called when a route pushed on top of Home is popped and Home becomes
+  /// visible again. Home's initState does not re-run on pop-back, so restart
+  /// the ambient music here — sub-screens stop music on their own dispose.
+  @override
+  void didPopNext() {
+    _startHomeMusic();
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     _affirmationTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     AudioService().stopVoice();
@@ -223,23 +242,29 @@ class _HomeScreenState extends State<HomeScreen>
       }
       unawaited(_checkGreeting());
       unawaited(_maybeShowCameraNudge());
-      // Ambient music on home screen (very low volume).
-      // PLAN.md 1D-2 fix 3: serialize playMusic + setMusicVolume so the
-      // volume isn't applied to the previous (disposed) player. Without
-      // the await chain the calls race and on iOS the home screen ends
-      // up silent after a victory→home transition. Schedule via post-
-      // frame so the home animation isn't blocked by the asset load.
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
-        await AudioService().playMusic('battle_music_loop.mp3');
-        if (!mounted) return;
-        await AudioService().setMusicVolume(0.06);
-        // Belt-and-suspenders: if the new player ended up in a stuck
-        // state (iOS audioplayers occasionally fails post-dispose), the
-        // health check inside ensureMusicPlaying restarts it.
-        unawaited(AudioService().ensureMusicPlaying());
-      });
+      _startHomeMusic();
     }
+  }
+
+  /// Start (or restart) the home ambient music at low volume. Called from
+  /// _loadStats on first build AND from didPopNext when the user returns from
+  /// a pushed screen (world map / shop / trophy wall / settings) — those
+  /// screens stop music on dispose and Home's initState does not re-run on
+  /// pop-back, so without this Home is silent on return (Jim's v24 feedback).
+  void _startHomeMusic() {
+    // PLAN.md 1D-2 fix 3: serialize playMusic + setMusicVolume so the volume
+    // isn't applied to the previous (disposed) player. Schedule via post-frame
+    // so the home animation isn't blocked by the asset load.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await AudioService().playMusic('battle_music_loop.mp3');
+      if (!mounted) return;
+      await AudioService().setMusicVolume(0.06);
+      // Belt-and-suspenders: if the new player ended up in a stuck state
+      // (iOS audioplayers occasionally fails post-dispose), the health check
+      // inside ensureMusicPlaying restarts it.
+      unawaited(AudioService().ensureMusicPlaying());
+    });
   }
 
   /// Post-onboarding nudge pointing parents to the PARENTS button for

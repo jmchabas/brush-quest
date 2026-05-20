@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'firebase_options.dart';
+import 'route_observer.dart';
 import 'services/analytics_service.dart';
 import 'services/audio_service.dart';
 import 'services/streak_service.dart';
@@ -81,8 +82,9 @@ class _BrushQuestAppState extends State<BrushQuestApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      // Backgrounded on both platforms — kill all audio.
-      AudioService().stopAllAudio();
+      // Backgrounded on both platforms — kill all audio, snapshotting the
+      // current track so resume can restore it.
+      AudioService().stopAllAudioForLifecycle();
     } else if (state == AppLifecycleState.inactive && !Platform.isIOS) {
       // Android: 'inactive' precedes paused. Kill audio.
       // iOS: 'inactive' is transient (Control Center pull, notification banner,
@@ -90,10 +92,12 @@ class _BrushQuestAppState extends State<BrushQuestApp>
       // _musicPlaying=false made audio appear permanently dead after every
       // minor interruption. AVAudioSession interruption recovery in
       // AppDelegate.swift handles real iOS interruptions (calls, Siri).
-      AudioService().stopAllAudio();
+      AudioService().stopAllAudioForLifecycle();
+    } else if (state == AppLifecycleState.resumed) {
+      // Screens don't rebuild on resume, so without this the music that was
+      // playing before the phone slept never comes back (Jim's v24 feedback).
+      AudioService().resumeAfterWake();
     }
-    // On resumed: do NOT auto-restart music.
-    // Each screen handles its own music on rebuild.
   }
 
   @override
@@ -101,6 +105,7 @@ class _BrushQuestAppState extends State<BrushQuestApp>
     return MaterialApp(
       title: 'Brush Quest',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: [routeObserver],
       theme: ThemeData(
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFF7C4DFF),
