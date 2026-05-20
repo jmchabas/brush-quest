@@ -201,6 +201,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   _ChestReward? _reward;
   bool _showDoneButton = false;
   Timer? _doneSafetyTimer;
+  Timer? _victoryMusicTimer;
 
   // Top bar state
   final _walletPillKey = GlobalKey();
@@ -333,7 +334,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     // never resumes on home either. 1500ms delay gives iOS audioplayers time
     // to fully release the prior music player before we create a new one
     // (rapid stop+dispose+create cycles silently fail on iOS Simulator).
-    Timer(const Duration(milliseconds: 1500), () async {
+    // Store the Timer so dispose can cancel it. Without this, a quick DONE
+    // tap before 1500ms races Home's _loadStats postFrame playMusic on iOS —
+    // two players spin up for the same source, one gets stuck silent. See
+    // project_home_music_dropout memory.
+    _victoryMusicTimer = Timer(const Duration(milliseconds: 1500), () async {
       if (!mounted) return;
       await _audio.playMusic('battle_music_loop.mp3');
       if (!mounted) return;
@@ -1005,6 +1010,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   @override
   void dispose() {
     _doneSafetyTimer?.cancel();
+    _victoryMusicTimer?.cancel();
     _audio.stopVoice();
     _confettiController.dispose();
     _doneButtonController.dispose();
