@@ -439,14 +439,18 @@ class _VictoryScreenState extends State<VictoryScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    // t=300ms   Arc beat 1 (celebration)
+    // t=300ms   Arc beat 1 (celebration). Fire-and-forget — do NOT await the
+    // voice before showing the chest. On Android the completion signal can
+    // fail to fire, stalling the chest reveal for the full 15s voice timeout
+    // (audio_service.dart:613). Pace the chest with a fixed delay instead so
+    // the visual flow never depends on voice completion. The voice plays
+    // concurrently over the chest drop.
     final arcIndex = _random.nextInt(_victoryArcs.length);
     final arc = _victoryArcs[arcIndex];
-    await _audio.playVoice(
-      arc[0],
-      clearQueue: true,
-      interrupt: true,
+    unawaited(
+      _audio.playVoice(arc[0], clearQueue: true, interrupt: true),
     ); // celebration
+    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
     // Arc beat 2 (star earned) — start concurrently with star flight,
