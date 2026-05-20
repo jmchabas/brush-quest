@@ -2,18 +2,45 @@
 <!-- Every session reads this at start. Every session updates its section at end. -->
 <!-- Jim says "update the status board" → session updates its workstream below. -->
 
-**Current #1 Priority**: Await Google review (Public Beta 2026-04-28) → launch Nicole-Facebook + NextDoor distribution once URL is live. Parallel: Apple Business **VERIFIED 2026-04-28** → enroll Apple Developer Program ($99/yr) to unblock iOS Phase 2.
+**Current #1 Priority**: Both stores launch in flight. **Android v22 submitted to Play Store production review 2026-05-11** (auto-checks running, then human review ≤7 days). **iOS v22 on TestFlight** awaiting feedback from 3 testers (Antoine, Matt, Jan) before clicking "Add for Review" — Apple submission is one click away once test confirms build is sound.
 **CEO Streak**: Week 0 (starting fresh)
-**Phase**: 1 → 1.5 transition — Internal Testing LIVE; Closed testing submitted for review; iOS port unblocked
+**Phase**: 2 — production launch in flight on both platforms
 
 ---
 
 ## Workstream Status
 
 ### APP
-- **Status**: Play Store listing overhaul + Closed testing track fully configured — **10 changes submitted for Google review 2026-04-23**. v20 still LIVE on internal testing.
-- **Last session**: 2026-04-23
-- **Last commit**: `e0f6f7d` — Cycle 16 v20 (no new commits today — all work was in Play Console + marketing assets)
+- **Status**: **v24 iOS audio + auth fix flight built 2026-05-19** — 5 commits addressing Jim's TestFlight observation that iOS audio is broken (voice cuts mid-sentence, intermittent) AND both Apple/Google sign-in buttons silently no-op. Android v22 still in Play Store production review (untouched). iOS v22 still on TestFlight pending tester feedback. v24 is iOS-only material — Android v22 stays as-is until prod ships.
+- **Last session**: 2026-05-19
+- **Last commit**: `5289d66` — fix(audio): cancel victory's 1500ms music Timer in dispose (1.0.0+24)
+- **What happened (2026-05-19, v24 audio + auth fix flight)**:
+  - **Diagnostic**: 5 parallel research agents + Codex CLI independent audit. Codex significantly course-corrected the analysis — caught that the proposed `AudioContextIOS` fix was redundant (iOS default IS playback) and that the real high-confidence iOS audio bug was the lifecycle policy killing audio on transient `inactive` events.
+  - **Auth (commit `805f3aa`)** — both buttons silently no-op'd because of TWO independent config gaps: (1) `Runner.entitlements` was orphaned — `project.pbxproj` never referenced it, so the signed binary shipped without `com.apple.developer.applesignin`; (2) `Info.plist` was missing both `CFBundleURLTypes` (Google OAuth callback scheme) and `GIDClientID`. Also added null-user SnackBar in settings_screen so silent failures surface.
+  - **Audio lifecycle + interruptions (commit `5554b8f`)** — Codex's highest-confidence catch: `main.dart` was killing all audio on iOS `inactive` (transient — fires for Control Center, notification banners), making audio appear permanently dead after every minor interruption. Now iOS only stops on `paused`. Paired with `AppDelegate.swift` `AVAudioSession.interruptionNotification` observer that re-activates the session after phone calls / Siri / FaceTime — the `audioplayers` plugin doesn't install this observer itself.
+  - **iOS-gated music dispose (commit `015a0c4`)** — `playMusic` was doing `unawaited(_musicPlayer.dispose())` immediately before assigning new player + `setSource`. On iOS the AVPlayer KVO teardown can be in flight when new player attaches → silent/stuck music. Now `await` on iOS only; Android v22 baseline fire-and-forget unchanged.
+  - **Music serialization (commit `631afb7`)** — applied proven home_screen pattern (`await playMusic` → mounted check → `await setMusicVolume` → mounted check → `unawaited(ensureMusicPlaying)`) to `world_map_screen`, `trophy_wall_screen`, `hero_shop_screen`. The unawaited pair raced on iOS — volume got applied to the prior disposed player.
+  - **Victory Timer leak (commit `5289d66`)** — the 1500ms music kickoff Timer in `victory_screen.dart:336` was bare. If kid tapped DONE before 1500ms, the late Timer's `playMusic` raced Home's postFrame `playMusic` on the singleton. Now stored as `Timer? _victoryMusicTimer` and cancelled in dispose alongside `_doneSafetyTimer`. Documented as the safest single-file fix in `project_home_music_dropout` memory.
+  - **Verification**: dart analyze clean across all 5 commits, 788 tests pass each commit, `audio_regression_test` 6/6 each commit. All cross-platform fixes were either iOS-gated (`Platform.isIOS`) or used patterns already proven safe on Android v22 production.
+  - **Not done — deferred for v25 if TestFlight shows it's needed**: AudioContextIOS `mixWithOthers` experiment (Codex flagged as debatable for kids' app, doesn't explain internal cuts), iOS-only voice completion mechanism replacement (current `Future.any` + StateError catch is fine; "voice cuts mid-sentence" is call-site-driven not completion-mechanism-driven).
+  - **Next**: Build + upload v24 to TestFlight via `fastlane beta` for real-device validation. Codex's pre-commit verification commands ready: `codesign -d --entitlements :- build/ios/iphoneos/Runner.app` and `plutil -p build/ios/iphoneos/Runner.app/Info.plist | rg 'CFBundleURLTypes|GIDClientID'` to prove the entitlement + URL scheme actually made it into the signed binary.
+- **What happened (2026-05-11, Android v22 production submission)**:
+- **Last commit before v24**: `460e1db` — feat: parent-gated camera onboarding + home discoverability nudge (1.0.0+22)
+- **What happened (2026-05-10..11, dual-platform v22 cycle + Android production submission)**:
+  - **Parallel session changes merged** (commit `460e1db`): 4th onboarding page = camera permission, parent-gated behind math gate + COPPA consent dialog; Home screen camera-discoverability chip near PARENTS for users who skipped onboarding camera ask; default brush phase 20s→15s so the "2-minute brushing" claim holds with transitions. Plus new `voice_camera_prompt.mp3` in buddy + classic packs (ElevenLabs George/Jessica via `/tmp/gen_camera_prompt.py`). 788 tests pass, dart analyze clean.
+  - **iOS commit `5488e2d`** (2026-05-09): Replaced default Flutter icon with Brush Quest fox across all 15 AppIcon sizes (master = `tmp/icon-candidates/option3_battle.png`, 1024×1024 RGB no-alpha). Also added `ITSAppUsesNonExemptEncryption=false` to Info.plist so future builds skip the ASC App Encryption Documentation prompt.
+  - **iOS v21 + v22 → TestFlight**: v21 uploaded 2026-05-09 (icon fix), v22 uploaded 2026-05-11 07:48 via `fastlane beta` using App Store Connect API key `4YY7329MH5`. Both VALID on Apple's side. ASC submission currently has v21 selected; will swap to v22 once tester feedback comes in.
+  - **TestFlight testers added via ASC REST API** (script pattern `/tmp/asc_*.py` using cryptography lib for JWT — Family & Friends group is internal-only so we attach testers directly to specific builds, then POST betaTesterInvitations to trigger Apple's email): Jan Deloach `jandeloach273@gmail.com` (build 21), Antoine Markarian `amarkarian@gmail.com` (build 21 → also v22), Matt Ganser `mattganser@gmail.com` (build 22). Jan's first phone had issues yesterday; Antoine + Matt emailed by Jim 2026-05-11 with short ask-for-feedback note.
+  - **Android v22 → Play Store**: AAB built (`flutter build appbundle`, exit-1 was non-fatal "strip-debug-symbols" warning), uploaded to internal track 2026-05-11 08:03 via `fastlane internal` (after retry — first attempt hit Google's 300s timeout, the 112MB AAB needed `SUPPLY_UPLOAD_MAX_RETRIES=3`).
+  - **`fastlane promote_to_production` failed twice with "Release in track targeting no countries"** — production track had never had country availability set at the app level. API has no setter (`countryavailability` endpoint is read-only; `countryTargeting` on a release is only allowed for staged rollouts; first prod release CANNOT be staged). Resolved via Chrome MCP walking Play Console → Production → Countries/regions → "Select all rows" → Save → "Go to overview" → Production → Create new release → Add from library (v22 bundle) → release notes → Save → Send 7 changes for review.
+  - **The 7 changes Google has under review now**: Production add 176 countries + rest of world + v22 release; Public Beta (Early Access) cascade — Google auto-cleared 4 countries that overlap with prod, paused track, paused open access, limited users to 0. The cascade is normal: when production goes live worldwide, the open-access public beta is superseded. Internal testing track is untouched (Jim + Oliver still test v22 there).
+  - **TestFlight invite gotcha (worth remembering)**: Apple's POST `/v1/betaTesters` with `betaGroups` relationship returns 409 STATE_ERROR for the internal Family & Friends group — internal testers must be ASC users (Apple ID linkable). Workaround: attach to `builds` relationship instead (any VALID build), no ASC user account required. Confirmed working for 3 testers.
+- **What happened (2026-04-23..04-28, prior Play Store work — unchanged from earlier sessions)**: Play Store listing overhaul + Closed testing public-beta track set up (4 countries US/CA/UK/AU, Google Group gate) — those public beta changes are the ones that just got auto-paused by today's worldwide production submission.
+- **Blocked on**: Tester feedback from Antoine, Matt, Jan (Apple side); Google human reviewer (Play side, ≤7 days).
+- **Next up**:
+  1. Tonight/tomorrow: read Antoine + Matt feedback emails. If clean → swap ASC build #21 → #22 in App Store Connect, click "Add for Review" (Claude can drive both via Chrome MCP).
+  2. Watch for Google Play approval email — if any policy issue surfaces in auto-checks (≤14 min), fix and resend. If human review approves → app goes live on Play Store worldwide.
+  3. Once Play Store URL is live: push Nicole-Facebook + NextDoor distribution (was the prior #1 priority, simply gated on this approval).
 - **What happened (2026-04-28, Early Access track "Public Beta" set up + 7 changes submitted for review)**:
   - **Pivot from Open Testing → Early Access** — Open Testing track requires countries with a Production release (we don't have one); Google's recommended replacement for pre-Production public beta is the Early Access track.
   - **Reddit GTM dead end (lesson)** — r/Daddit auto-removed for self-promo (rule #3), r/AlphaAndBetaUsers auto-removed by Reddit's site-wide spam filter (low-karma + external-link signal). Reddit not viable for new accounts; pivoting to non-karma channels.
@@ -195,8 +222,10 @@
 - **Estimated cost**: ~$1,040 year 1, ~$935/year ongoing (CA franchise tax is $800/yr, Play Store $25 one-time)
 
 ### APPLE BUSINESS / iOS LAUNCH
-- **Status**: ✅ Apple Business org **VERIFIED 2026-04-28**. ✅ Apple Developer Program **PURCHASED 2026-05-04** (Order W1578089183, $99/yr) — Apple processing, Team ID pending. Phase 1 of iOS port substantially complete; Phase 2 unblocks the moment Team ID lands.
-- **Last session**: 2026-05-04
+- **Status**: ✅ Apple Business **VERIFIED**. ✅ Apple Developer Program **ACTIVE** (Team ID J846H79L2X). ✅ SIWA key + Cloud Function `revokeAppleToken` deployed. ✅ fastlane match + signed IPA pipeline working. ✅ App Store Connect listing 100% populated (description, screenshots, App Preview video, privacy nutrition labels, age rating 4+, Made-for-Kids 6-8, Apple SIWA tested). **v21 + v22 IPAs on TestFlight (VALID)**. **3 TestFlight testers invited 2026-05-11** (Jan, Antoine, Matt). Apple submission gate is one click ("Add for Review") + a build-21→22 swap.
+- **Last session**: 2026-05-11
+- **What happened (2026-05-09..11)**: see APP workstream above — iOS v21 icon fix, v22 onboarding feature, TestFlight uploads, tester invites via ASC REST API, ASC listing fully prepared and saved with build 21 selected.
+- **Blocked on**: Real-device tester feedback before clicking "Add for Review". Apple Review queue itself runs 1-3 days typical.
 - **What happened (2026-05-04)**:
   - Apple Developer Program License Agreement signed at 18:49 UTC; $99/yr membership purchased at 18:51 UTC (Order W1578089183, billed to jmchabas@gmail.com / 3101 Lincoln Ave Alameda).
   - Apple email status: "Your order is being processed." Team ID assignment expected within minutes to 24h.
