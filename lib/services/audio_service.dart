@@ -696,7 +696,16 @@ class AudioService {
     _musicTransitioning = true;
     try {
       await _musicPlayer.stop();
-      unawaited(_musicPlayer.dispose());
+      if (Platform.isIOS) {
+        // iOS: await dispose so AVPlayer KVO teardown completes before we
+        // assign a new player + setSource. Fire-and-forget dispose lets the
+        // new player attach to a half-torn-down session, causing silent or
+        // stuck music on iOS. Android v22 baseline is fire-and-forget and
+        // works — keep that path unchanged.
+        await _musicPlayer.dispose();
+      } else {
+        unawaited(_musicPlayer.dispose());
+      }
     } on Exception catch (e) {
       _reportAudioIssue(
         operation: 'music_reset_failed',
