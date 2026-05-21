@@ -11,9 +11,16 @@
 ## Workstream Status
 
 ### APP
-- **Status**: **v25 Android-feedback fix flight built 2026-05-20** — 4 fixes from Jim's first real-device Android test of v24. Android v22 still in Play Store production review (untouched). iOS v24 was in TestFlight Beta Review; v25 supersedes it on both tracks.
-- **Last session**: 2026-05-20
-- **Last commit**: `e387582` — fix(victory): always speak the trophy name on capture (1.0.0+25)
+- **Status**: **v26 built 2026-05-21** — 2 fixes after v25 re-test showed 2 of the v25 fixes didn't actually work on-device. Both v25 attempts had the RIGHT diagnosis but wrong mechanism. Diagnosed via 2 investigation agents + Codex plan review (Codex caught a Settings gap and replaced a fragile bool-flag with a robust completer). Shipped with `[MUSIC]/[AUD]/[VIC]` diagnostic logging since reasoning-only fixes missed twice.
+- **Last session**: 2026-05-21
+- **Last commit**: `9b7c7ff` — fix(audio): replace Android stopped-listener with per-item stop completer (1.0.0+26)
+- **What happened (2026-05-21, v26 — fixing v25's failed fixes)**:
+  - **Home music STILL silent after Map→Home (v25 RouteObserver didn't work).** Root cause was NOT the observer — `didPopNext` fired fine. It's a RACE: the popped screen's `dispose()` ran `stopMusic()` ~300ms later (after the route exit animation), killing the music Home just restarted. All screens share `battle_music_loop` (differ only by volume), so there was never a reason to stop it. **Fix A (`d1d3bba`):** removed `stopMusic()` from world_map/hero_shop/trophy_wall/settings disposes (kept Settings' intentional entry-silence); Home `didPopNext` now restores volume if music still playing, full restart otherwise (handles Settings return). Codex caught that Settings stops music on entry+dispose — without handling it, Settings-return would stay silent.
+  - **Trophy STILL not voiced + voices cut (v25 slot-ungating didn't work).** The naming voice WAS queued — but `_pumpVoiceQueue` raced an Android `onPlayerStateChanged(PlayerState.stopped)` listener that ALSO fires during normal source-swaps when the queue advances, falsely cutting every voice that followed another. **Fix B (`9b7c7ff`):** replaced the listener with an explicit per-item external-stop `Completer` (`_activeVoiceStop`) fired by `stopVoice()`/`interrupt`. Preserves "interrupts don't wait 15s" without the false-positive; doesn't touch `PlayerState.completed` (memory warns against). Updated `audio_regression_test` to assert the new mechanism + forbid reintroducing the stopped-listener.
+  - **Issue 2 (voice cut entering victory) is working-as-designed** — intentional `stopVoice`+`clearQueue` on the brushing→victory handoff. Not a bug.
+  - **Lesson:** both v25 fixes had the right diagnosis but wrong mechanism, and reasoning-from-code missed twice. v26 ships diagnostic logging so the next device test is conclusive. Fixes A and B touch different subsystems (music lifecycle vs voice pump) so a single combined build stays debuggable.
+  - **Verification:** dart analyze clean, 788 tests + audio_regression_test green at each commit.
+- **Prior: v25 Android-feedback fix flight (2026-05-20)** — 4 fixes from Jim's first real-device v24 test (15s victory freeze, music-on-wake, RouteObserver attempt, trophy-voice slot-ungate). 2 of the 4 (home music, trophy voice) didn't work on-device — superseded by v26 above.
 - **What happened (2026-05-20, v25 Android-feedback fix flight)**:
   - **Jim tested v24 on Android** and reported 4 issues. All fixed; none were v24 regressions (pre-existing bugs surfaced by careful testing).
   - **Fix 1 (`f13c43a`)** — 15s stuck on "GREAT JOB!" victory screen. `_recordAndAnimate` awaited `playVoice(arc[0])` before showing the chest; when the voice's completion signal didn't fire on Android, the await hit the full 15s timeout. Now fire-and-forget + fixed 1200ms pacing — visual flow never gates on voice completion.
@@ -157,6 +164,17 @@
 - **Blocked on**: Google review of 10 queued changes (submitted 2026-04-23). Crashlytics on v20 still worth monitoring.
 - **Next up**: (1) Record promo video for listing (adb screenrecord + voiceover, upload YouTube unlisted, paste URL); (2) Prep tester-invite GTM copy for when Closed testing activates (Substack post, social, parenting forums); (3) Oliver v20 retest confirmation; (4) iOS TestFlight prep when Apple Business approves (~2026-04-24).
 - **Needs CEO decision**: When Closed testing goes live — how aggressive to promote the Google Group signup link vs keep it quiet until UX is more polished? Current answer is "public Google Group URL ready to share, but drip via trusted channels first (Substack)."
+
+### TRACTION (Play Store)
+- **Status**: First public-launch metrics, pulled from Play Console 2026-05-21 (data through ~May 19, Play lags 2–3 days).
+- **Source**: jim@anemosgp.com Play account, developer `5965081279664275195`, app `4974769184212603107`. (NOT the jmchabas personal account — that one is empty + identity-unverified.)
+- **Numbers**:
+  - **Production installs: 6** (production release live 2026-05-11, 100% rollout). Install base 66.7% (~4 of 6 retained).
+  - **MAU: 9** (trending up) · **DAU: 7–11/day** (peaked 11 on May 17)
+  - **7-day retention: 2**
+  - Device acquisitions (28d): 15 · First opens (28d): 10
+- **Read**: DAU/MAU ~80–100% = extremely sticky, but tiny base that still includes internal-test devices (you/Oliver/Theo), which is why daily-active exceeds the 6 public installs. Day-one territory.
+- **Watch**: 7-day retention is the number to re-read once the Nicole-Facebook / NextDoor distribution push brings real external installs — current "2" isn't a meaningful read at this volume.
 
 ### LANDING PAGE
 - **Status**: Live at brushquest.app — email capture LIVE via Buttondown
