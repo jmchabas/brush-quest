@@ -11,9 +11,17 @@
 ## Workstream Status
 
 ### APP
-- **Status**: **v24 iOS audio + auth fix flight built 2026-05-19** — 5 commits addressing Jim's TestFlight observation that iOS audio is broken (voice cuts mid-sentence, intermittent) AND both Apple/Google sign-in buttons silently no-op. Android v22 still in Play Store production review (untouched). iOS v22 still on TestFlight pending tester feedback. v24 is iOS-only material — Android v22 stays as-is until prod ships.
-- **Last session**: 2026-05-19
-- **Last commit**: `5289d66` — fix(audio): cancel victory's 1500ms music Timer in dispose (1.0.0+24)
+- **Status**: **v25 Android-feedback fix flight built 2026-05-20** — 4 fixes from Jim's first real-device Android test of v24. Android v22 still in Play Store production review (untouched). iOS v24 was in TestFlight Beta Review; v25 supersedes it on both tracks.
+- **Last session**: 2026-05-20
+- **Last commit**: `e387582` — fix(victory): always speak the trophy name on capture (1.0.0+25)
+- **What happened (2026-05-20, v25 Android-feedback fix flight)**:
+  - **Jim tested v24 on Android** and reported 4 issues. All fixed; none were v24 regressions (pre-existing bugs surfaced by careful testing).
+  - **Fix 1 (`f13c43a`)** — 15s stuck on "GREAT JOB!" victory screen. `_recordAndAnimate` awaited `playVoice(arc[0])` before showing the chest; when the voice's completion signal didn't fire on Android, the await hit the full 15s timeout. Now fire-and-forget + fixed 1200ms pacing — visual flow never gates on voice completion.
+  - **Fix 3 + 4 (`6c86e2c`)** — music didn't restart when a screen became visible again. (3) Phone wake: `main.dart` did nothing on `resumed`. Added `stopAllAudioForLifecycle()` (snapshots track+volume) + `resumeAfterWake()`. (4) Nav return: no RouteObserver existed, so Home stayed silent after returning from sub-screens. Added global `routeObserver`, made HomeScreen `RouteAware`, restart home music in `didPopNext()`.
+  - **Fix 2 (`e387582`)** — trophy not named in voiceover. Transcribing `voice_card_dd_03.mp3` via ElevenLabs STT proved the per-trophy naming voice ALREADY exists ("Abyss Crawler, the depth creeper...") — all 50 present. The bug was slot-budget starvation: the naming voice was gated behind a 3-slot budget that chest+bonus voices exhausted. Now the naming voice is guaranteed (un-gated). **No new assets generated** — pure logic fix.
+  - **Verification**: dart analyze clean + 788 tests + audio_regression_test green at each commit. Fixes are cross-platform (both benefit) but tested against the Android v22 baseline discipline.
+  - **Next**: build + deploy v25 to Play internal (Jim re-tests on his phone) + TestFlight (re-attach testers + Beta Review for build 25).
+- **Prior: v24 iOS audio + auth fix flight (2026-05-19)** — entitlements wiring, Google URL scheme, AVAudioSession interruption observer, iOS lifecycle softening, iOS-gated music dispose, music serialization, victory Timer cancel. Uploaded to TestFlight (build 24, Beta Review submitted) + Play internal.
 - **What happened (2026-05-19, v24 audio + auth fix flight)**:
   - **Diagnostic**: 5 parallel research agents + Codex CLI independent audit. Codex significantly course-corrected the analysis — caught that the proposed `AudioContextIOS` fix was redundant (iOS default IS playback) and that the real high-confidence iOS audio bug was the lifecycle policy killing audio on transient `inactive` events.
   - **Auth (commit `805f3aa`)** — both buttons silently no-op'd because of TWO independent config gaps: (1) `Runner.entitlements` was orphaned — `project.pbxproj` never referenced it, so the signed binary shipped without `com.apple.developer.applesignin`; (2) `Info.plist` was missing both `CFBundleURLTypes` (Google OAuth callback scheme) and `GIDClientID`. Also added null-user SnackBar in settings_screen so silent failures surface.
