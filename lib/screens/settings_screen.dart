@@ -75,7 +75,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   void dispose() {
     _inactivityTimer?.cancel();
     AudioService().stopVoice();
-    unawaited(AudioService().stopMusic());
+    // Do NOT stopMusic here — music is already stopped on entry (intentional
+    // silence for the parent gate). Stopping again on dispose raced Home's
+    // didPopNext restart and left Home silent on return (v25 bug). Home does a
+    // full music restart on return since this is a deliberately silent route.
     _tabController.dispose();
     _mathController.dispose();
     super.dispose();

@@ -46,7 +46,8 @@ class _TrophyWallScreenState extends State<TrophyWallScreen>
   @override
   void dispose() {
     AudioService().stopVoice();
-    AudioService().stopMusic();
+    // Do NOT stopMusic here — see world_map_screen dispose. Shared
+    // battle_music_loop; Home restores volume on didPopNext.
     _glowController.dispose();
     super.dispose();
   }

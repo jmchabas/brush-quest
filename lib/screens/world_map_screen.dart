@@ -80,7 +80,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   @override
   void dispose() {
     AudioService().stopVoice();
-    AudioService().stopMusic();
+    // Do NOT stopMusic here. All screens share battle_music_loop; this dispose
+    // runs ~300ms after Home's didPopNext restarts music (route exit
+    // animation), so stopping here killed the music Home just started (v25
+    // home-silent-on-return bug). Home restores its own volume on didPopNext.
     super.dispose();
   }
 

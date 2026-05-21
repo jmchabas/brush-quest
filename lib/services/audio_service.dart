@@ -696,6 +696,7 @@ class AudioService {
   }
 
   Future<void> playMusic(String fileName) async {
+    debugPrint('[MUSIC] playMusic($fileName) muted=$_muted');
     if (_muted) return;
     _currentMusicFile = fileName;
     _musicTransitioning = true;
@@ -794,6 +795,7 @@ class AudioService {
   }
 
   Future<void> stopMusic() async {
+    debugPrint('[MUSIC] stopMusic transitioning=$_musicTransitioning');
     if (_musicTransitioning) return;
     _musicPlaying = false;
     _currentMusicFile = null;

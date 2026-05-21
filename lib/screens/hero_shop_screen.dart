@@ -85,7 +85,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   @override
   void dispose() {
     AudioService().stopVoice();
-    AudioService().stopMusic();
+    // Do NOT stopMusic here — see world_map_screen dispose. Shared
+    // battle_music_loop; Home restores volume on didPopNext.
     _tabController.dispose();
     super.dispose();
   }

@@ -154,7 +154,20 @@ class _HomeScreenState extends State<HomeScreen>
   /// the ambient music here — sub-screens stop music on their own dispose.
   @override
   void didPopNext() {
-    _startHomeMusic();
+    // Returned from a pushed screen. Sub-screens no longer stop the shared
+    // music on dispose, so if it's still playing just restore Home's volume
+    // (no restart glitch). If it was stopped — e.g. returning from Settings,
+    // a deliberately silent route — do a full restart.
+    final audio = AudioService();
+    debugPrint(
+      '[MUSIC] Home.didPopNext isMusicPlaying=${audio.isMusicPlaying}',
+    );
+    if (audio.isMusicPlaying) {
+      unawaited(audio.setMusicVolume(0.06));
+      unawaited(audio.ensureMusicPlaying());
+    } else {
+      _startHomeMusic();
+    }
   }
 
   @override
