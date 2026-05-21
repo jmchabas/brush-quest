@@ -697,6 +697,10 @@ class _VictoryScreenState extends State<VictoryScreen>
           if (result.captured) {
             unawaited(HapticFeedback.heavyImpact());
             final cardVoiceId = widget.trophyTargetId!.replaceAll('_t', '_0');
+            debugPrint(
+              '[VIC] trophy captured ${widget.trophyTargetId} '
+              '-> voice_card_$cardVoiceId.mp3 (slots=$voiceSlotsRemaining)',
+            );
             if (voiceSlotsRemaining > 0) {
               unawaited(_audio.playVoice('voice_card_new.mp3'));
               voiceSlotsRemaining--;

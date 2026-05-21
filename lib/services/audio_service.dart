@@ -45,6 +45,15 @@ class AudioService {
   bool _muted = false;
   bool _voicePlaying = false;
   bool _voiceQueueProcessing = false;
+  // Per-item external-stop signal for the voice pump. The pump creates a fresh
+  // Completer before each play() and races it in Future.any. stopVoice() and
+  // playVoice(interrupt:) complete it so a genuine external stop recovers
+  // instantly (no 15s wait). This REPLACES the old Android onPlayerStateChanged
+  // (PlayerState.stopped) listener, which could not tell a real external stop
+  // from the transient `stopped` blip emitted during a normal source-swap when
+  // the queue advances — that false-positive cut every queued voice that
+  // followed another (v25 trophy-voice-not-played + voice-cut bugs).
+  Completer<void>? _activeVoiceStop;
   bool _musicPlaying = false;
   bool _musicTransitioning = false;
   String? _currentMusicFile;
@@ -567,8 +576,12 @@ class AudioService {
     final request = _QueuedVoiceRequest(fileName);
     _voiceQueue.add(request);
     _updateVoicePipelineState();
+    debugPrint('[AUD] enqueue $fileName interrupt=$interrupt clearQueue=$clearQueue');
 
     if (interrupt) {
+      // Genuine external stop of the in-flight voice — signal the pump so it
+      // doesn't wait out the 15s timeout, then stop the player.
+      _fireVoiceStop();
       try {
         await _voicePlayer.stop();
       } on Exception catch (e) {
@@ -599,33 +612,32 @@ class AudioService {
           } on Exception catch (_) {}
         }
 
+        // Fresh per-item external-stop signal. stopVoice()/interrupt complete
+        // this to end the wait immediately on a genuine external stop.
+        final stopSignal = Completer<void>();
+        _activeVoiceStop = stopSignal;
         try {
           // Don't stop() before play() — audioplayers replaces the source
           // automatically. Calling stop() here cuts the previous voice
           // mid-sentence on iOS when the queue advances. PLAN.md 1D-2.
           await _voicePlayer.setVolume(1.0);
+          debugPrint('[AUD] PLAY ${request.fileName} qlen=${_voiceQueue.length}');
           await _voicePlayer.play(
             AssetSource(_voiceAssetPath(request.fileName)),
           );
-          // Wait for true completion or the safety timeout. On Android we
-          // also listen for `PlayerState.stopped` so external `stopVoice()`
-          // calls (screen transitions) recover instantly without waiting
-          // the 15s timeout. On iOS the player transitions through
-          // `stopped` during normal playback, which would cause voice cuts
-          // — see PLAN.md 1D-2 (symptom: "Let's..." cut mid-word).
-          final futures = <Future<bool>>[
+          // Resolve on natural completion, an explicit external stop, or the
+          // 15s safety timeout. The external-stop completer recovers instantly
+          // without depending on a PlayerState.stopped event — on Android that
+          // event ALSO fires during normal source-swaps when the queue
+          // advances, which falsely cut the next queued voice (v25 bug).
+          final completed = await Future.any<bool>(<Future<bool>>[
             _voicePlayer.onPlayerComplete.first.then((_) => true),
+            stopSignal.future.then((_) => false),
             Future.delayed(const Duration(seconds: 15), () => false),
-          ];
-          if (Platform.isAndroid) {
-            futures.add(
-              _voicePlayer.onPlayerStateChanged
-                  .where((s) => s == PlayerState.stopped)
-                  .first
-                  .then((_) => false),
-            );
-          }
-          final completed = await Future.any<bool>(futures);
+          ]);
+          debugPrint(
+            '[AUD] DONE ${request.fileName} completedNormally=$completed',
+          );
           if (!completed) {
             _reportAudioIssue(
               operation: 'voice_timeout',
@@ -635,14 +647,14 @@ class AudioService {
         } on Object catch (e) {
           // Object (not Exception): catches StateError "Bad state: No element"
           // from `_voicePlayer.onPlayerComplete.first` when the stream closes
-          // before emitting (player disposed/stopped mid-await). Same race as
-          // the preload guard above.
+          // before emitting (player disposed/stopped mid-await).
           _reportAudioIssue(
             operation: 'voice_play_failed',
             fileName: request.fileName,
             error: e,
           );
         } finally {
+          if (identical(_activeVoiceStop, stopSignal)) _activeVoiceStop = null;
           _voicePlaying = false;
           _restoreMusicVolume();
           if (!request.completer.isCompleted) {
@@ -661,15 +673,27 @@ class AudioService {
   /// Stop any currently playing voice and clear the voice queue.
   /// Call this before screen transitions to prevent orphaned voice playback.
   Future<void> stopVoice() async {
+    debugPrint('[AUD] stopVoice clearing qlen=${_voiceQueue.length}');
     _clearVoiceQueue();
     _voicePlaying = false;
     _updateVoicePipelineState();
+    // Signal the in-flight pump item so it ends its wait immediately rather
+    // than blocking on the 15s timeout.
+    _fireVoiceStop();
     try {
       await _voicePlayer.stop();
     } on Exception catch (e) {
       _reportAudioIssue(operation: 'stop_voice_failed', error: e);
     }
     _restoreMusicVolume();
+  }
+
+  /// Complete the active voice-pump external-stop signal, if any. Lets a
+  /// genuine external stop (stopVoice / interrupt) end the pump's per-item
+  /// wait instantly without relying on a PlayerState.stopped event.
+  void _fireVoiceStop() {
+    final s = _activeVoiceStop;
+    if (s != null && !s.isCompleted) s.complete();
   }
 
   void _clearVoiceQueue() {

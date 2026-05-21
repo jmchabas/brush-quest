@@ -40,46 +40,65 @@ void main() {
     );
   });
 
-  test('Voice pump uses Future.any with three signals', () {
-    // The voice pump must use Future.any with:
+  test('Voice pump uses Future.any with completion, external-stop, timeout', () {
+    // The voice pump must use Future.any with three signals:
     //   1. onPlayerComplete — natural end of voice
-    //   2. onPlayerStateChanged (stopped) — interrupt from another playVoice call
+    //   2. an explicit external-stop completer (_activeVoiceStop) fired by
+    //      stopVoice()/interrupt — so interrupts recover instantly
     //   3. Duration(seconds: 15) timeout — fallback safety net
-    // Without signal 2, interrupts wait for the timeout before playing
-    // the next queued voice, causing multi-second delays on user taps.
+    //
+    // The external-stop completer REPLACED the old Android
+    // onPlayerStateChanged(PlayerState.stopped) listener, which could not
+    // distinguish a real external stop from the transient `stopped` blip
+    // emitted during a normal source-swap when the queue advances — that
+    // false-positive cut every queued voice that followed another (v25 bug:
+    // trophy naming voice not played + victory voices cut). Do NOT reintroduce
+    // a PlayerState.stopped-based completion signal in the pump.
 
-    // Verify Future.any is used
     expect(
       audioSource.contains('Future.any'),
       isTrue,
       reason: 'Voice pump must use Future.any for completion detection.',
     );
 
-    // Verify onPlayerComplete is one of the signals
     expect(
       audioSource.contains('onPlayerComplete'),
       isTrue,
       reason: 'Voice pump must listen for onPlayerComplete.',
     );
 
-    // Verify onPlayerStateChanged is used to detect interrupts
+    // Explicit per-item external-stop completer must exist and be raced.
     expect(
-      audioSource.contains('onPlayerStateChanged'),
+      audioSource.contains('_activeVoiceStop'),
       isTrue,
       reason:
-          'Voice pump must listen for PlayerState.stopped to handle interrupts '
-          'without waiting for the 5s timeout.',
+          'Voice pump must use an explicit external-stop completer '
+          '(_activeVoiceStop) so interrupts recover without the 15s timeout.',
     );
 
-    // Verify PlayerState.stopped is the specific state being watched
+    // stopVoice() and interrupt must fire that completer.
     expect(
-      audioSource.contains('PlayerState.stopped'),
+      audioSource.contains('_fireVoiceStop()'),
       isTrue,
-      reason: 'Voice pump must watch for PlayerState.stopped specifically.',
+      reason:
+          'stopVoice() and playVoice(interrupt:) must call _fireVoiceStop() so '
+          'a genuine external stop ends the pump wait immediately.',
     );
 
-    // Verify 15-second timeout is one of the signals (raised from 5s because
-    // 47+ voice files exceed 5 seconds and were being cut off mid-sentence).
+    // Guard against regression: the pump must NOT race a
+    // PlayerState.stopped listener for completion — on Android that event
+    // fires during normal source-swaps and falsely cuts the next queued voice.
+    // (Mentions of PlayerState.stopped in comments are fine; the removed code
+    // was the stream filter `s == PlayerState.stopped`.)
+    expect(
+      audioSource.contains('s == PlayerState.stopped'),
+      isFalse,
+      reason:
+          'Voice pump must NOT filter onPlayerStateChanged for '
+          'PlayerState.stopped — use the _activeVoiceStop completer instead.',
+    );
+
+    // 15-second timeout fallback must remain.
     expect(
       RegExp(r'Duration\(seconds:\s*15\)').hasMatch(audioSource),
       isTrue,
