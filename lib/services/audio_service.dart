@@ -719,8 +719,8 @@ class AudioService {
     } on Exception catch (_) {}
   }
 
-  Future<void> playMusic(String fileName) async {
-    debugPrint('[MUSIC] playMusic($fileName) muted=$_muted');
+  Future<void> playMusic(String fileName, {bool isRetry = false}) async {
+    debugPrint('[MUSIC] playMusic($fileName) muted=$_muted retry=$isRetry');
     if (_muted) return;
     _currentMusicFile = fileName;
     _musicTransitioning = true;
@@ -736,7 +736,9 @@ class AudioService {
       } else {
         unawaited(_musicPlayer.dispose());
       }
-    } on Exception catch (e) {
+    } on Object catch (e) {
+      // on Object (not Exception): audioplayers can throw StateError (an Error,
+      // not an Exception) when stop()/dispose() races a teardown.
       _reportAudioIssue(
         operation: 'music_reset_failed',
         fileName: fileName,
@@ -752,7 +754,11 @@ class AudioService {
       await _musicPlayer.setVolume(_musicTargetVolume);
       await _musicPlayer.resume();
       _musicTransitioning = false;
-    } on Exception catch (e) {
+    } on Object catch (e) {
+      // on Object (not Exception): setSource() -> _completePrepared throws a
+      // StateError ("Bad state: No element") when the player is disposed mid-
+      // prepare. StateError is an Error, not an Exception, so `on Exception`
+      // let it escape to Crashlytics (dominant Android crash through v25).
       _musicTransitioning = false;
       _musicPlaying = false;
       _reportAudioIssue(
@@ -760,6 +766,16 @@ class AudioService {
         fileName: fileName,
         error: e,
       );
+      // One guarded retry: the failed attempt left no playing player, so the
+      // screen would be silent. Retry once with a fresh player, but only if
+      // this same track is still the desired one (a newer playMusic for a
+      // different file must win) and we're not already a retry (no loops).
+      if (!isRetry && !_muted && _currentMusicFile == fileName) {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        if (!_muted && _currentMusicFile == fileName && !_musicTransitioning) {
+          await playMusic(fileName, isRetry: true);
+        }
+      }
     }
   }
 

@@ -164,7 +164,10 @@ void main() {
     // Extract playMusic method body
     final playMusicStart = audioSource.indexOf(RegExp(r'playMusic\('));
     expect(playMusicStart, isNot(-1), reason: 'playMusic method not found.');
-    final methodStart = audioSource.indexOf('{', playMusicStart);
+    // Start at the body brace after `async`, not the `{...}` named-parameter
+    // list in the signature.
+    final asyncIdx = audioSource.indexOf('async', playMusicStart);
+    final methodStart = audioSource.indexOf('{', asyncIdx);
     int braceDepth = 0;
     int methodEnd = methodStart;
     for (int i = methodStart; i < audioSource.length; i++) {
