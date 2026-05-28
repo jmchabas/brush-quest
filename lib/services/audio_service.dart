@@ -576,7 +576,6 @@ class AudioService {
     final request = _QueuedVoiceRequest(fileName);
     _voiceQueue.add(request);
     _updateVoicePipelineState();
-    debugPrint('[AUD] enqueue $fileName interrupt=$interrupt clearQueue=$clearQueue');
 
     if (interrupt) {
       // Genuine external stop of the in-flight voice — signal the pump so it
@@ -621,7 +620,6 @@ class AudioService {
           // automatically. Calling stop() here cuts the previous voice
           // mid-sentence on iOS when the queue advances. PLAN.md 1D-2.
           await _voicePlayer.setVolume(1.0);
-          debugPrint('[AUD] PLAY ${request.fileName} qlen=${_voiceQueue.length}');
           await _voicePlayer.play(
             AssetSource(_voiceAssetPath(request.fileName)),
           );
@@ -673,7 +671,6 @@ class AudioService {
   /// Stop any currently playing voice and clear the voice queue.
   /// Call this before screen transitions to prevent orphaned voice playback.
   Future<void> stopVoice() async {
-    debugPrint('[AUD] stopVoice clearing qlen=${_voiceQueue.length}');
     _clearVoiceQueue();
     _voicePlaying = false;
     _updateVoicePipelineState();
@@ -720,7 +717,6 @@ class AudioService {
   }
 
   Future<void> playMusic(String fileName, {bool isRetry = false}) async {
-    debugPrint('[MUSIC] playMusic($fileName) muted=$_muted retry=$isRetry');
     if (_muted) return;
     _currentMusicFile = fileName;
     _musicTransitioning = true;
@@ -835,7 +831,6 @@ class AudioService {
   }
 
   Future<void> stopMusic() async {
-    debugPrint('[MUSIC] stopMusic transitioning=$_musicTransitioning');
     if (_musicTransitioning) return;
     _musicPlaying = false;
     _currentMusicFile = null;

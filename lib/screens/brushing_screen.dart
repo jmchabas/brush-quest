@@ -1117,6 +1117,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     _damageCleanupTimer?.cancel();
     _starCleanupTimer?.cancel();
     _stopMotionDetection();
+    _cameraService.dispose();
     _attackSequenceController.dispose();
     _phaseTransitionController.dispose();
     _monsterEntranceController.dispose();
