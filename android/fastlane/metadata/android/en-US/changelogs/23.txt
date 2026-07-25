@@ -1,0 +1,1 @@
+Crash fix: catch StateError race in voice playback (Crashlytics issue #1).

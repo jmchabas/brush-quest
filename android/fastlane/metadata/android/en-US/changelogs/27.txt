@@ -1,0 +1,1 @@
+Fix audio crash on screen transitions (music player race). Stability improvements.

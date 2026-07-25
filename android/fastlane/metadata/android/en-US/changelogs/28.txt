@@ -1,0 +1,1 @@
+Audio crash fix on screen transitions + camera resource release (privacy/battery). Stability improvements.

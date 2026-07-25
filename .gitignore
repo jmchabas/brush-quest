@@ -65,3 +65,4 @@ build
 android/key.properties
 .playwright-mcp/
 .superpowers/
+.antigravitycli/
