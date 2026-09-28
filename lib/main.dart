@@ -1,7 +1,9 @@
 // CYCLE-PROTECT: Crashlytics error handlers are gated to Platform.isAndroid
-// because the FirebaseCrashlytics native framework is stripped from the iOS
-// binary for Apple Kids Category compliance. Don't unwrap the gate without
-// verifying the Run Script still strips Crashlytics. See docs/ios-port/PLAN.md.
+// because firebase_crashlytics is NOT linked into the iOS binary at all (Apple
+// Kids Category): it is vendored in packages/firebase_crashlytics with the ios
+// platform removed, so FirebaseCrashlytics.instance calls on iOS would throw
+// MissingPluginException. Don't unwrap the gate. Verify iOS builds with
+// scripts/check_ios_kids_binary.sh. See decision_ios_kids_category.md.
 
 import 'dart:async';
 import 'dart:io' show Platform;
@@ -31,8 +33,8 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    // Crashlytics native framework is stripped from iOS for Apple Kids Category
-    // compliance; calling FirebaseCrashlytics.instance on iOS would throw
+    // Crashlytics has no iOS implementation (not linked, Apple Kids Category);
+    // calling FirebaseCrashlytics.instance on iOS would throw
     // MissingPluginException from the registered error handlers.
     if (Platform.isAndroid) {
       FlutterError.onError =
@@ -43,6 +45,7 @@ void main() async {
       };
     }
     // COPPA-compliant analytics: no ad IDs, no ad personalization.
+    // Android only; a no-op on iOS (plugin not linked, see AnalyticsService).
     await AnalyticsService().init();
   } on Exception catch (_) {
     // Firebase/Crashlytics/Analytics unavailable — app still launches.

@@ -1,33 +1,60 @@
-// CYCLE-PROTECT: This file contains iOS-conditional code (Platform.isAndroid
-// gate for Apple Kids Category compliance). Do not auto-remove "unused"
-// imports, methods, or branches without verifying iOS build + the no-third-
-// party-analytics requirement. See docs/ios-port/PLAN.md and
-// decision_ios_kids_category.md.
+// CYCLE-PROTECT: This file contains iOS-conditional code for Apple Kids
+// Category compliance. firebase_analytics is NOT linked into the iOS binary at
+// all (vendored plugin in packages/firebase_analytics with the ios platform
+// removed), so any FirebaseAnalytics call on iOS would throw
+// MissingPluginException. Every entry point must stay a no-op on iOS. Do not
+// auto-remove "unused" imports, methods, or branches without verifying the iOS
+// build + scripts/check_ios_kids_binary.sh. See decision_ios_kids_category.md.
 
 import 'dart:io';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 class AnalyticsService {
-  static final AnalyticsService _instance = AnalyticsService._();
+  static final AnalyticsService _instance = AnalyticsService._(
+    isAndroid: Platform.isAndroid,
+  );
   factory AnalyticsService() => _instance;
-  AnalyticsService._();
 
-  final _analytics = FirebaseAnalytics.instance;
+  /// Android binds `FirebaseAnalytics.instance` at construction, exactly as
+  /// before. iOS never touches FirebaseAnalytics (the native SDK isn't in the
+  /// binary), so [_analytics] stays null and every method is a no-op.
+  AnalyticsService._({required bool isAndroid, FirebaseAnalytics? analytics})
+    : _analytics = isAndroid ? (analytics ?? FirebaseAnalytics.instance) : null;
+
+  /// Fresh (non-singleton) instance with an explicit platform, for tests.
+  @visibleForTesting
+  factory AnalyticsService.forTesting({
+    required bool isAndroid,
+    FirebaseAnalytics? analytics,
+  }) => AnalyticsService._(isAndroid: isAndroid, analytics: analytics);
+
+  final FirebaseAnalytics? _analytics;
   bool _initialized = false;
   bool _enabled = false;
+
+  /// True once [init] has enabled collection (Android only; always false on iOS).
+  @visibleForTesting
+  bool get isEnabled => _enabled;
+
+  // Only reachable after `if (!_enabled) return;`, and _enabled is only ever
+  // set when _analytics is non-null (Android).
+  FirebaseAnalytics get _fa => _analytics!;
 
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
 
-    // Permanently disabled on iOS — Apple Kids Category prohibits third-party
-    // analytics SDKs. See decision_ios_kids_category.md and docs/ios-port/PLAN.md.
-    _enabled = Platform.isAndroid;
-    await _analytics.setAnalyticsCollectionEnabled(_enabled);
-    if (!_enabled) return;
+    // iOS: permanently off, and the plugin isn't even linked — Apple Kids
+    // Category prohibits third-party analytics SDKs. Don't call anything.
+    final analytics = _analytics;
+    if (analytics == null) return;
 
-    await _analytics.setConsent(
+    _enabled = true;
+    await analytics.setAnalyticsCollectionEnabled(true);
+
+    await analytics.setConsent(
       analyticsStorageConsentGranted: true,
       adStorageConsentGranted: false,
       adUserDataConsentGranted: false,
@@ -43,15 +70,15 @@ class AnalyticsService {
     required int totalStars,
   }) async {
     if (!_enabled) return;
-    await _analytics.setUserProperty(
+    await _fa.setUserProperty(
       name: 'lifetime_brushes',
       value: lifetimeBrushes.toString(),
     );
-    await _analytics.setUserProperty(
+    await _fa.setUserProperty(
       name: 'current_streak',
       value: currentStreak.toString(),
     );
-    await _analytics.setUserProperty(
+    await _fa.setUserProperty(
       name: 'total_stars',
       value: totalStars.toString(),
     );
@@ -59,7 +86,7 @@ class AnalyticsService {
 
   Future<void> logOnboardingComplete() async {
     if (!_enabled) return;
-    await _analytics.logEvent(name: 'onboarding_complete');
+    await _fa.logEvent(name: 'onboarding_complete');
   }
 
   Future<void> logBrushSessionStart({
@@ -68,7 +95,7 @@ class AnalyticsService {
     required String worldId,
   }) async {
     if (!_enabled) return;
-    await _analytics.logEvent(
+    await _fa.logEvent(
       name: 'brush_session_start',
       parameters: {
         'hero_id': heroId,
@@ -86,7 +113,7 @@ class AnalyticsService {
     required int totalStars,
   }) async {
     if (!_enabled) return;
-    await _analytics.logEvent(
+    await _fa.logEvent(
       name: 'brush_session_complete',
       parameters: {
         'total_hits': totalHits,
@@ -104,7 +131,7 @@ class AnalyticsService {
     required int totalHits,
   }) async {
     if (!_enabled) return;
-    await _analytics.logEvent(
+    await _fa.logEvent(
       name: 'brush_session_abandon',
       parameters: {
         'phase': phase,
@@ -116,15 +143,12 @@ class AnalyticsService {
 
   Future<void> logDailyLogin({required int streak}) async {
     if (!_enabled) return;
-    await _analytics.logEvent(
-      name: 'daily_login',
-      parameters: {'streak': streak},
-    );
+    await _fa.logEvent(name: 'daily_login', parameters: {'streak': streak});
   }
 
   Future<void> logShopVisit() async {
     if (!_enabled) return;
-    await _analytics.logEvent(name: 'shop_visit');
+    await _fa.logEvent(name: 'shop_visit');
   }
 
   Future<void> logHeroUnlock({
@@ -132,7 +156,7 @@ class AnalyticsService {
     required int starsAtUnlock,
   }) async {
     if (!_enabled) return;
-    await _analytics.logEvent(
+    await _fa.logEvent(
       name: 'hero_unlock',
       parameters: {'hero_id': heroId, 'stars_at_unlock': starsAtUnlock},
     );
@@ -143,7 +167,7 @@ class AnalyticsService {
     required int starsAtUnlock,
   }) async {
     if (!_enabled) return;
-    await _analytics.logEvent(
+    await _fa.logEvent(
       name: 'weapon_unlock',
       parameters: {'weapon_id': weaponId, 'stars_at_unlock': starsAtUnlock},
     );
@@ -151,6 +175,6 @@ class AnalyticsService {
 
   Future<void> logSignIn() async {
     if (!_enabled) return;
-    await _analytics.logEvent(name: 'sign_in_complete');
+    await _fa.logEvent(name: 'sign_in_complete');
   }
 }

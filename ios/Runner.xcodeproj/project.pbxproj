@@ -208,7 +208,6 @@
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				05D629869067FF4CE1C0C663 /* [CP] Embed Pods Frameworks */,
 				A0D8C83BD887D2814DC60734 /* [CP] Copy Pods Resources */,
-				1BA26D332FA1627E00EA0E8C /* Strip Kids-Category-Forbidden Frameworks */,
 			);
 			buildRules = (
 			);
@@ -298,24 +297,6 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
-		};
-		1BA26D332FA1627E00EA0E8C /* Strip Kids-Category-Forbidden Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Strip Kids-Category-Forbidden Frameworks";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ -d \"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Frameworks/FirebaseCrashlytics.framework\" ]; then\n    echo \"Stripping FirebaseCrashlytics.framework for Kids Category compliance\"\n    rm -rf \"${TARGET_BUILD_DIR}/${PRODUCT_NAME}.app/Frameworks/FirebaseCrashlytics.framework\"\n  fi\n";
 		};
 		3B06AD1E1E4923F5004D2608 /* Thin Binary */ = {
 			isa = PBXShellScriptBuildPhase;

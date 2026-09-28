@@ -348,10 +348,9 @@ packages:
   firebase_analytics:
     dependency: "direct main"
     description:
-      name: firebase_analytics
-      sha256: "07e0a82e9b045dbd14522a0b23764e2dbcc269720e785d63c6a021133ebb766a"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/firebase_analytics"
+      relative: true
+    source: path
     version: "12.1.2"
   firebase_analytics_platform_interface:
     dependency: transitive
@@ -420,10 +419,9 @@ packages:
   firebase_crashlytics:
     dependency: "direct main"
     description:
-      name: firebase_crashlytics
-      sha256: a6e6cb8b2ea1214533a54e4c1b11b19c40f6a29333f3ab0854a479fdc3237c5b
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/firebase_crashlytics"
+      relative: true
+    source: path
     version: "5.0.7"
   firebase_crashlytics_platform_interface:
     dependency: transitive

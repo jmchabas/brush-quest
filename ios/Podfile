@@ -37,18 +37,13 @@ target 'Runner' do
   end
 end
 
-# Apple Kids Category compliance: strip Firebase Analytics + Crashlytics from
-# the iOS binary. We keep the Dart packages in pubspec (Android needs them) and
-# rely on a runtime gate (Platform.isAndroid) in lib/services/analytics_service.dart.
-# This Podfile hook is the build-time belt-and-suspenders: the frameworks are
-# marked SKIP_INSTALL so they're not embedded into the .app bundle.
-# See docs/ios-port/PLAN.md tasks 1A-3 and 1P-1, and memory decision_ios_kids_category.md.
-KIDS_CATEGORY_EXCLUDED_FRAMEWORKS = %w[
-  FirebaseAnalytics
-  GoogleAppMeasurement
-  FirebaseCrashlytics
-  FirebaseCrashlyticsSwift
-].freeze
+# Apple Kids Category: firebase_analytics + firebase_crashlytics are NOT iOS
+# plugins in this app. They are vendored in packages/ with the ios platform
+# removed, so their pods (FirebaseAnalytics, GoogleAppMeasurement,
+# FirebaseCrashlytics, ...) never enter the Podfile.lock or the binary.
+# (The old SKIP_INSTALL + MACH_O_TYPE=staticlib hook here static-linked them
+# INTO Runner instead of removing them.) Verify every iOS build with
+# scripts/check_ios_kids_binary.sh. Memory: decision_ios_kids_category.md.
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
@@ -63,13 +58,6 @@ post_install do |installer|
       next unless Gem::Version.new(current.to_s) < Gem::Version.new(IOS_MIN_DEPLOYMENT_TARGET)
 
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = IOS_MIN_DEPLOYMENT_TARGET
-    end
-
-    next unless KIDS_CATEGORY_EXCLUDED_FRAMEWORKS.include?(target.name)
-
-    target.build_configurations.each do |config|
-      config.build_settings['SKIP_INSTALL'] = 'YES'
-      config.build_settings['MACH_O_TYPE'] = 'staticlib'
     end
   end
 end

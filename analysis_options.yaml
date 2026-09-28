@@ -5,6 +5,9 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     - "lib/firebase_options.dart"
+    # Vendored upstream FlutterFire plugins (iOS platform stripped for the
+    # Apple Kids Category). Upstream code, not ours: keep it byte-identical.
+    - "packages/**"
   errors:
     # Suppress documentation requirements (solo dev, code is the docs)
     public_member_api_docs: ignore
