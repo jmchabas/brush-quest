@@ -1,0 +1,48 @@
+     0ms M0.stop
+     0ms M0.getCurrentPosition
+     0ms M0.stop
+     0ms M1.create
+     0ms M0.getCurrentPosition
+     0ms M1.setSourceUrl battle_music_loop.mp3
+     0ms M0.release
+    20ms M1 <- prepared
+    20ms M1.getCurrentPosition
+    20ms M1.setReleaseMode loop
+    20ms M1.setVolume 0.18
+    20ms M1.resume
+    20ms M1.getCurrentPosition
+   100ms M1.stop
+   100ms M1.stop
+   100ms M1.getCurrentPosition
+   100ms M1.getCurrentPosition
+   100ms M1.stop
+   100ms M2.create
+   100ms M3.create
+   100ms M1.getCurrentPosition
+   100ms M2.stop
+   100ms M2.setSourceUrl battle_music_loop.mp3
+   100ms M3.setSourceUrl battle_music_loop.mp3
+   100ms M1.release
+   100ms M2.getCurrentPosition
+   100ms M2.release
+   100ms print audio issue: op=music_play_failed file=battle_music_loop.mp3 err=Bad state: No element
+   120ms M2 <- prepared
+   120ms M3 <- prepared
+   120ms M3.getCurrentPosition
+   120ms M3.setReleaseMode loop
+   120ms M3.setVolume 0.18
+   120ms M3.resume
+   120ms M3.getCurrentPosition
+   400ms M3.stop
+   400ms M3.getCurrentPosition
+   400ms M3.stop
+   400ms M4.create
+   400ms M3.getCurrentPosition
+   400ms M4.setSourceUrl battle_music_loop.mp3
+   400ms M3.release
+   420ms M4 <- prepared
+   420ms M4.getCurrentPosition
+   420ms M4.setReleaseMode loop
+   420ms M4.setVolume 0.18
+   420ms M4.resume
+   420ms M4.getCurrentPosition

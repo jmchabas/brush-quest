@@ -285,4 +285,32 @@ void main() {
       expectAudioGolden(goldenLines(h), '$dir/pause_background_wake.txt');
     });
   });
+
+  test('overlapping playMusic calls (wake + screen resume)', () {
+    // main.dart resumeAfterWake and a screen's own playMusic can overlap.
+    // Pinned as-is for Android; iOS serializes them.
+    AudioHarness.run((h) {
+      final s = h.service;
+      unawaited(s.playMusic('battle_music_loop.mp3'));
+      h.elapseMs(100);
+      unawaited(s.playMusic('battle_music_loop.mp3'));
+      unawaited(s.playMusic('battle_music_loop.mp3'));
+      h.elapseMs(500);
+      unawaited(s.ensureMusicPlaying());
+      h.elapseMs(500);
+      expectAudioGolden(goldenLines(h), '$dir/overlapping_play_music.txt');
+    });
+  });
+
+  test('stopMusic right after playMusic', () {
+    AudioHarness.run((h) {
+      final s = h.service;
+      unawaited(s.playMusic('battle_music_loop.mp3'));
+      h.elapseMs(100);
+      unawaited(s.playMusic('battle_music_loop.mp3'));
+      unawaited(s.stopMusic());
+      h.elapseMs(500);
+      expectAudioGolden(goldenLines(h), '$dir/stop_after_play_music.txt');
+    });
+  });
 }
