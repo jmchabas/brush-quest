@@ -82,6 +82,12 @@ class AudioService {
   // the queue advances — that false-positive cut every queued voice that
   // followed another (v25 trophy-voice-not-played + voice-cut bugs).
   Completer<void>? _activeVoiceStop;
+  // iOS only: the voice-player stop() issued by the latest stopVoice() /
+  // playVoice(interrupt:), until it completes. The pump awaits it before
+  // deciding whether a pre-play stop() is needed, because AudioPlayer.state
+  // only flips to `stopped` after the native reply (reading it early would
+  // send a second stop right behind the interrupt's).
+  Future<void>? _iosVoiceStopInFlight;
   bool _musicPlaying = false;
   bool _musicTransitioning = false;
   String? _currentMusicFile;
@@ -623,7 +629,7 @@ class AudioService {
       // doesn't wait out the 15s timeout, then stop the player.
       _fireVoiceStop();
       try {
-        await _voicePlayer.stop();
+        await _stopVoicePlayer();
       } on Exception catch (e) {
         _reportAudioIssue(
           operation: 'voice_interrupt_stop_failed',
@@ -658,9 +664,11 @@ class AudioService {
         final stopSignal = Completer<void>();
         _activeVoiceStop = stopSignal;
         try {
-          // Don't stop() before play() — audioplayers replaces the source
-          // automatically. Calling stop() here cuts the previous voice
-          // mid-sentence on iOS when the queue advances. PLAN.md 1D-2.
+          // Android (v28 baseline): no stop() before play(); audioplayers
+          // replaces the source. The pump only advances after the previous
+          // item completed, was stopped externally, or timed out, so nothing
+          // is cut either way.
+          if (isIOS) await _iosResetVoicePlayer();
           await _voicePlayer.setVolume(1.0);
           await _voicePlayer.play(
             AssetSource(_voiceAssetPath(request.fileName)),
@@ -721,11 +729,54 @@ class AudioService {
     // than blocking on the 15s timeout.
     _fireVoiceStop();
     try {
-      await _voicePlayer.stop();
+      await _stopVoicePlayer();
     } on Exception catch (e) {
       _reportAudioIssue(operation: 'stop_voice_failed', error: e);
     }
     _restoreMusicVolume();
+  }
+
+  /// External stop of the voice player (stopVoice / interrupt). Android:
+  /// exactly `_voicePlayer.stop()`. iOS: also remembered in
+  /// [_iosVoiceStopInFlight] until it completes.
+  Future<void> _stopVoicePlayer() {
+    final stop = _voicePlayer.stop();
+    if (isIOS) {
+      _iosVoiceStopInFlight = stop;
+      unawaited(
+        stop.then<void>((_) {}, onError: (Object _) {}).whenComplete(() {
+          if (identical(_iosVoiceStopInFlight, stop)) {
+            _iosVoiceStopInFlight = null;
+          }
+        }),
+      );
+    }
+    return stop;
+  }
+
+  /// iOS only, called by the pump before each play(). audioplayers_darwin
+  /// 6.3.0 answers a natural completion with onComplete AND a deferred
+  /// `seek(0) { release() }` on the same player (WrappedMediaPlayer.swift
+  /// onSoundComplete). If that release lands after the next item is
+  /// installed it pauses/removes it: a silent or cut voice, then a 15-30 s
+  /// pump stall (N1, ios-audio-diagnosis.md). A stop() first cancels the
+  /// pending seek (its handler fires with finished = NO, so no release).
+  /// Skipped when the player is already stopped, e.g. by an interrupt:
+  /// await that in-flight stop rather than trusting `state`, which lags the
+  /// native reply. Never a state listener (feedback_audio_behavior.md).
+  Future<void> _iosResetVoicePlayer() async {
+    try {
+      final inFlight = _iosVoiceStopInFlight;
+      if (inFlight != null) await inFlight;
+    } on Object catch (_) {
+      // The interrupt path already reported its own stop failure.
+    }
+    if (_voicePlayer.state == PlayerState.stopped) return;
+    try {
+      await _voicePlayer.stop();
+    } on Object catch (e) {
+      _reportAudioIssue(operation: 'voice_prestop_failed', error: e);
+    }
   }
 
   /// Complete the active voice-pump external-stop signal, if any. Lets a

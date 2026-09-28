@@ -347,6 +347,50 @@ void main() {
     expect(body.contains('_musicTargetVolume = _musicVolume'), isTrue);
   });
 
+  test('any stop() in the voice pump sits under an isIOS gate', () {
+    // Android's pump has no pre-play stop (v28 baseline; the old
+    // memory note "stop() before play() is necessary on Android" is stale).
+    // The iOS pre-play reset must stay behind isIOS.
+    final code = audioSource.replaceAll(RegExp('//.*'), '');
+    final pump = _methodBody(code, 'Future<void> _pumpVoiceQueue(');
+    final isIOS = RegExp(r'\bisIOS\b');
+    for (final m in RegExp(r'_voicePlayer\.stop\(|\b_ios\w*\(').allMatches(
+      pump,
+    )) {
+      expect(
+        _isGuarded(pump, m.start, isIOS),
+        isTrue,
+        reason: 'pump: `${m.group(0)}` must be inside an isIOS branch',
+      );
+    }
+  });
+
+  test('iOS-only audio state and helpers are only touched under isIOS', () {
+    // Every `_ios*` field/method use in audio_service.dart must be (a) its
+    // declaration, (b) inside an `_ios*` helper, (c) behind an isIOS check,
+    // or (d) inside a trace block. Keeps Android on the v28 code path.
+    final code = audioSource.replaceAll(RegExp('//.*'), '');
+    final isIOS = RegExp(r'\bisIOS\b');
+    final trace = RegExp(r'if \(_trace\)');
+    final iosHelperHeader = RegExp(r'^[\w<>?]+\s+_ios\w*\(');
+    final declaration = RegExp(r'^\s*(bool|String\?|double\?|Future<void>\?)'
+        r'\s+_ios\w*( = .*)?;');
+    final offenders = <String>[];
+    for (final m in RegExp(r'\b_ios\w*').allMatches(code)) {
+      final lineStart = code.lastIndexOf('\n', m.start) + 1;
+      final line = code.substring(lineStart, code.indexOf('\n', m.start));
+      if (declaration.hasMatch(line)) continue;
+      if (iosHelperHeader.hasMatch(line.trim())) continue;
+      final headers = _enclosingHeaders(code, m.start);
+      final ok =
+          _isGuarded(code, m.start, isIOS) ||
+          _isGuarded(code, m.start, trace) ||
+          headers.any(iosHelperHeader.hasMatch);
+      if (!ok) offenders.add(line.trim());
+    }
+    expect(offenders, isEmpty);
+  });
+
   test('audio trace output is compiled out unless AUDIO_TRACE is set', () {
     expect(
       audioSource.contains(

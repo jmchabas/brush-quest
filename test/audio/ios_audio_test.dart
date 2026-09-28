@@ -125,4 +125,106 @@ void main() {
       }, ios: true);
     });
   });
+
+  group('voice pump: iOS pre-play stop (N1)', () {
+    /// Index of the first log line matching [pattern] at or after [from].
+    int indexOf(List<String> log, Pattern pattern, [int from = 0]) {
+      for (var i = from; i < log.length; i++) {
+        if (log[i].contains(pattern)) return i;
+      }
+      return -1;
+    }
+
+    test('iOS: stop() between a natural completion and the next item', () {
+      AudioHarness.run(
+        (h) {
+          unawaited(h.service.playVoice('voice_card_new.mp3'));
+          unawaited(h.service.playVoice('voice_card_cc_01.mp3'));
+          h.elapse(const Duration(seconds: 5));
+          final log = h.log;
+          final complete = indexOf(log, 'V <- complete');
+          final stop = indexOf(log, 'V.stop', complete);
+          final nextSource = indexOf(log, 'voice_card_cc_01.mp3');
+          expect(complete, isNot(-1));
+          expect(stop, greaterThan(complete));
+          expect(nextSource, greaterThan(stop));
+          expect(h.callsOf('stop', label: 'V'), hasLength(1));
+          expect(h.issues, isEmpty);
+        },
+        ios: true,
+        voiceDurations: const {
+          'voice_card_new.mp3': Duration(milliseconds: 1500),
+          'voice_card_cc_01.mp3': Duration(milliseconds: 1200),
+        },
+      );
+    });
+
+    test('iOS: no pre-play stop on a fresh (already stopped) player', () {
+      AudioHarness.run((h) {
+        unawaited(h.service.playVoice('voice_super.mp3'));
+        h.elapse(const Duration(seconds: 2));
+        expect(h.callsOf('stop', label: 'V'), isEmpty);
+      }, ios: true);
+    });
+
+    test('iOS: an interrupt with a slow native stop reply gets exactly one '
+        'stop (the pump awaits it instead of reading the lagging state)', () {
+      AudioHarness.run(
+        (h) {
+          final s = h.service;
+          unawaited(
+            s.playVoice('voice_three.mp3', clearQueue: true, interrupt: true),
+          );
+          h.elapseMs(1000);
+          unawaited(
+            s.playVoice('voice_two.mp3', clearQueue: true, interrupt: true),
+          );
+          h.elapseMs(1000);
+          unawaited(
+            s.playVoice('voice_one.mp3', clearQueue: true, interrupt: true),
+          );
+          h.elapse(const Duration(seconds: 3));
+          final log = h.log;
+          // Between each voice's resume and the next voice's source there is
+          // exactly one stop (the interrupt's).
+          for (final pair in [
+            ['voice_three.mp3', 'voice_two.mp3'],
+            ['voice_two.mp3', 'voice_one.mp3'],
+          ]) {
+            final from = indexOf(log, pair[0]);
+            final to = indexOf(log, pair[1], from);
+            final stops = log
+                .sublist(from, to)
+                .where((l) => l.contains('V.stop'))
+                .length;
+            expect(stops, 1, reason: '${pair[0]} -> ${pair[1]}\n$log');
+          }
+          // The next source is only sent after the stop's (slow) reply.
+          final twoAt = indexOf(log, 'setSourceUrl voice_two.mp3');
+          expect(log[twoAt].trim(), startsWith('1050ms'));
+          expect(
+            h.callsOf('setSourceUrl', label: 'V').last,
+            contains('voice_one.mp3'),
+          );
+        },
+        ios: true,
+        replyDelays: const {'stop': Duration(milliseconds: 50)},
+        voiceDurations: const {
+          'voice_three.mp3': Duration(milliseconds: 1200),
+          'voice_two.mp3': Duration(milliseconds: 1200),
+          'voice_one.mp3': Duration(milliseconds: 800),
+        },
+      );
+    });
+
+    test('Android: still no stop between queued items', () {
+      AudioHarness.run((h) {
+        unawaited(h.service.playVoice('voice_card_new.mp3'));
+        unawaited(h.service.playVoice('voice_card_cc_01.mp3'));
+        h.elapse(const Duration(seconds: 5));
+        expect(h.callsOf('stop', label: 'V'), isEmpty);
+        expect(h.callsOf('setSourceUrl', label: 'V'), hasLength(2));
+      });
+    });
+  });
 }
