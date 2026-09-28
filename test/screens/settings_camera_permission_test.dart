@@ -28,11 +28,13 @@ void main() {
   const cameraPermission = 1; // Permission.camera
   const denied = 0;
   const granted = 1;
+  const restricted = 2;
   const permanentlyDenied = 4;
 
   late FakeAudioService fakeAudio;
   late List<MethodCall> permissionCalls;
   late int requestResult;
+  late int statusResult;
 
   setUpAll(() async {
     setupFirebaseCoreMocks();
@@ -54,6 +56,7 @@ void main() {
     AudioService.testInstance = fakeAudio;
     permissionCalls = <MethodCall>[];
     requestResult = granted;
+    statusResult = denied; // iOS reports "not determined yet" as denied
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(permissionChannel, (call) async {
           permissionCalls.add(call);
@@ -61,7 +64,9 @@ void main() {
             case 'requestPermissions':
               return <int, int>{cameraPermission: requestResult};
             case 'checkPermissionStatus':
-              return denied;
+              return statusResult;
+            case 'openAppSettings':
+              return true;
           }
           return null;
         });
@@ -138,6 +143,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
+  int openAppSettingsCalls() =>
+      permissionCalls.where((c) => c.method == 'openAppSettings').length;
+
+  final blockedDialogTitle = find.text('Camera Is Turned Off');
+
   Future<bool?> storedCameraEnabled() async =>
       (await SharedPreferences.getInstance()).getBool('camera_enabled');
 
@@ -180,6 +190,81 @@ void main() {
       expect(cameraRequests(), hasLength(1));
       expect(await storedCameraEnabled(), isFalse);
       expect(tester.widget<Switch>(cameraSwitch()).value, isFalse);
+      // The parent just tapped "Don't Allow": don't bounce them to Settings.
+      expect(blockedDialogTitle, findsNothing);
+      expect(openAppSettingsCalls(), 0);
+    });
+
+    testWidgets(
+      'already blocked at the OS -> no request, OPEN SETTINGS opens the '
+      "app's system settings",
+      (tester) async {
+        statusResult = permanentlyDenied;
+        await openBrushingDetection(tester);
+
+        await tapSwitchAndAnswerConsent(tester, action: 'ENABLE');
+
+        // The OS would not show its prompt again; don't pretend to ask.
+        expect(cameraRequests(), isEmpty);
+        expect(blockedDialogTitle, findsOneWidget);
+        expect(await storedCameraEnabled(), isFalse);
+        expect(tester.widget<Switch>(cameraSwitch()).value, isFalse);
+
+        await tester.tap(find.text('OPEN SETTINGS'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(openAppSettingsCalls(), 1);
+        expect(blockedDialogTitle, findsNothing);
+        expect(await storedCameraEnabled(), isFalse);
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getBool('camera_mode_configured'), isTrue);
+      },
+    );
+
+    testWidgets('already blocked -> NOT NOW leaves the app, nothing opened', (
+      tester,
+    ) async {
+      statusResult = permanentlyDenied;
+      await openBrushingDetection(tester);
+
+      await tapSwitchAndAnswerConsent(tester, action: 'ENABLE');
+      expect(blockedDialogTitle, findsOneWidget);
+
+      await tester.tap(find.text('NOT NOW'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(openAppSettingsCalls(), 0);
+      expect(blockedDialogTitle, findsNothing);
+      expect(tester.widget<Switch>(cameraSwitch()).value, isFalse);
+    });
+
+    testWidgets('restricted (Screen Time) -> same blocked dialog, no request', (
+      tester,
+    ) async {
+      statusResult = restricted;
+      await openBrushingDetection(tester);
+
+      await tapSwitchAndAnswerConsent(tester, action: 'ENABLE');
+
+      expect(cameraRequests(), isEmpty);
+      expect(blockedDialogTitle, findsOneWidget);
+      expect(await storedCameraEnabled(), isFalse);
+    });
+
+    testWidgets('already granted at the OS -> ON with no blocked dialog', (
+      tester,
+    ) async {
+      statusResult = granted;
+      requestResult = granted;
+      await openBrushingDetection(tester);
+
+      await tapSwitchAndAnswerConsent(tester, action: 'ENABLE');
+
+      expect(blockedDialogTitle, findsNothing);
+      expect(await storedCameraEnabled(), isTrue);
+      expect(tester.widget<Switch>(cameraSwitch()).value, isTrue);
     });
 
     testWidgets('CANCEL on consent -> no OS request, nothing written', (
@@ -230,6 +315,23 @@ void main() {
       expect(cameraRequests(), hasLength(1));
       expect(await storedCameraEnabled(), isFalse);
       expect(tester.widget<Switch>(cameraSwitch()).value, isFalse);
+    });
+
+    testWidgets("\"don't ask again\" -> blocked dialog, OPEN SETTINGS works", (
+      tester,
+    ) async {
+      statusResult = permanentlyDenied;
+      await openBrushingDetection(tester);
+
+      await tapSwitchAndAnswerConsent(tester, action: 'ENABLE');
+
+      expect(cameraRequests(), isEmpty);
+      expect(blockedDialogTitle, findsOneWidget);
+      await tester.tap(find.text('OPEN SETTINGS'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(openAppSettingsCalls(), 1);
+      expect(await storedCameraEnabled(), isFalse);
     });
   });
 }

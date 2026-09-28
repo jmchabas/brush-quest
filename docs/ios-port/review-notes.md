@@ -109,7 +109,10 @@ Thank you for reviewing Brush Quest. A few notes to make the review faster:
    - Settings (Parent Check) → Settings tab → "Brushing detection"
      switch → the same notice → ENABLE.
    The iOS camera permission prompt appears right after ENABLE, while the
-   parent still holds the phone. When the camera is in use, a small
+   parent still holds the phone. If camera access was declined earlier,
+   ENABLE in Settings shows a "Camera Is Turned Off" notice whose OPEN
+   SETTINGS button opens the iOS Settings page for Brush Quest (still
+   behind the Parent Check). When the camera is in use, a small
    camera icon shows in the top bar of the brushing screen. Without the
    camera (declined, or "Maybe later") the game runs on a timer instead.
 

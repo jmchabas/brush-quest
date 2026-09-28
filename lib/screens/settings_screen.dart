@@ -219,15 +219,27 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
 
     var enabled = value;
+    var blockedByOs = false;
     if (value) {
-      // Parent-gate step 3 (memory: decision_camera_parent_gate.md): ask the
-      // OS now, while the parent who just passed the gate + consent holds
-      // the phone. Otherwise the prompt fires later inside the child's
-      // brushing session (on iOS a child's "Don't Allow" is permanent; on
-      // Android a second denial is).
-      final status = await Permission.camera.request();
-      // Step 4: the flag is written only when the OS grants.
-      enabled = status.isGranted;
+      // Camera already refused at the OS level (iOS: any earlier "Don't
+      // Allow"; Screen Time restriction). The OS will not show its prompt
+      // again, so request() would silently return and the switch would just
+      // stay OFF. Checked BEFORE requesting so a parent who taps "Don't
+      // Allow" right now is not immediately sent to the Settings app.
+      final before = await Permission.camera.status;
+      if (before.isPermanentlyDenied || before.isRestricted) {
+        blockedByOs = true;
+        enabled = false;
+      } else {
+        // Parent-gate step 3 (memory: decision_camera_parent_gate.md): ask
+        // the OS now, while the parent who just passed the gate + consent
+        // holds the phone. Otherwise the prompt fires later inside the
+        // child's brushing session (on iOS a child's "Don't Allow" is
+        // permanent; on Android a second denial is).
+        final status = await Permission.camera.request();
+        // Step 4: the flag is written only when the OS grants.
+        enabled = status.isGranted;
+      }
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -237,6 +249,54 @@ class _SettingsScreenState extends State<SettingsScreen>
     await prefs.setBool('camera_mode_configured', true);
     if (!mounted) return;
     setState(() => _cameraEnabled = enabled);
+    if (blockedByOs) await _showCameraBlockedDialog();
+  }
+
+  /// The OS has camera access switched off for Brush Quest, so the only way
+  /// back is the system Settings app. Reached only from the parent-gated
+  /// Settings screen, after the consent dialog.
+  Future<void> _showCameraBlockedDialog() async {
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0A3E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Camera Is Turned Off',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: const Text(
+          'Camera access for Brush Quest is switched off in this device\'s '
+          'settings. To use Brushing Detection, allow Camera for Brush Quest '
+          'there, then come back and turn this on.',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'NOT NOW',
+              style: TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'OPEN SETTINGS',
+              style: TextStyle(
+                color: Color(0xFF00E5FF),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (openSettings ?? false) await openAppSettings();
   }
 
   Future<bool> _showDataConsentDialog() async {
