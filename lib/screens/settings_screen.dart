@@ -219,11 +219,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
 
     var enabled = value;
-    if (value && AudioService.isIOS) {
+    if (value) {
       // Parent-gate step 3 (memory: decision_camera_parent_gate.md): ask the
       // OS now, while the parent who just passed the gate + consent holds
       // the phone. Otherwise the prompt fires later inside the child's
-      // brushing session, and on iOS a child's "Don't Allow" is permanent.
+      // brushing session (on iOS a child's "Don't Allow" is permanent; on
+      // Android a second denial is).
       final status = await Permission.camera.request();
       // Step 4: the flag is written only when the OS grants.
       enabled = status.isGranted;

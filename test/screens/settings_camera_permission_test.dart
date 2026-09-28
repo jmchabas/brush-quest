@@ -207,18 +207,29 @@ void main() {
     });
   });
 
-  group('Android (v28 baseline): unchanged', () {
+  group('Android: same parent-flow OS request as iOS', () {
     setUp(() => AudioService.debugIsIOSOverride = false);
 
-    testWidgets('ENABLE writes camera_enabled without an OS request', (
-      tester,
-    ) async {
+    testWidgets('granted -> camera_enabled=true', (tester) async {
+      requestResult = granted;
       await openBrushingDetection(tester);
 
       await tapSwitchAndAnswerConsent(tester, action: 'ENABLE');
 
-      expect(cameraRequests(), isEmpty);
+      expect(cameraRequests(), hasLength(1));
       expect(await storedCameraEnabled(), isTrue);
+      expect(tester.widget<Switch>(cameraSwitch()).value, isTrue);
+    });
+
+    testWidgets('denied -> flag stays false, switch stays OFF', (tester) async {
+      requestResult = denied;
+      await openBrushingDetection(tester);
+
+      await tapSwitchAndAnswerConsent(tester, action: 'ENABLE');
+
+      expect(cameraRequests(), hasLength(1));
+      expect(await storedCameraEnabled(), isFalse);
+      expect(tester.widget<Switch>(cameraSwitch()).value, isFalse);
     });
   });
 }
