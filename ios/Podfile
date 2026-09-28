@@ -59,5 +59,20 @@ post_install do |installer|
 
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = IOS_MIN_DEPLOYMENT_TARGET
     end
+
+    # permission_handler's iOS side compiles every permission OUT unless its
+    # PERMISSION_* macro is 1 (PermissionHandlerEnums.h defaults them to 0).
+    # Without this, Permission.camera.request() returns permanentlyDenied
+    # with no OS prompt, so onboarding's TURN ON CAMERA and Settings ->
+    # Brushing detection silently never turn the camera on.
+    # Camera ONLY: never add PERMISSION_MICROPHONE -- Info.plist's microphone
+    # purpose string promises the mic is never requested.
+    next unless target.name == 'permission_handler_apple'
+
+    target.build_configurations.each do |config|
+      defs = Array(config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || '$(inherited)')
+      defs << 'PERMISSION_CAMERA=1' unless defs.include?('PERMISSION_CAMERA=1')
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
+    end
   end
 end
