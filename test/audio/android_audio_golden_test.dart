@@ -263,4 +263,26 @@ void main() {
       expectAudioGolden(goldenLines(h), '$dir/android_background_brushing.txt');
     });
   });
+
+  test('paused session -> background -> wake restarts music immediately', () {
+    // Pins that the Android wake path ignores a paused brushing session
+    // (single lifecycle stop, so the snapshot survives): resumeAfterWake
+    // restarts the track straight away. iOS defers it until RESUME.
+    AudioHarness.run((h) {
+      final s = h.service;
+      unawaited(s.playMusic('battle_music_loop.mp3'));
+      h.elapseMs(100);
+      unawaited(s.setMusicVolume(0.1));
+      unawaited(s.pauseMusic());
+      h.elapseMs(300);
+      unawaited(s.stopAllAudioForLifecycle());
+      h.elapseMs(2000);
+      unawaited(s.resumeAfterWake());
+      h.elapseMs(1000);
+      unawaited(s.resumeMusic());
+      h.elapseMs(500);
+      expect(h.callsOf('setSourceUrl', label: 'M2'), hasLength(1));
+      expectAudioGolden(goldenLines(h), '$dir/pause_background_wake.txt');
+    });
+  });
 }
