@@ -296,21 +296,22 @@ void main() {
   // The iOS fixes are gated behind AudioService.isIOS so Android v28 audio
   // stays byte-identical (see test/audio/android_audio_golden_test.dart).
 
-  test('debugIsIOSOverride is never assigned from lib/', () {
-    final assignment = RegExp(r'debugIsIOSOverride\s*=(?!=)');
+  test('debug*Override test hooks are never assigned from lib/', () {
+    // debugIsIOSOverride, debugNowOverride, ...
+    final assignment = RegExp(r'\bdebug\w*Override\s*=(?!=)');
     final offenders = <String>[
       for (final f in Directory('lib').listSync(recursive: true))
         if (f is File && f.path.endsWith('.dart'))
           for (final m in assignment.allMatches(f.readAsStringSync()))
             '${f.path}@${m.start}',
     ];
-    // The declaration `static bool? debugIsIOSOverride;` has no `=`.
+    // Declarations like `static bool? debugIsIOSOverride;` have no `=`.
     expect(
       offenders,
       isEmpty,
       reason:
-          'debugIsIOSOverride is a host-test hook. Assigning it in lib/ would '
-          'force the iOS audio branches on Android (or vice versa).',
+          'debug*Override statics are host-test hooks. Assigning one in lib/ '
+          'would e.g. force the iOS audio branches on Android.',
     );
   });
 
@@ -354,9 +355,9 @@ void main() {
     final code = audioSource.replaceAll(RegExp('//.*'), '');
     final pump = _methodBody(code, 'Future<void> _pumpVoiceQueue(');
     final isIOS = RegExp(r'\bisIOS\b');
-    for (final m in RegExp(r'_voicePlayer\.stop\(|\b_ios\w*\(').allMatches(
-      pump,
-    )) {
+    for (final m in RegExp(
+      r'_voicePlayer\.stop\(|\b_ios\w*\(',
+    ).allMatches(pump)) {
       expect(
         _isGuarded(pump, m.start, isIOS),
         isTrue,
@@ -392,6 +393,25 @@ void main() {
       if (!ok) offenders.add(line.trim());
     }
     expect(offenders, isEmpty);
+  });
+
+  test('getCurrentPosition is only read on iOS or for a trace', () {
+    // Android's health check never reads the position (a platform call
+    // that throws on an errored MediaPlayer and would trigger a spurious
+    // restart). Only the iOS watchdog and trace-only code may call it.
+    final code = audioSource.replaceAll(RegExp('//.*'), '');
+    final isIOS = RegExp(r'\bisIOS\b');
+    final trace = RegExp(r'if \(_trace\)');
+    final iosHelperHeader = RegExp(r'^[\w<>?]+\s+_ios\w*\(');
+    final uses = RegExp(r'getCurrentPosition\(').allMatches(code).toList();
+    expect(uses, isNotEmpty, reason: 'the iOS watchdog reads the position');
+    for (final m in uses) {
+      final ok =
+          _isGuarded(code, m.start, isIOS) ||
+          _isGuarded(code, m.start, trace) ||
+          _enclosingHeaders(code, m.start).any(iosHelperHeader.hasMatch);
+      expect(ok, isTrue, reason: 'unguarded getCurrentPosition() @${m.start}');
+    }
   });
 
   test('audio trace output is compiled out unless AUDIO_TRACE is set', () {

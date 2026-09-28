@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:brush_quest/services/audio_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -425,6 +426,97 @@ void main() {
         ios: true,
         neverPrepare: const {'battle_music_loop.mp3'},
       );
+    });
+  });
+
+  group('music health: iOS position watchdog', () {
+    /// Start battle music on M1 at [volume] like a screen does.
+    void startMusic(AudioHarness h, double volume) {
+      unawaited(h.service.playMusic('battle_music_loop.mp3'));
+      h.elapseMs(100);
+      unawaited(h.service.setMusicVolume(volume));
+      h.elapseMs(100);
+    }
+
+    /// One 5 s health tick (BrushingScreen's Timer.periodic).
+    void tick(AudioHarness h, {int? positionMs, String label = 'M1'}) {
+      if (positionMs != null) h.platform.setPosition(label, positionMs);
+      unawaited(h.service.ensureMusicPlaying());
+      h.elapseMs(5000);
+    }
+
+    test('iOS: a loop wrap (`completed`) with the position moving is '
+        'healthy - no restart, screen volume kept (H3)', () {
+      AudioHarness.run((h) {
+        startMusic(h, 0.06);
+        h.emit('M1', AudioEventType.complete); // native loop wrapped
+        h.elapseMs(100);
+        tick(h, positionMs: 400);
+        tick(h, positionMs: 5400);
+        tick(h, positionMs: 10400);
+        expect(h.callsOf('create', label: 'M2'), isEmpty);
+        expect(h.callsOf('setVolume', label: 'M1').last, endsWith(' 0.06'));
+        expect(h.issues, isEmpty);
+      }, ios: true);
+    });
+
+    test('iOS: position stuck for more than 6 s -> restart at the screen '
+        'target volume', () {
+      AudioHarness.run((h) {
+        startMusic(h, 0.06);
+        tick(h, positionMs: 7000); // baseline
+        expect(h.callsOf('create', label: 'M2'), isEmpty);
+        tick(h, positionMs: 7000); // 5 s: not yet
+        expect(h.callsOf('create', label: 'M2'), isEmpty);
+        tick(h, positionMs: 7000); // 10 s > 6 s: restart
+        expect(h.callsOf('create', label: 'M2'), hasLength(1));
+        expect(h.callsOf('setVolume', label: 'M2').last, endsWith(' 0.06'));
+        expect(h.issues.single, contains('op=music_stall_restart'));
+      }, ios: true);
+    });
+
+    test('iOS: a loop wrap whose seek never resumed (completed, stuck) is '
+        'restarted too', () {
+      AudioHarness.run((h) {
+        startMusic(h, 0.1);
+        h.emit('M1', AudioEventType.complete);
+        h.elapseMs(100);
+        tick(h, positionMs: 120000);
+        tick(h, positionMs: 120000);
+        tick(h, positionMs: 120000);
+        expect(h.callsOf('create', label: 'M2'), hasLength(1));
+        expect(h.callsOf('setVolume', label: 'M2').last, endsWith(' 0.1'));
+      }, ios: true);
+    });
+
+    test('iOS: pause/resume restarts the stall window (no false restart)', () {
+      AudioHarness.run((h) {
+        startMusic(h, 0.18);
+        tick(h, positionMs: 3000);
+        unawaited(h.service.pauseMusic());
+        h.elapse(const Duration(seconds: 60));
+        unawaited(h.service.resumeMusic());
+        h.elapseMs(10);
+        tick(h, positionMs: 3000); // not advanced yet right after resume
+        expect(h.callsOf('create', label: 'M2'), isEmpty);
+      }, ios: true);
+    });
+
+    test('Android: health check never reads the position; completed still '
+        'restarts at 0.18', () {
+      AudioHarness.run((h) {
+        startMusic(h, 0.06);
+        final before = h.log.length;
+        tick(h, positionMs: 7000);
+        tick(h, positionMs: 7000);
+        tick(h, positionMs: 7000);
+        expect(h.log.sublist(before), isEmpty, reason: 'playing -> no-op');
+        h.emit('M1', AudioEventType.complete);
+        h.elapseMs(100);
+        tick(h);
+        expect(h.callsOf('create', label: 'M2'), hasLength(1));
+        expect(h.callsOf('setVolume', label: 'M2').last, endsWith(' 0.18'));
+      });
     });
   });
 }

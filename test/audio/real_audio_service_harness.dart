@@ -89,9 +89,9 @@ class AudioHarness {
     if (platform == null || cache == null) {
       throw StateError('Call AudioHarness.install() in setUpAll first.');
     }
-    SharedPreferences.setMockInitialValues(Map<String, Object>.of(
-      prefs.map((k, v) => MapEntry(k, v!)),
-    ));
+    SharedPreferences.setMockInitialValues(
+      Map<String, Object>.of(prefs.map((k, v) => MapEntry(k, v!))),
+    );
     final originalDebugPrint = debugPrint;
     AudioService.debugIsIOSOverride = ios;
     try {
@@ -116,10 +116,15 @@ class AudioHarness {
         unawaited(AudioPlayer.global.ensureInitialized());
         async.flushMicrotasks();
         final h = AudioHarness._(async, platform, cache);
+        // The iOS music watchdog reads AudioService._now(); follow fake time.
+        final epoch = DateTime(2026, 9, 28);
+        AudioService.debugNowOverride = () => epoch.add(async.elapsed);
         debugPrint = (String? message, {int? wrapWidth}) {
           if (message == null) return;
           h.prints.add(message);
-          platform.note('print $message');
+          // AUDIO_TRACE lines ('[AUD] ...') stay out of the call log so
+          // assertions and goldens read the same with tracing compiled in.
+          if (!message.startsWith('[')) platform.note('print $message');
         };
         AudioService.testInstance = null; // builds a real AudioService
         h.service = AudioService.testInstance;
@@ -136,6 +141,7 @@ class AudioHarness {
     } finally {
       debugPrint = originalDebugPrint;
       AudioService.debugIsIOSOverride = null;
+      AudioService.debugNowOverride = null;
       // Park a player-less fake so later tests never touch real players.
       AudioService.testInstance = FakeAudioService();
     }
@@ -179,6 +185,7 @@ class FakeAudioplayersPlatform extends AudioplayersPlatformInterface {
 
   Duration Function() _clock = () => Duration.zero;
   Map<String, Duration> _voiceDurations = const {};
+
   /// Asset basenames whose `prepared` event never arrives. Mutable so a
   /// test can let a later attempt succeed.
   final Set<String> neverPrepare = {};

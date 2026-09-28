@@ -52,6 +52,13 @@ class AudioService {
   /// pins that.
   static bool get isIOS => debugIsIOSOverride ?? Platform.isIOS;
 
+  /// Host-test override for the clock the iOS music watchdog reads (FakeAsync
+  /// does not fake DateTime.now()). NEVER assign it from lib/.
+  @visibleForTesting
+  static DateTime Function()? debugNowOverride;
+
+  static DateTime _now() => debugNowOverride?.call() ?? DateTime.now();
+
   /// Verbose audio tracing, compiled in only with
   /// `--dart-define=AUDIO_TRACE=true` (device diagnosis builds). It is a
   /// const, so a normal build drops every guarded statement. Rule: every
@@ -114,6 +121,13 @@ class AudioService {
   // request exists (see _iosTakeMusicTurn).
   Future<void>? _iosMusicTurn;
   int _iosMusicGeneration = 0;
+  // iOS only: music position watchdog (see _iosEnsureMusicPlaying). The
+  // last position sampled on _iosWatchPlayer and when it was first seen.
+  AudioPlayer? _iosWatchPlayer;
+  int? _iosWatchPositionMs;
+  DateTime? _iosWatchSince;
+  bool _iosWatchBusy = false;
+  static const _iosMusicStallLimit = Duration(seconds: 6);
   String _voiceStyle = 'buddy';
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
   final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
@@ -978,6 +992,12 @@ class AudioService {
   Future<void> ensureMusicPlaying() async {
     if (_musicTransitioning) return;
     if (_muted || !_musicPlaying || _currentMusicFile == null) return;
+    if (isIOS) {
+      await _iosEnsureMusicPlaying();
+      return;
+    }
+    // Android (v28 baseline): `completed` on a natively looping player means
+    // the MediaPlayer died after an error; restarting is the only recovery.
     try {
       final state = _musicPlayer.state;
       if (_trace) _t('MUSIC health state=$state target=$_musicTargetVolume');
@@ -1010,7 +1030,10 @@ class AudioService {
   /// Pause music playback (keeps player state so it can resume).
   Future<void> pauseMusic() async {
     if (_trace) _t('MUSIC pause playing=$_musicPlaying');
-    if (isIOS) _iosMusicHeld = true;
+    if (isIOS) {
+      _iosMusicHeld = true;
+      _iosWatchPlayer = null; // a paused track legitimately stops moving
+    }
     if (_musicTransitioning || !_musicPlaying) return;
     try {
       await _musicPlayer.pause();
@@ -1026,6 +1049,7 @@ class AudioService {
       final deferredFile = _iosWakeDeferredFile;
       final deferredVolume = _iosWakeDeferredVolume;
       _iosReleaseMusicHold();
+      _iosWatchPlayer = null; // restart the stall window from the resume
       // The app was backgrounded while paused: the lifecycle stop killed
       // the player, so restart the parked track now that the kid resumed.
       if (deferredFile != null && !_musicPlaying && !_muted) {
@@ -1127,6 +1151,85 @@ class AudioService {
     }
     await playMusic(file);
     if (vol != null) await setMusicVolume(vol);
+  }
+
+  /// iOS only: music health check. audioplayers_darwin reports `completed`
+  /// on EVERY loop wrap of the looping music player while the native loop
+  /// keeps playing (WrappedMediaPlayer.onSoundComplete), so Android's
+  /// "completed -> restart at 0.18" caused a restart glitch every ~2 min and
+  /// clobbered the screen's volume (H3). Here playing/completed are judged
+  /// by position instead: if it has not moved for longer than
+  /// [_iosMusicStallLimit] (e.g. the loop's seek was cancelled, or AVPlayer
+  /// was silently paused) the track is restarted at the screen's current
+  /// target volume. Paused -> resume, as on Android. Anything else
+  /// (stopped) -> restart at the current target volume.
+  Future<void> _iosEnsureMusicPlaying() async {
+    if (_iosWatchBusy) return;
+    _iosWatchBusy = true;
+    final player = _musicPlayer;
+    final file = _currentMusicFile!;
+    try {
+      final state = player.state;
+      if (_trace) {
+        _t('MUSIC health(iOS) state=$state target=$_musicTargetVolume');
+      }
+      if (state == PlayerState.paused) {
+        _iosWatchPlayer = null;
+        await player.resume();
+        return;
+      }
+      if (state == PlayerState.playing || state == PlayerState.completed) {
+        final position = (await player.getCurrentPosition())?.inMilliseconds;
+        if (_trace) _t('MUSIC health(iOS) position=$position');
+        if (!_iosMusicStillCurrent(player)) return;
+        if (!_iosMusicStalled(player, position)) return;
+        _reportAudioIssue(operation: 'music_stall_restart', fileName: file);
+      }
+      await _iosRestartMusic(file);
+    } on Object catch (e) {
+      if (!_iosMusicStillCurrent(player)) return;
+      _reportAudioIssue(
+        operation: 'music_health_restart',
+        fileName: file,
+        error: e,
+      );
+      await _iosRestartMusic(file);
+    } finally {
+      _iosWatchBusy = false;
+    }
+  }
+
+  /// iOS: [player] is still the live, wanted music player.
+  bool _iosMusicStillCurrent(AudioPlayer player) =>
+      identical(player, _musicPlayer) &&
+      _musicPlaying &&
+      !_musicTransitioning &&
+      !_muted;
+
+  /// iOS: record [positionMs] for [player]; true once the position has not
+  /// changed for longer than [_iosMusicStallLimit].
+  bool _iosMusicStalled(AudioPlayer player, int? positionMs) {
+    final now = _now();
+    final since = _iosWatchSince;
+    if (!identical(_iosWatchPlayer, player) ||
+        positionMs != _iosWatchPositionMs ||
+        since == null) {
+      _iosWatchPlayer = player;
+      _iosWatchPositionMs = positionMs;
+      _iosWatchSince = now;
+      return false;
+    }
+    return now.difference(since) > _iosMusicStallLimit;
+  }
+
+  /// iOS: restart [file] and keep the screen's current level. playMusic()
+  /// itself resets the target to 0.18 (callers like brushing rely on that),
+  /// so the keep-volume step lives here, not in playMusic.
+  Future<void> _iosRestartMusic(String file) async {
+    final keep = _musicTargetVolume;
+    _iosWatchPlayer = null;
+    await playMusic(file);
+    await setMusicVolume(keep);
   }
 
   /// iOS only: wait until no other playMusic start is in flight, then take
