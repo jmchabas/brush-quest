@@ -1,0 +1,79 @@
+     0ms S0.setVolume 0.7
+     0ms V.stop
+     0ms V.getCurrentPosition
+     0ms S0.setSourceUrl countdown_beep.mp3
+     0ms M0.setVolume 0.08
+     0ms V.setVolume 1.0
+     0ms V.setSourceUrl voice_three.mp3
+    20ms S0 <- prepared
+    20ms S0.getCurrentPosition
+    20ms S0.resume
+    20ms S0.getCurrentPosition
+    20ms V <- prepared
+    20ms V.getCurrentPosition
+    20ms V.resume
+    20ms V.getCurrentPosition
+  1000ms S1.setVolume 0.24
+  1000ms print audio issue: op=voice_timeout file=voice_three.mp3 err=none
+  1000ms V.stop
+  1000ms M0.setVolume 0.08
+  1000ms V.getCurrentPosition
+  1000ms S1.setSourceUrl countdown_beep.mp3
+  1000ms V.setVolume 1.0
+  1000ms V.setSourceUrl voice_two.mp3
+  1020ms S1 <- prepared
+  1020ms S1.getCurrentPosition
+  1020ms S1.resume
+  1020ms S1.getCurrentPosition
+  1020ms V <- prepared
+  1020ms V.getCurrentPosition
+  1020ms V.resume
+  1020ms V.getCurrentPosition
+  2000ms S2.setVolume 0.7
+  2000ms print audio issue: op=voice_timeout file=voice_two.mp3 err=none
+  2000ms V.stop
+  2000ms M0.setVolume 0.08
+  2000ms V.getCurrentPosition
+  2000ms S2.setSourceUrl countdown_beep.mp3
+  2000ms V.setVolume 1.0
+  2000ms V.setSourceUrl voice_one.mp3
+  2020ms S2 <- prepared
+  2020ms S2.getCurrentPosition
+  2020ms S2.resume
+  2020ms S2.getCurrentPosition
+  2020ms V <- prepared
+  2020ms V.getCurrentPosition
+  2020ms V.resume
+  2020ms V.getCurrentPosition
+  3000ms S0.setVolume 0.7
+  3000ms print audio issue: op=voice_timeout file=voice_one.mp3 err=none
+  3000ms V.stop
+  3000ms M0.setVolume 0.08
+  3000ms V.getCurrentPosition
+  3000ms S0.setSourceUrl countdown_beep.mp3
+  3000ms V.setVolume 1.0
+  3000ms V.setSourceUrl voice_go_brushing.mp3
+  3020ms S0 <- prepared
+  3020ms S0.getCurrentPosition
+  3020ms S0.resume
+  3020ms S0.getCurrentPosition
+  3020ms V <- prepared
+  3020ms V.getCurrentPosition
+  3020ms V.resume
+  3020ms V.getCurrentPosition
+  3800ms M0.stop
+  3800ms M0.getCurrentPosition
+  3800ms M0.stop
+  3800ms M1.create
+  3800ms M0.getCurrentPosition
+  3800ms M1.setSourceUrl battle_music_loop.mp3
+  3800ms M0.release
+  3820ms M1 <- prepared
+  3820ms M1.getCurrentPosition
+  3820ms M1.setReleaseMode loop
+  3820ms M1.setVolume 0.18
+  3820ms M1.resume
+  3820ms M1.getCurrentPosition
+  3920ms V <- complete
+  3920ms V.getCurrentPosition
+  3920ms M1.setVolume 0.18

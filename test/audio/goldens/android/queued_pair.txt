@@ -1,0 +1,18 @@
+     0ms M0.setVolume 0.08
+     0ms V.setVolume 1.0
+     0ms V.setSourceUrl voice_greet_streak_high_1.mp3
+    20ms V <- prepared
+    20ms V.getCurrentPosition
+    20ms V.resume
+    20ms V.getCurrentPosition
+  1420ms V <- complete
+  1420ms V.getCurrentPosition
+  1420ms M0.setVolume 0.08
+  1420ms V.setVolume 1.0
+  1420ms V.setSourceUrl voice_streak_teach_high.mp3
+  1440ms V <- prepared
+  1440ms V.getCurrentPosition
+  1440ms V.resume
+  1440ms V.getCurrentPosition
+  3240ms V <- complete
+  3240ms V.getCurrentPosition

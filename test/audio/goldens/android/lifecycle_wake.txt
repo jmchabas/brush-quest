@@ -1,0 +1,38 @@
+     0ms M0.stop
+     0ms M0.getCurrentPosition
+     0ms M0.stop
+     0ms M1.create
+     0ms M0.getCurrentPosition
+     0ms M1.setSourceUrl battle_music_loop.mp3
+     0ms M0.release
+    20ms M1 <- prepared
+    20ms M1.getCurrentPosition
+    20ms M1.setReleaseMode loop
+    20ms M1.setVolume 0.18
+    20ms M1.resume
+    20ms M1.getCurrentPosition
+   100ms M1.setVolume 0.06
+   200ms V.stop
+   200ms V.getCurrentPosition
+   200ms S0.stop
+   200ms S0.getCurrentPosition
+   200ms S1.stop
+   200ms S1.getCurrentPosition
+   200ms S2.stop
+   200ms S2.getCurrentPosition
+   200ms M1.stop
+   200ms M1.getCurrentPosition
+  1200ms M1.stop
+  1200ms M1.getCurrentPosition
+  1200ms M1.stop
+  1200ms M2.create
+  1200ms M1.getCurrentPosition
+  1200ms M2.setSourceUrl battle_music_loop.mp3
+  1200ms M1.release
+  1220ms M2 <- prepared
+  1220ms M2.getCurrentPosition
+  1220ms M2.setReleaseMode loop
+  1220ms M2.setVolume 0.18
+  1220ms M2.resume
+  1220ms M2.getCurrentPosition
+  1220ms M2.setVolume 0.06

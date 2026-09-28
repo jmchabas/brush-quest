@@ -1,0 +1,19 @@
+     0ms M0.setVolume 0.08
+     0ms V.setVolume 1.0
+     0ms V.setSourceUrl voice_world_candy_crater.mp3
+    20ms V <- prepared
+    20ms V.getCurrentPosition
+    20ms V.resume
+    20ms V.getCurrentPosition
+  1000ms print audio issue: op=voice_timeout file=voice_world_candy_crater.mp3 err=none
+  1000ms V.stop
+  1000ms V.getCurrentPosition
+  2000ms M0.setVolume 0.08
+  2000ms V.setVolume 1.0
+  2000ms V.setSourceUrl voice_lets_fight.mp3
+  2020ms V <- prepared
+  2020ms V.getCurrentPosition
+  2020ms V.resume
+  2020ms V.getCurrentPosition
+  2520ms V <- complete
+  2520ms V.getCurrentPosition

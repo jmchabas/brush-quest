@@ -1,0 +1,13 @@
+     0ms M0.setVolume 0.08
+     0ms V.setVolume 1.0
+     0ms V.setSourceUrl voice_arc2_beat1.mp3
+ 30000ms print audio issue: op=voice_play_failed file=voice_arc2_beat1.mp3 err=TimeoutException after 0:00:30.000000: Future not completed
+ 30000ms M0.setVolume 0.08
+ 30000ms V.setVolume 1.0
+ 30000ms V.setSourceUrl voice_arc2_beat2.mp3
+ 30020ms V <- prepared
+ 30020ms V.getCurrentPosition
+ 30020ms V.resume
+ 30020ms V.getCurrentPosition
+ 31020ms V <- complete
+ 31020ms V.getCurrentPosition

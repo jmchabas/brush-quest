@@ -1,0 +1,9 @@
+     0ms M0.setVolume 0.08
+     0ms V.setVolume 1.0
+     0ms V.setSourceUrl voice_super.mp3
+    20ms V <- prepared
+    20ms V.getCurrentPosition
+    20ms V.resume
+    20ms V.getCurrentPosition
+  1020ms V <- complete
+  1020ms V.getCurrentPosition

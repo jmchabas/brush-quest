@@ -1,0 +1,36 @@
+     0ms M0.stop
+     0ms M0.getCurrentPosition
+     0ms M0.stop
+     0ms M1.create
+     0ms M0.getCurrentPosition
+     0ms M1.setSourceUrl battle_music_loop.mp3
+     0ms M0.release
+    20ms M1 <- prepared
+    20ms M1.getCurrentPosition
+    20ms M1.setReleaseMode loop
+    20ms M1.setVolume 0.18
+    20ms M1.resume
+    20ms M1.getCurrentPosition
+   100ms S0.setVolume 0.7
+   100ms M1.pause
+   100ms M1.getCurrentPosition
+   100ms S0.setSourceUrl whoosh.mp3
+   120ms S0 <- prepared
+   120ms S0.getCurrentPosition
+   120ms S0.resume
+   120ms S0.getCurrentPosition
+  2100ms M1.setVolume 0.18
+  2100ms V.stop
+  2100ms M1.resume
+  2100ms V.getCurrentPosition
+  2100ms M1.getCurrentPosition
+  2100ms M1.setVolume 0.08
+  2100ms V.setVolume 1.0
+  2100ms V.setSourceUrl voice_keep_going.mp3
+  2120ms V <- prepared
+  2120ms V.getCurrentPosition
+  2120ms V.resume
+  2120ms V.getCurrentPosition
+  3120ms V <- complete
+  3120ms V.getCurrentPosition
+  3120ms M1.setVolume 0.18
