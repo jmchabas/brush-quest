@@ -42,6 +42,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Stability (v29): render with Skia/OpenGL ES instead of Impeller/Vulkan.
+             v28 Play vitals: the top native crash clusters are a Qualcomm Adreno
+             Vulkan driver null-deref (vulkan.adreno.so, entered via vkBeginCommandBuffer /
+             vkCmdBeginRenderPass from impeller::GaussianBlurFilterContents) on Galaxy
+             S24/S23 + OnePlus 9, Android 16. Upstream: flutter/flutter#192002 (open, no fix).
+             ImpellerBackend=opengles is ignored in release builds (flutter/flutter#192467,
+             "working as intended"), so EnableImpeller=false is the only release switch.
+             Must stay inside <application>. Deprecated upstream: re-verify on every Flutter
+             upgrade (logcat must NOT print "Using the Impeller rendering backend"). -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
