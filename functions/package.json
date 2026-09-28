@@ -3,7 +3,7 @@
   "description": "Firebase Cloud Functions for Brush Quest — Apple SIWA token revocation per Apple Guideline 5.1.1(v).",
   "main": "src/index.js",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "scripts": {
     "lint": "eslint --ext .js src/",
