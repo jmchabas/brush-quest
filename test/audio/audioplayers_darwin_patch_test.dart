@@ -12,9 +12,11 @@ void main() {
       'packages/audioplayers_darwin/darwin/audioplayers_darwin/Sources/'
       'audioplayers_darwin';
   late String player;
+  late String plugin;
 
   setUpAll(() {
     player = File('$src/WrappedMediaPlayer.swift').readAsStringSync();
+    plugin = File('$src/AudioplayersDarwinPlugin.swift').readAsStringSync();
   });
 
   test('N1: natural-completion rewind is bound to the item that finished', () {
@@ -72,6 +74,58 @@ void main() {
     expect(loopBranch, isNot(contains('onComplete')));
     // Non-loop modes still report the natural end to Dart.
     expect(body.indexOf('eventHandler.onComplete()'), greaterThan(loop));
+  });
+
+  test('H6: a seek on a not-ready item is parked until .readyToPlay', () {
+    final seek = _swiftFunc(player, 'private func seekThen(');
+    final readyCheck = seek.indexOf('if currentItem.status != .readyToPlay {');
+    final park = seek.indexOf('pendingSeek = (item: currentItem');
+    final realSeek = seek.indexOf('currentItem.seek(to: time)');
+    expect(readyCheck, isNot(-1));
+    expect(park, greaterThan(readyCheck));
+    expect(realSeek, greaterThan(park));
+    final observer = _swiftFunc(
+      player,
+      'private func setUpPlayerItemStatusObservation(',
+    );
+    expect(observer, contains('self.runPendingSeek(for: playerItem)'));
+    expect(
+      _swiftFunc(player, 'private func reset()'),
+      contains('cancelPendingSeek()'),
+    );
+  });
+
+  test('C5: AVFoundation callbacks and event sinks run on the main thread', () {
+    // Every FlutterEventSink call sits inside runOnMainThread { ... }.
+    final sinks = RegExp(r'eventSink\(').allMatches(plugin).toList();
+    expect(sinks, hasLength(8));
+    for (final m in sinks) {
+      final before = plugin.substring(0, m.start);
+      final wrap = before.lastIndexOf('runOnMainThread {');
+      final func = before.lastIndexOf('  func ');
+      expect(
+        wrap,
+        greaterThan(func),
+        reason: 'eventSink @${m.start} must be inside runOnMainThread',
+      );
+    }
+    expect(
+      _swiftFunc(player, 'private func setUpPlayerItemStatusObservation('),
+      contains('self.onMainThread(for: playerItem) {'),
+    );
+    expect(
+      _swiftFunc(player, 'private func setUpSoundCompletedObserver('),
+      contains('self.onMainThread(for: playerItem) {'),
+    );
+    final seek = _swiftFunc(player, 'private func seekThen(');
+    expect(
+      'runOnMainThread { handler(finished) }'.allMatches(seek),
+      hasLength(1),
+    );
+    expect(
+      _swiftFunc(player, 'private func runPendingSeek('),
+      contains('runOnMainThread { pending.handler(finished) }'),
+    );
   });
 }
 

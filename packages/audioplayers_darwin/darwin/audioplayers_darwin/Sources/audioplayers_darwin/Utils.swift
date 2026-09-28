@@ -9,6 +9,18 @@ extension String {
   }
 }
 
+// BRUSH QUEST PATCH (C5): AVFoundation callbacks (KVO, notifications, seek
+// completion handlers) are not guaranteed to arrive on the main thread, but
+// player state and FlutterEventSink must only be touched there. Runs inline
+// when already on main, so main-thread callers keep upstream ordering.
+func runOnMainThread(_ block: @escaping () -> Void) {
+  if Thread.isMainThread {
+    block()
+  } else {
+    DispatchQueue.main.async(execute: block)
+  }
+}
+
 func toCMTime(millis: Int) -> CMTime {
   return toCMTime(millis: Float(millis))
 }

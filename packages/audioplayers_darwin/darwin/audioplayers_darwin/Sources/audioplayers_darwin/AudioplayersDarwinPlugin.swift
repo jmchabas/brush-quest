@@ -407,38 +407,56 @@ class AudioPlayersStreamHandler: NSObject, FlutterStreamHandler {
   }
 
   func onSeekComplete() {
-    if let eventSink = self.sink {
-      eventSink(["event": "audio.onSeekComplete"])
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(["event": "audio.onSeekComplete"])
+      }
     }
   }
 
   func onComplete() {
-    if let eventSink = self.sink {
-      eventSink(["event": "audio.onComplete"])
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(["event": "audio.onComplete"])
+      }
     }
   }
 
   func onDuration(millis: Int) {
-    if let eventSink = self.sink {
-      eventSink(["event": "audio.onDuration", "value": millis] as [String: Any])
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(["event": "audio.onDuration", "value": millis] as [String: Any])
+      }
     }
   }
 
   func onPrepared(isPrepared: Bool) {
-    if let eventSink = self.sink {
-      eventSink(["event": "audio.onPrepared", "value": isPrepared] as [String: Any])
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(["event": "audio.onPrepared", "value": isPrepared] as [String: Any])
+      }
     }
   }
 
   func onLog(message: String) {
-    if let eventSink = self.sink {
-      eventSink(["event": "audio.onLog", "value": message])
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(["event": "audio.onLog", "value": message])
+      }
     }
   }
 
   func onError(code: String, message: String, details: Any?) {
-    if let eventSink = self.sink {
-      eventSink(FlutterError(code: code, message: message, details: details))
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(FlutterError(code: code, message: message, details: details))
+      }
     }
   }
 }
@@ -458,14 +476,20 @@ class GlobalAudioPlayersStreamHandler: NSObject, FlutterStreamHandler {
   }
 
   func onLog(message: String) {
-    if let eventSink = self.sink {
-      eventSink(["event": "audio.onLog", "value": message])
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(["event": "audio.onLog", "value": message])
+      }
     }
   }
 
   func onError(code: String, message: String, details: Any?) {
-    if let eventSink = self.sink {
-      eventSink(FlutterError(code: code, message: message, details: details))
+    // BRUSH QUEST PATCH (C5): FlutterEventSink is main-thread only.
+    runOnMainThread {
+      if let eventSink = self.sink {
+        eventSink(FlutterError(code: code, message: message, details: details))
+      }
     }
   }
 }

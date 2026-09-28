@@ -30,6 +30,10 @@ class WrappedMediaPlayer {
   private var completionObserver: TimeObserver?
   private var playerItemStatusObservation: NSKeyValueObservation?
 
+  // BRUSH QUEST PATCH (H6): a seek requested before the current item was
+  // .readyToPlay, run by the status observer once it is (see seekThen).
+  private var pendingSeek: (item: AVPlayerItem, time: CMTime, handler: (Bool) -> Void)?
+
   init(
     reference: AudioplayersDarwinPlugin,
     eventHandler: AudioPlayersStreamHandler,
@@ -144,7 +148,7 @@ class WrappedMediaPlayer {
       onDone(true)
       return
     }
-    currentItem.seek(to: time) {
+    let handler: (Bool) -> Void = {
       finished in
       // BRUSH QUEST PATCH (N1): this handler can run after the player moved
       // on to another item (a queued voice installed right behind a natural
@@ -160,6 +164,42 @@ class WrappedMediaPlayer {
       self.eventHandler.onSeekComplete()
       onDone(finished)
     }
+    // BRUSH QUEST PATCH (H6): AVPlayerItem.seek(to:completionHandler:) raises
+    // NSInternalInconsistencyException on an item that is not .readyToPlay
+    // yet on some iOS versions (e.g. a stop/interrupt tapped while a voice is
+    // still loading). Park the seek and let the status observer run it once
+    // the item is ready. A newer seek, or reset() replacing the item,
+    // supersedes it with finished = false, as AVFoundation does for an
+    // in-flight seek.
+    cancelPendingSeek()
+    if currentItem.status != .readyToPlay {
+      NSLog("[audioplayers_darwin][BQ] H6 guard: seek deferred until the item is ready")
+      pendingSeek = (item: currentItem, time: time, handler: handler)
+      return
+    }
+    currentItem.seek(to: time) { finished in
+      runOnMainThread { handler(finished) }
+    }
+  }
+
+  // BRUSH QUEST PATCH (H6): run the parked seek for [item] now it is ready.
+  private func runPendingSeek(for item: AVPlayerItem) {
+    guard let pending = pendingSeek, pending.item === item else {
+      return
+    }
+    pendingSeek = nil
+    item.seek(to: pending.time) { finished in
+      runOnMainThread { pending.handler(finished) }
+    }
+  }
+
+  // BRUSH QUEST PATCH (H6): resolve a parked seek as not finished.
+  private func cancelPendingSeek() {
+    guard let pending = pendingSeek else {
+      return
+    }
+    pendingSeek = nil
+    pending.handler(false)
   }
 
   func stop(completer: Completer? = nil) {
@@ -246,19 +286,24 @@ class WrappedMediaPlayer {
     completerError: CompleterError? = nil
   ) {
     playerItemStatusObservation = playerItem.observe(\AVPlayerItem.status) { (playerItem, change) in
-      let status = playerItem.status
-      self.eventHandler.onLog(message: "player status: \(status), change: \(change)")
+      // BRUSH QUEST PATCH (C5): KVO may fire off the main thread; all player
+      // state and the Flutter event sink are main-thread only.
+      self.onMainThread(for: playerItem) {
+        let status = playerItem.status
+        self.eventHandler.onLog(message: "player status: \(status), change: \(change)")
 
-      switch playerItem.status {
-      case .readyToPlay:
-        completer?()
-        // Needs to be called after preparation callback.
-        self.updateDuration()
-      case .failed:
-        self.reset()
-        completerError?(nil)
-      default:
-        break
+        switch playerItem.status {
+        case .readyToPlay:
+          completer?()
+          // Needs to be called after preparation callback.
+          self.updateDuration()
+          self.runPendingSeek(for: playerItem)
+        case .failed:
+          self.reset()
+          completerError?(nil)
+        default:
+          break
+        }
       }
     }
   }
@@ -270,7 +315,14 @@ class WrappedMediaPlayer {
       queue: nil
     ) {
       [weak self] (notification) in
-      self?.onSoundComplete()
+      // BRUSH QUEST PATCH (C5): this notification may be posted on a
+      // background thread; handle it on main, for this item only.
+      guard let self = self else {
+        return
+      }
+      self.onMainThread(for: playerItem) {
+        self.onSoundComplete()
+      }
     }
     self.completionObserver = TimeObserver(player: player, observer: observer)
   }
@@ -291,6 +343,25 @@ class WrappedMediaPlayer {
     }
     player.replaceCurrentItem(with: nil)
     self.url = nil
+    // BRUSH QUEST PATCH (H6): a seek parked for the removed item never runs.
+    cancelPendingSeek()
+  }
+
+  // BRUSH QUEST PATCH (C5): run [block] now when already on the main thread
+  // (upstream timing), else hop to main and drop it if [item] is no longer
+  // the current item by then (a late callback must not touch a newer item).
+  private func onMainThread(for item: AVPlayerItem, _ block: @escaping () -> Void) {
+    if Thread.isMainThread {
+      block()
+      return
+    }
+    DispatchQueue.main.async {
+      guard self.player.currentItem === item else {
+        NSLog("[audioplayers_darwin][BQ] dropped a late off-main callback for a replaced item")
+        return
+      }
+      block()
+    }
   }
 
   private func updateDuration() {
