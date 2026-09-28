@@ -297,9 +297,10 @@ void main() {
     // from MediaPlayer.setSubtitleAnchor. Every *fresh* android MediaPlayer
     // starts a SetSubtitleAnchorThread on its first MEDIA_PREPARED, and the
     // default ReleaseMode.release throws the MediaPlayer away after every
-    // sound, so each SFX started a new thread. The long-lived pool players
-    // must use ReleaseMode.stop on Android so their MediaPlayers are reset()
-    // and reused. iOS keeps the default (different native semantics).
+    // sound, so each SFX/voice line started a new thread. The long-lived
+    // voice + SFX players must use ReleaseMode.stop on Android so their
+    // MediaPlayers are reset() and reused. iOS keeps the default (different
+    // native semantics).
     final ctor = _methodBody(audioSource, 'AudioService._internal() {');
     expect(
       ctor.contains('if (!isIOS)') &&
@@ -310,9 +311,9 @@ void main() {
           'MediaPlayers are reused instead of re-created per sound.',
     );
     expect(
-      ctor.contains('in _sfxPool'),
+      ctor.contains('in [_voicePlayer, ..._sfxPool]'),
       isTrue,
-      reason: 'Every SFX pool player needs ReleaseMode.stop on Android.',
+      reason: 'The voice player and every SFX pool player need it.',
     );
     // Music must keep looping; never move it to stop/release mode.
     expect(

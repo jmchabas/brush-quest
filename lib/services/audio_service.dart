@@ -42,12 +42,13 @@ class AudioService {
       // that player builds a brand-new android.media.MediaPlayer, and every
       // new MediaPlayer starts (and joins, on the main thread) a
       // "SetSubtitleAnchorThread" on its first MEDIA_PREPARED. That is one
-      // thread start per SFX, several per second while brushing.
-      // ReleaseMode.stop keeps each pool player's MediaPlayer (paused at 0)
-      // and reuses it via reset(), which keeps its SubtitleController, so no
-      // new thread is started. Music keeps its own ReleaseMode.loop (see
+      // thread start per SFX/voice line, several per second while brushing.
+      // ReleaseMode.stop keeps each long-lived player's MediaPlayer (paused
+      // at 0) and reuses it via reset(), which keeps its SubtitleController,
+      // so no new thread is started. onPlayerComplete still fires, so the
+      // voice pump is unaffected. Music keeps its own ReleaseMode.loop (see
       // playMusic). iOS is deliberately untouched.
-      for (final player in _sfxPool) {
+      for (final player in [_voicePlayer, ..._sfxPool]) {
         unawaited(
           player.setReleaseMode(ReleaseMode.stop).catchError((Object _) {}),
         );
