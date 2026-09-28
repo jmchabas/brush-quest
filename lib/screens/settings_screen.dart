@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/audio_service.dart';
@@ -217,10 +218,24 @@ class _SettingsScreenState extends State<SettingsScreen>
       if (confirmed != true) return;
     }
 
+    var enabled = value;
+    if (value && AudioService.isIOS) {
+      // Parent-gate step 3 (memory: decision_camera_parent_gate.md): ask the
+      // OS now, while the parent who just passed the gate + consent holds
+      // the phone. Otherwise the prompt fires later inside the child's
+      // brushing session, and on iOS a child's "Don't Allow" is permanent.
+      final status = await Permission.camera.request();
+      // Step 4: the flag is written only when the OS grants.
+      enabled = status.isGranted;
+    }
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('camera_enabled', value);
+    await prefs.setBool('camera_enabled', enabled);
+    // Informed parent choice: suppress the first-brush / Home camera nudges
+    // regardless of the OS outcome.
     await prefs.setBool('camera_mode_configured', true);
-    setState(() => _cameraEnabled = value);
+    if (!mounted) return;
+    setState(() => _cameraEnabled = enabled);
   }
 
   Future<bool> _showDataConsentDialog() async {

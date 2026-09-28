@@ -61,10 +61,33 @@ void main() {
   test('settings toggling camera marks setup as configured', () {
     final source = File('lib/screens/settings_screen.dart').readAsStringSync();
 
-    expect(source.contains("prefs.setBool('camera_enabled', value)"), isTrue);
+    expect(source.contains("prefs.setBool('camera_enabled', enabled)"), isTrue);
     expect(
       source.contains("prefs.setBool('camera_mode_configured', true)"),
       isTrue,
+    );
+  });
+
+  test('settings camera enable asks the OS inside the parent flow (COPPA)', () {
+    final source = File('lib/screens/settings_screen.dart').readAsStringSync();
+    final start = source.indexOf('Future<void> _toggleCamera(');
+    expect(start, isNonNegative);
+    final end = source.indexOf('Future<bool> _showDataConsentDialog', start);
+    final toggle = source.substring(start, end);
+
+    // Same 4 steps as onboarding: the Settings entry gate is step 1, then
+    // the Brushing Detection consent, then the OS prompt, then the flag only
+    // on grant. Behaviour is pinned by settings_camera_permission_test.dart.
+    expect(toggle.contains('Brushing Detection'), isTrue);
+    expect(
+      toggle.contains('Permission.camera.request()'),
+      isTrue,
+      reason: 'Settings must trigger the OS prompt, not defer it to brushing',
+    );
+    expect(
+      toggle.contains('status.isGranted'),
+      isTrue,
+      reason: 'camera_enabled must follow the OS grant',
     );
   });
 }
