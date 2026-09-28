@@ -159,9 +159,11 @@ class _HomeScreenState extends State<HomeScreen>
     // (no restart glitch). If it was stopped — e.g. returning from Settings,
     // a deliberately silent route — do a full restart.
     final audio = AudioService();
-    debugPrint(
-      '[MUSIC] Home.didPopNext isMusicPlaying=${audio.isMusicPlaying}',
-    );
+    if (AudioService.traceEnabled) {
+      AudioService.trace(
+        '[MUSIC] Home.didPopNext isMusicPlaying=${audio.isMusicPlaying}',
+      );
+    }
     if (audio.isMusicPlaying) {
       unawaited(audio.setMusicVolume(0.06));
       unawaited(audio.ensureMusicPlaying());

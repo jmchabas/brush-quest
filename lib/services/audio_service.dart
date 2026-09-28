@@ -36,6 +36,34 @@ class AudioService {
   @visibleForTesting
   AudioService.forTesting();
 
+  /// Host-test override for [isIOS]. Tests set it to exercise the iOS
+  /// branches on macOS (where Platform.isIOS is false) and reset it to null
+  /// in tearDown. NEVER assign it from lib/ (audio_regression_test guards).
+  @visibleForTesting
+  static bool? debugIsIOSOverride;
+
+  /// Gate for every iOS-only audio behaviour. Production reads
+  /// [Platform.isIOS], the same as main.dart's lifecycle check. Android
+  /// (the shipped v28 baseline) must never enter an `isIOS` branch; the
+  /// Android call-sequence golden (test/audio/android_audio_golden_test.dart)
+  /// pins that.
+  static bool get isIOS => debugIsIOSOverride ?? Platform.isIOS;
+
+  /// Verbose audio tracing, compiled in only with
+  /// `--dart-define=AUDIO_TRACE=true` (device diagnosis builds). It is a
+  /// const, so a normal build drops every guarded statement. Rule: every
+  /// trace statement sits inside an `if (traceEnabled)` / `if (_trace)`
+  /// block, including any work done only for the trace (e.g. an awaited
+  /// getCurrentPosition) - never build trace arguments outside the guard.
+  static const bool traceEnabled = bool.fromEnvironment('AUDIO_TRACE');
+  static const bool _trace = traceEnabled;
+
+  /// Print one trace line. Call only under `if (AudioService.traceEnabled)`.
+  static void trace(String message) =>
+      debugPrint('$message @${DateTime.now().toIso8601String()}');
+
+  static void _t(String message) => trace('[AUD] $message');
+
   static const _sfxPoolSize = 3;
   final List<AudioPlayer> _sfxPool = [];
   int _sfxIndex = 0;
@@ -566,6 +594,10 @@ class AudioService {
     bool clearQueue = false,
     bool interrupt = false,
   }) async {
+    if (_trace) {
+      _t('VOICE request $fileName clear=$clearQueue interrupt=$interrupt '
+          'muted=$_muted');
+    }
     if (_muted) return;
     if (clearQueue) {
       _clearVoiceQueue();
@@ -603,6 +635,7 @@ class AudioService {
     try {
       while (!_muted && _voiceQueue.isNotEmpty) {
         final request = _voiceQueue.removeFirst();
+        if (_trace) _t('VOICE play ${request.fileName}');
         _voicePlaying = true;
         _updateVoicePipelineState();
         if (!_musicTransitioning) {
@@ -633,9 +666,9 @@ class AudioService {
             stopSignal.future.then((_) => false),
             Future.delayed(const Duration(seconds: 15), () => false),
           ]);
-          debugPrint(
-            '[AUD] DONE ${request.fileName} completedNormally=$completed',
-          );
+          if (_trace) {
+            _t('VOICE done ${request.fileName} completedNormally=$completed');
+          }
           if (!completed) {
             _reportAudioIssue(
               operation: 'voice_timeout',
@@ -671,6 +704,7 @@ class AudioService {
   /// Stop any currently playing voice and clear the voice queue.
   /// Call this before screen transitions to prevent orphaned voice playback.
   Future<void> stopVoice() async {
+    if (_trace) _t('VOICE stop');
     _clearVoiceQueue();
     _voicePlaying = false;
     _updateVoicePipelineState();
@@ -717,6 +751,7 @@ class AudioService {
   }
 
   Future<void> playMusic(String fileName, {bool isRetry = false}) async {
+    if (_trace) _t('MUSIC play $fileName retry=$isRetry muted=$_muted');
     if (_muted) return;
     _currentMusicFile = fileName;
     _musicTransitioning = true;
@@ -782,6 +817,7 @@ class AudioService {
     if (_muted || !_musicPlaying || _currentMusicFile == null) return;
     try {
       final state = _musicPlayer.state;
+      if (_trace) _t('MUSIC health state=$state target=$_musicTargetVolume');
       if (state == PlayerState.paused) {
         await _musicPlayer.resume();
         return;
@@ -810,6 +846,7 @@ class AudioService {
 
   /// Pause music playback (keeps player state so it can resume).
   Future<void> pauseMusic() async {
+    if (_trace) _t('MUSIC pause playing=$_musicPlaying');
     if (_musicTransitioning || !_musicPlaying) return;
     try {
       await _musicPlayer.pause();
@@ -820,6 +857,7 @@ class AudioService {
 
   /// Resume music after a pause. Does nothing if music was not playing.
   Future<void> resumeMusic() async {
+    if (_trace) _t('MUSIC resume playing=$_musicPlaying');
     if (_musicTransitioning || !_musicPlaying || _muted) return;
     try {
       final vol = _voicePlaying ? _musicDuckedVolume : _musicVolume;
@@ -831,6 +869,7 @@ class AudioService {
   }
 
   Future<void> stopMusic() async {
+    if (_trace) _t('MUSIC stop transitioning=$_musicTransitioning');
     if (_musicTransitioning) return;
     _musicPlaying = false;
     _currentMusicFile = null;
@@ -843,6 +882,7 @@ class AudioService {
 
   /// Stop ALL audio: music, voice, and SFX. Used for app lifecycle events.
   Future<void> stopAllAudio() async {
+    if (_trace) _t('ALL stop musicPlaying=$_musicPlaying');
     _clearVoiceQueue();
     _voicePlaying = false;
     _updateVoicePipelineState();
@@ -869,6 +909,10 @@ class AudioService {
   /// snapshotting the current music file + volume so [resumeAfterWake] can
   /// restore them. Use this instead of [stopAllAudio] on lifecycle events.
   Future<void> stopAllAudioForLifecycle() async {
+    if (_trace) {
+      _t('ALL lifecycle-stop musicPlaying=$_musicPlaying '
+          'file=$_currentMusicFile');
+    }
     if (_musicPlaying && _currentMusicFile != null) {
       _musicFileBeforePause = _currentMusicFile;
       _musicVolumeBeforePause = _musicTargetVolume;
@@ -888,6 +932,7 @@ class AudioService {
     final vol = _musicVolumeBeforePause;
     _musicFileBeforePause = null;
     _musicVolumeBeforePause = null;
+    if (_trace) _t('ALL wake file=$file vol=$vol muted=$_muted');
     if (_muted || file == null) return;
     await playMusic(file);
     if (vol != null) await setMusicVolume(vol);

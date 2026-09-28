@@ -1081,6 +1081,11 @@ class _BrushingScreenState extends State<BrushingScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (AudioService.traceEnabled) {
+      AudioService.trace(
+        '[AUD] brushing $state paused=$_isPaused stage=$_sessionStage',
+      );
+    }
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       // App backgrounded — stop all audio

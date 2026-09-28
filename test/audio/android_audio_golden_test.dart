@@ -22,6 +22,8 @@ void main() {
   setUpAll(AudioHarness.install);
 
   const dir = 'test/audio/goldens/android';
+  // Every scenario runs with AudioService.debugIsIOSOverride = false
+  // (AudioHarness.run's default), i.e. the Android branch of every gate.
   List<String> goldenLines(AudioHarness h) =>
       h.log.where((l) => !l.contains('print [')).toList();
 

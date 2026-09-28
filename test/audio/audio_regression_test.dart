@@ -161,8 +161,11 @@ void main() {
     // A fresh AudioPlayer must be created for each music session to avoid
     // stuck player state on Android. The old player must be disposed first.
 
-    // Extract playMusic method body
-    final playMusicStart = audioSource.indexOf(RegExp(r'playMusic\('));
+    // Extract playMusic method body (anchored on the declaration, so a new
+    // helper that calls playMusic( above it can't hijack the extraction).
+    final playMusicStart = audioSource.indexOf(
+      RegExp(r'Future<void> playMusic\('),
+    );
     expect(playMusicStart, isNot(-1), reason: 'playMusic method not found.');
     // Start at the body brace after `async`, not the `{...}` named-parameter
     // list in the signature.
@@ -288,4 +291,160 @@ void main() {
       reason: '_clearVoiceQueue must drain the queue by removing all entries.',
     );
   });
+
+  // ── iOS audio work guards (release/v29) ───────────────────────────────
+  // The iOS fixes are gated behind AudioService.isIOS so Android v28 audio
+  // stays byte-identical (see test/audio/android_audio_golden_test.dart).
+
+  test('debugIsIOSOverride is never assigned from lib/', () {
+    final assignment = RegExp(r'debugIsIOSOverride\s*=(?!=)');
+    final offenders = <String>[
+      for (final f in Directory('lib').listSync(recursive: true))
+        if (f is File && f.path.endsWith('.dart'))
+          for (final m in assignment.allMatches(f.readAsStringSync()))
+            '${f.path}@${m.start}',
+    ];
+    // The declaration `static bool? debugIsIOSOverride;` has no `=`.
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          'debugIsIOSOverride is a host-test hook. Assigning it in lib/ would '
+          'force the iOS audio branches on Android (or vice versa).',
+    );
+  });
+
+  test('iOS gates go through AudioService.isIOS, not new Platform checks', () {
+    // Exactly two Platform.isIOS reads in audio_service.dart: the isIOS
+    // getter itself and the pre-existing awaited-dispose gate in playMusic.
+    final audioCode = audioSource.replaceAll(RegExp('//.*'), '');
+    expect(
+      'Platform.isIOS'.allMatches(audioCode).length,
+      2,
+      reason:
+          'New iOS-only audio behaviour must use AudioService.isIOS so host '
+          'tests can exercise both branches.',
+    );
+    final brushingCode = brushingSource.replaceAll(RegExp('//.*'), '');
+    expect(brushingCode.contains('Platform.is'), isFalse);
+    expect(audioCode.contains('!Platform.isAndroid'), isFalse);
+  });
+
+  test('voice pump never listens to onPlayerStateChanged', () {
+    // Hard rule (feedback_audio_behavior.md): no PlayerState.completed or
+    // PlayerState.stopped listener in the pump; both false-fire.
+    final pump = _methodBody(audioSource, 'Future<void> _pumpVoiceQueue(');
+    expect(pump.contains('onPlayerStateChanged'), isFalse);
+    expect(pump.contains('PlayerState.completed'), isFalse);
+  });
+
+  test('playMusic still resets the target volume to the 0.18 default', () {
+    // Screens (e.g. brushing) call playMusic() with no setMusicVolume after
+    // it. Keeping the previous screen's level inside playMusic would start
+    // battle music at Home's 0.06. Keep-volume logic belongs to the callers
+    // that need it (e.g. the iOS health-check restart), never to playMusic.
+    final body = _methodBody(audioSource, 'Future<void> playMusic(');
+    expect(body.contains('_musicTargetVolume = _musicVolume'), isTrue);
+  });
+
+  test('audio trace output is compiled out unless AUDIO_TRACE is set', () {
+    expect(
+      audioSource.contains(
+        "static const bool traceEnabled = bool.fromEnvironment('AUDIO_TRACE')",
+      ),
+      isTrue,
+    );
+    final traceCall = RegExp(r'(?<![\w.])(_t|AudioService\.trace)\(');
+    final guard = RegExp(r'if \((_trace|AudioService\.traceEnabled)\)');
+    final unguarded = <String>[];
+    for (final f in Directory('lib').listSync(recursive: true)) {
+      if (f is! File || !f.path.endsWith('.dart')) continue;
+      final src = f.readAsStringSync();
+      for (final m in traceCall.allMatches(src)) {
+        // Skip the definitions themselves.
+        final lineStart = src.lastIndexOf('\n', m.start) + 1;
+        final line = src.substring(lineStart, src.indexOf('\n', m.start));
+        if (line.contains('static void')) continue;
+        if (!_isGuarded(src, m.start, guard)) {
+          unguarded.add('${f.path}: ${line.trim()}');
+        }
+      }
+      // The v26 breadcrumbs must not print in production builds.
+      expect(
+        RegExp(r"debugPrint\(\s*'\[(AUD|MUSIC|VIC)\]").hasMatch(src),
+        isFalse,
+        reason: '${f.path} prints an audio breadcrumb outside the trace gate',
+      );
+    }
+    expect(
+      unguarded,
+      isEmpty,
+      reason:
+          'Every trace call (and any work done only for it, e.g. an awaited '
+          'getCurrentPosition) must sit inside `if (_trace)` / '
+          '`if (AudioService.traceEnabled)`.',
+    );
+  });
+}
+
+/// Body (including braces) of the method whose declaration starts with
+/// [signature]. Skips a `{...}` named-parameter list in the signature.
+String _methodBody(String source, String signature) {
+  final start = source.indexOf(signature);
+  expect(start, isNot(-1), reason: '$signature not found');
+  // First `{` after the parameter list's closing `)`.
+  var depth = 0;
+  var i = source.indexOf('(', start);
+  for (; i < source.length; i++) {
+    if (source[i] == '(') depth++;
+    if (source[i] == ')') {
+      depth--;
+      if (depth == 0) break;
+    }
+  }
+  final open = source.indexOf('{', i);
+  depth = 0;
+  for (var j = open; j < source.length; j++) {
+    if (source[j] == '{') depth++;
+    if (source[j] == '}') {
+      depth--;
+      if (depth == 0) return source.substring(open, j + 1);
+    }
+  }
+  fail('unbalanced braces in $signature');
+}
+
+/// Headers (text between the previous `;`/`{`/`}` and the `{`) of every
+/// block enclosing [index], innermost first.
+List<String> _enclosingHeaders(String src, int index) {
+  final headers = <String>[];
+  var depth = 0;
+  for (var i = index - 1; i >= 0; i--) {
+    final c = src[i];
+    if (c == '}') {
+      depth++;
+    } else if (c == '{') {
+      if (depth > 0) {
+        depth--;
+        continue;
+      }
+      var j = i - 1;
+      while (j >= 0 && !';{}'.contains(src[j])) {
+        j--;
+      }
+      headers.add(src.substring(j + 1, i).trim());
+    }
+  }
+  return headers;
+}
+
+/// True when the statement at [index] is `guard stmt;` or sits in a block
+/// whose header matches [guard].
+bool _isGuarded(String src, int index, RegExp guard) {
+  var j = index - 1;
+  while (j >= 0 && !';{}'.contains(src[j])) {
+    j--;
+  }
+  if (guard.hasMatch(src.substring(j + 1, index))) return true;
+  return _enclosingHeaders(src, index).any(guard.hasMatch);
 }

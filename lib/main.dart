@@ -84,6 +84,7 @@ class _BrushQuestAppState extends State<BrushQuestApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (AudioService.traceEnabled) AudioService.trace('[AUD] app $state');
     if (state == AppLifecycleState.paused) {
       // Backgrounded on both platforms — kill all audio, snapshotting the
       // current track so resume can restore it.

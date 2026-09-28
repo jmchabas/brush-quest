@@ -64,8 +64,14 @@ class AudioHarness {
   /// player "plays" it before emitting `complete` (release-mode players
   /// only; looping music never completes on its own, matching Android's
   /// native `isLooping`). Unlisted voice files default to 1 s.
+  ///
+  /// [ios] drives `AudioService.debugIsIOSOverride` (reset to null after).
+  /// Note an `ios: true` run is a HYBRID: code that still reads
+  /// `Platform.isIOS` directly (playMusic's awaited dispose, main.dart) keeps
+  /// taking the host/Android branch.
   static void run(
     void Function(AudioHarness h) body, {
+    bool ios = false,
     Map<String, Duration> voiceDurations = const {},
     Set<String> neverPrepare = const {},
     Map<String, Duration> loadDelays = const {},
@@ -81,6 +87,7 @@ class AudioHarness {
       prefs.map((k, v) => MapEntry(k, v!)),
     ));
     final originalDebugPrint = debugPrint;
+    AudioService.debugIsIOSOverride = ios;
     try {
       fakeAsync((async) {
         platform.reset(
@@ -122,6 +129,7 @@ class AudioHarness {
       });
     } finally {
       debugPrint = originalDebugPrint;
+      AudioService.debugIsIOSOverride = null;
       // Park a player-less fake so later tests never touch real players.
       AudioService.testInstance = FakeAudioService();
     }
