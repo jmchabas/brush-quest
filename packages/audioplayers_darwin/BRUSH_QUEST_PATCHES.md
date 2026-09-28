@@ -22,6 +22,7 @@
 | id | File | What |
 |----|------|------|
 | N1 | `WrappedMediaPlayer.swift` | `onSoundComplete` remembers the finished `AVPlayerItem`; its deferred rewind closure skips `release()`/loop `resume()` if the player's current item is no longer that item. The generic `seek` handler only pauses when the seeked item is still current. Fixes the delayed release that paused/removed the next queued voice. |
+| H5 | `WrappedMediaPlayer.swift` | `stop` answers Dart exactly once right after `pause()` instead of when its rewind seek reports `finished`. A cancelled rewind no longer loses the reply (`await stop()` hung in loop mode), release mode no longer replies twice, and `release()`'s `stop { reset() }` can no longer reset a newer item late. The rewind itself still runs. |
 
 ## Upgrading
 

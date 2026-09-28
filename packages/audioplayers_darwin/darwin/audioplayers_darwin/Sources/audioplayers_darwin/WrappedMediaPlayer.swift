@@ -154,9 +154,20 @@ class WrappedMediaPlayer {
 
   func stop(completer: Completer? = nil) {
     pause()
-    seek(time: toCMTime(millis: 0), completer: completer)
+    // BRUSH QUEST PATCH (H5): answer Dart's stop exactly once, right after
+    // pause(), never gated on the rewind. Upstream replied only when this
+    // seek reported finished, so in loop/stop mode a cancelled rewind (a
+    // newer seek/stop, or the item being replaced) lost the reply and
+    // `await player.stop()` hung forever (AudioService.playMusic keeps
+    // _musicTransitioning set, so all music APIs no-op afterwards). In
+    // release mode upstream also called the completer twice (release() and
+    // the finished seek), and release()'s stop{ reset() } could reset a
+    // NEWER item when the rewind landed late. The rewind still runs.
+    seek(time: toCMTime(millis: 0))
     if releaseMode == ReleaseMode.release {
       release(completer: completer)
+    } else {
+      completer?()
     }
   }
 

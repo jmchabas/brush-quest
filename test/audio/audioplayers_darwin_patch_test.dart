@@ -41,6 +41,18 @@ void main() {
     expect(identity, isNot(-1));
     expect(pause, greaterThan(identity));
   });
+
+  test('H5: stop answers Dart without waiting on its rewind seek', () {
+    final body = _swiftFunc(player, 'func stop(');
+    // The rewind carries no completer, so a cancelled seek can't lose the
+    // reply, and release mode can't reply twice.
+    expect(body, contains('seek(time: toCMTime(millis: 0))\n'));
+    expect(body, isNot(contains('seek(time: toCMTime(millis: 0), completer')));
+    expect(body, contains('release(completer: completer)'));
+    final elseBranch = body.indexOf('} else {');
+    expect(elseBranch, isNot(-1));
+    expect(body.indexOf('completer?()', elseBranch), greaterThan(elseBranch));
+  });
 }
 
 /// Text of the Swift function starting at [signature], braces included.
