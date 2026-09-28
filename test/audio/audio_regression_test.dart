@@ -452,6 +452,22 @@ void main() {
           '`if (AudioService.traceEnabled)`.',
     );
   });
+
+  test('iOS Info.plist: no background audio; microphone string is honest', () {
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    // The app stops all audio when backgrounded (main.dart), so declaring
+    // the `audio` background mode only invites an App Review 2.5.4 reject.
+    expect(plist.contains('UIBackgroundModes'), isFalse);
+    // The key must stay (camera_avfoundation links audio-capture APIs, and
+    // the upload scan rejects a binary without it: ITMS-90683), but the app
+    // never uses the microphone, so the text must not claim a feature.
+    expect(plist.contains('<key>NSMicrophoneUsageDescription</key>'), isTrue);
+    expect(plist.contains('sound detection'), isFalse);
+    expect(plist.contains('does not use the microphone'), isTrue);
+    final camera = File('lib/services/camera_service.dart').readAsStringSync();
+    expect(camera.contains('enableAudio: false'), isTrue);
+    expect(camera.contains('enableAudio: true'), isFalse);
+  });
 }
 
 /// Body (including braces) of the method whose declaration starts with

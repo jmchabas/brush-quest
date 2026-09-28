@@ -65,6 +65,8 @@ class CameraService {
       _controller = CameraController(
         frontCamera,
         ResolutionPreset.low, // Low res is enough — we downsample to 32x32
+        // Must stay false: ios/Runner/Info.plist's NSMicrophoneUsageDescription
+        // promises the microphone is never used or requested.
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.yuv420,
       );

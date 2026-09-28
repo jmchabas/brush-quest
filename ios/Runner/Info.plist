@@ -51,10 +51,6 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -71,7 +67,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Brush Quest uses the front camera to detect brushing motion. Video is processed on-device only and never recorded or sent anywhere.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Brush Quest may use the microphone for brushing sound detection.</string>
+	<string>Brush Quest does not use the microphone and never records sound. The camera's brushing-motion feature runs with audio turned off, so this permission is never requested.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
