@@ -292,6 +292,36 @@ void main() {
     );
   });
 
+  test('Android reuses long-lived MediaPlayers (ReleaseMode.stop)', () {
+    // Crashlytics v28 #1: OutOfMemoryError "pthread_create failed" thrown
+    // from MediaPlayer.setSubtitleAnchor. Every *fresh* android MediaPlayer
+    // starts a SetSubtitleAnchorThread on its first MEDIA_PREPARED, and the
+    // default ReleaseMode.release throws the MediaPlayer away after every
+    // sound, so each SFX started a new thread. The long-lived pool players
+    // must use ReleaseMode.stop on Android so their MediaPlayers are reset()
+    // and reused. iOS keeps the default (different native semantics).
+    final ctor = _methodBody(audioSource, 'AudioService._internal() {');
+    expect(
+      ctor.contains('if (!isIOS)') &&
+          ctor.contains('setReleaseMode(ReleaseMode.stop)'),
+      isTrue,
+      reason:
+          'AudioService._internal must set ReleaseMode.stop on Android so '
+          'MediaPlayers are reused instead of re-created per sound.',
+    );
+    expect(
+      ctor.contains('in _sfxPool'),
+      isTrue,
+      reason: 'Every SFX pool player needs ReleaseMode.stop on Android.',
+    );
+    // Music must keep looping; never move it to stop/release mode.
+    expect(
+      audioSource.contains('_musicPlayer.setReleaseMode(ReleaseMode.loop)'),
+      isTrue,
+      reason: 'The music player must stay on ReleaseMode.loop.',
+    );
+  });
+
   // ── iOS audio work guards (release/v29) ───────────────────────────────
   // The iOS fixes are gated behind AudioService.isIOS so Android v28 audio
   // stays byte-identical (see test/audio/android_audio_golden_test.dart).

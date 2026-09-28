@@ -34,6 +34,25 @@ class AudioService {
     for (int i = 0; i < _sfxPoolSize; i++) {
       _sfxPool.add(AudioPlayer());
     }
+    if (!isIOS) {
+      // Android crash fix — Crashlytics v28 #1: OutOfMemoryError
+      // "pthread_create failed" thrown from MediaPlayer.setSubtitleAnchor.
+      // With the default ReleaseMode.release, audioplayers_android releases
+      // the native MediaPlayer when a sound completes, so the NEXT play() on
+      // that player builds a brand-new android.media.MediaPlayer, and every
+      // new MediaPlayer starts (and joins, on the main thread) a
+      // "SetSubtitleAnchorThread" on its first MEDIA_PREPARED. That is one
+      // thread start per SFX, several per second while brushing.
+      // ReleaseMode.stop keeps each pool player's MediaPlayer (paused at 0)
+      // and reuses it via reset(), which keeps its SubtitleController, so no
+      // new thread is started. Music keeps its own ReleaseMode.loop (see
+      // playMusic). iOS is deliberately untouched.
+      for (final player in _sfxPool) {
+        unawaited(
+          player.setReleaseMode(ReleaseMode.stop).catchError((Object _) {}),
+        );
+      }
+    }
   }
 
   /// Protected constructor for subclasses (e.g. FakeAudioService in tests).
