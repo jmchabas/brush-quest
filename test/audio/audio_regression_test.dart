@@ -374,8 +374,9 @@ void main() {
     final trace = RegExp(r'if \(_trace\)');
     final iosHelperHeader = RegExp(r'^[\w<>?]+\s+_ios\w*\(');
     final declaration = RegExp(
-      r'^\s*(static\s+|const\s+|final\s+|bool\s+|String\?\s+|double\?\s+|'
-      r'Future<void>\?\s+)+_ios\w*( = .*)?;',
+      r'^\s*(static\s+|const\s+|final\s+|late\s+|'
+      '(bool|int|double|String|DateTime|Duration|AudioPlayer|Future<void>|'
+      r'Completer<void>)\??\s+)+_ios\w*( = .*)?;',
     );
     final offenders = <String>[];
     for (final m in RegExp(r'\b_ios\w*').allMatches(code)) {

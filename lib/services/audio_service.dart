@@ -108,6 +108,12 @@ class AudioService {
   bool _iosMusicHeld = false;
   String? _iosWakeDeferredFile;
   double? _iosWakeDeferredVolume;
+  // iOS only: playMusic starts run one at a time. _iosMusicTurn is the tail
+  // of that chain; _iosMusicGeneration is bumped by every playMusic and
+  // stopMusic so a start still waiting its turn is dropped once a newer
+  // request exists (see _iosTakeMusicTurn).
+  Future<void>? _iosMusicTurn;
+  int _iosMusicGeneration = 0;
   String _voiceStyle = 'buddy';
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
   final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
@@ -613,8 +619,10 @@ class AudioService {
     bool interrupt = false,
   }) async {
     if (_trace) {
-      _t('VOICE request $fileName clear=$clearQueue interrupt=$interrupt '
-          'muted=$_muted');
+      _t(
+        'VOICE request $fileName clear=$clearQueue interrupt=$interrupt '
+        'muted=$_muted',
+      );
     }
     if (_muted) return;
     if (clearQueue) {
@@ -887,60 +895,81 @@ class AudioService {
     if (_trace) _t('MUSIC play $fileName retry=$isRetry muted=$_muted');
     if (isIOS) _iosReleaseMusicHold();
     if (_muted) return;
-    _currentMusicFile = fileName;
-    _musicTransitioning = true;
-    try {
-      await _musicPlayer.stop();
-      if (Platform.isIOS) {
-        // iOS: await dispose so AVPlayer KVO teardown completes before we
-        // assign a new player + setSource. Fire-and-forget dispose lets the
-        // new player attach to a half-torn-down session, causing silent or
-        // stuck music on iOS. Android v22 baseline is fire-and-forget and
-        // works — keep that path unchanged.
-        await _musicPlayer.dispose();
-      } else {
-        unawaited(_musicPlayer.dispose());
+    // iOS: serialize starts. Overlapping calls (main.dart resumeAfterWake vs
+    // a screen's own playMusic vs a health-check restart) each stop and
+    // dispose the same _musicPlayer and create their own, disposing one
+    // mid-prepare or orphaning one. The guarded retry at the bottom runs
+    // inside the current turn (isRetry), so it never waits on itself.
+    // Android: iosTurn stays null; the body below is unchanged.
+    Completer<void>? iosTurn;
+    if (isIOS && !isRetry) {
+      iosTurn = await _iosTakeMusicTurn();
+      if (iosTurn == null) return; // superseded while waiting its turn
+      if (_muted) {
+        iosTurn.complete();
+        return;
       }
-    } on Object catch (e) {
-      // on Object (not Exception): audioplayers can throw StateError (an Error,
-      // not an Exception) when stop()/dispose() races a teardown.
-      _reportAudioIssue(
-        operation: 'music_reset_failed',
-        fileName: fileName,
-        error: e,
-      );
     }
     try {
-      _musicPlayer = AudioPlayer();
-      _musicPlaying = true;
-      _musicTargetVolume = _musicVolume;
-      await _musicPlayer.setSource(AssetSource('audio/$fileName'));
-      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-      await _musicPlayer.setVolume(_musicTargetVolume);
-      await _musicPlayer.resume();
-      _musicTransitioning = false;
-    } on Object catch (e) {
-      // on Object (not Exception): setSource() -> _completePrepared throws a
-      // StateError ("Bad state: No element") when the player is disposed mid-
-      // prepare. StateError is an Error, not an Exception, so `on Exception`
-      // let it escape to Crashlytics (dominant Android crash through v25).
-      _musicTransitioning = false;
-      _musicPlaying = false;
-      _reportAudioIssue(
-        operation: 'music_play_failed',
-        fileName: fileName,
-        error: e,
-      );
-      // One guarded retry: the failed attempt left no playing player, so the
-      // screen would be silent. Retry once with a fresh player, but only if
-      // this same track is still the desired one (a newer playMusic for a
-      // different file must win) and we're not already a retry (no loops).
-      if (!isRetry && !_muted && _currentMusicFile == fileName) {
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        if (!_muted && _currentMusicFile == fileName && !_musicTransitioning) {
-          await playMusic(fileName, isRetry: true);
+      _currentMusicFile = fileName;
+      _musicTransitioning = true;
+      try {
+        await _musicPlayer.stop();
+        if (Platform.isIOS) {
+          // iOS: await dispose so AVPlayer KVO teardown completes before we
+          // assign a new player + setSource. Fire-and-forget dispose lets the
+          // new player attach to a half-torn-down session, causing silent or
+          // stuck music on iOS. Android v22 baseline is fire-and-forget and
+          // works — keep that path unchanged.
+          await _musicPlayer.dispose();
+        } else {
+          unawaited(_musicPlayer.dispose());
+        }
+      } on Object catch (e) {
+        // on Object (not Exception): audioplayers can throw StateError (an Error,
+        // not an Exception) when stop()/dispose() races a teardown.
+        _reportAudioIssue(
+          operation: 'music_reset_failed',
+          fileName: fileName,
+          error: e,
+        );
+      }
+      try {
+        _musicPlayer = AudioPlayer();
+        _musicPlaying = true;
+        _musicTargetVolume = _musicVolume;
+        await _musicPlayer.setSource(AssetSource('audio/$fileName'));
+        await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+        await _musicPlayer.setVolume(_musicTargetVolume);
+        await _musicPlayer.resume();
+        _musicTransitioning = false;
+      } on Object catch (e) {
+        // on Object (not Exception): setSource() -> _completePrepared throws a
+        // StateError ("Bad state: No element") when the player is disposed mid-
+        // prepare. StateError is an Error, not an Exception, so `on Exception`
+        // let it escape to Crashlytics (dominant Android crash through v25).
+        _musicTransitioning = false;
+        _musicPlaying = false;
+        _reportAudioIssue(
+          operation: 'music_play_failed',
+          fileName: fileName,
+          error: e,
+        );
+        // One guarded retry: the failed attempt left no playing player, so the
+        // screen would be silent. Retry once with a fresh player, but only if
+        // this same track is still the desired one (a newer playMusic for a
+        // different file must win) and we're not already a retry (no loops).
+        if (!isRetry && !_muted && _currentMusicFile == fileName) {
+          await Future<void>.delayed(const Duration(milliseconds: 300));
+          if (!_muted &&
+              _currentMusicFile == fileName &&
+              !_musicTransitioning) {
+            await playMusic(fileName, isRetry: true);
+          }
         }
       }
+    } finally {
+      iosTurn?.complete();
     }
   }
 
@@ -1017,7 +1046,10 @@ class AudioService {
 
   Future<void> stopMusic() async {
     if (_trace) _t('MUSIC stop transitioning=$_musicTransitioning');
-    if (isIOS) _iosReleaseMusicHold();
+    if (isIOS) {
+      _iosReleaseMusicHold();
+      _iosMusicGeneration++; // drop any start still waiting its turn
+    }
     if (_musicTransitioning) return;
     _musicPlaying = false;
     _currentMusicFile = null;
@@ -1058,8 +1090,10 @@ class AudioService {
   /// restore them. Use this instead of [stopAllAudio] on lifecycle events.
   Future<void> stopAllAudioForLifecycle() async {
     if (_trace) {
-      _t('ALL lifecycle-stop musicPlaying=$_musicPlaying '
-          'file=$_currentMusicFile');
+      _t(
+        'ALL lifecycle-stop musicPlaying=$_musicPlaying '
+        'file=$_currentMusicFile',
+      );
     }
     if (_musicPlaying && _currentMusicFile != null) {
       _musicFileBeforePause = _currentMusicFile;
@@ -1093,6 +1127,24 @@ class AudioService {
     }
     await playMusic(file);
     if (vol != null) await setMusicVolume(vol);
+  }
+
+  /// iOS only: wait until no other playMusic start is in flight, then take
+  /// the turn. Returns the completer the caller completes when its start is
+  /// done, or null if a newer playMusic/stopMusic arrived while waiting (the
+  /// caller must drop its start; the turn is already passed on).
+  Future<Completer<void>?> _iosTakeMusicTurn() async {
+    final generation = ++_iosMusicGeneration;
+    final previous = _iosMusicTurn;
+    final mine = Completer<void>();
+    _iosMusicTurn = mine.future;
+    if (previous != null) await previous;
+    if (generation != _iosMusicGeneration) {
+      mine.complete();
+      if (_trace) _t('MUSIC start dropped (superseded)');
+      return null;
+    }
+    return mine;
   }
 
   /// iOS: drop the music hold and any wake restart parked behind it.

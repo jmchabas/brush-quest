@@ -31,6 +31,12 @@ import 'fake_audio_service.dart';
 ///   outside `preloadAll`, which the harness never calls).
 ///
 /// Everything runs inside [FakeAsync]; use plain `test()`, not `testWidgets`.
+///
+/// Known gap: `AudioPlayer.dispose()` never reaches the platform inside
+/// FakeAsync (its `Future.wait` includes subscription-cancel futures that
+/// complete on the root zone), so `dispose` calls are not recorded and
+/// anything that awaits a player's dispose() would hang here. Today only
+/// playMusic's `Platform.isIOS` branch awaits it, which host runs never take.
 class AudioHarness {
   AudioHarness._(this.async, this.platform, this.cache);
 
@@ -173,7 +179,9 @@ class FakeAudioplayersPlatform extends AudioplayersPlatformInterface {
 
   Duration Function() _clock = () => Duration.zero;
   Map<String, Duration> _voiceDurations = const {};
-  Set<String> _neverPrepare = const {};
+  /// Asset basenames whose `prepared` event never arrives. Mutable so a
+  /// test can let a later attempt succeed.
+  final Set<String> neverPrepare = {};
   Map<String, Duration> _replyDelays = const {};
 
   int createdCount = 0;
@@ -198,7 +206,9 @@ class FakeAudioplayersPlatform extends AudioplayersPlatformInterface {
     log.clear();
     _clock = clock;
     _voiceDurations = voiceDurations;
-    _neverPrepare = neverPrepare;
+    this.neverPrepare
+      ..clear()
+      ..addAll(neverPrepare);
     _replyDelays = replyDelays;
   }
 
@@ -276,7 +286,7 @@ class FakeAudioplayersPlatform extends AudioplayersPlatformInterface {
     _currentFile[playerId] = file;
     _positions[playerId] = 0;
     await _call(playerId, 'setSourceUrl', file);
-    if (_neverPrepare.contains(file)) return;
+    if (neverPrepare.contains(file)) return;
     // Native preparation completes on a later event-loop turn.
     Timer(const Duration(milliseconds: 20), () {
       if (_currentFile[playerId] != file || !_events.containsKey(playerId)) {

@@ -234,8 +234,7 @@ void main() {
       return int.parse(line.trim().split('ms').first);
     }
 
-    test('iOS: a voice that never prepares is skipped after 4 s, not 30 s',
-        () {
+    test('iOS: a voice that never prepares is skipped after 4 s, not 30 s', () {
       AudioHarness.run(
         (h) {
           unawaited(h.service.playVoice('voice_arc2_beat1.mp3'));
@@ -283,7 +282,9 @@ void main() {
           expect(firstAt(h.log, 'setSourceUrl voice_lets_fight'), 4000);
         },
         ios: true,
-        loadDelays: const {'voice_world_candy_crater.mp3': Duration(seconds: 10)},
+        loadDelays: const {
+          'voice_world_candy_crater.mp3': Duration(seconds: 10),
+        },
       );
     });
 
@@ -342,6 +343,88 @@ void main() {
       }
 
       expect(sourceCall(ios: true), sourceCall(ios: false));
+    });
+  });
+
+  group('music: iOS serialized playMusic', () {
+    test('iOS: overlapping starts run one after another, nothing is '
+        'disposed mid-prepare', () {
+      AudioHarness.run((h) {
+        final s = h.service;
+        unawaited(s.playMusic('battle_music_loop.mp3')); // M1, preparing
+        h.elapseMs(5);
+        // e.g. main.dart resumeAfterWake landing on a screen's own start.
+        unawaited(s.playMusic('battle_music_loop.mp3'));
+        h.elapseMs(500);
+        expect(h.issues, isEmpty);
+        // M1 finished (resume) before M2 was even created.
+        final m1Resume = h.log.indexOf(h.callsOf('resume', label: 'M1').single);
+        final m2Create = h.log.indexOf(h.callsOf('create', label: 'M2').single);
+        expect(m2Create, greaterThan(m1Resume));
+        expect(h.callsOf('resume', label: 'M2'), hasLength(1));
+        expect(h.callsOf('create', label: 'M3'), isEmpty);
+        expect(h.service.isMusicPlaying, isTrue);
+      }, ios: true);
+    });
+
+    test('Android: the same overlap is left as-is (see goldens)', () {
+      AudioHarness.run((h) {
+        final s = h.service;
+        unawaited(s.playMusic('battle_music_loop.mp3'));
+        h.elapseMs(5);
+        unawaited(s.playMusic('battle_music_loop.mp3'));
+        h.elapseMs(500);
+        expect(h.issues.single, contains('op=music_play_failed'));
+      });
+    });
+
+    test('iOS: a start still waiting is dropped when a newer one arrives', () {
+      AudioHarness.run((h) {
+        final s = h.service;
+        // Same instant: the first runs; the second is still waiting for its
+        // turn when the third arrives, so only the first and last start.
+        unawaited(s.playMusic('battle_music_loop.mp3')); // runs (M1)
+        unawaited(s.playMusic('battle_music_loop.mp3')); // superseded
+        unawaited(s.playMusic('battle_music_loop.mp3')); // runs (M2)
+        h.elapseMs(500);
+        expect(h.callsOf('create', label: 'M2'), hasLength(1));
+        expect(h.callsOf('create', label: 'M3'), isEmpty);
+        expect(h.issues, isEmpty);
+      }, ios: true);
+    });
+
+    test('iOS: stopMusic drops a start that is still waiting its turn', () {
+      AudioHarness.run((h) {
+        final s = h.service;
+        unawaited(s.playMusic('battle_music_loop.mp3')); // in flight (M1)
+        unawaited(s.playMusic('battle_music_loop.mp3')); // waiting
+        unawaited(s.stopMusic());
+        h.elapseMs(500);
+        expect(h.callsOf('create', label: 'M2'), isEmpty);
+      }, ios: true);
+    });
+
+    test('iOS: the guarded retry runs inside the turn (no deadlock) and a '
+        'queued start runs after it', () {
+      AudioHarness.run(
+        (h) {
+          final s = h.service;
+          unawaited(s.playMusic('battle_music_loop.mp3')); // never prepares
+          h.elapseMs(100);
+          unawaited(s.playMusic('battle_music_loop.mp3')); // queued
+          // First attempt times out at 30 s, retry 300 ms later.
+          h.elapse(const Duration(seconds: 31));
+          expect(h.callsOf('create', label: 'M2'), hasLength(1)); // retry
+          expect(h.callsOf('create', label: 'M3'), isEmpty); // still queued
+          h.platform.neverPrepare.clear();
+          h.elapse(const Duration(seconds: 31)); // retry fails -> turn freed
+          h.elapseMs(200);
+          expect(h.callsOf('resume', label: 'M3'), hasLength(1));
+          expect(h.service.isMusicPlaying, isTrue);
+        },
+        ios: true,
+        neverPrepare: const {'battle_music_loop.mp3'},
+      );
     });
   });
 }
