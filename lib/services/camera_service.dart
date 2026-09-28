@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:permission_handler/permission_handler.dart';
 
 /// Callback with motion intensity 0.0 (still) to 1.0 (fast movement)
@@ -114,6 +115,39 @@ class CameraService {
     } on Exception catch (_) {}
   }
 
+  /// Downsample a luma (Y) plane to [size] x [size] grayscale samples.
+  ///
+  /// Rows are addressed with [bytesPerRow] (the row stride), NOT [width]:
+  /// iOS delivers ImageFormatGroup.yuv420 as a 2-plane
+  /// kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange buffer whose plane 0
+  /// (luma) rows are usually padded past the pixel width, and Android
+  /// YUV_420_888 planes can be padded too. Padding bytes are never sampled.
+  /// Orientation and front-camera mirroring don't matter: motion is a sum of
+  /// per-sample differences between consecutive frames.
+  @visibleForTesting
+  static Uint8List sampleLuma(
+    Uint8List bytes, {
+    required int width,
+    required int height,
+    required int bytesPerRow,
+    int size = _sampleSize,
+  }) {
+    final sampled = Uint8List(size * size);
+    if (width <= 0 || height <= 0) return sampled;
+    final double stepX = width / size;
+    final double stepY = height / size;
+
+    for (int sy = 0; sy < size; sy++) {
+      final int srcY = (sy * stepY).toInt().clamp(0, height - 1);
+      for (int sx = 0; sx < size; sx++) {
+        final int srcX = (sx * stepX).toInt().clamp(0, width - 1);
+        final int index = srcY * bytesPerRow + srcX;
+        sampled[sy * size + sx] = index < bytes.length ? bytes[index] : 0;
+      }
+    }
+    return sampled;
+  }
+
   /// Process a single camera frame: downsample Y plane to 32x32,
   /// compare with previous frame, return motion intensity 0.0-1.0.
   double _processFrame(CameraImage image) {
@@ -121,26 +155,12 @@ class CameraService {
 
     // Y plane (luminance/grayscale) is the first plane in YUV420
     final yPlane = image.planes[0];
-    final int width = image.width;
-    final int height = image.height;
-    final Uint8List bytes = yPlane.bytes;
-    final int rowStride = yPlane.bytesPerRow;
-
-    // Downsample to _sampleSize x _sampleSize
-    final sampled = Uint8List(_sampleSize * _sampleSize);
-    final double stepX = width / _sampleSize;
-    final double stepY = height / _sampleSize;
-
-    for (int sy = 0; sy < _sampleSize; sy++) {
-      final int srcY = (sy * stepY).toInt().clamp(0, height - 1);
-      for (int sx = 0; sx < _sampleSize; sx++) {
-        final int srcX = (sx * stepX).toInt().clamp(0, width - 1);
-        final int index = srcY * rowStride + srcX;
-        sampled[sy * _sampleSize + sx] = index < bytes.length
-            ? bytes[index]
-            : 0;
-      }
-    }
+    final sampled = sampleLuma(
+      yPlane.bytes,
+      width: image.width,
+      height: image.height,
+      bytesPerRow: yPlane.bytesPerRow,
+    );
 
     if (_previousFrame == null) {
       _previousFrame = sampled;
