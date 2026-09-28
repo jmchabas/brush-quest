@@ -202,6 +202,7 @@ class FakeAudioService extends AudioService {
     calls.add(AudioCall('playMusic', {'fileName': fileName, 'isRetry': isRetry}));
     if (_muted) return;
     _musicPlaying = true;
+    _musicPaused = false;
     _musicVolume = 0.18;
     _currentMusicFile = fileName;
     musicEvents.add('start');
@@ -226,11 +227,83 @@ class FakeAudioService extends AudioService {
     calls.add(const AudioCall('stopMusic'));
     final wasPlaying = _musicPlaying;
     _musicPlaying = false;
+    _musicPaused = false;
     _currentMusicFile = null;
     if (wasPlaying) {
       musicEvents.add('stop');
       lastPlayCallTimes['music_stop'] = DateTime.now();
     }
+  }
+
+  // ── Lifecycle / pause overrides ────────────────────────────────
+  //
+  // The real implementations touch `_voicePlayer`, which is never assigned
+  // for a `forTesting()` instance (LateInitializationError, an Error that
+  // `on Exception` does not catch). These overrides record the call and
+  // mirror the real service's observable state instead.
+
+  /// True between [pauseMusic] and [resumeMusic]. The real service keeps
+  /// `isMusicPlaying == true` while paused (the player is kept alive), so
+  /// this is tracked separately.
+  bool _musicPaused = false;
+  bool get isMusicPaused => _musicPaused;
+
+  String? _musicFileBeforePause;
+  double? _musicVolumeBeforePause;
+
+  @override
+  Future<void> stopAllAudio() async {
+    calls.add(const AudioCall('stopAllAudio'));
+    _clearVoiceQueue();
+    _voicePlaying = false;
+    if (_musicPlaying) {
+      musicEvents.add('stop');
+      lastPlayCallTimes['music_stop'] = DateTime.now();
+    }
+    // Mirrors the real service: stopAllAudio clears _musicPlaying.
+    _musicPlaying = false;
+    _musicPaused = false;
+  }
+
+  @override
+  Future<void> stopAllAudioForLifecycle() async {
+    calls.add(const AudioCall('stopAllAudioForLifecycle'));
+    if (_musicPlaying && _currentMusicFile != null) {
+      _musicFileBeforePause = _currentMusicFile;
+      _musicVolumeBeforePause = _musicVolume;
+    } else {
+      _musicFileBeforePause = null;
+      _musicVolumeBeforePause = null;
+    }
+    await stopAllAudio();
+  }
+
+  @override
+  Future<void> resumeAfterWake() async {
+    calls.add(const AudioCall('resumeAfterWake'));
+    final file = _musicFileBeforePause;
+    final vol = _musicVolumeBeforePause;
+    _musicFileBeforePause = null;
+    _musicVolumeBeforePause = null;
+    if (_muted || file == null) return;
+    await playMusic(file);
+    if (vol != null) await setMusicVolume(vol);
+  }
+
+  @override
+  Future<void> pauseMusic() async {
+    calls.add(const AudioCall('pauseMusic'));
+    if (!_musicPlaying) return;
+    _musicPaused = true;
+    musicEvents.add('pause');
+  }
+
+  @override
+  Future<void> resumeMusic() async {
+    calls.add(const AudioCall('resumeMusic'));
+    if (!_musicPlaying || _muted) return;
+    _musicPaused = false;
+    musicEvents.add('resume');
   }
 
   @override
