@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'dart:io' show Platform;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// How an iOS voice start attempt ended (see AudioService._iosStartVoice).
@@ -1151,6 +1152,64 @@ class AudioService {
     }
     await playMusic(file);
     if (vol != null) await setMusicVolume(vol);
+  }
+
+  /// iOS only: listen for the AVAudioSession events AppDelegate.swift
+  /// forwards (interruptions, headphones lost, media-services reset). Call
+  /// once at startup. A no-op off iOS: Android never registers the handler,
+  /// and no Dart code ever invokes a method on this channel.
+  static void listenForIosAudioSessionEvents() {
+    if (isIOS) {
+      _iosSessionChannel.setMethodCallHandler(
+        (call) => AudioService()._iosOnAudioSessionEvent(call),
+      );
+    }
+  }
+
+  static const _iosSessionChannel = MethodChannel('brushquest/audio_session');
+
+  /// iOS: one AVAudioSession event from AppDelegate.swift. In every case the
+  /// system has paused our players, so the voice in flight will never send
+  /// onComplete and the pump would sit out its 15 s timeout.
+  /// - interruptionBegan (call, alarm, Siri): end that voice and drop the
+  ///   queue; lines queued now would only play into a dead session.
+  /// - interruptionEnded / mediaServicesReset: end any voice still stuck,
+  ///   then restart the music on a fresh player at the screen's volume,
+  ///   unless the kid paused it (brushing PAUSE overlay, incl. the iOS
+  ///   auto-pause on 'inactive') - RESUME restarts it then.
+  /// - routeLost (headphones / AirPods gone): end the stuck voice so the
+  ///   queue carries on. Music is left paused (Apple's default).
+  Future<void> _iosOnAudioSessionEvent(MethodCall call) async {
+    if (_trace) _t('SESSION ${call.method} ${call.arguments}');
+    try {
+      switch (call.method) {
+        case 'interruptionBegan':
+          await stopVoice();
+        case 'interruptionEnded':
+        case 'mediaServicesReset':
+          await _iosEndStuckVoice();
+          final file = _currentMusicFile;
+          if (_muted || !_musicPlaying || _iosMusicHeld || file == null) {
+            return;
+          }
+          await _iosRestartMusic(file);
+        case 'routeLost':
+          await _iosEndStuckVoice();
+      }
+    } on Object catch (e) {
+      _reportAudioIssue(operation: 'session_${call.method}_failed', error: e);
+    }
+  }
+
+  /// iOS: end the voice the system paused mid-line. Ends the pump's wait
+  /// (like an interrupt) and stops the player; queued voices then play.
+  Future<void> _iosEndStuckVoice() async {
+    _fireVoiceStop();
+    try {
+      await _stopVoicePlayer();
+    } on Object catch (e) {
+      _reportAudioIssue(operation: 'voice_session_stop_failed', error: e);
+    }
   }
 
   /// iOS only: music health check. audioplayers_darwin reports `completed`

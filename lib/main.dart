@@ -27,6 +27,10 @@ void main() async {
   unawaited(
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
   );
+  // iOS only: AppDelegate.swift forwards AVAudioSession interruptions /
+  // route loss / media-services resets so audio recovers from calls, Siri
+  // and alarms. Android has no such channel; never register it there.
+  if (Platform.isIOS) AudioService.listenForIosAudioSessionEvents();
 
   // Firebase init must never block app startup.
   try {
