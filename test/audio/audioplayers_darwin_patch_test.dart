@@ -35,7 +35,7 @@ void main() {
   });
 
   test('N1: a seek handler never pauses a replaced item', () {
-    final body = _swiftFunc(player, 'func seek(');
+    final body = _swiftFunc(player, 'private func seekThen(');
     final identity = body.indexOf('self.player.currentItem === ');
     final pause = body.indexOf('self.player.pause()');
     expect(identity, isNot(-1));
@@ -53,6 +53,40 @@ void main() {
     expect(elseBranch, isNot(-1));
     expect(body.indexOf('completer?()', elseBranch), greaterThan(elseBranch));
   });
+
+  test('H3: a loop wrap resumes natively and sends no onComplete', () {
+    final body = _swiftFunc(player, 'private func onSoundComplete()');
+    final loop = body.indexOf('if releaseMode == ReleaseMode.loop {');
+    expect(loop, isNot(-1), reason: 'loop mode must be handled up front');
+    final loopBranch = _swiftBlockAt(body, loop);
+    // Resume regardless of the rewind's `finished`, unless paused/stopped
+    // (isPlaying cleared) or the item was replaced.
+    expect(loopBranch, contains('seekThen(time: toCMTime(millis: 0))'));
+    expect(
+      loopBranch,
+      contains('guard self.player.currentItem === finishedItem'),
+    );
+    expect(loopBranch, contains('if self.isPlaying {'));
+    expect(loopBranch, contains('self.resume()'));
+    expect(loopBranch, contains('return'));
+    expect(loopBranch, isNot(contains('onComplete')));
+    // Non-loop modes still report the natural end to Dart.
+    expect(body.indexOf('eventHandler.onComplete()'), greaterThan(loop));
+  });
+}
+
+/// The `{...}` block that opens at or after [index] in [source].
+String _swiftBlockAt(String source, int index) {
+  final open = source.indexOf('{', index);
+  var depth = 0;
+  for (var i = open; i < source.length; i++) {
+    if (source[i] == '{') depth++;
+    if (source[i] == '}') {
+      depth--;
+      if (depth == 0) return source.substring(index, i + 1);
+    }
+  }
+  fail('unbalanced braces at $index');
 }
 
 /// Text of the Swift function starting at [signature], braces included.

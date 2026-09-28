@@ -128,8 +128,20 @@ class WrappedMediaPlayer {
   }
 
   func seek(time: CMTime, completer: Completer? = nil) {
+    seekThen(time: time) { finished in
+      if finished {
+        completer?()
+      }
+    }
+  }
+
+  /// BRUSH QUEST PATCH (H3): seek that reports `finished` to [onDone]
+  /// instead of dropping the callback when the seek was cancelled, so the
+  /// loop restart can decide for itself. Upstream `seek(time:completer:)`
+  /// above keeps its "call only if finished" contract on top of this.
+  private func seekThen(time: CMTime, onDone: @escaping (Bool) -> Void) {
     guard let currentItem = player.currentItem else {
-      completer?()
+      onDone(true)
       return
     }
     currentItem.seek(to: time) {
@@ -146,9 +158,7 @@ class WrappedMediaPlayer {
         NSLog("[audioplayers_darwin][BQ] N1 guard: seek finished on a replaced item; not pausing the new one")
       }
       self.eventHandler.onSeekComplete()
-      if finished {
-        completer?()
-      }
+      onDone(finished)
     }
   }
 
@@ -304,6 +314,29 @@ class WrappedMediaPlayer {
     // then ran release() -> stop -> pause() + reset() on the NEW item: a
     // silent or cut voice and a 15-30 s pump stall. Skip if it was replaced.
     let finishedItem = player.currentItem
+
+    // BRUSH QUEST PATCH (H3): in loop mode the track did not end, it wrapped.
+    // Upstream still sent onComplete to Dart on every wrap, so Dart saw
+    // PlayerState.completed on a playing loop (AudioService's health check
+    // restarted the music and reset its volume every ~2 min), and it only
+    // resumed if the rewind reported finished (a cancelled rewind left the
+    // loop silent). Now: no onComplete, and the loop resumes after the
+    // rewind whatever `finished` says, unless the player was paused/stopped
+    // meanwhile (both clear isPlaying) or the item was replaced (N1).
+    if releaseMode == ReleaseMode.loop {
+      seekThen(time: toCMTime(millis: 0)) { _ in
+        guard self.player.currentItem === finishedItem else {
+          NSLog("[audioplayers_darwin][BQ] N1 guard: loop rewind landed after the item was replaced; not resuming")
+          return
+        }
+        if self.isPlaying {
+          self.resume()
+        }
+      }
+      reference.controlAudioSession()
+      return
+    }
+
     seek(time: toCMTime(millis: 0)) {
       guard self.player.currentItem === finishedItem else {
         NSLog(
