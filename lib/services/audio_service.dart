@@ -90,6 +90,15 @@ class AudioService {
   // the file + volume BEFORE stopping and replay them on resume.
   String? _musicFileBeforePause;
   double? _musicVolumeBeforePause;
+  // iOS only: a screen paused the music on purpose (the brushing PAUSE
+  // overlay, incl. its auto-pause on 'inactive'). While held, resumeAfterWake
+  // must not restart the track under the overlay; it parks the snapshot in
+  // _iosWakeDeferred* and the next resumeMusic() (the kid's RESUME tap)
+  // restarts it instead. Cleared by resumeMusic/playMusic/stopMusic so it
+  // can't go stale. Never written on Android.
+  bool _iosMusicHeld = false;
+  String? _iosWakeDeferredFile;
+  double? _iosWakeDeferredVolume;
   String _voiceStyle = 'buddy';
   final Queue<_QueuedVoiceRequest> _voiceQueue = Queue<_QueuedVoiceRequest>();
   final ValueNotifier<bool> voicePipelineActiveNotifier = ValueNotifier<bool>(
@@ -752,6 +761,7 @@ class AudioService {
 
   Future<void> playMusic(String fileName, {bool isRetry = false}) async {
     if (_trace) _t('MUSIC play $fileName retry=$isRetry muted=$_muted');
+    if (isIOS) _iosReleaseMusicHold();
     if (_muted) return;
     _currentMusicFile = fileName;
     _musicTransitioning = true;
@@ -847,6 +857,7 @@ class AudioService {
   /// Pause music playback (keeps player state so it can resume).
   Future<void> pauseMusic() async {
     if (_trace) _t('MUSIC pause playing=$_musicPlaying');
+    if (isIOS) _iosMusicHeld = true;
     if (_musicTransitioning || !_musicPlaying) return;
     try {
       await _musicPlayer.pause();
@@ -858,6 +869,18 @@ class AudioService {
   /// Resume music after a pause. Does nothing if music was not playing.
   Future<void> resumeMusic() async {
     if (_trace) _t('MUSIC resume playing=$_musicPlaying');
+    if (isIOS) {
+      final deferredFile = _iosWakeDeferredFile;
+      final deferredVolume = _iosWakeDeferredVolume;
+      _iosReleaseMusicHold();
+      // The app was backgrounded while paused: the lifecycle stop killed
+      // the player, so restart the parked track now that the kid resumed.
+      if (deferredFile != null && !_musicPlaying && !_muted) {
+        await playMusic(deferredFile);
+        if (deferredVolume != null) await setMusicVolume(deferredVolume);
+        return;
+      }
+    }
     if (_musicTransitioning || !_musicPlaying || _muted) return;
     try {
       final vol = _voicePlaying ? _musicDuckedVolume : _musicVolume;
@@ -870,6 +893,7 @@ class AudioService {
 
   Future<void> stopMusic() async {
     if (_trace) _t('MUSIC stop transitioning=$_musicTransitioning');
+    if (isIOS) _iosReleaseMusicHold();
     if (_musicTransitioning) return;
     _musicPlaying = false;
     _currentMusicFile = null;
@@ -932,10 +956,26 @@ class AudioService {
     final vol = _musicVolumeBeforePause;
     _musicFileBeforePause = null;
     _musicVolumeBeforePause = null;
-    if (_trace) _t('ALL wake file=$file vol=$vol muted=$_muted');
+    if (_trace) {
+      _t('ALL wake file=$file vol=$vol muted=$_muted held=$_iosMusicHeld');
+    }
     if (_muted || file == null) return;
+    if (isIOS && _iosMusicHeld) {
+      // iOS: the brushing session is paused (PAUSE overlay up). Don't start
+      // battle music under it; the RESUME tap's resumeMusic() restarts it.
+      _iosWakeDeferredFile = file;
+      _iosWakeDeferredVolume = vol;
+      return;
+    }
     await playMusic(file);
     if (vol != null) await setMusicVolume(vol);
+  }
+
+  /// iOS: drop the music hold and any wake restart parked behind it.
+  void _iosReleaseMusicHold() {
+    _iosMusicHeld = false;
+    _iosWakeDeferredFile = null;
+    _iosWakeDeferredVolume = null;
   }
 
   void _reportAudioIssue({

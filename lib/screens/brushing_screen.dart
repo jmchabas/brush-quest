@@ -1086,12 +1086,28 @@ class _BrushingScreenState extends State<BrushingScreen>
         '[AUD] brushing $state paused=$_isPaused stage=$_sessionStage',
       );
     }
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    // iOS 'inactive' is transient (Control Center, Notification Center, app
+    // switcher, Siri, any system alert). stopAllAudio() there cleared
+    // _musicPlaying, so resumeMusic()/ensureMusicPlaying() no-oped and the
+    // battle music stayed dead after RESUME for the rest of the session. On
+    // iOS 'inactive' only auto-pauses (pauseMusic keeps the player alive); a
+    // real background still arrives as 'paused'. Android is unchanged:
+    // 'inactive' takes the backgrounded branch exactly as before.
+    final backgrounded =
+        state == AppLifecycleState.paused ||
+        (state == AppLifecycleState.inactive && !AudioService.isIOS);
+    if (backgrounded) {
       // App backgrounded — stop all audio
       _musicWasPlaying = _audio.isMusicPlaying;
       _audio.stopAllAudio();
       // Pause the brushing session so the timer doesn't run in the background
+      if (!_isPaused &&
+          _sessionStage == SessionStage.brushing &&
+          !_isQuitting) {
+        _togglePause();
+      }
+    } else if (state == AppLifecycleState.inactive) {
+      // iOS only (see above): pause the session, keep the audio players.
       if (!_isPaused &&
           _sessionStage == SessionStage.brushing &&
           !_isQuitting) {
