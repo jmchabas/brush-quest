@@ -373,8 +373,10 @@ void main() {
     final isIOS = RegExp(r'\bisIOS\b');
     final trace = RegExp(r'if \(_trace\)');
     final iosHelperHeader = RegExp(r'^[\w<>?]+\s+_ios\w*\(');
-    final declaration = RegExp(r'^\s*(bool|String\?|double\?|Future<void>\?)'
-        r'\s+_ios\w*( = .*)?;');
+    final declaration = RegExp(
+      r'^\s*(static\s+|const\s+|final\s+|bool\s+|String\?\s+|double\?\s+|'
+      r'Future<void>\?\s+)+_ios\w*( = .*)?;',
+    );
     final offenders = <String>[];
     for (final m in RegExp(r'\b_ios\w*').allMatches(code)) {
       final lineStart = code.lastIndexOf('\n', m.start) + 1;

@@ -5,6 +5,9 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// How an iOS voice start attempt ended (see AudioService._iosStartVoice).
+enum _VoiceStart { started, stopped, timedOut }
+
 class _QueuedVoiceRequest {
   final String fileName;
   final Completer<void> completer = Completer<void>();
@@ -670,9 +673,13 @@ class AudioService {
           // is cut either way.
           if (isIOS) await _iosResetVoicePlayer();
           await _voicePlayer.setVolume(1.0);
-          await _voicePlayer.play(
-            AssetSource(_voiceAssetPath(request.fileName)),
-          );
+          if (isIOS) {
+            if (!await _iosStartVoice(request.fileName, stopSignal)) continue;
+          } else {
+            await _voicePlayer.play(
+              AssetSource(_voiceAssetPath(request.fileName)),
+            );
+          }
           // Resolve on natural completion, an explicit external stop, or the
           // 15s safety timeout. The external-stop completer recovers instantly
           // without depending on a PlayerState.stopped event — on Android that
@@ -752,6 +759,72 @@ class AudioService {
       );
     }
     return stop;
+  }
+
+  /// iOS: longest the pump waits for a voice to load + prepare + resume
+  /// before skipping it. audioplayers' own prepare timeout is 30 s, during
+  /// which even an interrupt could not unblock the pump (N2).
+  static const _iosVoiceStartTimeout = Duration(seconds: 4);
+
+  /// iOS only: start [fileName] on the voice player. Gives up after
+  /// [_iosVoiceStartTimeout] or as soon as [stopSignal] fires (stopVoice /
+  /// interrupt), and returns whether the voice started (play() returned).
+  ///
+  /// The asset path is resolved here (the same AudioCache.loadPath call
+  /// AssetSource makes) and then played as a DeviceFileSource, which sends
+  /// the identical native setSourceUrl(path, isLocal: true). Splitting it
+  /// means an abandoned slow load never reaches the player, so it cannot
+  /// land its setSourceUrl later and replace a newer voice. An abandoned
+  /// play() (source sent, `prepared` never came) is harmless: the next
+  /// item's setSourceUrl replaces the native item.
+  Future<bool> _iosStartVoice(
+    String fileName,
+    Completer<void> stopSignal,
+  ) async {
+    if (stopSignal.isCompleted) return false;
+    final deadline = Completer<_VoiceStart>();
+    final timer = Timer(
+      _iosVoiceStartTimeout,
+      () => deadline.complete(_VoiceStart.timedOut),
+    );
+    final stopped = stopSignal.future.then((_) => _VoiceStart.stopped);
+    try {
+      String? path;
+      final load = _voicePlayer.audioCache.loadPath(_voiceAssetPath(fileName));
+      final loaded = await Future.any<_VoiceStart>([
+        load.then((p) {
+          path = p;
+          return _VoiceStart.started;
+        }),
+        stopped,
+        deadline.future,
+      ]);
+      if (loaded != _VoiceStart.started) {
+        load.ignore();
+        return _iosVoiceNotStarted(fileName, loaded);
+      }
+      final play = _voicePlayer.play(DeviceFileSource(path!));
+      final played = await Future.any<_VoiceStart>([
+        play.then((_) => _VoiceStart.started),
+        stopped,
+        deadline.future,
+      ]);
+      if (played != _VoiceStart.started) {
+        play.ignore();
+        return _iosVoiceNotStarted(fileName, played);
+      }
+      return true;
+    } finally {
+      timer.cancel();
+    }
+  }
+
+  bool _iosVoiceNotStarted(String fileName, _VoiceStart outcome) {
+    if (_trace) _t('VOICE not started $fileName outcome=$outcome');
+    if (outcome == _VoiceStart.timedOut) {
+      _reportAudioIssue(operation: 'voice_prepare_timeout', fileName: fileName);
+    }
+    return false;
   }
 
   /// iOS only, called by the pump before each play(). audioplayers_darwin

@@ -227,4 +227,121 @@ void main() {
       });
     });
   });
+
+  group('voice pump: iOS 4 s start cap (N2)', () {
+    int firstAt(List<String> log, String needle) {
+      final line = log.firstWhere((l) => l.contains(needle));
+      return int.parse(line.trim().split('ms').first);
+    }
+
+    test('iOS: a voice that never prepares is skipped after 4 s, not 30 s',
+        () {
+      AudioHarness.run(
+        (h) {
+          unawaited(h.service.playVoice('voice_arc2_beat1.mp3'));
+          unawaited(h.service.playVoice('voice_arc2_beat2.mp3'));
+          h.elapse(const Duration(seconds: 8));
+          const timeout =
+              'audio issue: op=voice_prepare_timeout '
+              'file=voice_arc2_beat1.mp3 err=none';
+          expect(h.issues, [timeout]);
+          final nextAt = firstAt(h.log, 'setSourceUrl voice_arc2_beat2.mp3');
+          expect(nextAt, inInclusiveRange(4000, 4100));
+          // The abandoned play() is still waiting for `prepared`; the next
+          // item's `prepared` releases it too, so it resumes the NEW item a
+          // second time (idempotent). Nothing plays before the next source.
+          expect(
+            h.callsOf('resume', label: 'V').map((l) => firstAt([l], 'ms')),
+            everyElement(greaterThan(nextAt)),
+          );
+          expect(h.service.isVoicePipelineActive, isFalse);
+          // The abandoned play() must not surface its 30 s TimeoutException.
+          h.elapse(const Duration(seconds: 40));
+          expect(h.issues, hasLength(1));
+        },
+        ios: true,
+        neverPrepare: const {'voice_arc2_beat1.mp3'},
+      );
+    });
+
+    test('iOS: a slow asset load that lands AFTER the next voice started '
+        'never replaces it', () {
+      AudioHarness.run(
+        (h) {
+          unawaited(h.service.playVoice('voice_world_candy_crater.mp3'));
+          unawaited(h.service.playVoice('voice_lets_fight.mp3'));
+          h.elapse(const Duration(seconds: 15));
+          expect(
+            h.log.where((l) => l.contains('voice_world_candy_crater.mp3')),
+            everyElement(contains('print audio issue')),
+            reason: 'the abandoned load must never reach setSourceUrl',
+          );
+          expect(
+            h.callsOf('setSourceUrl', label: 'V').single,
+            contains('voice_lets_fight.mp3'),
+          );
+          expect(firstAt(h.log, 'setSourceUrl voice_lets_fight'), 4000);
+        },
+        ios: true,
+        loadDelays: const {'voice_world_candy_crater.mp3': Duration(seconds: 10)},
+      );
+    });
+
+    test('iOS: an interrupt ends a stuck start immediately', () {
+      AudioHarness.run(
+        (h) {
+          unawaited(h.service.playVoice('voice_arc2_beat1.mp3'));
+          h.elapseMs(1000);
+          unawaited(
+            h.service.playVoice(
+              'voice_go_brushing.mp3',
+              clearQueue: true,
+              interrupt: true,
+            ),
+          );
+          h.elapse(const Duration(seconds: 3));
+          expect(firstAt(h.log, 'setSourceUrl voice_go_brushing'), 1000);
+          expect(h.issues, isEmpty);
+          // Only the new voice's item is ever resumed (see above re: the
+          // abandoned play() resuming it a second time).
+          expect(
+            h.callsOf('resume', label: 'V').map((l) => firstAt([l], 'ms')),
+            everyElement(greaterThan(1000)),
+          );
+        },
+        ios: true,
+        neverPrepare: const {'voice_arc2_beat1.mp3'},
+      );
+    });
+
+    test('iOS: stopVoice during a stuck start frees the pipeline at once', () {
+      AudioHarness.run(
+        (h) {
+          unawaited(h.service.playVoice('voice_arc2_beat1.mp3'));
+          h.elapseMs(500);
+          expect(h.service.isVoicePipelineActive, isTrue);
+          unawaited(h.service.stopVoice());
+          h.elapseMs(10);
+          expect(h.service.isVoicePipelineActive, isFalse);
+          expect(h.issues, isEmpty);
+        },
+        ios: true,
+        neverPrepare: const {'voice_arc2_beat1.mp3'},
+      );
+    });
+
+    test('iOS: sends the same native source call as Android', () {
+      String sourceCall({required bool ios}) {
+        late String call;
+        AudioHarness.run((h) {
+          unawaited(h.service.playVoice('voice_super.mp3'));
+          h.elapse(const Duration(seconds: 2));
+          call = h.callsOf('setSourceUrl', label: 'V').single;
+        }, ios: ios);
+        return call;
+      }
+
+      expect(sourceCall(ios: true), sourceCall(ios: false));
+    });
+  });
 }
