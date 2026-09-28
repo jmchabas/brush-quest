@@ -21,6 +21,7 @@ Tracked in `docs/ios-port/PLAN.md` Phase 1V:
 - `account_deletion_test.dart` (1V-5) — Delete Account flow (depends on 1G-2 / 1G-4)
 - `brush_session_e2e_test.dart` (1V-6) — full brushing session
 - `audio_smoke_test.dart` (1V-7) — countdown + music + SFX + voice sequencing
+- `ios_audio_real_test.dart` — REAL AudioService + the vendored/patched audioplayers_darwin on a Simulator: 50 queued voice pairs, interrupt storm, 130 s music loop, countdown, music start/stop churn. Run with `-d <udid> --dart-define=AUDIO_TRACE=true` (the music check reads trace lines).
 
 ## CI
 
