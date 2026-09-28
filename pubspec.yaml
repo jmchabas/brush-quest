@@ -37,8 +37,9 @@ dependencies:
 # audioplayers ^6.3.0 transitively allows darwin 6.4.0+, which has the
 # Swift task continuation leak in setUpPlayerItemStatusObservation that
 # hangs voice playback on iOS (see PLAN.md tasks 1D-1, 1D-2). The 6.3.0
-# source is vendored verbatim in packages/audioplayers_darwin (iOS/macOS-only
-# Swift, no Dart, no Android code) so iOS audio fixes can be patched in.
+# source is vendored in packages/audioplayers_darwin (iOS/macOS-only Swift,
+# no Dart, no Android code) with iOS audio fixes patched in; see
+# packages/audioplayers_darwin/BRUSH_QUEST_PATCHES.md before upgrading.
 # Android resolves audioplayers_android exactly as before
 # (test/audio/audioplayers_pin_test.dart pins the lock entries).
 dependency_overrides:

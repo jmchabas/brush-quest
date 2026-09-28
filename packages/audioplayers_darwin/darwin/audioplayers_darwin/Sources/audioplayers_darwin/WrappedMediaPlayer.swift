@@ -134,8 +134,16 @@ class WrappedMediaPlayer {
     }
     currentItem.seek(to: time) {
       finished in
-      if !self.isPlaying {
-        self.player.pause()
+      // BRUSH QUEST PATCH (N1): this handler can run after the player moved
+      // on to another item (a queued voice installed right behind a natural
+      // completion). Pausing then would pause THAT item, so only pause when
+      // the seeked item is still the current one.
+      if self.player.currentItem === currentItem {
+        if !self.isPlaying {
+          self.player.pause()
+        }
+      } else {
+        NSLog("[audioplayers_darwin][BQ] N1 guard: seek finished on a replaced item; not pausing the new one")
       }
       self.eventHandler.onSeekComplete()
       if finished {
@@ -279,7 +287,19 @@ class WrappedMediaPlayer {
       return
     }
 
+    // BRUSH QUEST PATCH (N1): remember which item finished. The rewind below
+    // completes asynchronously; by then Dart may already have installed the
+    // next voice on this player (it gets onComplete right away). Upstream
+    // then ran release() -> stop -> pause() + reset() on the NEW item: a
+    // silent or cut voice and a 15-30 s pump stall. Skip if it was replaced.
+    let finishedItem = player.currentItem
     seek(time: toCMTime(millis: 0)) {
+      guard self.player.currentItem === finishedItem else {
+        NSLog(
+          "[audioplayers_darwin][BQ] N1 guard: completion rewind landed after the item was replaced; skipping %@",
+          self.releaseMode.rawValue)
+        return
+      }
       if self.releaseMode == ReleaseMode.loop {
         self.resume()
       } else if self.releaseMode == ReleaseMode.release {
