@@ -36,11 +36,14 @@ dependencies:
 # Force the iOS-side audioplayers implementation to 6.3.0 exactly.
 # audioplayers ^6.3.0 transitively allows darwin 6.4.0+, which has the
 # Swift task continuation leak in setUpPlayerItemStatusObservation that
-# hangs voice playback on iOS (see PLAN.md tasks 1D-1, 1D-2). Pinning
-# the transitive directly is the surgical fix; remove this override
-# once bluefireteam ships a fixed audioplayers_darwin upstream.
+# hangs voice playback on iOS (see PLAN.md tasks 1D-1, 1D-2). The 6.3.0
+# source is vendored verbatim in packages/audioplayers_darwin (iOS/macOS-only
+# Swift, no Dart, no Android code) so iOS audio fixes can be patched in.
+# Android resolves audioplayers_android exactly as before
+# (test/audio/audioplayers_pin_test.dart pins the lock entries).
 dependency_overrides:
-  audioplayers_darwin: 6.3.0
+  audioplayers_darwin:
+    path: packages/audioplayers_darwin
   # Apple Kids Category: firebase_analytics + firebase_crashlytics must NOT be in
   # the iOS binary at all (Podfile tricks only static-linked them into Runner).
   # These are verbatim copies of the upstream versions pinned in pubspec.lock
