@@ -2,7 +2,7 @@
 <!-- Every session reads this at start. Every session updates its section at end. -->
 <!-- Jim says "update the status board" → session updates its workstream below. -->
 
-**Current #1 Priority**: Both stores launch in flight. **Android v22 submitted to Play Store production review 2026-05-11** (auto-checks running, then human review ≤7 days). **iOS v22 on TestFlight** awaiting feedback from 3 testers (Antoine, Matt, Jan) before clicking "Add for Review" — Apple submission is one click away once test confirms build is sound.
+**Current #1 Priority** (2026-09-28): ship v29 on both stores (iPhone launch) — see APP. Previous: Both stores launch in flight. **Android v22 submitted to Play Store production review 2026-05-11** (auto-checks running, then human review ≤7 days). **iOS v22 on TestFlight** awaiting feedback from 3 testers (Antoine, Matt, Jan) before clicking "Add for Review" — Apple submission is one click away once test confirms build is sound.
 **CEO Streak**: Week 0 (starting fresh)
 **Phase**: 2 — production launch in flight on both platforms
 
@@ -11,6 +11,7 @@
 ## Workstream Status
 
 ### APP
+- **2026-09-28 — v29 launch build on branch `release/v29` (not yet merged/pushed).** Xcode-27 build fix; iOS binary now truly Kids-Category clean (Analytics/Crashlytics excluded from iOS; verified by `scripts/check_ios_kids_binary.sh`); iOS audio fixes (patched audioplayers_darwin + interruption recovery; iOS-simulator real-audio test 5/5); iOS camera enabled; Android crash fixes (audio thread exhaustion, Adreno/Vulkan renderer crash). 888 tests pass. Consoles: Play developer verification done, Apple agreements + EU DSA done, Firebase back on Blaze, account-deletion function on Node 22. **Next:** Jim's copy/privacy decisions → bump 1.0.0+29 → Play internal + TestFlight → borrowed-iPhone test → App Store submission + staged Play rollout. Handoff: `.remember/v29-launch/HANDOFF.md` (local).
 - **Status**: **v26 built 2026-05-21** — 2 fixes after v25 re-test showed 2 of the v25 fixes didn't actually work on-device. Both v25 attempts had the RIGHT diagnosis but wrong mechanism. Diagnosed via 2 investigation agents + Codex plan review (Codex caught a Settings gap and replaced a fragile bool-flag with a robust completer). Shipped with `[MUSIC]/[AUD]/[VIC]` diagnostic logging since reasoning-only fixes missed twice.
 - **Last session**: 2026-05-21
 - **Last commit**: `9b7c7ff` — fix(audio): replace Android stopped-listener with per-item stop completer (1.0.0+26)
