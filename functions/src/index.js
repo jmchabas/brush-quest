@@ -29,6 +29,11 @@
  * 2nd Gen functions: client-side `httpsCallable` from the cloud_functions
  * Flutter plugin works identically to v1.
  *
+ * `cleanupStaleBackups` runs daily and deletes cloud backups (`users/{uid}`)
+ * whose last cloud save is more than 12 months old — the retention the
+ * privacy policy promises. Logic and tests: src/cleanup.js,
+ * test/cleanup.test.js.
+ *
  * See:
  * - docs/ios-port/PLAN.md task 2A-3
  * - https://developer.apple.com/documentation/sign_in_with_apple/revoke_tokens
@@ -36,10 +41,12 @@
  */
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions/v2');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const jwt = require('jsonwebtoken');
+const { retentionCutoff, deleteStaleBackups } = require('./cleanup');
 
 admin.initializeApp();
 
@@ -154,5 +161,23 @@ exports.revokeAppleToken = onCall(
     await revokeRefreshToken({ refreshToken, clientId, clientSecret });
 
     return { revoked: true };
+  },
+);
+
+exports.cleanupStaleBackups = onSchedule(
+  {
+    schedule: 'every day 03:30',
+    timeZone: 'America/Los_Angeles',
+    region: 'us-central1',
+    memory: '256MiB',
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const cutoff = retentionCutoff(Date.now());
+    const deleted = await deleteStaleBackups(admin.firestore(), cutoff);
+    logger.info('cleanupStaleBackups finished', {
+      deleted,
+      cutoff: cutoff.toISOString(),
+    });
   },
 );

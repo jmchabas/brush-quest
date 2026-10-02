@@ -1,12 +1,13 @@
 {
   "name": "brush-quest-functions",
-  "description": "Firebase Cloud Functions for Brush Quest — Apple SIWA token revocation per Apple Guideline 5.1.1(v).",
+  "description": "Firebase Cloud Functions for Brush Quest — Apple SIWA token revocation per Apple Guideline 5.1.1(v), and daily cleanup of cloud backups unused for 12 months.",
   "main": "src/index.js",
   "engines": {
     "node": "22"
   },
   "scripts": {
     "lint": "eslint --ext .js src/",
+    "test": "node --test",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
