@@ -302,6 +302,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<bool> _showDataConsentDialog() async {
     final result = await showDialog<bool>(
       context: context,
+      // Consent is an explicit CANCEL / I CONSENT, never a stray tap on the
+      // barrier.
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A0A3E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -318,22 +321,38 @@ class _SettingsScreenState extends State<SettingsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'By signing in, you consent to storing your child\'s game progress in Google\'s cloud (Firebase). This data includes:',
+              'By signing in, you agree to back up your child\'s game '
+              'progress to Google\'s cloud (Firebase). It backs up '
+              'automatically after each brush and includes:',
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 12),
             const Text(
-              '• Brush counts and streaks\n• Stars and unlocked items\n• Settings preferences',
+              '• Brushing history (date and time), counts and streaks\n'
+              '• Stars, unlocked items and trophies\n'
+              '• Settings\n'
+              '• Your email and name from the sign-in',
               style: TextStyle(color: Colors.white60, fontSize: 13),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Brush Quest also collects anonymous app usage and crash data (via Google Firebase Analytics and Crashlytics) so we can fix bugs and improve the game. Nothing is used for advertising or personalization.',
-              style: TextStyle(color: Colors.white60, fontSize: 13),
+            // The iPhone build has no Analytics, Crashlytics or ads SDKs, so
+            // the Android wording would be false there.
+            Text(
+              AudioService.isIOS
+                  ? 'Brush Quest doesn\'t use any analytics, advertising or '
+                        'crash-reporting tools.'
+                  : 'Brush Quest also sends app usage and crash data, not '
+                        'linked to your name or email (Google Firebase '
+                        'Analytics and Crashlytics, advertising ID off), so '
+                        'we can fix bugs. Nothing is used for advertising or '
+                        'personalization.',
+              style: const TextStyle(color: Colors.white60, fontSize: 13),
             ),
             const SizedBox(height: 12),
             const Text(
-              'No personal information about your child is collected. You can delete all data, including cloud data, by resetting progress in Settings.',
+              'We never ask for your child\'s name, age or photo. To delete '
+              'everything, including the backup and this sign-in, use '
+              'Delete Account in Settings.',
               style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 16),
@@ -2034,55 +2053,60 @@ class _SettingsScreenState extends State<SettingsScreen>
         _buildGuideSection(
           'Streaks',
           'Brushing every day builds a streak. The longer the streak, '
-              'the better the treasure chest rewards.\n\n'
+              'the more bonus stars your child earns and the better their '
+              'chest odds.\n\n'
               'If a day is missed, there\'s a one-day grace period \u2014 '
               'your child won\'t lose their streak from a single missed day. '
               'You can also pause the streak from the parent dashboard for '
               'vacations or sick days.\n\n'
-              'Their best streak is always remembered and celebrated.',
+              'Their best streak is saved and shown on the Dashboard.',
           Icons.local_fire_department,
           Colors.orange,
         ),
         _buildGuideSection(
           'Morning & Evening',
-          'The app supports two brushing sessions per day \u2014 '
-              'morning (before noon) and evening (after noon). When your child '
+          'The app supports two brushing sessions per day \u2014 morning '
+              '(before noon) and evening (after noon). When your child '
               'brushes both morning and evening, they earn a bonus star.\n\n'
-              'Two teeth icons on the home screen show which sessions are complete.',
+              'The TODAY card on the Dashboard tab shows which sessions are '
+              'done and at what time.',
           Icons.wb_twilight,
           Colors.amber,
         ),
         _buildGuideSection(
           'Treasure Chests',
-          'After each session, your child earns a treasure chest. Better '
-              'streaks mean better chests \u2014 this is structured, not random. '
-              'There are no loot boxes or gambling mechanics.',
+          'After each session, your child opens a treasure chest. Every '
+              'chest holds at least 1 bonus star, and sometimes 2, 3 or 5. '
+              'What\'s inside is a surprise; longer streaks (3+ and 7+ days) '
+              'make the bigger rewards more likely.\n\n'
+              'Chests are free and can\'t be bought. Nothing in the app '
+              'costs real money.\n\n'
+              'About one day in four is a Treasure Boost day: every chest '
+              'gives 1 extra star.',
           Icons.card_giftcard,
           Colors.green,
         ),
         _buildGuideSection(
-          'Daily Bonuses',
-          'Each day has a theme that adds variety: extra energy, precision '
-              'focus, treasure boost, or boss encounters. These rotate '
-              'automatically on a 5-day cycle. Your child doesn\'t need to '
-              'track these \u2014 they add variety automatically.',
-          Icons.flash_on,
-          Colors.yellow,
-        ),
-        _buildGuideSection(
           'Trophy Collecting',
-          'Your child captures monster trophies by brushing. Each trophy '
-              'requires defeating a monster 1\u20133 times. Trophies are earned '
-              'through brushing \u2014 never randomly, never through purchases.',
+          'Your child captures monster trophies by brushing. Each world has '
+              '5 monsters, taken on in order, one per completed brushing '
+              'session. Most are captured in 1 session; tougher ones take 2 '
+              'or 3. When your child finishes a world, any monster still '
+              'left in it joins the collection automatically.\n\n'
+              'Trophies are earned only through brushing \u2014 never at '
+              'random, never through purchases.',
           Icons.emoji_events,
           const Color(0xFFFFD54F),
         ),
         _buildGuideSection(
           'Stars & The Shop',
-          'Stars are earned by brushing (2 per session, plus streak bonuses). '
-              'Stars can be spent in the shop on new heroes and gear.\n\n'
-              'Your child\'s Ranger Rank (lifetime total) never goes down \u2014 '
-              'only the spendable wallet changes when they buy something.',
+          'Stars are earned by brushing: 2 per session, 1 to 5 more from the '
+              'treasure chest, and bonuses for streaks, for brushing morning '
+              'and evening, and for coming back after a break. Stars can be '
+              'spent in the shop on new heroes and gear.\n\n'
+              'Your child\'s Ranger Rank (lifetime total) never goes '
+              'down \u2014 only the spendable wallet changes when they '
+              'buy something.',
           Icons.star,
           Colors.yellow,
         ),
