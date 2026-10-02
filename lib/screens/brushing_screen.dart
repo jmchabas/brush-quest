@@ -760,6 +760,14 @@ class _BrushingScreenState extends State<BrushingScreen>
     final cameraEnabled = prefs.getBool('camera_enabled') ?? false;
     if (!cameraEnabled) return;
     final ready = await _cameraService.initialize();
+    if (!ready && _cameraService.permissionDenied) {
+      // Camera access was lost (Android "Only this time" or auto-reset,
+      // progress restored onto a new phone). Brushing never asks the OS:
+      // turn the setting OFF so the parent's Settings switch tells the truth
+      // and they can turn it back on behind the gate. The brush runs in
+      // timer mode. Other failures (no camera, init error) keep the setting.
+      await prefs.setBool('camera_enabled', false);
+    }
     if (mounted) {
       setState(() => _cameraReady = ready);
     }

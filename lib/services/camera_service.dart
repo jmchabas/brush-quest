@@ -30,8 +30,13 @@ class CameraService {
   CameraController? get controller => _controller;
   double get motionIntensity => _motionIntensity;
 
-  /// Request camera permission explicitly, then initialize the front camera.
-  /// Returns true if camera is ready, false if permission denied or no camera.
+  /// Check camera permission, then initialize the front camera.
+  /// Returns true if camera is ready, false if permission is missing or no
+  /// camera.
+  ///
+  /// Only CHECKS the permission, never asks for it: this runs at brush start
+  /// while the child holds the phone. The OS camera dialog belongs to the
+  /// parent-gated flows (onboarding camera page, Settings) only.
   Future<bool> initialize() async {
     if (_initialized && !_initFailed) return isAvailable;
 
@@ -41,8 +46,8 @@ class CameraService {
     _permissionDenied = false;
 
     try {
-      // Step 1: Request camera permission explicitly
-      final status = await Permission.camera.request();
+      // Step 1: Check (never request) camera permission
+      final status = await Permission.camera.status;
       if (!status.isGranted) {
         _permissionDenied = true;
         _initFailed = true;

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:brush_quest/services/camera_service.dart';
+import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:flutter_test/flutter_test.dart';
 
 /// Motion detection samples the luma (Y) plane of each camera frame.
@@ -12,6 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// (ResolutionPreset.low = 352x288, stride 384 on typical iPhones). Sampling
 /// must step rows by the stride and never read the padding.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   const padding = 255; // sentinel: pixel values below never reach it
 
   int pixel(int x, int y) => (x * 7 + y * 13) % 200;
@@ -129,6 +132,94 @@ void main() {
         bytesPerRow: 0,
       );
       expect(sampled, everyElement(0));
+    });
+  });
+
+  /// Brushing calls initialize() at every brush start, while the child holds
+  /// the phone. It may only CHECK the camera permission: the OS dialog is
+  /// reserved for the parent-gated flows (onboarding camera page, Settings).
+  group('CameraService.initialize permission', () {
+    const permissionChannel = MethodChannel(
+      'flutter.baseflow.com/permissions/methods',
+    );
+    const cameraChannel = MethodChannel('plugins.flutter.io/camera');
+    // permission_handler wire values.
+    const cameraPermission = 1; // Permission.camera
+    const denied = 0;
+    const granted = 1;
+    const restricted = 2;
+    const permanentlyDenied = 4;
+
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    late List<MethodCall> permissionCalls;
+    late int statusResult;
+
+    setUp(() {
+      CameraService().dispose(); // singleton: start every test fresh
+      permissionCalls = <MethodCall>[];
+      statusResult = denied;
+      messenger
+        ..setMockMethodCallHandler(permissionChannel, (call) async {
+          permissionCalls.add(call);
+          switch (call.method) {
+            case 'checkPermissionStatus':
+              return statusResult;
+            case 'requestPermissions':
+              // What the OS dialog would answer if it were (wrongly) shown.
+              return <int, int>{cameraPermission: statusResult};
+          }
+          return null;
+        })
+        // The test host has no camera.
+        ..setMockMethodCallHandler(
+          cameraChannel,
+          (call) async => call.method == 'availableCameras' ? <Object>[] : null,
+        );
+    });
+
+    tearDown(() {
+      messenger
+        ..setMockMethodCallHandler(permissionChannel, null)
+        ..setMockMethodCallHandler(cameraChannel, null);
+      CameraService().dispose();
+    });
+
+    List<String> permissionMethods() =>
+        permissionCalls.map((c) => c.method).toList();
+
+    for (final (name, status) in [
+      ('denied', denied),
+      ('restricted', restricted),
+      ('permanentlyDenied', permanentlyDenied),
+    ]) {
+      test('$name -> false + permissionDenied, never asks the OS', () async {
+        statusResult = status;
+        final camera = CameraService();
+
+        expect(await camera.initialize(), isFalse);
+
+        expect(camera.permissionDenied, isTrue);
+        expect(camera.isAvailable, isFalse);
+        expect(
+          permissionMethods(),
+          isNot(contains('requestPermissions')),
+          reason: 'the OS camera dialog must never open from brushing',
+        );
+        expect(permissionMethods(), ['checkPermissionStatus']);
+        expect(permissionCalls.single.arguments, cameraPermission);
+      });
+    }
+
+    test('granted -> no OS dialog, goes on to look for a camera', () async {
+      statusResult = granted;
+      final camera = CameraService();
+
+      // No camera on the test host: init fails, but not as a refusal.
+      expect(await camera.initialize(), isFalse);
+
+      expect(camera.permissionDenied, isFalse);
+      expect(permissionMethods(), ['checkPermissionStatus']);
     });
   });
 }
