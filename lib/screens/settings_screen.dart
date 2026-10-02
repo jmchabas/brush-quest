@@ -308,6 +308,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A0A3E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        // The notice is long: scroll it on small screens and large fonts
+        // instead of overflowing into the buttons. Same look when it fits.
+        scrollable: true,
         title: const Text(
           'Cloud Save — Data Notice',
           style: TextStyle(

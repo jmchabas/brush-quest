@@ -130,12 +130,27 @@ void main() {
     AudioService.debugIsIOSOverride = null;
   });
 
-  /// Pumps Settings at [size] and passes the Parent Check (the math gate).
-  Future<void> pumpUnlockedSettings(WidgetTester tester, Size size) async {
+  /// Pumps Settings at [size] and system text scale [textScale], and passes
+  /// the Parent Check (the math gate).
+  Future<void> pumpUnlockedSettings(
+    WidgetTester tester,
+    Size size, {
+    double textScale = 1.0,
+  }) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
+        home: const SettingsScreen(),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -154,20 +169,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   }
 
-  /// Settings tab -> "Sign in with Google" -> the consent dialog is on screen.
-  /// Nothing is consented to, so no real sign-in is ever attempted.
-  ///
-  /// Uses a tall surface: widget tests draw text in the Ahem test font (every
-  /// glyph 1 em wide, about twice the width of a real font), so the dialog is
-  /// much taller here than on a device. The tall surface keeps these tests
-  /// about the copy, not about layout.
-  Future<void> openConsentDialog(WidgetTester tester) async {
-    await pumpUnlockedSettings(tester, const Size(430, 1400));
+  /// Pumps Settings at [size] and [textScale], passes the Parent Check and
+  /// opens the Settings tab (where "Sign in with Google" lives).
+  Future<void> openSettingsTab(
+    WidgetTester tester,
+    Size size, {
+    double textScale = 1.0,
+  }) async {
+    await pumpUnlockedSettings(tester, size, textScale: textScale);
     await openTab(tester, 'Settings');
+  }
+
+  /// Taps "Sign in with Google" and waits for the consent dialog. Nothing is
+  /// consented to, so no real sign-in is ever attempted.
+  Future<void> tapSignIn(WidgetTester tester) async {
     await tester.tap(find.text('Sign in with Google'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text(_consentTitle), findsOneWidget);
+  }
+
+  /// Settings tab -> "Sign in with Google" -> the consent dialog is on screen.
+  ///
+  /// Uses a tall surface: widget tests draw text in the Ahem test font (every
+  /// glyph 1 em wide, about twice the width of a real font), so the dialog is
+  /// much taller here than on a device. The tall surface keeps the copy tests
+  /// about the copy, not about layout. The small-phone tests below use their
+  /// own size and text scale instead.
+  Future<void> openConsentDialog(WidgetTester tester) async {
+    await openSettingsTab(tester, const Size(430, 1400));
+    await tapSignIn(tester);
   }
 
   /// Scopes [matching] to the consent dialog: the Settings tab behind it is
@@ -283,6 +314,60 @@ void main() {
       expect(find.text('Sign in with Google'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);
     });
+  });
+
+  group('consent dialog on a small phone', () {
+    // 360x640 is a small Android phone and 1.3 is the largest system font
+    // size. The Android wording is the longest, so it is the one that must
+    // not overflow.
+    for (final scale in <double>[1.0, 1.3]) {
+      testWidgets(
+        '360x640 at text scale $scale: no overflow, closing sentence scrolls '
+        'into view',
+        (tester) async {
+          AudioService.debugIsIOSOverride = false;
+          await openSettingsTab(tester, const Size(360, 640), textScale: scale);
+          // The Parent Check and the Settings tab themselves overflow at 360
+          // px in the Ahem test font (glyphs about twice as wide as a real
+          // font). Flutter reports each overflow once, when it first paints,
+          // so discard those reports here: what is checked below is only the
+          // dialog.
+          tester.takeException();
+
+          await tapSignIn(tester);
+          // Nothing overflowed or threw while the dialog was laid out.
+          expect(tester.takeException(), isNull);
+
+          final closing = inDialog(
+            find.textContaining('We never ask for your child'),
+          );
+          await tester.ensureVisible(closing);
+          await tester.pump();
+          expect(tester.takeException(), isNull);
+
+          // The closing sentence is now fully inside the dialog's scroll
+          // area, and both actions are still on screen, below that area.
+          final scrollArea = tester.getRect(
+            inDialog(find.byType(SingleChildScrollView)),
+          );
+          final text = tester.getRect(closing);
+          expect(text.top, greaterThanOrEqualTo(scrollArea.top));
+          expect(text.bottom, lessThanOrEqualTo(scrollArea.bottom));
+          for (final action in <String>['CANCEL', 'I CONSENT']) {
+            final rect = tester.getRect(find.text(action));
+            expect(rect.top, greaterThanOrEqualTo(scrollArea.bottom));
+            expect(rect.bottom, lessThanOrEqualTo(640), reason: action);
+          }
+
+          // And the parent can still decline at this size.
+          await tester.tap(find.text('CANCEL'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(find.byType(AlertDialog), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
   });
 
   group('Parent Guide tab', () {
