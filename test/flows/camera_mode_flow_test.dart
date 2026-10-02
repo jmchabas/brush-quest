@@ -90,4 +90,34 @@ void main() {
       reason: 'camera_enabled must follow the OS grant',
     );
   });
+
+  test('brushing never asks the OS for the camera or enables it (COPPA)', () {
+    final service = File('lib/services/camera_service.dart').readAsStringSync();
+    final brushing = File(
+      'lib/screens/brushing_screen.dart',
+    ).readAsStringSync();
+
+    // The child holds the phone while brushing. Only the parent-gated flows
+    // above (onboarding camera page, Settings) may show the OS camera prompt
+    // or turn the camera on. Behaviour is pinned by camera_service_test.dart
+    // and brushing_camera_permission_test.dart.
+    const reason =
+        'Brushing must never show the OS camera prompt or enable the camera '
+        'without the parent gate';
+    expect(
+      service.contains('Permission.camera.request()'),
+      isFalse,
+      reason: reason,
+    );
+    expect(
+      brushing.contains('Permission.camera.request()'),
+      isFalse,
+      reason: reason,
+    );
+    expect(
+      brushing.contains("setBool('camera_enabled', true)"),
+      isFalse,
+      reason: reason,
+    );
+  });
 }

@@ -360,7 +360,6 @@ class _BrushingScreenState extends State<BrushingScreen>
   Timer? _microRewardTimer;
   Timer? _musicHealthTimer;
   bool _musicWasPlaying = false; // track music state for app lifecycle restore
-  bool _showCameraPrompt = false; // first-brush camera prompt
   bool _showWorldIntro = true;
   Timer? _worldIntroTimer;
   SessionStage _sessionStage = SessionStage.worldIntro;
@@ -842,9 +841,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     // (e.g. 1) to override per-phase duration for integration tests. 0 (the
     // default) means "no override" — production behavior is byte-identical.
     // See integration_test/brush_session_e2e_test.dart (plan task 1V-6).
-    const phaseOverride = int.fromEnvironment(
-      'BRUSHING_PHASE_SECONDS',
-    );
+    const phaseOverride = int.fromEnvironment('BRUSHING_PHASE_SECONDS');
     final duration = phaseOverride > 0
         ? phaseOverride
         : (prefs.getInt('phase_duration') ?? 15);
@@ -992,56 +989,14 @@ class _BrushingScreenState extends State<BrushingScreen>
       _showWorldIntro = false;
     });
 
-    // Check if this is the first ever brush and camera prompt hasn't been shown.
-    // Skip the prompt entirely if camera was explicitly disabled in settings.
-    final prefs = await SharedPreferences.getInstance();
-    final totalBrushes = prefs.getInt('total_brushes') ?? 0;
-    final cameraPromptShown = prefs.getBool('camera_prompt_shown') ?? false;
-    final cameraAlreadyEnabled = prefs.getBool('camera_enabled') ?? false;
-    final cameraConfigured = prefs.getBool('camera_mode_configured') ?? false;
-
-    // Show camera prompt only on first brush, if not already shown,
-    // camera not already enabled, and user hasn't explicitly configured
-    // camera off in settings.
-    final shouldShowPrompt =
-        totalBrushes == 0 &&
-        !cameraPromptShown &&
-        !cameraAlreadyEnabled &&
-        !cameraConfigured;
-
-    if (shouldShowPrompt) {
-      if (!mounted) return;
-      setState(() {
-        _showCameraPrompt = true;
-        _sessionStage = SessionStage.countdown;
-      });
-      unawaited(_audio.playVoice('voice_camera_prompt.mp3'));
-      return; // Wait for user to respond to camera prompt
-    }
+    // Yield a microtask so the stopVoice() above settles the in-flight
+    // briefing voice before the countdown queues "Three!". Queued in the
+    // same microtask, Android drops "Three!" when the kid taps during the
+    // briefing (seen with the real AudioService and platform latency).
+    await Future<void>.value();
+    if (!mounted) return;
 
     setState(() => _sessionStage = SessionStage.countdown);
-    _startCountdown();
-  }
-
-  Future<void> _onCameraPromptAccept() async {
-    unawaited(_audio.stopVoice());
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('camera_prompt_shown', true);
-    await prefs.setBool('camera_enabled', true);
-    if (!mounted) return;
-    setState(() => _showCameraPrompt = false);
-    // Initialize camera now that it's been enabled
-    final ready = await _cameraService.initialize();
-    if (mounted) setState(() => _cameraReady = ready);
-    _startCountdown();
-  }
-
-  Future<void> _onCameraPromptSkip() async {
-    unawaited(_audio.stopVoice());
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('camera_prompt_shown', true);
-    if (!mounted) return;
-    setState(() => _showCameraPrompt = false);
     _startCountdown();
   }
 
@@ -1081,10 +1036,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     // interrupt:true cut "Let's fight!" mid-word on iOS (~400ms in,
     // audible as "time..." then silence). clearQueue still drops any
     // OTHER stale items waiting behind, just not the in-flight voice.
-    _audio.playVoice(
-      'voice_world_${_world.id}.mp3',
-      clearQueue: true,
-    );
+    _audio.playVoice('voice_world_${_world.id}.mp3', clearQueue: true);
   }
 
   @override
@@ -1182,11 +1134,7 @@ class _BrushingScreenState extends State<BrushingScreen>
     // Kick off the "Three!" voice immediately so it lands with the first beep
     // (visible value is already 3 when the countdown screen appears).
     _audio.playSfx('countdown_beep.mp3');
-    _audio.playVoice(
-      'voice_three.mp3',
-      clearQueue: true,
-      interrupt: true,
-    );
+    _audio.playVoice('voice_three.mp3', clearQueue: true, interrupt: true);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -1909,10 +1857,6 @@ class _BrushingScreenState extends State<BrushingScreen>
       canPop: _isQuitting,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_showCameraPrompt) {
-          _onCameraPromptSkip();
-          return;
-        }
         if (_showWorldIntro) {
           _exitWorldIntro();
           return;
@@ -1921,133 +1865,9 @@ class _BrushingScreenState extends State<BrushingScreen>
       },
       child: _showWorldIntro
           ? _buildWorldIntro()
-          : _showCameraPrompt
-          ? _buildCameraPrompt()
           : _sessionStage == SessionStage.countdown
           ? _buildCountdown()
           : _buildBrushing(),
-    );
-  }
-
-  // ==================== CAMERA PROMPT UI ====================
-
-  Widget _buildCameraPrompt() {
-    // Voice is triggered from _dismissWorldIntro(), not here.
-    // Build methods must never trigger audio side effects.
-
-    return Scaffold(
-      body: _WorldBackground(
-        world: _world,
-        child: Stack(
-          children: [
-            // Subtle world image overlay for continuity
-            Positioned.fill(
-              child: Opacity(
-                opacity: 0.15,
-                child: Image.asset(_world.imagePath, fit: BoxFit.cover),
-              ),
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Column(
-                  children: [
-                    const Spacer(flex: 2),
-
-                    // Hero with energy beam from camera
-                    _CameraPowerUpVisual(
-                      hero: _hero,
-                      evolutionStage: _evolutionStage,
-                      weapon: _weapon,
-                      themeColor: _world.themeColor,
-                    ),
-
-                    const Spacer(flex: 1),
-
-                    // POWER UP button (big, glowing, inviting)
-                    GestureDetector(
-                      onTap: _onCameraPromptAccept,
-                      child: Container(
-                        width: double.infinity,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(32),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00E676), Color(0xFF00BFA5)],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF00E676,
-                              ).withValues(alpha: 0.5),
-                              blurRadius: 24,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.bolt, color: Colors.white, size: 32),
-                            SizedBox(width: 8),
-                            Icon(Icons.videocam, color: Colors.white, size: 28),
-                            SizedBox(width: 8),
-                            Icon(Icons.bolt, color: Colors.white, size: 32),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // "Not now" option (subtle, non-pressuring)
-                    GestureDetector(
-                      onTap: _onCameraPromptSkip,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          'Not now',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Parent trust line
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.lock_outline,
-                          color: Colors.white.withValues(alpha: 0.5),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'Camera detects motion only — no pictures taken or stored.',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 11,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -3375,149 +3195,6 @@ class _BrushingScreenState extends State<BrushingScreen>
           ],
         ),
       ),
-    );
-  }
-}
-
-// ==================== CAMERA POWER-UP VISUAL ====================
-
-class _CameraPowerUpVisual extends StatefulWidget {
-  final HeroCharacter hero;
-  final int evolutionStage;
-  final WeaponItem weapon;
-  final Color themeColor;
-
-  const _CameraPowerUpVisual({
-    required this.hero,
-    required this.evolutionStage,
-    required this.weapon,
-    required this.themeColor,
-  });
-
-  @override
-  State<_CameraPowerUpVisual> createState() => _CameraPowerUpVisualState();
-}
-
-class _CameraPowerUpVisualState extends State<_CameraPowerUpVisual>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final pulse = _pulseController.value;
-        final beamOpacity = 0.3 + pulse * 0.5;
-        final heroGlow = 8.0 + pulse * 16.0;
-
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Camera icon at top with pulse
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(
-                  0xFF7C4DFF,
-                ).withValues(alpha: 0.3 + pulse * 0.3),
-                border: Border.all(
-                  color: const Color(
-                    0xFF7C4DFF,
-                  ).withValues(alpha: 0.6 + pulse * 0.4),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(
-                      0xFF7C4DFF,
-                    ).withValues(alpha: pulse * 0.5),
-                    blurRadius: 16,
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.videocam, color: Colors.white, size: 28),
-            ),
-
-            // Energy beam (camera → hero)
-            Container(
-              width: 4,
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(2),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF7C4DFF).withValues(alpha: beamOpacity),
-                    widget.hero.primaryColor.withValues(alpha: beamOpacity),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(
-                      0xFF7C4DFF,
-                    ).withValues(alpha: beamOpacity * 0.6),
-                    blurRadius: 12,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-
-            // Hero — large, glowing, powered up
-            Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: widget.hero.primaryColor, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.hero.primaryColor.withValues(
-                      alpha: 0.4 + pulse * 0.3,
-                    ),
-                    blurRadius: heroGlow,
-                    spreadRadius: 2,
-                  ),
-                  BoxShadow(
-                    color: const Color(
-                      0xFF7C4DFF,
-                    ).withValues(alpha: pulse * 0.3),
-                    blurRadius: heroGlow * 1.5,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: ClipOval(
-                child: HeroService.buildHeroImage(
-                  widget.hero.id,
-                  stage: widget.evolutionStage,
-                  weaponId: widget.weapon.id,
-                  size: 180,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }
