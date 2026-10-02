@@ -36,26 +36,29 @@ void main() {
     expect(fake.musicEvents, ['start', 'pause', 'resume']);
   });
 
-  test('lifecycle snapshot + resumeAfterWake restarts the same track', () async {
-    await fake.playMusic('battle_music_loop.mp3');
-    await fake.setMusicVolume(0.06);
+  test(
+    'lifecycle snapshot + resumeAfterWake restarts the same track',
+    () async {
+      await fake.playMusic('battle_music_loop.mp3');
+      await fake.setMusicVolume(0.06);
 
-    await fake.stopAllAudioForLifecycle();
-    expect(fake.callsFor('stopAllAudioForLifecycle'), hasLength(1));
-    expect(fake.callsFor('stopAllAudio'), hasLength(1));
-    expect(fake.isMusicPlaying, isFalse);
+      await fake.stopAllAudioForLifecycle();
+      expect(fake.callsFor('stopAllAudioForLifecycle'), hasLength(1));
+      expect(fake.callsFor('stopAllAudio'), hasLength(1));
+      expect(fake.isMusicPlaying, isFalse);
 
-    fake.clearCalls();
-    await fake.resumeAfterWake();
+      fake.clearCalls();
+      await fake.resumeAfterWake();
 
-    expect(fake.calls.map((c) => c.method).toList(), [
-      'resumeAfterWake',
-      'playMusic',
-      'setMusicVolume',
-    ]);
-    expect(fake.currentMusicFile, 'battle_music_loop.mp3');
-    expect(fake.musicVolume, 0.06);
-  });
+      expect(fake.calls.map((c) => c.method).toList(), [
+        'resumeAfterWake',
+        'playMusic',
+        'setMusicVolume',
+      ]);
+      expect(fake.currentMusicFile, 'battle_music_loop.mp3');
+      expect(fake.musicVolume, 0.06);
+    },
+  );
 
   test('resumeAfterWake is a no-op when nothing was playing', () async {
     await fake.stopAllAudioForLifecycle();

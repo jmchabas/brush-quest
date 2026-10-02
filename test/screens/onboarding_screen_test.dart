@@ -91,27 +91,26 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets(
-    'page 4 (camera) shows TURN ON CAMERA and Maybe later, no NEXT',
-    (tester) async {
-      await pumpOnboarding(tester);
+  testWidgets('page 4 (camera) shows TURN ON CAMERA and Maybe later, no NEXT', (
+    tester,
+  ) async {
+    await pumpOnboarding(tester);
 
-      // Advance to page 4 (camera page, index 3)
-      for (var i = 0; i < 3; i++) {
-        await tester.tap(find.text('NEXT'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-      }
+    // Advance to page 4 (camera page, index 3)
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('NEXT'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
 
-      // Camera page CTAs visible
-      expect(find.text('TURN ON CAMERA'), findsOneWidget);
-      expect(find.text('Maybe later'), findsOneWidget);
-      // NEXT button hidden on the camera page
-      expect(find.text('NEXT'), findsNothing);
+    // Camera page CTAs visible
+    expect(find.text('TURN ON CAMERA'), findsOneWidget);
+    expect(find.text('Maybe later'), findsOneWidget);
+    // NEXT button hidden on the camera page
+    expect(find.text('NEXT'), findsNothing);
 
-      await tester.binding.setSurfaceSize(null);
-    },
-  );
+    await tester.binding.setSurfaceSize(null);
+  });
 
   // ── Voice narration ──────────────────────────────────────────
 

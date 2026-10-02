@@ -1335,11 +1335,9 @@ class _HomeScreenState extends State<HomeScreen>
                                                           0.4,
                                                 ),
                                             blurRadius:
-                                                40 +
-                                                _auraController.value * 18,
+                                                40 + _auraController.value * 18,
                                             spreadRadius:
-                                                10 +
-                                                _auraController.value * 6,
+                                                10 + _auraController.value * 6,
                                           ),
                                         ],
                                       ),

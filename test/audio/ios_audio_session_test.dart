@@ -15,9 +15,7 @@ import 'real_audio_service_harness.dart';
 void main() {
   setUpAll(AudioHarness.install);
   tearDown(() {
-    const MethodChannel(
-      'brushquest/audio_session',
-    ).setMethodCallHandler(null);
+    const MethodChannel('brushquest/audio_session').setMethodCallHandler(null);
   });
 
   const codec = StandardMethodCodec();

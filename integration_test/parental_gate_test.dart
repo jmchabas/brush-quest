@@ -87,29 +87,32 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('iOS: wrong answer rejects, regenerates challenge, clears field', (
+  testWidgets(
+    'iOS: wrong answer rejects, regenerates challenge, clears field',
+    (tester) async {
+      await pumpSettings(tester);
+
+      final correct = extractCorrectAnswer(tester);
+      final wrong = correct + 1;
+
+      await tester.enterText(find.byType(TextField), '$wrong');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      expect(find.text('Try again!'), findsOneWidget);
+      expect(find.text('Parent Check'), findsOneWidget);
+      expect(find.text('Dashboard'), findsNothing);
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, isEmpty);
+
+      await tester.binding.setSurfaceSize(null);
+    },
+  );
+
+  testWidgets('iOS: correct answer unlocks the Settings TabBar', (
     tester,
   ) async {
-    await pumpSettings(tester);
-
-    final correct = extractCorrectAnswer(tester);
-    final wrong = correct + 1;
-
-    await tester.enterText(find.byType(TextField), '$wrong');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pump();
-
-    expect(find.text('Try again!'), findsOneWidget);
-    expect(find.text('Parent Check'), findsOneWidget);
-    expect(find.text('Dashboard'), findsNothing);
-
-    final field = tester.widget<TextField>(find.byType(TextField));
-    expect(field.controller!.text, isEmpty);
-
-    await tester.binding.setSurfaceSize(null);
-  });
-
-  testWidgets('iOS: correct answer unlocks the Settings TabBar', (tester) async {
     await pumpSettings(tester);
 
     final correct = extractCorrectAnswer(tester);
@@ -128,19 +131,18 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets(
-    'iOS: digitsOnly formatter strips letters from the math input',
-    (tester) async {
-      await pumpSettings(tester);
+  testWidgets('iOS: digitsOnly formatter strips letters from the math input', (
+    tester,
+  ) async {
+    await pumpSettings(tester);
 
-      await tester.enterText(find.byType(TextField), 'abc123def');
-      await tester.pump();
+    await tester.enterText(find.byType(TextField), 'abc123def');
+    await tester.pump();
 
-      final field = tester.widget<TextField>(find.byType(TextField));
-      // Letters dropped, digits remain.
-      expect(field.controller!.text, '123');
+    final field = tester.widget<TextField>(find.byType(TextField));
+    // Letters dropped, digits remain.
+    expect(field.controller!.text, '123');
 
-      await tester.binding.setSurfaceSize(null);
-    },
-  );
+    await tester.binding.setSurfaceSize(null);
+  });
 }

@@ -680,10 +680,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       itemCount: HeroService.allHeroes.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _FeaturedHeroDisplay(
-            hero: selectedHero,
-            stage: selectedStage,
-          );
+          return _FeaturedHeroDisplay(hero: selectedHero, stage: selectedStage);
         }
         final hero = HeroService.allHeroes[index - 1];
         final isHeroOwned = _unlockedHeroes.contains(hero.id);
@@ -1082,11 +1079,7 @@ class _EvolutionCellState extends State<_EvolutionCell>
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.star,
-                    color: Color(0xFFFFD54F),
-                    size: 14,
-                  ),
+                  const Icon(Icons.star, color: Color(0xFFFFD54F), size: 14),
                   const SizedBox(width: 2),
                   Text(
                     '+${_displayPrice - widget.wallet}',

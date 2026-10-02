@@ -75,7 +75,11 @@ void main() {
         h.elapseMs(1000);
         unawaited(s.playSfx('countdown_beep.mp3'));
         unawaited(
-          s.playVoice('voice_go_brushing.mp3', clearQueue: true, interrupt: true),
+          s.playVoice(
+            'voice_go_brushing.mp3',
+            clearQueue: true,
+            interrupt: true,
+          ),
         );
         h.elapseMs(800);
         unawaited(s.playMusic('battle_music_loop.mp3'));
@@ -171,16 +175,13 @@ void main() {
   });
 
   test('voice that never prepares blocks 30 s, then the next voice plays', () {
-    AudioHarness.run(
-      (h) {
-        unawaited(h.service.playVoice('voice_arc2_beat1.mp3'));
-        unawaited(h.service.playVoice('voice_arc2_beat2.mp3'));
-        h.elapse(const Duration(seconds: 35));
-        expect(h.issues.single, contains('op=voice_play_failed'));
-        expectAudioGolden(goldenLines(h), '$dir/voice_never_prepares.txt');
-      },
-      neverPrepare: const {'voice_arc2_beat1.mp3'},
-    );
+    AudioHarness.run((h) {
+      unawaited(h.service.playVoice('voice_arc2_beat1.mp3'));
+      unawaited(h.service.playVoice('voice_arc2_beat2.mp3'));
+      h.elapse(const Duration(seconds: 35));
+      expect(h.issues.single, contains('op=voice_play_failed'));
+      expectAudioGolden(goldenLines(h), '$dir/voice_never_prepares.txt');
+    }, neverPrepare: const {'voice_arc2_beat1.mp3'});
   });
 
   test('mute stops voice + music and drops the queue', () {
@@ -236,33 +237,39 @@ void main() {
     });
   });
 
-  test('Android background during brushing (inactive -> paused -> resumed)', () {
-    AudioHarness.run((h) {
-      final s = h.service;
-      unawaited(s.playMusic('battle_music_loop.mp3'));
-      h.elapseMs(100);
-      // inactive: main.dart then BrushingScreen (registration order).
-      unawaited(s.stopAllAudioForLifecycle());
-      unawaited(s.stopAllAudio());
-      unawaited(s.playSfx('whoosh.mp3'));
-      unawaited(s.pauseMusic());
-      h.elapseMs(300);
-      // paused
-      unawaited(s.stopAllAudioForLifecycle());
-      unawaited(s.stopAllAudio());
-      h.elapseMs(5000);
-      // resumed: main.dart only (BrushingScreen is paused)
-      unawaited(s.resumeAfterWake());
-      h.elapseMs(1000);
-      // Kid taps RESUME
-      unawaited(s.resumeMusic());
-      unawaited(
-        s.playVoice('voice_go_go_go.mp3', clearQueue: true, interrupt: true),
-      );
-      h.elapse(const Duration(seconds: 2));
-      expectAudioGolden(goldenLines(h), '$dir/android_background_brushing.txt');
-    });
-  });
+  test(
+    'Android background during brushing (inactive -> paused -> resumed)',
+    () {
+      AudioHarness.run((h) {
+        final s = h.service;
+        unawaited(s.playMusic('battle_music_loop.mp3'));
+        h.elapseMs(100);
+        // inactive: main.dart then BrushingScreen (registration order).
+        unawaited(s.stopAllAudioForLifecycle());
+        unawaited(s.stopAllAudio());
+        unawaited(s.playSfx('whoosh.mp3'));
+        unawaited(s.pauseMusic());
+        h.elapseMs(300);
+        // paused
+        unawaited(s.stopAllAudioForLifecycle());
+        unawaited(s.stopAllAudio());
+        h.elapseMs(5000);
+        // resumed: main.dart only (BrushingScreen is paused)
+        unawaited(s.resumeAfterWake());
+        h.elapseMs(1000);
+        // Kid taps RESUME
+        unawaited(s.resumeMusic());
+        unawaited(
+          s.playVoice('voice_go_go_go.mp3', clearQueue: true, interrupt: true),
+        );
+        h.elapse(const Duration(seconds: 2));
+        expectAudioGolden(
+          goldenLines(h),
+          '$dir/android_background_brushing.txt',
+        );
+      });
+    },
+  );
 
   test('paused session -> background -> wake restarts music immediately', () {
     // Pins that the Android wake path ignores a paused brushing session

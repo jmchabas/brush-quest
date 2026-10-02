@@ -97,7 +97,11 @@ void main() {
     // All three count voices recorded, in order.
     expect(
       fake.playedVoiceLines.take(3),
-      orderedEquals(<String>['voice_three.mp3', 'voice_two.mp3', 'voice_one.mp3']),
+      orderedEquals(<String>[
+        'voice_three.mp3',
+        'voice_two.mp3',
+        'voice_one.mp3',
+      ]),
     );
 
     // Music started exactly once.
@@ -109,13 +113,16 @@ void main() {
     final firstVoiceAt = fake.playTimeline
         .firstWhere((e) => e.kind == 'voice_start')
         .at;
-    expect(firstVoiceAt.isBefore(musicStartAt!) ||
-            firstVoiceAt.isAtSameMomentAs(musicStartAt),
-        isTrue);
+    expect(
+      firstVoiceAt.isBefore(musicStartAt!) ||
+          firstVoiceAt.isAtSameMomentAs(musicStartAt),
+      isTrue,
+    );
   });
 
-  testWidgets('music start event fires once during a brushing session',
-      (tester) async {
+  testWidgets('music start event fires once during a brushing session', (
+    tester,
+  ) async {
     await simulateBrushingStartSequence(AudioService());
     await tester.pump();
 
@@ -147,15 +154,20 @@ void main() {
         openStart = ev.at;
         openName = ev.name;
       } else if (ev.kind == 'voice_end' && openStart != null) {
-        voiceWindows.add(
-          (start: openStart, end: ev.at, name: openName ?? ev.name),
-        );
+        voiceWindows.add((
+          start: openStart,
+          end: ev.at,
+          name: openName ?? ev.name,
+        ));
         openStart = null;
         openName = null;
       }
     }
-    expect(voiceWindows, isNotEmpty,
-        reason: 'expected at least one voice_start/voice_end pair');
+    expect(
+      voiceWindows,
+      isNotEmpty,
+      reason: 'expected at least one voice_start/voice_end pair',
+    );
 
     // No SFX timestamp may fall strictly inside any voice window. Equality on
     // boundary timestamps is allowed because the fake completes voices
@@ -164,16 +176,20 @@ void main() {
     for (final sfx in fake.playTimeline.where((e) => e.kind == 'sfx')) {
       for (final w in voiceWindows) {
         final overlaps = sfx.at.isAfter(w.start) && sfx.at.isBefore(w.end);
-        expect(overlaps, isFalse,
-            reason:
-                'SFX ${sfx.name} at ${sfx.at} fell inside voice ${w.name} '
-                'window [${w.start}, ${w.end}]');
+        expect(
+          overlaps,
+          isFalse,
+          reason:
+              'SFX ${sfx.name} at ${sfx.at} fell inside voice ${w.name} '
+              'window [${w.start}, ${w.end}]',
+        );
       }
     }
   });
 
-  testWidgets('mute flushes voice queue and silences subsequent calls',
-      (tester) async {
+  testWidgets('mute flushes voice queue and silences subsequent calls', (
+    tester,
+  ) async {
     final audio = AudioService();
     await audio.playMusic('battle_music_loop.mp3');
     fake.resetTracking();

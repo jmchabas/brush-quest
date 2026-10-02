@@ -73,9 +73,9 @@ void main() {
 String _lockEntry(String lock, String name) {
   final start = lock.indexOf('\n  $name:\n');
   expect(start, isNot(-1), reason: '$name missing from pubspec.lock');
-  final next = RegExp(r'\n  [a-z_0-9]+:\n').firstMatch(
-    lock.substring(start + name.length + 4),
-  );
+  final next = RegExp(
+    r'\n  [a-z_0-9]+:\n',
+  ).firstMatch(lock.substring(start + name.length + 4));
   final end = next == null ? lock.length : start + name.length + 4 + next.start;
   final block = lock.substring(start, end);
   // Exactly one package header, so a match can't come from a neighbour.

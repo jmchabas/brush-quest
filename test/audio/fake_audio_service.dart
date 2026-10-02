@@ -199,7 +199,9 @@ class FakeAudioService extends AudioService {
 
   @override
   Future<void> playMusic(String fileName, {bool isRetry = false}) async {
-    calls.add(AudioCall('playMusic', {'fileName': fileName, 'isRetry': isRetry}));
+    calls.add(
+      AudioCall('playMusic', {'fileName': fileName, 'isRetry': isRetry}),
+    );
     if (_muted) return;
     _musicPlaying = true;
     _musicPaused = false;
