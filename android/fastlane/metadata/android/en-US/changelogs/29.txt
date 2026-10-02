@@ -1,1 +1,1 @@
-Stability: fixes crashes some phones had during brushing (sound and graphics). For parents: the grown-up check asks a new sum each time, only a grown-up can switch the camera on, and the Parent Guide and cloud-backup notice are clearer.
+Stability: fixes crashes some phones had during brushing (sound and graphics). For parents: a tougher grown-up check in the tutorial, only a grown-up can switch the camera on, and clearer Parent Guide and cloud-backup notices.

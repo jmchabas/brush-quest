@@ -118,6 +118,10 @@ Thank you for reviewing Brush Quest. A few notes to make the review faster:
    behind the Parent Check). When the camera is in use, a small
    camera icon shows in the top bar of the brushing screen. Without the
    camera (declined, or "Maybe later") the game runs on a timer instead.
+   A brushing session never shows the camera permission prompt: it only
+   checks access, and if access was turned off (for example in iOS
+   Settings) the session runs on the timer and the switch shows OFF until
+   a parent turns it on again behind the Parent Check.
 
 7. AUDIO. The app uses voice prompts (ElevenLabs TTS, owned/licensed)
    and royalty-free SFX. There are no copyrighted music tracks.
