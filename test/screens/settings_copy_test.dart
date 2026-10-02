@@ -43,8 +43,8 @@ const _iosAnalyticsSentence =
 const _androidAnalyticsSentence =
     'Brush Quest also sends app usage and crash data, not linked to your '
     'name or email (Google Firebase Analytics and Crashlytics, advertising '
-    'ID off), so we can fix bugs. Nothing is used for advertising or '
-    'personalization.';
+    'ID off), so we can fix bugs and improve the game. Nothing is used for '
+    'advertising or personalization.';
 
 const _consentClosing =
     'We never ask for your child\'s name, age or photo. To delete '

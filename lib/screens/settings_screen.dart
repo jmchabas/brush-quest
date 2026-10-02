@@ -347,8 +347,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                   : 'Brush Quest also sends app usage and crash data, not '
                         'linked to your name or email (Google Firebase '
                         'Analytics and Crashlytics, advertising ID off), so '
-                        'we can fix bugs. Nothing is used for advertising or '
-                        'personalization.',
+                        'we can fix bugs and improve the game. Nothing is '
+                        'used for advertising or personalization.',
               style: const TextStyle(color: Colors.white60, fontSize: 13),
             ),
             const SizedBox(height: 12),
