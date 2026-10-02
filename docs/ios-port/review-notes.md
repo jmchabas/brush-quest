@@ -7,11 +7,12 @@
 >
 > Keep it true to the build being submitted. Before pasting:
 > - Run `scripts/check_ios_kids_binary.sh` on the final IPA (item 5).
-> - If the onboarding GROWN-UP CHECK changes (it is still a fixed "7 × 8"
->   with three tap answers), rewrite item 2's last bullet to match.
+> - If the onboarding GROWN-UP CHECK changes again, rewrite item 2's last
+>   bullet to match (v29: typed random multiplication, see item 2).
 > - The "Cloud Save — Data Notice" dialog shown before Sign in with Apple
->   must no longer name Firebase Analytics/Crashlytics on iOS, or it
->   contradicts item 5.
+>   must not name Firebase Analytics/Crashlytics on iOS (v29: it says
+>   "Brush Quest doesn't use any analytics, advertising or crash-reporting
+>   tools." on iPhone), or it contradicts item 5.
 > - Account deletion needs the `revokeAppleToken` Cloud Function live
 >   (Blaze plan) for the "Apps Using Apple ID" check in item 4.
 > - "Alameda CA" is intentional: it is the operations address on the Apple
@@ -61,8 +62,10 @@ Thank you for reviewing Brush Quest. A few notes to make the review faster:
      "Start fresh" also ask a second typed multiplication after a warning
      dialog.
    - The camera page at the end of the first-launch tutorial ("ASK A
-     GROWN-UP" → TURN ON CAMERA) shows a "GROWN-UP CHECK": tap the answer
-     to "What is 7 × 8?" (56).
+     GROWN-UP" → TURN ON CAMERA) shows a "GROWN-UP CHECK": type the answer
+     to a random problem such as "6 × 4 = ?" (one factor 4-9, the other
+     3-7) on the number keypad and tap CONTINUE. A wrong answer shows a new
+     problem.
 
 3. SIGN-IN IS OPTIONAL. In Settings → Settings tab → Account, tap
    "Sign in with Apple" or "Sign in with Google". A data notice explains
