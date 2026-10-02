@@ -725,7 +725,9 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           backgroundColor: const Color(0xFF7C4DFF),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       // Bounce back to home; the auth listener + cleared prefs will reflect
@@ -750,7 +752,9 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     } on Exception catch (e) {
@@ -764,7 +768,9 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     } finally {
