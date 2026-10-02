@@ -15,7 +15,35 @@ platform :android do
     )
   end
 
-  desc "Promote internal testing to production"
+  desc "Promote internal testing to production as a 20% staged rollout"
+  lane :promote_to_production_staged do
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "production",
+      track_promote_release_status: "inProgress",
+      rollout: "0.2",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
+    )
+  end
+
+  desc "Finish a staged production rollout (to 100%)"
+  lane :complete_production_rollout do
+    upload_to_play_store(
+      track: "production",
+      rollout: "1",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
+    )
+  end
+
+  desc "Promote internal testing to production (100% at once)"
   lane :promote_to_production do
     upload_to_play_store(
       track: "internal",
