@@ -7,11 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../route_observer.dart';
 import '../services/streak_service.dart';
 import '../services/audio_service.dart';
+import '../services/flame_tier.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/world_service.dart';
 
 import '../services/greeting_service.dart';
+import '../widgets/flame_view.dart';
 import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
@@ -26,6 +28,16 @@ import '../services/trophy_service.dart';
 class HomeScreen extends StatefulWidget {
   final bool skipGreeting;
   const HomeScreen({super.key, this.skipGreeting = false});
+
+  /// Welcome-back line for the daily streak bonus (spec 2026-10-05 §7.3): the
+  /// one-star line for a +1 bonus, the two-star line from +2 on. No bonus, no
+  /// line.
+  @visibleForTesting
+  static String? welcomeFlameVoiceFor(int dailyBonus) => switch (dailyBonus) {
+    <= 0 => null,
+    1 => 'voice_flame_welcome_1.mp3',
+    _ => 'voice_flame_welcome_2.mp3',
+  };
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -62,6 +74,22 @@ class _HomeScreenState extends State<HomeScreen>
   int _showStarDelta = 0;
   bool _starDeltaVisible = false;
   bool _streakPulseActive = false;
+  // The same for the star counter, while the welcome-back stars land in it.
+  bool _walletPulseActive = false;
+  // Welcome-back payoff (spec 2026-10-05 §7.2): the daily bonus flies as stars
+  // from the streak pill to the star counter. [_dailyBonusFlight] is the number
+  // of stars in the air (0 = none), [_flightPath] the pill centres in the
+  // coordinates of [_homeStackKey]. The counter only takes the stars when they
+  // land, so the child watches them arrive.
+  final _homeStackKey = GlobalKey();
+  final _streakPillKey = GlobalKey();
+  final _walletPillKey = GlobalKey();
+  int _dailyBonusFlight = 0;
+  ({Offset from, Offset to})? _flightPath;
+  Timer? _dailyBonusTimer;
+  // The flame step Home last showed is compared once per Home (_loadStats).
+  bool _flameTierChecked = false;
+  static const _lastSeenFlameTierKey = 'last_seen_flame_tier';
   // Guard against rapid repeat taps on the hero. Oliver (v19) reported
   // needing "multiple taps" to start brushing — there's an intentional short
   // delay after tap before navigation (for the whoosh + voice to land) and
@@ -186,6 +214,7 @@ class _HomeScreenState extends State<HomeScreen>
     _affirmationTimer?.cancel();
     _firstBrushLaunchTimer?.cancel();
     _starDeltaTimer?.cancel();
+    _dailyBonusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     AudioService().stopVoice();
     AudioService().stopMusic();
@@ -253,6 +282,13 @@ class _HomeScreenState extends State<HomeScreen>
         _totalBrushes = totalBrushes;
         _trophyCount = trophyCount;
       });
+      // The flame is on screen: has it grown since Home last showed it? Only
+      // the first load of this Home asks; the recorded step makes a repeat
+      // (every return from a sub-screen reloads) silent anyway.
+      if (!_flameTierChecked) {
+        _flameTierChecked = true;
+        unawaited(_checkFlameTierUp(streak));
+      }
       // Post-brush affirmation — when we arrive via skipGreeting from victory,
       // pulse the wallet pill and show a "✓" sticker near the hero for ~4s so
       // the kid sees tangible evidence that the last session registered. The
@@ -269,6 +305,44 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(_maybeShowCameraNudge());
       _startHomeMusic();
     }
+  }
+
+  /// The one-time "your flame got bigger" cue (spec 2026-10-05 §7.2): when the
+  /// flame is
+  /// on a higher step than the last time Home showed it: a whoosh and a pulse
+  /// on the streak pill, plus the line when Home opens cold. Takes note of the
+  /// step it saw, so showing the same step again stays silent. A first run
+  /// (nothing noted yet), a first flame (none to small) and a broken streak
+  /// (a lower step) just take note, with no sound.
+  Future<void> _checkFlameTierUp(int streak) async {
+    final prefs = await SharedPreferences.getInstance();
+    final tier = flameTierFor(streak);
+    final lastSeen = prefs.getInt(_lastSeenFlameTierKey);
+    await prefs.setInt(_lastSeenFlameTierKey, tier.index);
+    final steppedUp =
+        lastSeen != null &&
+        tier.index > lastSeen &&
+        tier.index >= FlameTier.big.index;
+    if (!steppedUp || !mounted) return;
+    unawaited(AudioService().playSfx('whoosh.mp3'));
+    _pulseStreakPill();
+    // R6: right after victory (skipGreeting) the tier-up line was just
+    // spoken there — whoosh only. A cold open still gets the line.
+    if (!widget.skipGreeting) {
+      unawaited(AudioService().playVoice('voice_flame_got_bigger.mp3'));
+    }
+  }
+
+  /// One pulse of the streak pill. The pulse controller is shared with the
+  /// star counter, which only follows it while its own flag is set, so only
+  /// this pill moves.
+  void _pulseStreakPill() {
+    setState(() => _streakPulseActive = true);
+    unawaited(
+      _statPulseController.forward(from: 0).then((_) {
+        if (mounted) setState(() => _streakPulseActive = false);
+      }),
+    );
   }
 
   /// Start (or restart) the home ambient music at low volume. Called from
@@ -385,31 +459,54 @@ class _HomeScreenState extends State<HomeScreen>
     await _claimAndAnimateDailyBonus();
   }
 
-  /// Claims the daily streak bonus and refreshes the wallet display.
+  /// Claims the daily streak bonus and pays it off (spec 2026-10-05 §7.2): the
+  /// welcome line plays while the bonus stars fly from the flame pill to the
+  /// star counter, which takes them when they land.
   Future<void> _claimAndAnimateDailyBonus() async {
     final bonus = await _streakService.claimDailyBonus();
-    if (bonus > 0 && mounted) {
-      // Refresh wallet to include the newly-claimed bonus
-      final newWallet = await _streakService.getWallet();
+    if (bonus <= 0 || !mounted) return;
+    final newWallet = await _streakService.getWallet();
+    if (!mounted) return;
+    final line = HomeScreen.welcomeFlameVoiceFor(bonus);
+    if (line != null) unawaited(AudioService().playVoice(line));
+    final from = _pillCentre(_streakPillKey);
+    final to = _pillCentre(_walletPillKey);
+    setState(() {
+      _dailyBonusFlight = bonus; // drives the star flight
+      _flightPath = (from == null || to == null) ? null : (from: from, to: to);
+    });
+    _dailyBonusTimer?.cancel();
+    _dailyBonusTimer = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      unawaited(AudioService().playSfx('star_chime.mp3'));
       setState(() {
+        _dailyBonusFlight = 0;
         _wallet = newWallet;
+        _walletPulseActive = true;
       });
-    }
+      unawaited(
+        _statPulseController.forward(from: 0).then((_) {
+          if (mounted) setState(() => _walletPulseActive = false);
+        }),
+      );
+    });
+  }
+
+  /// Centre of the pill behind [key] in [_homeStackKey]'s coordinates (the
+  /// Stack sits inside the SafeArea, so screen coordinates would be off by the
+  /// status bar). Null until both are laid out.
+  Offset? _pillCentre(GlobalKey key) {
+    final pill = key.currentContext?.findRenderObject();
+    final stack = _homeStackKey.currentContext?.findRenderObject();
+    if (pill is! RenderBox || stack is! RenderBox) return null;
+    if (!pill.attached || !pill.hasSize || !stack.attached) return null;
+    return pill.localToGlobal(pill.size.center(Offset.zero), ancestor: stack);
   }
 
   void _showGreetingPopup(GreetingResult greeting, {bool pulseStreak = false}) {
     AudioService().playVoice(greeting.voiceFile);
-    // Queue streak teach voice (Layer 2) — shorter replacements (~4s each).
-    // Layer 3 (voice_streak_bonus) eliminated; redundant with teach voices.
-    if (greeting.brushStreak >= 7 && greeting.yesterdayBothDone) {
-      AudioService().playVoice('voice_streak_teach_high_pair.mp3');
-    } else if (greeting.brushStreak >= 7) {
-      AudioService().playVoice('voice_streak_teach_high.mp3');
-    } else if (greeting.brushStreak >= 3 && greeting.yesterdayBothDone) {
-      AudioService().playVoice('voice_streak_teach_low_pair.mp3');
-    } else if (greeting.brushStreak >= 3) {
-      AudioService().playVoice('voice_streak_teach_low.mp3');
-    }
+    // No streak lesson here any more: the welcome-back flame line, queued by
+    // _claimAndAnimateDailyBonus right behind this one, explains the bonus.
     HapticFeedback.mediumImpact();
 
     // Non-flame icons for streak2to4 / streak5to9 so the top icon doesn't
@@ -865,6 +962,7 @@ class _HomeScreenState extends State<HomeScreen>
         body: SpaceBackground(
           child: SafeArea(
             child: Stack(
+              key: _homeStackKey,
               children: [
                 // Top-left parent area button
                 Positioned(
@@ -1052,6 +1150,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 );
                               },
                               child: Container(
+                                key: _streakPillKey,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 6,
@@ -1087,15 +1186,10 @@ class _HomeScreenState extends State<HomeScreen>
                                         size: 22,
                                       ),
                                     ] else ...[
-                                      Icon(
-                                        Icons.local_fire_department,
-                                        color: _streak > 0
-                                            ? Colors.orangeAccent
-                                            : Colors.white.withValues(
-                                                alpha: 0.3,
-                                              ),
-                                        size: 26,
-                                      ),
+                                      // The flame grows with the streak
+                                      // (spec 2026-10-05 §7.1): small, big
+                                      // from 3 days, hot from 7, golden from 14.
+                                      FlameIcon(tier: flameTierFor(_streak)),
                                       const SizedBox(width: 4),
                                       Text(
                                         '$_streak',
@@ -1179,7 +1273,9 @@ class _HomeScreenState extends State<HomeScreen>
                                 AnimatedBuilder(
                                   animation: _statPulseAnimation,
                                   builder: (context, child) {
-                                    final scale = _starDeltaVisible
+                                    final scale =
+                                        (_starDeltaVisible ||
+                                            _walletPulseActive)
                                         ? _statPulseAnimation.value
                                         : 1.0;
                                     return Transform.scale(
@@ -1188,6 +1284,7 @@ class _HomeScreenState extends State<HomeScreen>
                                     );
                                   },
                                   child: Container(
+                                    key: _walletPillKey,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 6,
@@ -1531,6 +1628,15 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 24),
                   ],
                 ),
+
+                // Welcome-back payoff: the daily bonus stars flying from the
+                // flame to the star counter. Plays once, never loops.
+                if (_dailyBonusFlight > 0 && _flightPath != null)
+                  _BonusStarFlight(
+                    count: _dailyBonusFlight,
+                    from: _flightPath!.from,
+                    to: _flightPath!.to,
+                  ),
               ],
             ),
           ),
@@ -1592,6 +1698,51 @@ class _SmallNavButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The welcome-back payoff (spec 2026-10-05 §7.2): [count] stars fly from
+/// [from] (the streak pill) to [to] (the star counter) in 900 ms. Positions are
+/// in the coordinates of the Stack this sits in. It plays once and never
+/// loops; Home takes it down when the stars land.
+class _BonusStarFlight extends StatelessWidget {
+  final int count;
+  final Offset from;
+  final Offset to;
+  const _BonusStarFlight({
+    required this.count,
+    required this.from,
+    required this.to,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Side by side, so two stars read as two and not as one.
+    Offset lane(int index) => Offset(0, (index - (count - 1) / 2) * 18);
+    return IgnorePointer(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (var index = 0; index < count; index++)
+            TweenAnimationBuilder<Offset>(
+              tween: Tween(begin: from + lane(index), end: to + lane(index)),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeInOutCubic,
+              builder: (context, position, _) => Positioned(
+                left: position.dx - 14,
+                top: position.dy - 14,
+                child: const Icon(
+                  Icons.star,
+                  key: ValueKey('bonus_flight_star'),
+                  color: Color(0xFFFFD54F),
+                  size: 28,
+                  shadows: [Shadow(color: Color(0x80FFD54F), blurRadius: 8)],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
