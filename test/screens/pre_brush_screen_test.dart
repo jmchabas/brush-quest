@@ -70,6 +70,21 @@ void main() {
 
   List<String> voices() => audio.playedVoiceLines;
 
+  /// Runs [body] with debugPrint collected, so expected error logs are
+  /// checked rather than printed. It is restored before the test ends, as
+  /// flutter_test requires.
+  Future<List<String?>> collectDebugPrint(Future<void> Function() body) async {
+    final printed = <String?>[];
+    final original = debugPrint;
+    debugPrint = (message, {wrapWidth}) => printed.add(message);
+    try {
+      await body();
+    } finally {
+      debugPrint = original;
+    }
+    return printed;
+  }
+
   final returningKid = <String, Object>{
     'total_brushes': 4,
     'star_wallet': 3,
@@ -144,7 +159,8 @@ void main() {
     expect(voices(), contains('voice_picker_hero_frost.mp3'));
     // Past minStep and maxStep, but still on the hero step: the touch paused it.
     expect(find.byKey(const ValueKey('prebrush_step_hero')), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 550)); // 1 s idle elapsed
+    // 1 s with no touch, counted from when the carousel came to rest (250 ms).
+    await tester.pump(const Duration(milliseconds: 650));
     expect(find.byKey(const ValueKey('prebrush_step_weapon')), findsOneWidget);
     final p = await SharedPreferences.getInstance();
     expect(p.getString('selected_hero'), 'frost');
@@ -236,10 +252,13 @@ void main() {
       'total_brushes': 3,
       'brush_history': ['not json'], // getHistory() throws FormatException
     });
-    await tester.pumpWidget(const MaterialApp(home: PreBrushScreen()));
-    await tester.pumpAndSettle();
+    final printed = await collectDebugPrint(() async {
+      await tester.pumpWidget(const MaterialApp(home: PreBrushScreen()));
+      await tester.pumpAndSettle();
+    });
     expect(find.text('BRUSHING'), findsOneWidget);
     expect(launchedWithIntro, isTrue);
+    expect(printed.single, startsWith('PreBrush load failed: FormatException'));
   });
 
   // ── Added beyond the brief: spec §4.2/§4.3/§11, rulings R1/R3 and the
@@ -420,6 +439,238 @@ void main() {
     expect(voices(), isNot(contains('voice_picker_hero_frost.mp3')));
   });
 
+  // ── Pause, exit and launch paths; voice gates (task review fixes). The
+  // fake's stopVoice() ends the voice pipeline at once, like the real one.
+
+  Future<void> pumpUntilLetsFight(WidgetTester tester) async {
+    for (var i = 0; i < 100; i++) {
+      if (voices().isNotEmpty && voices().last == 'voice_lets_fight.mp3') {
+        return;
+      }
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    fail('the steps never finished');
+  }
+
+  testWidgets('a pause while a line plays runs nothing in the background', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    audio.voicePipelineActiveNotifier.value = true; // the step line runs long
+    await tester.pump(const Duration(milliseconds: 400)); // past minStep
+    final heard = voices().length;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump(const Duration(seconds: 3)); // past every cap
+    expect(find.byKey(const ValueKey('prebrush_step_hero')), findsOneWidget);
+    expect(voices(), hasLength(heard));
+    expect(launchedWithIntro, isNull);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('prebrush_step_hero')), findsOneWidget);
+    expect(voices().last, 'voice_stars_left_2.mp3'); // the step starts again
+    expect(launchedWithIntro, isNull);
+  });
+
+  testWidgets('a resume with no pause before it does not restart the step', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    final heard = voices().length;
+    // The notification shade or a system dialog: inactive, then resumed.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(voices(), hasLength(heard));
+    await tester.pump(oneStep); // the original step timers still run
+    expect(find.byKey(const ValueKey('prebrush_step_weapon')), findsOneWidget);
+  });
+
+  testWidgets('a pause after "Let\'s fight!" launches brushing on resume', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    await pumpUntilLetsFight(tester);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('BRUSHING'), findsNothing); // not in the background
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.text('BRUSHING'), findsOneWidget);
+    expect(launchedWithIntro, isFalse);
+  });
+
+  testWidgets('"Let\'s fight!" plays out before brushing starts', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    await pumpUntilLetsFight(tester);
+    audio.voicePipelineActiveNotifier.value = true; // "Let's fight!" playing
+    await tester.pump(const Duration(milliseconds: 500)); // past launchDelay
+    expect(find.text('BRUSHING'), findsNothing);
+    expect(audio.callsFor('stopVoice'), isEmpty);
+    audio.voicePipelineActiveNotifier.value = false; // the line ends
+    await tester.pumpAndSettle();
+    expect(find.text('BRUSHING'), findsOneWidget);
+  });
+
+  testWidgets('a "Let\'s fight!" that never ends still launches at the cap', (
+    tester,
+  ) async {
+    PreBrushScreen.maxLaunchWait = const Duration(milliseconds: 500);
+    addTearDown(
+      () => PreBrushScreen.maxLaunchWait = const Duration(seconds: 3),
+    );
+    await pumpScreen(tester, returningKid);
+    await pumpUntilLetsFight(tester);
+    audio.voicePipelineActiveNotifier.value = true; // stuck
+    await tester.pump(const Duration(milliseconds: 400)); // delay + part of cap
+    expect(find.text('BRUSHING'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 300)); // cap reached
+    await tester.pumpAndSettle();
+    expect(find.text('BRUSHING'), findsOneWidget);
+  });
+
+  testWidgets('X after "Let\'s fight!" goes Home; brushing never starts', (
+    tester,
+  ) async {
+    PreBrushScreen.launchDelay = const Duration(
+      milliseconds: 400,
+    ); // as shipped
+    SharedPreferences.setMockInitialValues(returningKid);
+    await openFromHome(tester);
+    await pumpUntilLetsFight(tester);
+    // Inside the launch delay, while this screen would still be mounted
+    // during its own exit animation when the delay ends.
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.byKey(const ValueKey('prebrush_back')));
+    await tester.pumpAndSettle();
+    expect(find.text('BRUSHING'), findsNothing);
+    expect(find.byKey(const ValueKey('open')), findsOneWidget);
+    expect(
+      tester.state<NavigatorState>(find.byType(Navigator)).canPop(),
+      false,
+    );
+    expect(launchedWithIntro, isNull);
+  });
+
+  testWidgets('X while "Let\'s fight!" plays (after the delay) goes Home', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(returningKid);
+    await openFromHome(tester);
+    await pumpUntilLetsFight(tester);
+    audio.voicePipelineActiveNotifier.value = true; // waiting for the line
+    await tester.pump(const Duration(milliseconds: 200)); // past launchDelay
+    await tester.tap(find.byKey(const ValueKey('prebrush_back')));
+    await tester.pumpAndSettle();
+    expect(find.text('BRUSHING'), findsNothing);
+    expect(find.byKey(const ValueKey('open')), findsOneWidget);
+    expect(launchedWithIntro, isNull);
+  });
+
+  testWidgets('after "Let\'s fight!" the carousel no longer changes anything', (
+    tester,
+  ) async {
+    final prefs = Map<String, Object>.from(returningKid)
+      ..['world_progress_candy_crater'] = 5; // slime_swamp unlocked too
+    await pumpScreen(tester, prefs);
+    await pumpUntilLetsFight(tester);
+    audio.voicePipelineActiveNotifier.value = true; // hold the launch
+    final heard = voices().length;
+    await tester.tap(
+      find.byKey(const ValueKey('carousel_next')),
+      warnIfMissed: false, // ignored on purpose
+    );
+    await tester.pump(const Duration(seconds: 1));
+    audio.voicePipelineActiveNotifier.value = false;
+    await tester.pumpAndSettle();
+    final saved = await SharedPreferences.getInstance();
+    expect(voices().sublist(heard), isEmpty);
+    expect(saved.getString('current_world'), 'candy_crater');
+    expect(find.text('BRUSHING'), findsOneWidget);
+  });
+
+  testWidgets('a malformed history record still goes straight to brushing', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'total_brushes': 3,
+      // No "time": BrushRecord.fromJson throws a TypeError, not an Exception.
+      'brush_history': ['{"date":"2026-10-04"}'],
+    });
+    final printed = await collectDebugPrint(() async {
+      await tester.pumpWidget(const MaterialApp(home: PreBrushScreen()));
+      await tester.pumpAndSettle();
+    });
+    expect(find.text('BRUSHING'), findsOneWidget);
+    expect(launchedWithIntro, isTrue);
+    expect(printed.single, startsWith('PreBrush load failed'));
+  });
+
+  testWidgets('after a switch the idle wait lets the picker line finish', (
+    tester,
+  ) async {
+    final prefs = Map<String, Object>.from(returningKid)
+      ..['unlocked_heroes'] = ['blaze', 'frost'];
+    await pumpScreen(tester, prefs);
+    await tester.tap(find.byKey(const ValueKey('carousel_next')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // at rest
+    await tester.pump(const Duration(milliseconds: 350)); // settled, spoken
+    expect(voices().last, 'voice_picker_hero_frost.mp3');
+    audio.voicePipelineActiveNotifier.value = true; // the picker line plays on
+    await tester.pump(const Duration(milliseconds: 300)); // idle is over
+    expect(find.byKey(const ValueKey('prebrush_step_hero')), findsOneWidget);
+    audio.voicePipelineActiveNotifier.value = false; // the line ends
+    await tester.pump();
+    expect(find.byKey(const ValueKey('prebrush_step_weapon')), findsOneWidget);
+  });
+
+  testWidgets('after a switch a picker line that never ends is capped', (
+    tester,
+  ) async {
+    final prefs = Map<String, Object>.from(returningKid)
+      ..['unlocked_heroes'] = ['blaze', 'frost'];
+    await pumpScreen(tester, prefs);
+    await tester.tap(find.byKey(const ValueKey('carousel_next')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // at rest
+    await tester.pump(const Duration(milliseconds: 350)); // settled, spoken
+    audio.voicePipelineActiveNotifier.value = true; // stuck
+    await tester.pump(const Duration(milliseconds: 300)); // idle is over
+    expect(find.byKey(const ValueKey('prebrush_step_hero')), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 300)); // maxStep after idle
+    expect(find.byKey(const ValueKey('prebrush_step_weapon')), findsOneWidget);
+  });
+
+  testWidgets('a drag held past the idle time does not advance', (
+    tester,
+  ) async {
+    final prefs = Map<String, Object>.from(returningKid)
+      ..['unlocked_heroes'] = ['blaze', 'frost'];
+    await pumpScreen(tester, prefs);
+    final drag = await tester.startGesture(
+      tester.getCenter(find.byKey(const ValueKey('carousel_hero'))),
+    );
+    for (var i = 0; i < 5; i++) {
+      await drag.moveBy(const Offset(-20, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await tester.pump(const Duration(seconds: 1)); // finger still down
+    expect(find.byKey(const ValueKey('prebrush_step_hero')), findsOneWidget);
+    await drag.up();
+    // It springs back over a few frames; the idle wait starts once it rests.
+    final weaponStep = find.byKey(const ValueKey('prebrush_step_weapon'));
+    var waited = Duration.zero;
+    while (weaponStep.evaluate().isEmpty &&
+        waited < const Duration(seconds: 2)) {
+      await tester.pump(const Duration(milliseconds: 50));
+      waited += const Duration(milliseconds: 50);
+    }
+    expect(weaponStep, findsOneWidget);
+    expect(waited, greaterThanOrEqualTo(PreBrushScreen.idleAfterTouch));
+  });
+
   testWidgets('on the world step the goal tap says "keep brushing"', (
     tester,
   ) async {
@@ -440,6 +691,10 @@ void main() {
       expect(voices().first, 'voice_ready_to_unlock.mp3'); // Frost costs 5
       expect(find.byKey(const ValueKey('meter_filled')), findsNWidgets(5));
       expect(find.byKey(const ValueKey('meter_empty')), findsNothing);
+      // Tapping it says the same thing, not "you need more stars".
+      await tester.tap(find.byKey(const ValueKey('prebrush_goal')));
+      await tester.pump();
+      expect(voices().last, 'voice_ready_to_unlock.mp3');
     },
   );
 

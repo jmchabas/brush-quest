@@ -14,7 +14,7 @@ void main() {
       isTrue,
     );
     // Picker was removed — brushing flow goes directly to BrushingScreen
-    expect(source.contains('_launchBrushingScreen()'), isTrue);
+    expect(source.contains('_launchBrushingScreen('), isTrue);
   });
 
   test('onboarding camera page is parent-gated (COPPA)', () {

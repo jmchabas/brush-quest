@@ -9,6 +9,7 @@ import '../services/streak_service.dart';
 import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
+import '../services/world_service.dart';
 
 import '../services/greeting_service.dart';
 import '../widgets/space_background.dart';
@@ -72,6 +73,8 @@ class _HomeScreenState extends State<HomeScreen>
   // not just the ephemeral wallet-delta float.
   bool _postBrushAffirmation = false;
   Timer? _affirmationTimer;
+  Timer? _firstBrushLaunchTimer;
+  Timer? _starDeltaTimer;
   // One-time discoverability nudge for the camera. Fires after onboarding
   // for users who haven't yet enabled camera in Settings (or skipped the
   // parent-gated camera page). Persists until the kid taps BRUSH (started
@@ -181,6 +184,8 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     routeObserver.unsubscribe(this);
     _affirmationTimer?.cancel();
+    _firstBrushLaunchTimer?.cancel();
+    _starDeltaTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     AudioService().stopVoice();
     AudioService().stopMusic();
@@ -724,6 +729,8 @@ class _HomeScreenState extends State<HomeScreen>
       return;
     }
 
+    final worldId = await WorldService().getCurrentWorldId();
+    if (!mounted) return;
     unawaited(
       AudioService().playVoice(
         'voice_lets_fight.mp3',
@@ -734,12 +741,12 @@ class _HomeScreenState extends State<HomeScreen>
     // Tightened from 1500ms — home isn't disposed on push, so the lets-fight
     // voice keeps playing across the transition. 400ms is enough for the
     // whoosh SFX to land before nav without stalling the kid.
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) {
-        // First-ever brush: nothing to choose yet (spec D6).
-        unawaited(AnalyticsService().logPreBrushSkipped(reason: 'first_brush'));
-        _launchBrushingScreen();
-      }
+    _firstBrushLaunchTimer?.cancel();
+    _firstBrushLaunchTimer = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      // First-ever brush: nothing to choose yet (spec D6).
+      unawaited(AnalyticsService().logPreBrushSkipped(reason: 'first_brush'));
+      _launchBrushingScreen(worldId: worldId);
     });
   }
 
@@ -765,11 +772,11 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _launchBrushingScreen() {
+  void _launchBrushingScreen({required String worldId}) {
     AnalyticsService().logBrushSessionStart(
       heroId: _selectedHero.id,
       weaponId: _selectedWeapon.id,
-      worldId: '', // world selected in brushing screen
+      worldId: worldId,
     );
     Navigator.of(context)
         .push(
@@ -812,7 +819,8 @@ class _HomeScreenState extends State<HomeScreen>
         _showStarDelta = walletDelta;
         _starDeltaVisible = true;
       });
-      Future.delayed(const Duration(milliseconds: 1500), () {
+      _starDeltaTimer?.cancel();
+      _starDeltaTimer = Timer(const Duration(milliseconds: 1500), () {
         if (mounted) setState(() => _starDeltaVisible = false);
       });
     }

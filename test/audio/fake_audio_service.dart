@@ -195,6 +195,9 @@ class FakeAudioService extends AudioService {
     calls.add(const AudioCall('stopVoice'));
     _clearVoiceQueue();
     _voicePlaying = false;
+    // Like the real service: stopping ends the pipeline at once, so screens
+    // listening to the notifier react synchronously.
+    voicePipelineActiveNotifier.value = false;
   }
 
   @override
