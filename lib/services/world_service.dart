@@ -191,15 +191,27 @@ class WorldService {
     return prefs.getInt('$_progressPrefix$worldId') ?? 0;
   }
 
-  Future<void> recordMission() async {
-    final prefs = await SharedPreferences.getInstance();
-    final worldId = await getCurrentWorldId();
-    final current = prefs.getInt('$_progressPrefix$worldId') ?? 0;
-    await prefs.setInt('$_progressPrefix$worldId', current + 1);
+  /// The first world, in order, that is not completed. A brush's mission
+  /// progress always goes here, whichever world the child is playing in
+  /// (spec §8.4). Null when every world is completed. (The first unfinished
+  /// world is always unlocked: the world before it is, by definition, done.)
+  Future<WorldData?> getFrontierWorld() async {
+    for (final world in allWorlds) {
+      if (!await isWorldCompleted(world.id)) return world;
+    }
+    return null;
+  }
 
-    final world = getWorldById(worldId);
-    if (current + 1 >= world.missionsRequired) {
-      final worldIndex = allWorlds.indexWhere((w) => w.id == worldId);
+  Future<void> recordMission() async {
+    final frontier = await getFrontierWorld();
+    if (frontier == null) return; // every world finished
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_progressPrefix${frontier.id}';
+    final current = prefs.getInt(key) ?? 0;
+    await prefs.setInt(key, current + 1);
+
+    if (current + 1 >= frontier.missionsRequired) {
+      final worldIndex = allWorlds.indexWhere((w) => w.id == frontier.id);
       if (worldIndex < allWorlds.length - 1) {
         await prefs.setString(_currentWorldKey, allWorlds[worldIndex + 1].id);
       }

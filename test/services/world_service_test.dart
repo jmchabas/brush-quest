@@ -172,15 +172,21 @@ void main() {
     });
 
     test('does not advance past the last world', () async {
-      // Start at the last world
-      SharedPreferences.setMockInitialValues({
-        'current_world': 'dark_dimension',
-      });
+      // Worlds 1-9 are finished, so dark_dimension is the frontier (spec D11:
+      // a brush always counts toward the furthest unfinished world).
+      final values = <String, Object>{'current_world': 'dark_dimension'};
+      for (final world in WorldService.allWorlds) {
+        if (world.id != 'dark_dimension') {
+          values['world_progress_${world.id}'] = world.missionsRequired;
+        }
+      }
+      SharedPreferences.setMockInitialValues(values);
       final service = WorldService();
       // dark_dimension requires 10 missions
       for (int i = 0; i < 10; i++) {
         await service.recordMission();
       }
+      expect(await service.getWorldProgress('dark_dimension'), 10);
       // Should still be dark_dimension (no world after it)
       final worldId = await service.getCurrentWorldId();
       expect(worldId, 'dark_dimension');
