@@ -7,6 +7,7 @@ import '../services/audio_service.dart';
 import '../services/hero_service.dart';
 import '../services/weapon_service.dart';
 import '../services/streak_service.dart';
+import '../services/unlock_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../services/analytics_service.dart';
@@ -23,13 +24,13 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   final _heroService = HeroService();
   final _weaponService = WeaponService();
   final _streakService = StreakService();
+  final _unlock = UnlockService();
 
   List<String> _unlockedHeroes = ['blaze'];
   String _selectedHeroId = 'blaze';
   List<String> _unlockedWeapons = ['star_blaster'];
   String _selectedWeaponId = 'star_blaster';
   int _wallet = 0;
-  int _rank = 0;
   List<String> _unlockedEvolutions = [];
   Map<String, int> _evolutionStages = {};
   bool _isPurchaseDialogOpen = false;
@@ -47,12 +48,11 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           : 'voice_tab_weapons.mp3';
       AudioService().playVoice(voice, clearQueue: true, interrupt: true);
     });
-    // Show wallet/rank immediately before async load refines them
+    // Show the wallet immediately before async load refines it
     SharedPreferences.getInstance().then((p) {
       if (mounted) {
         setState(() {
           _wallet = p.getInt('star_wallet') ?? 0;
-          _rank = p.getInt('total_stars') ?? 0;
         });
       }
     });
@@ -97,7 +97,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
     final unlockedWeapons = await _weaponService.getUnlockedWeaponIds();
     final selectedWeapon = await _weaponService.getSelectedWeaponId();
     final wallet = await _streakService.getWallet();
-    final rank = await _streakService.getRangerRank();
     final unlockedEvolutions = await _heroService.getUnlockedEvolutionIds();
     final evolutionStages = <String, int>{};
     for (final hero in HeroService.allHeroes) {
@@ -110,7 +109,6 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         _unlockedWeapons = unlockedWeapons;
         _selectedWeaponId = selectedWeapon;
         _wallet = wallet;
-        _rank = rank;
         _unlockedEvolutions = unlockedEvolutions;
         _evolutionStages = evolutionStages;
       });
@@ -198,16 +196,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           );
           if (!confirmed) return;
         }
-        final success = await _heroService.purchaseHero(hero.id);
+        final success = await _unlock.unlockHero(hero.id);
         if (success) {
-          await _heroService.selectHero(hero.id);
           unawaited(HapticFeedback.heavyImpact());
-          unawaited(
-            AnalyticsService().logHeroUnlock(
-              heroId: hero.id,
-              starsAtUnlock: _rank,
-            ),
-          );
           if (mounted) _showHeroUnlockAnimation(hero);
           await _loadData();
         }
@@ -304,16 +295,12 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         evolution.price,
       );
       if (!confirmed) return;
-      final success = await _heroService.purchaseEvolution(evolution.id);
+      // UnlockService only auto-equips the purchased evolution if the child
+      // already has this hero selected. Otherwise the hero silently switches
+      // — e.g. Shadow-selected kid buys Blaze stage2 "just to own it" and
+      // their equipped hero flips to Blaze with no confirmation or voice.
+      final success = await _unlock.unlockEvolution(evolution.id);
       if (success) {
-        // Only auto-equip the purchased evolution if the child already has
-        // this hero selected. Otherwise the hero silently switches — e.g.
-        // Shadow-selected kid buys Blaze stage2 "just to own it" and their
-        // equipped hero flips to Blaze with no confirmation or voice.
-        final currentHero = await _heroService.getSelectedHero();
-        if (currentHero.id == hero.id) {
-          await _heroService.setEvolutionStage(hero.id, evolution.stage);
-        }
         unawaited(HapticFeedback.heavyImpact());
         await _loadData();
       }
@@ -347,16 +334,9 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         );
         if (!confirmed) return;
       }
-      final success = await _weaponService.purchaseWeapon(weapon.id);
+      final success = await _unlock.unlockWeapon(weapon.id);
       if (success) {
-        await _weaponService.selectWeapon(weapon.id);
         unawaited(HapticFeedback.heavyImpact());
-        unawaited(
-          AnalyticsService().logWeaponUnlock(
-            weaponId: weapon.id,
-            starsAtUnlock: _rank,
-          ),
-        );
         // Finding #8: Don't play voice here — the unlock dialog's initState
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showWeaponUnlockAnimation(weapon);

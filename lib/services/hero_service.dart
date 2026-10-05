@@ -412,12 +412,11 @@ class HeroService {
     return allEvolutions.where((e) => e.heroId == heroId).toList();
   }
 
+  /// The evolution with this id, or null when there is none (an id that isn't
+  /// in the list, such as `blaze_stage4`). Not `firstWhere`: with no match it
+  /// throws a StateError, which an `on Exception` catch does not catch.
   static HeroEvolution? getEvolutionById(String id) {
-    try {
-      return allEvolutions.firstWhere((e) => e.id == id);
-    } on Exception catch (_) {
-      return null;
-    }
+    return allEvolutions.where((e) => e.id == id).firstOrNull;
   }
 
   static HeroEvolution getEvolutionForHero(String heroId, int stage) {
