@@ -1,10 +1,13 @@
 // test/widgets/brush_flow_widgets_test.dart
+import 'dart:ui' as ui;
+
 import 'package:brush_quest/services/flame_tier.dart';
 import 'package:brush_quest/widgets/flame_view.dart';
 import 'package:brush_quest/widgets/goal_meter.dart';
 import 'package:brush_quest/widgets/item_silhouette.dart';
 import 'package:brush_quest/widgets/loadout_carousel.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -285,6 +288,122 @@ void main() {
       );
       expect(find.byIcon(Icons.arrow_forward), findsNothing);
       expect(find.byIcon(Icons.inventory_2), findsNothing);
+    });
+  });
+
+  // ---- Fix round 0 (controller ruling): weapon and planet art is an opaque
+  // square on a near-black space background, so the black srcATop silhouette
+  // would paint a hard-edged black box. opaqueArt dims it to grey instead.
+  group('ItemSilhouette opaqueArt', () {
+    final blackSilhouette = ColorFilter.mode(
+      Colors.black.withValues(alpha: 0.85),
+      BlendMode.srcATop,
+    );
+
+    const art = SizedBox(key: ValueKey('art'), width: 100, height: 100);
+
+    // One pixel of a repaint boundary as [r, g, b, a] (straight alpha).
+    Future<List<int>> pixelAt(
+      WidgetTester tester,
+      GlobalKey boundary,
+      int x,
+      int y,
+    ) async {
+      final rgba = await tester.runAsync(() async {
+        final render =
+            boundary.currentContext!.findRenderObject()!
+                as RenderRepaintBoundary;
+        final image = await render.toImage();
+        // rawRgba is premultiplied; the straight format gives the real colour.
+        final data = (await image.toByteData(
+          format: ui.ImageByteFormat.rawStraightRgba,
+        ))!;
+        final i = (y * image.width + x) * 4;
+        return [for (var c = 0; c < 4; c++) data.getUint8(i + c)];
+      });
+      return rgba!;
+    }
+
+    Widget artPixels(GlobalKey key, Color color) => _wrap(
+      RepaintBoundary(
+        key: key,
+        child: ItemSilhouette(
+          opaqueArt: true,
+          child: SizedBox(
+            width: 100,
+            height: 100,
+            child: ColoredBox(color: color),
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('dims with one filter that is not the black silhouette', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(const ItemSilhouette(opaqueArt: true, child: art)),
+      );
+      // One effect layer only (global constraint: at most 2 effects).
+      expect(find.byType(ColorFiltered), findsOneWidget);
+      expect(
+        tester.widget<ColorFiltered>(find.byType(ColorFiltered)).colorFilter,
+        isNot(blackSilhouette),
+      );
+    });
+
+    testWidgets('adds a small white54 lock in the bottom-right corner', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(const ItemSilhouette(opaqueArt: true, child: art)),
+      );
+      expect(find.byIcon(Icons.lock), findsOneWidget);
+      final lock = tester.widget<Icon>(find.byIcon(Icons.lock));
+      expect(lock.color, Colors.white54);
+      // About 24% of the 100 px art.
+      expect(lock.size, closeTo(24, 0.01));
+      final artBox = tester.getRect(find.byKey(const ValueKey('art')));
+      final lockBox = tester.getRect(find.byIcon(Icons.lock));
+      expect(lockBox.right, closeTo(artBox.right, 0.01));
+      expect(lockBox.bottom, closeTo(artBox.bottom, 0.01));
+    });
+
+    testWidgets('the default silhouette is the black one, with no lock', (
+      tester,
+    ) async {
+      // No opaqueArt argument: this exercises the constructor default.
+      await tester.pumpWidget(_wrap(const ItemSilhouette(child: art)));
+      expect(find.byIcon(Icons.lock), findsNothing);
+      expect(find.byType(ColorFiltered), findsOneWidget);
+      expect(
+        tester.widget<ColorFiltered>(find.byType(ColorFiltered)).colorFilter,
+        blackSilhouette,
+      );
+    });
+
+    testWidgets('greys opaque art to a quarter of its luminance', (
+      tester,
+    ) async {
+      final key = GlobalKey();
+      await tester.pumpWidget(artPixels(key, const Color(0xFFFF8000)));
+      // 0.25 x Rec. 709 luminance of (255, 128, 0) = 0.25 x 145.8 = 36.4,
+      // the same in R, G and B. Sampled away from the lock corner.
+      final [r, g, b, a] = await pixelAt(tester, key, 10, 10);
+      expect(r, closeTo(36, 3), reason: 'red');
+      expect(g, closeTo(36, 3), reason: 'green');
+      expect(b, closeTo(36, 3), reason: 'blue');
+      expect(a, 255);
+    });
+
+    testWidgets("keeps the art's own alpha", (tester) async {
+      final key = GlobalKey();
+      await tester.pumpWidget(artPixels(key, const Color(0x80FF8000)));
+      final [r, g, b, a] = await pixelAt(tester, key, 10, 10);
+      expect(a, closeTo(128, 1), reason: 'alpha');
+      expect(r, closeTo(36, 3), reason: 'red');
+      expect(g, closeTo(36, 3), reason: 'green');
+      expect(b, closeTo(36, 3), reason: 'blue');
     });
   });
 }
