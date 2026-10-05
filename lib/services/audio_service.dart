@@ -521,6 +521,48 @@ class AudioService {
     'voice_full_power.mp3',
   ];
 
+  /// v1.1 brush flow + streak flame lines (spec 2026-10-05 §7.3, §9).
+  static const _brushFlowVoices = [
+    'voice_flame_grow.mp3',
+    'voice_flame_tier_3.mp3',
+    'voice_flame_tier_7.mp3',
+    'voice_flame_tier_14.mp3',
+    'voice_flame_bonus_1.mp3',
+    'voice_flame_bonus_2.mp3',
+    'voice_flame_new.mp3',
+    'voice_flame_see_you_next.mp3',
+    'voice_flame_see_you_keep.mp3',
+    'voice_flame_welcome_1.mp3',
+    'voice_flame_welcome_2.mp3',
+    'voice_flame_got_bigger.mp3',
+    'voice_stars_left_1.mp3',
+    'voice_stars_left_2.mp3',
+    'voice_stars_left_3.mp3',
+    'voice_stars_left_4.mp3',
+    'voice_stars_left_5.mp3',
+    'voice_stars_left_6.mp3',
+    'voice_stars_left_7.mp3',
+    'voice_stars_left_8.mp3',
+    'voice_stars_left_9.mp3',
+    'voice_stars_left_10.mp3',
+    'voice_stars_left_many.mp3',
+    'voice_brushes_left_1.mp3',
+    'voice_brushes_left_2.mp3',
+    'voice_brushes_left_3.mp3',
+    'voice_brushes_left_4.mp3',
+    'voice_brushes_left_5.mp3',
+    'voice_brushes_left_6.mp3',
+    'voice_brushes_left_7.mp3',
+    'voice_brushes_left_8.mp3',
+    'voice_brushes_left_9.mp3',
+    'voice_brushes_left_10.mp3',
+    'voice_tap_to_unlock.mp3',
+    'voice_unlocked_yours.mp3',
+    'voice_have_them_all.mp3',
+    'voice_need_more_brushes.mp3',
+    'voice_ready_to_unlock.mp3',
+  ];
+
   /// Complete list of files to preload, built once from core list + named
   /// const lists so each file appears exactly once.
   static List<String> get _allPreloadFiles => [
@@ -531,6 +573,7 @@ class AudioService {
     ...weaponPickerVoices.values,
     ...heroIntroVoices.values,
     ...weaponIntroVoices.values,
+    ..._brushFlowVoices,
   ];
 
   List<String> get encouragementVoices =>
@@ -549,6 +592,15 @@ class AudioService {
   String weaponPickerVoiceFor(String weaponId) {
     return weaponPickerVoices[weaponId] ?? 'voice_awesome.mp3';
   }
+
+  /// "One more star!" … "Ten more stars!"; "Lots more stars to go!" above 10.
+  String starsLeftVoiceFor(int left) => left >= 1 && left <= 10
+      ? 'voice_stars_left_$left.mp3'
+      : 'voice_stars_left_many.mp3';
+
+  /// "One more brush!" … "Ten more brushes!" (worlds need at most 10).
+  String brushesLeftVoiceFor(int left) =>
+      'voice_brushes_left_${left.clamp(1, 10)}.mp3';
 
   String heroIntroVoiceFor(String heroId) {
     return heroIntroVoices[heroId] ?? heroPickerVoiceFor(heroId);

@@ -247,6 +247,48 @@ const _weaponIntroVoices = [
   'voice_intro_weapon_cosmic_burst.mp3',
 ];
 
+/// v1.1 brush flow + streak flame lines (mirrors AudioService._brushFlowVoices).
+const _brushFlowVoices = [
+  'voice_flame_grow.mp3',
+  'voice_flame_tier_3.mp3',
+  'voice_flame_tier_7.mp3',
+  'voice_flame_tier_14.mp3',
+  'voice_flame_bonus_1.mp3',
+  'voice_flame_bonus_2.mp3',
+  'voice_flame_new.mp3',
+  'voice_flame_see_you_next.mp3',
+  'voice_flame_see_you_keep.mp3',
+  'voice_flame_welcome_1.mp3',
+  'voice_flame_welcome_2.mp3',
+  'voice_flame_got_bigger.mp3',
+  'voice_stars_left_1.mp3',
+  'voice_stars_left_2.mp3',
+  'voice_stars_left_3.mp3',
+  'voice_stars_left_4.mp3',
+  'voice_stars_left_5.mp3',
+  'voice_stars_left_6.mp3',
+  'voice_stars_left_7.mp3',
+  'voice_stars_left_8.mp3',
+  'voice_stars_left_9.mp3',
+  'voice_stars_left_10.mp3',
+  'voice_stars_left_many.mp3',
+  'voice_brushes_left_1.mp3',
+  'voice_brushes_left_2.mp3',
+  'voice_brushes_left_3.mp3',
+  'voice_brushes_left_4.mp3',
+  'voice_brushes_left_5.mp3',
+  'voice_brushes_left_6.mp3',
+  'voice_brushes_left_7.mp3',
+  'voice_brushes_left_8.mp3',
+  'voice_brushes_left_9.mp3',
+  'voice_brushes_left_10.mp3',
+  'voice_tap_to_unlock.mp3',
+  'voice_unlocked_yours.mp3',
+  'voice_have_them_all.mp3',
+  'voice_need_more_brushes.mp3',
+  'voice_ready_to_unlock.mp3',
+];
+
 /// Complete preload list, matching AudioService._allPreloadFiles.
 final _allAudioFiles = [
   ..._audioFilesCore,
@@ -256,6 +298,7 @@ final _allAudioFiles = [
   ..._weaponPickerVoices,
   ..._heroIntroVoices,
   ..._weaponIntroVoices,
+  ..._brushFlowVoices,
 ];
 
 // ---------------------------------------------------------------------------
