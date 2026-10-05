@@ -9,9 +9,11 @@ import '../services/weapon_service.dart';
 import '../services/achievement_service.dart';
 import '../services/world_service.dart';
 import '../services/trophy_service.dart';
+import '../services/flame_tier.dart';
 import '../widgets/space_background.dart';
 import '../widgets/achievement_popup.dart';
 import '../widgets/trophy_detail_dialog.dart';
+import '../widgets/flame_view.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
@@ -51,6 +53,12 @@ class _ChestReward {
 
 // Streak-aware reward selection using variable ratio scheduling.
 // Higher streaks increase chances of better rewards.
+//
+// The 3 / 7 day steps below are the flame steps (kFlameBigAt / kFlameHotAt in
+// flame_tier.dart), which also pick the chest look (chestTierFor). They match
+// the streak-bonus steps in StreakService (calculateStreakBonus,
+// calculateStreakBonusDetailed, claimDailyBonus). Change them together, so a
+// fancier chest is really a better chest.
 _ChestReward _rollChestReward(Random rng, int streak) {
   final roll = rng.nextInt(100);
 
@@ -64,13 +72,13 @@ _ChestReward _rollChestReward(Random rng, int streak) {
   final int jackpotCeil;
   // remainder = mega jackpot
 
-  if (streak >= 7) {
+  if (streak >= kFlameHotAt) {
     confettiCeil = 20;
     danceCeil = 35;
     bonusCeil = 65;
     doubleCeil = 83;
     jackpotCeil = 93;
-  } else if (streak >= 3) {
+  } else if (streak >= kFlameBigAt) {
     confettiCeil = 25;
     danceCeil = 45;
     bonusCeil = 70;
@@ -141,6 +149,73 @@ _ChestReward _rollChestReward(Random rng, int streak) {
   }
 }
 
+/// Chest colours for one streak step (spec §7.1). Wooden is the original
+/// chest, unchanged; silver and gold are palette swaps of it.
+class _ChestPalette {
+  final Color bodyTop;
+  final Color bodyBottom;
+  final Color edge;
+  final Color lidTop;
+  final Color lidBottom;
+  final Color lidEdge;
+  final Color band;
+  final Color bandEdge;
+  final Color lockTop;
+  final Color lockIcon;
+
+  const _ChestPalette({
+    required this.bodyTop,
+    required this.bodyBottom,
+    required this.edge,
+    required this.lidTop,
+    required this.lidBottom,
+    required this.lidEdge,
+    required this.band,
+    required this.bandEdge,
+    required this.lockTop,
+    required this.lockIcon,
+  });
+}
+
+_ChestPalette _chestPaletteFor(ChestTier tier) => switch (tier) {
+  ChestTier.wooden => const _ChestPalette(
+    bodyTop: Color(0xFF8D5A33),
+    bodyBottom: Color(0xFF5D3420),
+    edge: Color(0xFF4E2A17),
+    lidTop: Color(0xFFB77845),
+    lidBottom: Color(0xFF7A4A2D),
+    lidEdge: Color(0xFF5F371F),
+    band: Color(0xFFFFC107),
+    bandEdge: Color(0xFFFFA000),
+    lockTop: Color(0xFFFFF176),
+    lockIcon: Color(0xFF6D4C41),
+  ),
+  ChestTier.silver => const _ChestPalette(
+    bodyTop: Color(0xFFCFD8DC),
+    bodyBottom: Color(0xFF90A4AE),
+    edge: Color(0xFF607D8B),
+    lidTop: Color(0xFFECEFF1),
+    lidBottom: Color(0xFFB0BEC5),
+    lidEdge: Color(0xFF78909C),
+    band: Color(0xFFECEFF1),
+    bandEdge: Color(0xFF78909C),
+    lockTop: Color(0xFFFFFFFF),
+    lockIcon: Color(0xFF455A64),
+  ),
+  ChestTier.gold => const _ChestPalette(
+    bodyTop: Color(0xFFFFE082),
+    bodyBottom: Color(0xFFFFB300),
+    edge: Color(0xFFE65100),
+    lidTop: Color(0xFFFFECB3),
+    lidBottom: Color(0xFFFFCA28),
+    lidEdge: Color(0xFFFF8F00),
+    band: Color(0xFFFFF8E1),
+    bandEdge: Color(0xFFFF8F00),
+    lockTop: Color(0xFFFFFFFF),
+    lockIcon: Color(0xFFBF360C),
+  ),
+};
+
 class VictoryScreen extends StatefulWidget {
   final int totalHits;
   final int monstersDefeated;
@@ -153,6 +228,29 @@ class VictoryScreen extends StatefulWidget {
     this.sessionId = '',
     this.trophyTargetId,
   });
+
+  /// The one flame line for the flame beat (spec §7.3): tier-up, then
+  /// bonus, then new, then grow. Null when nothing changed (a second brush
+  /// today with no bonus).
+  @visibleForTesting
+  static String? flameBeatVoiceFor({
+    required int previousStreak,
+    required int newStreak,
+    required int streakMultiplierBonus,
+    required int comebackBonus,
+  }) {
+    final reached = reachedFlameTier(before: previousStreak, after: newStreak);
+    if (reached == FlameTier.big) return 'voice_flame_tier_3.mp3';
+    if (reached == FlameTier.hot) return 'voice_flame_tier_7.mp3';
+    if (reached == FlameTier.golden) return 'voice_flame_tier_14.mp3';
+    if (streakMultiplierBonus >= 2) return 'voice_flame_bonus_2.mp3';
+    if (streakMultiplierBonus == 1) return 'voice_flame_bonus_1.mp3';
+    if (comebackBonus > 0 || (previousStreak == 0 && newStreak == 1)) {
+      return 'voice_flame_new.mp3';
+    }
+    if (newStreak > previousStreak) return 'voice_flame_grow.mp3';
+    return null;
+  }
 
   @override
   State<VictoryScreen> createState() => _VictoryScreenState();
@@ -196,6 +294,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _trophyService = TrophyService();
 
   bool _brushRecorded = false;
+  bool _showFlameBeat = false;
+  int _flameBonusStars = 0;
   bool _showChest = false;
   bool _chestOpened = false;
   _ChestReward? _reward;
@@ -453,10 +553,33 @@ class _VictoryScreenState extends State<VictoryScreen>
     await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
-    // Arc beat 2 (star earned) — start concurrently with star flight,
-    // DONE button, and chest drop. No await, no dead time.
+    // Arc beat 2 (star earned) — start concurrently with the star flight and
+    // the flame beat below. No await, no dead time.
     unawaited(_audio.playVoice(arc[1])); // "+1 star!" (fire-and-forget)
     _triggerStarFlight();
+
+    // ── Flame beat (spec §6 step 2): the flame grows and the bonus stars come
+    // out of it, with the line that says why. Fire-and-forget voice;
+    // a fixed pause paces the visuals (never wait on voice completion).
+    _flameBonusStars = _streakMultiplierBonus + _dailyBonus + _comebackBonus;
+    setState(() => _showFlameBeat = true);
+    if (_flameBonusStars > 0) unawaited(_audio.playSfx('star_chime.mp3'));
+    final flameLine = VictoryScreen.flameBeatVoiceFor(
+      previousStreak: _previousStreak,
+      newStreak: _newStreak,
+      streakMultiplierBonus: _streakMultiplierBonus,
+      comebackBonus: _comebackBonus,
+    );
+    if (flameLine != null) unawaited(_audio.playVoice(flameLine));
+    final reached = reachedFlameTier(
+      before: _previousStreak,
+      after: _newStreak,
+    );
+    if (reached != null) {
+      unawaited(analytics.logFlameTierReached(tier: reached.name));
+    }
+    await Future.delayed(const Duration(milliseconds: 1600));
+    if (!mounted) return;
 
     // Show the CHEST only — DONE must stay hidden until the chest is opened
     // and its reward sequence completes (C15 T3-32). Without the DONE button
@@ -490,77 +613,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     _audio.playSfx('star_chime.mp3');
   }
 
-  Future<void> _revealBonusStars() async {
-    if (!mounted) return;
-
-    final hasBonuses =
-        _streakMultiplierBonus > 0 || _dailyBonus > 0 || _comebackBonus > 0;
-    if (!hasBonuses) return;
-
-    // Mark first-time milestones and determine highest-priority voice.
-    // Priority: first-time milestones > repeat bonuses.
-    // Only play ONE voice for all bonuses combined.
-    String? voiceToPlay;
-    bool isFirstTime = false;
-
-    // Check streak bonus (highest priority among bonuses)
-    if (_streakMultiplierBonus > 0) {
-      if (_newStreak >= 7) {
-        final seenBefore = await _streakService.hasSeenFirstStreak7();
-        if (!seenBefore) {
-          await _streakService.markFirstStreak7Seen();
-          voiceToPlay = 'voice_first_streak_7.mp3';
-          isFirstTime = true;
-        } else {
-          voiceToPlay = 'voice_chest_mega_streak.mp3';
-        }
-      } else {
-        final seenBefore = await _streakService.hasSeenFirstStreak3();
-        if (!seenBefore) {
-          await _streakService.markFirstStreak3Seen();
-          voiceToPlay = 'voice_first_streak_3.mp3';
-          isFirstTime = true;
-        } else {
-          voiceToPlay = 'voice_chest_streak_bonus.mp3';
-        }
-      }
-    }
-
-    // Check daily pair (override voice only if it's a first-time and streak wasn't)
-    if (_dailyBonus > 0) {
-      final seenBefore = await _streakService.hasSeenFirstDailyPair();
-      if (!seenBefore) {
-        await _streakService.markFirstDailyPairSeen();
-        if (!isFirstTime) {
-          voiceToPlay = 'voice_first_daily_pair.mp3';
-          isFirstTime = true;
-        }
-      } else {
-        voiceToPlay ??= 'voice_chest_daily_pair.mp3';
-      }
-    }
-
-    // Check comeback bonus
-    if (_comebackBonus > 0) {
-      final seenBefore = await _streakService.hasSeenFirstComeback();
-      if (!seenBefore) {
-        await _streakService.markFirstComebackSeen();
-        if (!isFirstTime) {
-          voiceToPlay = 'voice_first_comeback.mp3';
-          isFirstTime = true;
-        }
-      } else {
-        voiceToPlay ??= 'voice_chest_comeback.mp3';
-      }
-    }
-
-    // Play only the single highest-priority bonus voice
-    if (voiceToPlay != null && mounted) {
-      if (isFirstTime) unawaited(HapticFeedback.heavyImpact());
-      await _audio.playVoice(voiceToPlay);
-    }
-  }
-
   void _openChest() {
     if (_chestOpened) return;
     setState(() => _chestOpened = true);
@@ -591,67 +643,11 @@ class _VictoryScreenState extends State<VictoryScreen>
 
         // ── 3-slot priority voice budget ──
         // After chest reward (slot 0), allow max 3 more voice slots.
-        // Priority: P1 first-time milestones > P2 trophy/world > P3 star milestone
-        //         > P4 repeat bonus > P5 legendary (voice only) > P6 achievements (SFX only)
+        // Priority: P2 trophy/world > P3 star milestone
+        //         > P5 legendary (voice only) > P6 achievements (SFX only)
+        // The bonus-star lines (old P1/P4) now play in the flame beat, before
+        // the chest (see _recordAndAnimate).
         int voiceSlotsRemaining = 3;
-
-        // ── Post-chest bonus star reveals (all pills shown simultaneously) ──
-        // _revealBonusStars handles first-time detection and plays ONE voice
-        final hasBonuses =
-            _streakMultiplierBonus > 0 || _dailyBonus > 0 || _comebackBonus > 0;
-
-        // Determine first-time milestone status before spending slots
-        bool hasFirstTimeMilestone = false;
-        if (_streakMultiplierBonus > 0) {
-          if (_newStreak >= 7) {
-            hasFirstTimeMilestone = !(await _streakService
-                .hasSeenFirstStreak7());
-          } else {
-            hasFirstTimeMilestone = !(await _streakService
-                .hasSeenFirstStreak3());
-          }
-        }
-        if (!hasFirstTimeMilestone && _dailyBonus > 0) {
-          hasFirstTimeMilestone = !(await _streakService
-              .hasSeenFirstDailyPair());
-        }
-        if (!hasFirstTimeMilestone && _comebackBonus > 0) {
-          hasFirstTimeMilestone = !(await _streakService
-              .hasSeenFirstComeback());
-        }
-
-        // P1: First-time milestones get a voice slot
-        if (hasBonuses && hasFirstTimeMilestone && voiceSlotsRemaining > 0) {
-          await _revealBonusStars();
-          voiceSlotsRemaining--;
-        } else if (hasBonuses && voiceSlotsRemaining > 0) {
-          // P4: Repeat bonus — lower priority, still gets a slot if available
-          await _revealBonusStars();
-          voiceSlotsRemaining--;
-        } else if (hasBonuses) {
-          // No slots left — still mark first-time flags so they don't replay
-          if (_streakMultiplierBonus > 0) {
-            if (_newStreak >= 7) {
-              if (!(await _streakService.hasSeenFirstStreak7())) {
-                await _streakService.markFirstStreak7Seen();
-              }
-            } else {
-              if (!(await _streakService.hasSeenFirstStreak3())) {
-                await _streakService.markFirstStreak3Seen();
-              }
-            }
-          }
-          if (_dailyBonus > 0) {
-            if (!(await _streakService.hasSeenFirstDailyPair())) {
-              await _streakService.markFirstDailyPairSeen();
-            }
-          }
-          if (_comebackBonus > 0) {
-            if (!(await _streakService.hasSeenFirstComeback())) {
-              await _streakService.markFirstComebackSeen();
-            }
-          }
-        }
 
         // ── Trophy defeat/capture ──
         if (widget.trophyTargetId != null) {
@@ -1116,6 +1112,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                         children: [
                           // Extra top padding to clear the fixed top bar
                           const SizedBox(height: 48),
+
+                          // Flame beat (spec §6 step 2), directly under the pill row.
+                          if (_showFlameBeat) _buildFlameBeat(),
 
                           Text(
                             'GREAT JOB!',
@@ -1601,7 +1600,38 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
+  /// Today's flame, with the bonus stars it paid out rising from it
+  /// (icons only, no text).
+  Widget _buildFlameBeat() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FlameIcon(tier: flameTierFor(_newStreak)),
+        if (_flameBonusStars > 0)
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 600),
+            builder: (context, t, child) => Opacity(
+              opacity: t,
+              child: Transform.translate(
+                offset: Offset(0, -20 * t),
+                child: child,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < _flameBonusStars; i++)
+                  const Icon(Icons.star, color: Colors.amberAccent, size: 22),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildChest() {
+    final palette = _chestPaletteFor(chestTierFor(_newStreak));
     if (!_chestOpened) {
       // Unopened chest — richer chest illustration
       return TweenAnimationBuilder<double>(
@@ -1617,6 +1647,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             final wobble = sin(_chestBounceController.value * pi * 2) * 0.03;
             final sparkleDrift = sin(_chestBounceController.value * pi * 2) * 5;
             return GestureDetector(
+              key: const ValueKey('victory_chest'),
               onTap: _chestOpened ? null : _openChest,
               behavior: HitTestBehavior.opaque,
               child: Transform.translate(
@@ -1668,13 +1699,13 @@ class _VictoryScreenState extends State<VictoryScreen>
                               borderRadius: const BorderRadius.vertical(
                                 bottom: Radius.circular(24),
                               ),
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFF8D5A33), Color(0xFF5D3420)],
+                                colors: [palette.bodyTop, palette.bodyBottom],
                               ),
                               border: Border.all(
-                                color: const Color(0xFF4E2A17),
+                                color: palette.edge,
                                 width: 2.5,
                               ),
                               boxShadow: [
@@ -1697,13 +1728,13 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 top: Radius.circular(42),
                                 bottom: Radius.circular(16),
                               ),
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFB77845), Color(0xFF7A4A2D)],
+                                colors: [palette.lidTop, palette.lidBottom],
                               ),
                               border: Border.all(
-                                color: const Color(0xFF5F371F),
+                                color: palette.lidEdge,
                                 width: 2.5,
                               ),
                             ),
@@ -1716,13 +1747,13 @@ class _VictoryScreenState extends State<VictoryScreen>
                             height: 36,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFFFF176), Color(0xFFFFC107)],
+                                colors: [palette.lockTop, palette.band],
                               ),
                               border: Border.all(
-                                color: const Color(0xFFFFA000),
+                                color: palette.bandEdge,
                                 width: 2,
                               ),
                               boxShadow: [
@@ -1734,9 +1765,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 ),
                               ],
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.lock,
-                              color: Color(0xFF6D4C41),
+                              color: palette.lockIcon,
                               size: 18,
                             ),
                           ),
@@ -1748,9 +1779,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                             height: 10,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
-                              color: const Color(0xFFFFC107),
+                              color: palette.band,
                               border: Border.all(
-                                color: const Color(0xFFFFA000),
+                                color: palette.bandEdge,
                                 width: 1.5,
                               ),
                             ),
@@ -1763,9 +1794,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                             height: 11,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
-                              color: const Color(0xFFFFC107),
+                              color: palette.band,
                               border: Border.all(
-                                color: const Color(0xFFFFA000),
+                                color: palette.bandEdge,
                                 width: 1.5,
                               ),
                             ),
@@ -1865,15 +1896,12 @@ class _VictoryScreenState extends State<VictoryScreen>
                     borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(24),
                     ),
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Color(0xFF8D5A33), Color(0xFF5D3420)],
+                      colors: [palette.bodyTop, palette.bodyBottom],
                     ),
-                    border: Border.all(
-                      color: const Color(0xFF4E2A17),
-                      width: 2.5,
-                    ),
+                    border: Border.all(color: palette.edge, width: 2.5),
                   ),
                 ),
               ),
@@ -1884,11 +1912,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                   height: 11,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: const Color(0xFFFFC107),
-                    border: Border.all(
-                      color: const Color(0xFFFFA000),
-                      width: 1.5,
-                    ),
+                    color: palette.band,
+                    border: Border.all(color: palette.bandEdge, width: 1.5),
                   ),
                 ),
               ),
@@ -1907,15 +1932,12 @@ class _VictoryScreenState extends State<VictoryScreen>
                           top: Radius.circular(42),
                           bottom: Radius.circular(16),
                         ),
-                        gradient: const LinearGradient(
+                        gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Color(0xFFB77845), Color(0xFF7A4A2D)],
+                          colors: [palette.lidTop, palette.lidBottom],
                         ),
-                        border: Border.all(
-                          color: const Color(0xFF5F371F),
-                          width: 2.5,
-                        ),
+                        border: Border.all(color: palette.lidEdge, width: 2.5),
                       ),
                       child: Align(
                         alignment: Alignment.bottomCenter,
@@ -1924,9 +1946,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                           height: 10,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
-                            color: const Color(0xFFFFC107),
+                            color: palette.band,
                             border: Border.all(
-                              color: const Color(0xFFFFA000),
+                              color: palette.bandEdge,
                               width: 1.5,
                             ),
                           ),
