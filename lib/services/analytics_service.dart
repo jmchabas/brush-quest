@@ -177,4 +177,38 @@ class AnalyticsService {
     if (!_enabled) return;
     await _fa.logEvent(name: 'sign_in_complete');
   }
+
+  // ── v1.1 brush flow and hooks (spec 2026-10-05 §10) ─────────────────
+
+  Future<void> logPreBrushChange({required String category}) async {
+    if (!_enabled) return;
+    await _fa.logEvent(
+      name: 'pre_brush_change',
+      parameters: {'category': category},
+    );
+  }
+
+  Future<void> logPreBrushSkipped({required String reason}) async {
+    if (!_enabled) return;
+    await _fa.logEvent(
+      name: 'pre_brush_skipped',
+      parameters: {'reason': reason},
+    );
+  }
+
+  Future<void> logGoalUnlocked({
+    required String category,
+    required String item,
+  }) async {
+    if (!_enabled) return;
+    await _fa.logEvent(
+      name: 'goal_unlocked',
+      parameters: {'category': category, 'item': item, 'source': 'victory'},
+    );
+  }
+
+  Future<void> logFlameTierReached({required String tier}) async {
+    if (!_enabled) return;
+    await _fa.logEvent(name: 'flame_tier_reached', parameters: {'tier': tier});
+  }
 }

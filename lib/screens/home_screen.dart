@@ -15,6 +15,7 @@ import '../widgets/space_background.dart';
 import '../widgets/mute_button.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
+import 'pre_brush_screen.dart';
 import 'world_map_screen.dart';
 import 'settings_screen.dart';
 import 'trophy_wall_screen.dart';
@@ -169,6 +170,10 @@ class _HomeScreenState extends State<HomeScreen>
       unawaited(audio.ensureMusicPlaying());
     } else {
       _startHomeMusic();
+    }
+    if (_refreshWhenShown) {
+      _refreshWhenShown = false;
+      unawaited(_afterBrushReturn());
     }
   }
 
@@ -711,6 +716,14 @@ class _HomeScreenState extends State<HomeScreen>
       await prefs.setBool('camera_mode_configured', true);
     }
 
+    // From the second brush on, Hero → Weapon → World come first (spec
+    // 2026-10-05 §3). The pre-brush screen says "Let's fight!" at its end.
+    final totalBrushes = prefs.getInt('total_brushes') ?? 0;
+    if (totalBrushes > 0) {
+      _launchPreBrush();
+      return;
+    }
+
     unawaited(
       AudioService().playVoice(
         'voice_lets_fight.mp3',
@@ -722,8 +735,34 @@ class _HomeScreenState extends State<HomeScreen>
     // voice keeps playing across the transition. 400ms is enough for the
     // whoosh SFX to land before nav without stalling the kid.
     Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) _launchBrushingScreen();
+      if (mounted) {
+        // First-ever brush: nothing to choose yet (spec D6).
+        unawaited(AnalyticsService().logPreBrushSkipped(reason: 'first_brush'));
+        _launchBrushingScreen();
+      }
     });
+  }
+
+  /// Set while the pre-brush flow is on top of Home. The pre-brush screen
+  /// replaces itself with brushing, which completes its push future while
+  /// brushing is still starting; refreshing then would restart Home's music
+  /// under the countdown. Home refreshes in [didPopNext] instead, once it is
+  /// visible again (after brushing, or when the child backs out).
+  bool _refreshWhenShown = false;
+
+  void _launchPreBrush() {
+    _refreshWhenShown = true;
+    unawaited(
+      Navigator.of(context).push(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const PreBrushScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+      ),
+    );
   }
 
   void _launchBrushingScreen() {
@@ -755,26 +794,28 @@ class _HomeScreenState extends State<HomeScreen>
             transitionDuration: const Duration(milliseconds: 500),
           ),
         )
-        .then((_) async {
-          _brushTapLocked = false;
-          final prevWallet = _wallet;
-          final prevStreak = _streak;
-          await _loadStats();
-          if (!mounted) return;
-          final walletDelta = _wallet - prevWallet;
-          if (walletDelta > 0 || _streak != prevStreak) {
-            unawaited(_statPulseController.forward(from: 0));
-          }
-          if (walletDelta > 0) {
-            setState(() {
-              _showStarDelta = walletDelta;
-              _starDeltaVisible = true;
-            });
-            Future.delayed(const Duration(milliseconds: 1500), () {
-              if (mounted) setState(() => _starDeltaVisible = false);
-            });
-          }
-        });
+        .then((_) => _afterBrushReturn());
+  }
+
+  Future<void> _afterBrushReturn() async {
+    _brushTapLocked = false;
+    final prevWallet = _wallet;
+    final prevStreak = _streak;
+    await _loadStats();
+    if (!mounted) return;
+    final walletDelta = _wallet - prevWallet;
+    if (walletDelta > 0 || _streak != prevStreak) {
+      unawaited(_statPulseController.forward(from: 0));
+    }
+    if (walletDelta > 0) {
+      setState(() {
+        _showStarDelta = walletDelta;
+        _starDeltaVisible = true;
+      });
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) setState(() => _starDeltaVisible = false);
+      });
+    }
   }
 
   void _openShop() {
@@ -1295,6 +1336,7 @@ class _HomeScreenState extends State<HomeScreen>
                         );
                       },
                       child: GestureDetector(
+                        key: const ValueKey('home_hero_button'),
                         onTapDown: (_) => setState(() => _buttonPressed = true),
                         onTapUp: (_) {
                           setState(() => _buttonPressed = false);

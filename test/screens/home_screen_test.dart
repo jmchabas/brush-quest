@@ -1,4 +1,6 @@
+import 'package:brush_quest/route_observer.dart';
 import 'package:brush_quest/screens/home_screen.dart';
+import 'package:brush_quest/screens/pre_brush_screen.dart';
 import 'package:brush_quest/services/audio_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
@@ -163,5 +165,128 @@ void main() {
     expect(find.byIcon(Icons.volume_up), findsOneWidget);
 
     await tester.binding.setSurfaceSize(null);
+  });
+
+  group('brush flow routing (v1.1)', () {
+    setUp(() {
+      // Keep the pre-brush screen on its first step for these tests.
+      PreBrushScreen.minStep = const Duration(seconds: 30);
+      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      PreBrushScreen.debugBrushingBuilder = ({required showWorldIntro}) =>
+          const Scaffold(body: Text('BRUSHING'));
+    });
+    tearDown(() {
+      PreBrushScreen.debugBrushingBuilder = null;
+      PreBrushScreen.minStep = const Duration(seconds: 3);
+      PreBrushScreen.maxStep = const Duration(seconds: 5);
+    });
+
+    Future<void> pumpHomeWith(
+      WidgetTester tester,
+      int totalBrushes, {
+      List<NavigatorObserver> observers = const [],
+    }) async {
+      final today = todayString();
+      SharedPreferences.setMockInitialValues({
+        'selected_hero': 'blaze',
+        'selected_weapon': 'star_blaster',
+        'total_stars': 7,
+        'star_wallet': 3,
+        'current_streak': 2,
+        'last_brush_date': today,
+        'total_brushes': totalBrushes,
+        'today_date': today,
+        'camera_mode_configured': true,
+        'muted': false,
+      });
+      await tester.binding.setSurfaceSize(const Size(430, 932));
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: observers,
+          home: const HomeScreen(skipGreeting: true),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    Future<void> disposeAll(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      // Let delayed callbacks fire and no-op.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.binding.setSurfaceSize(null);
+    }
+
+    testWidgets('first-ever brush skips the pre-brush steps', (tester) async {
+      await pumpHomeWith(tester, 0);
+      await tester.tap(find.byKey(const ValueKey('home_hero_button')));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(PreBrushScreen), findsNothing);
+      expect(fakeAudio.playedVoiceLines, contains('voice_lets_fight.mp3'));
+      // Dispose Home before its 400 ms launch delay so the real brushing
+      // screen never opens in this test.
+      await disposeAll(tester);
+    });
+
+    testWidgets('a returning child goes through the pre-brush steps', (
+      tester,
+    ) async {
+      await pumpHomeWith(tester, 3);
+      await tester.tap(find.byKey(const ValueKey('home_hero_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(PreBrushScreen), findsOneWidget);
+      await disposeAll(tester);
+    });
+
+    testWidgets('double tap opens one pre-brush screen', (tester) async {
+      await pumpHomeWith(tester, 3);
+      await tester.tap(find.byKey(const ValueKey('home_hero_button')));
+      await tester.tap(
+        find.byKey(const ValueKey('home_hero_button')),
+        warnIfMissed: false,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(PreBrushScreen), findsOneWidget);
+      await disposeAll(tester);
+    });
+
+    testWidgets(
+      'Home waits to refresh until it is shown again after brushing starts',
+      (tester) async {
+        PreBrushScreen.minStep = const Duration(milliseconds: 100);
+        PreBrushScreen.maxStep = const Duration(milliseconds: 200);
+        PreBrushScreen.launchDelay = const Duration(milliseconds: 50);
+        addTearDown(
+          () => PreBrushScreen.launchDelay = const Duration(milliseconds: 400),
+        );
+        await pumpHomeWith(tester, 3, observers: [routeObserver]);
+        final musicStarts = fakeAudio.callsFor('playMusic').length;
+
+        await tester.tap(find.byKey(const ValueKey('home_hero_button')));
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(find.text('BRUSHING'), findsOneWidget);
+        // Home's after-brush refresh restarts Home's music. Under the
+        // brushing countdown that is an audible restart, so it must wait.
+        expect(fakeAudio.callsFor('playMusic'), hasLength(musicStarts));
+
+        // The child quits brushing: Home is shown again and refreshes, and
+        // the hero starts the flow again.
+        PreBrushScreen.minStep = const Duration(seconds: 30);
+        PreBrushScreen.maxStep = const Duration(seconds: 30);
+        tester.state<NavigatorState>(find.byType(Navigator)).pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.tap(find.byKey(const ValueKey('home_hero_button')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.byType(PreBrushScreen), findsOneWidget);
+        await disposeAll(tester);
+      },
+    );
   });
 }

@@ -19,7 +19,10 @@ import '../services/trophy_service.dart';
 import 'victory_screen.dart';
 
 class BrushingScreen extends StatefulWidget {
-  const BrushingScreen({super.key});
+  /// False when the child came through the pre-brush steps: the World step
+  /// already introduced the planet, so the session starts at the countdown.
+  final bool showWorldIntro;
+  const BrushingScreen({super.key, this.showWorldIntro = true});
 
   @override
   State<BrushingScreen> createState() => _BrushingScreenState();
@@ -864,7 +867,11 @@ class _BrushingScreenState extends State<BrushingScreen>
     await _loadHeroAndWorld();
     final restored = await _tryRestoreCheckpoint();
     if (!restored) {
-      unawaited(_startWorldIntro());
+      if (widget.showWorldIntro) {
+        unawaited(_startWorldIntro());
+      } else {
+        unawaited(_skipWorldIntro());
+      }
     }
   }
 
@@ -996,6 +1003,19 @@ class _BrushingScreenState extends State<BrushingScreen>
     await Future<void>.value();
     if (!mounted) return;
 
+    setState(() => _sessionStage = SessionStage.countdown);
+    _startCountdown();
+  }
+
+  /// Pre-brush path: no world intro. Same hand-off as _dismissWorldIntro
+  /// (stop the last pre-brush voice, yield a microtask so "Three!" isn't
+  /// dropped on Android, then count down).
+  Future<void> _skipWorldIntro() async {
+    unawaited(_audio.stopVoice());
+    if (!mounted) return;
+    setState(() => _showWorldIntro = false);
+    await Future<void>.value();
+    if (!mounted) return;
     setState(() => _sessionStage = SessionStage.countdown);
     _startCountdown();
   }
