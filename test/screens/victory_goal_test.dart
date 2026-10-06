@@ -733,12 +733,17 @@ void main() {
         'voice_flame_see_you_next.mp3': Duration(milliseconds: 2769),
         'voice_flame_see_you_keep.mp3': Duration(milliseconds: 2273),
         'voice_forward_tonight.mp3': Duration(milliseconds: 3605),
+        'voice_world_complete.mp3': Duration(milliseconds: 4624),
+        'voice_milestone_70.mp3': Duration(milliseconds: 3553),
       };
 
       /// Installs a voice channel that takes time, with its clock on the
       /// test's fake time.
-      TimedFakeAudioService useTimedVoices(WidgetTester tester) {
-        final timed = TimedFakeAudioService(lengths: realLengths);
+      TimedFakeAudioService useTimedVoices(
+        WidgetTester tester, {
+        Map<String, Duration> lengths = realLengths,
+      }) {
+        final timed = TimedFakeAudioService(lengths: lengths);
         final start = tester.binding.clock.now();
         timed.clock = () => tester.binding.clock.now().difference(start);
         AudioService.testInstance = timed;
@@ -825,6 +830,146 @@ void main() {
         expect(name.startedAt! >= yours.endedAt!, isTrue);
         expect(name.cut || name.dropped, isFalse, reason: '${timed.voices}');
         await drain(tester);
+      });
+
+      /// Pumps until [voice] has been playing for [into], then taps the goal.
+      /// Returns the time of the tap.
+      Future<Duration> tapGoalInto(
+        WidgetTester tester,
+        TimedFakeAudioService timed,
+        String voice,
+        Duration into,
+      ) async {
+        for (var i = 0; i < 400; i++) {
+          final v = timed.voiceNamed(voice);
+          if (v?.startedAt != null && timed.clock() - v!.startedAt! >= into) {
+            break;
+          }
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        final tapAt = timed.clock();
+        await tester.tap(goalKey);
+        return tapAt;
+      }
+
+      testWidgets('a tap during the monster card still lets "world complete" '
+          'play in full', (tester) async {
+        final timed = useTimedVoices(tester);
+        SharedPreferences.setMockInitialValues({
+          ...base(),
+          'star_wallet': 3,
+          ...lastCandyMonster(),
+        });
+        await pumpVictory(tester, trophy: 'cc_t5');
+        await openChestWhenItComes(tester);
+        await tapGoalInto(
+          tester,
+          timed,
+          'voice_card_new.mp3',
+          const Duration(milliseconds: 800),
+        );
+        await tester.pump(const Duration(seconds: 25));
+        final complete = timed.voices.where(
+          (v) => v.file == 'voice_world_complete.mp3',
+        );
+        expect(
+          complete.any((v) => v.endedAt != null && !v.cut && !v.dropped),
+          isTrue,
+          reason: '${timed.voices}',
+        );
+        await drain(tester);
+      });
+
+      testWidgets('a tap late in the monster\'s name: the strip still comes '
+          'with its line, and DONE after it', (tester) async {
+        final timed = useTimedVoices(tester);
+        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+        await pumpVictory(tester, trophy: 'cc_t1');
+        await openChestWhenItComes(tester);
+        await tapGoalInto(
+          tester,
+          timed,
+          'voice_card_cc_01.mp3',
+          const Duration(seconds: 4),
+        );
+        Duration? stripAt;
+        Duration? doneAt;
+        for (var i = 0; i < 600 && doneAt == null; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          if (stripAt == null &&
+              find.byType(FlameStrip).evaluate().isNotEmpty) {
+            stripAt = timed.clock();
+          }
+          if (find.text('DONE').evaluate().isNotEmpty) doneAt = timed.clock();
+        }
+        final closing = timed.voices.lastWhere(isClosing);
+        expect(closing.cut || closing.dropped, isFalse, reason: '$closing');
+        expect(
+          closing.startedAt! - stripAt!,
+          lessThan(const Duration(milliseconds: 200)),
+          reason: 'strip at $stripAt, ${timed.voices}',
+        );
+        expect(
+          doneAt,
+          greaterThanOrEqualTo(closing.endedAt!),
+          reason: 'DONE at $doneAt, ${timed.voices}',
+        );
+        await drain(tester);
+      });
+
+      testWidgets('DONE from the safety timer leaves within seconds, with the '
+          'closing line once', (tester) async {
+        // A world-complete line that never ends holds the sequence, so only
+        // the 60 s safety timer brings DONE.
+        final timed = useTimedVoices(
+          tester,
+          lengths: {
+            ...realLengths,
+            'voice_world_complete.mp3': const Duration(minutes: 5),
+          },
+        );
+        SharedPreferences.setMockInitialValues({
+          ...allOwned(),
+          'star_wallet': 3,
+          ...lastCandyMonster(),
+        });
+        final pushes = _PushLog(timed);
+        await tester.binding.setSurfaceSize(const Size(430, 1600));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorObservers: [pushes],
+            home: const VictoryScreen(
+              totalHits: 10,
+              monstersDefeated: 4,
+              trophyTargetId: 'cc_t5',
+            ),
+          ),
+        );
+        await tester.pump();
+        await openChestWhenItComes(tester);
+        final done = find.text('DONE');
+        for (var i = 0; i < 800 && done.evaluate().isEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(done, findsOneWidget);
+        await frames(tester, const Duration(milliseconds: 500));
+        final tapAt = timed.clock();
+        pushes.at.clear();
+        await tester.tap(done, warnIfMissed: false);
+        for (var i = 0; i < 100 && pushes.at.isEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(pushes.at, isNotEmpty, reason: 'it never went home');
+        expect(
+          pushes.at.first - tapAt,
+          lessThan(const Duration(seconds: 6)),
+          reason: '${timed.voices}',
+        );
+        final closingLines = timed.voices.where(isClosing).toList();
+        expect(closingLines, hasLength(1), reason: '${timed.voices}');
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 5));
       });
 
       Finder goalFigure() =>
@@ -1192,4 +1337,17 @@ void main() {
       }
     });
   });
+}
+
+/// Records when routes are pushed (the victory screen going home).
+class _PushLog extends NavigatorObserver {
+  _PushLog(this.timed);
+
+  final TimedFakeAudioService timed;
+  final List<Duration> at = [];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (previousRoute != null) at.add(timed.clock());
+  }
 }

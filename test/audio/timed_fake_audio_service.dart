@@ -38,7 +38,11 @@ class TimedVoice {
 /// - `clearQueue` drops the lines still waiting;
 /// - stopVoice does both;
 /// - the returned future completes when the line ends, is cut or is dropped;
-/// - [voicePipelineActiveNotifier] is true while a line plays or waits.
+/// - [voicePipelineActiveNotifier] is true while a line plays or waits;
+/// - muting stops what plays and drops what waits.
+///
+/// [playedVoiceLines] lists every line requested, dropped ones included; see
+/// [voices] for what became of each.
 ///
 /// Lengths come from [lengths], else [defaultLength]. Times are read from
 /// [clock]: in a widget test, the fake-async time since the test began.
@@ -58,6 +62,21 @@ class TimedFakeAudioService extends FakeAudioService {
   final Queue<TimedVoice> _waiting = Queue();
   TimedVoice? _playing;
   Timer? _timer;
+
+  @override
+  bool get isVoicePlaying => _playing != null;
+
+  @override
+  bool get isVoicePipelineActive => voicePipelineActiveNotifier.value;
+
+  @override
+  Future<void> toggleMute() async {
+    await super.toggleMute();
+    if (!isMuted) return;
+    _dropWaiting();
+    _cutPlaying();
+    _update();
+  }
 
   TimedVoice? voiceNamed(String file) {
     for (final voice in voices) {

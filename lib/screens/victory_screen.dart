@@ -372,6 +372,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   // Lines "It's yours!" must not lose: when it cuts in, those not finished
   // yet (the monster's name, the closing flame line) play again after it.
   final _unfinishedMustHear = <String>{};
+  _QuietWait? _quietWait;
+  bool _goingHome = false;
 
   // The screen scrolls, and on small phones the newest beat lands below the
   // fold: these anchor the goal and the monster card for scrolling.
@@ -838,7 +840,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           if (_worldJustCompleted && voiceSlotsRemaining > 0) {
             unawaited(HapticFeedback.heavyImpact());
             unawaited(_audio.playSfx('victory.mp3'));
-            await _audio.playVoice('voice_world_complete.mp3');
+            await _playMustHear('voice_world_complete.mp3');
             voiceSlotsRemaining--;
           }
         } else {
@@ -884,7 +886,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           for (final milestone in [70, 80, 90]) {
             if (_newStars >= milestone && _previousStars < milestone) {
               final voiceFile = 'voice_milestone_$milestone.mp3';
-              await _audio.playVoice(voiceFile);
+              await _playMustHear(voiceFile);
               unawaited(_confettiController.repeat());
               voiceSlotsRemaining--;
               break; // Only play one milestone per session
@@ -925,7 +927,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   /// The closing beat (spec §6 step 6): the flame strip, and the line for
   /// the next flame, or "see you tonight" for a twice-a-day child brushing in
   /// the morning (spec §7.3).
-  Future<void> _showForwardHookSequence() async {
+  Future<void> _showForwardHookSequence({bool leaving = false}) async {
     if (_forwardHookFired) return;
     _forwardHookFired = true;
     var yesterdayBoth = false;
@@ -935,16 +937,27 @@ class _VictoryScreenState extends State<VictoryScreen>
     } on Object catch (e) {
       debugPrint("Yesterday's slots unavailable: $e");
     }
-    // The monster card's lines may still be queued: the strip comes with its
-    // own line, after them (capped, as every wait on a voice is).
-    await _voiceIdle(const Duration(seconds: 8));
     if (!mounted) return;
+    if (!leaving) {
+      // The monster card's lines may still be queued: the strip comes with
+      // its own line, after them (capped, as every wait on a voice is).
+      await _voiceIdle(const Duration(seconds: 8));
+      // He tapped DONE meanwhile (the safety-timer DONE): leave quietly.
+      if (!mounted || _goingHome) return;
+    }
     setState(() => _showFlameStrip = true);
     final line = VictoryScreen.closingVoiceFor(
       hour: DateTime.now().hour,
       yesterdayBoth: yesterdayBoth,
       newStreak: _newStreak,
     );
+    if (leaving) {
+      // From a DONE tap (the session-end hook): just the line, then go.
+      await _audio
+          .playVoice(line)
+          .timeout(const Duration(seconds: 5), onTimeout: () {});
+      return;
+    }
     _queueMustHear(line);
     // DONE comes after this: once the queue is quiet (an "It's yours!" may
     // have queued the line again), but never more than a few seconds.
@@ -952,29 +965,24 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
   /// Plays [file] and remembers it until it has ended, so "It's yours!" can
-  /// play it again if it cuts in first.
-  void _queueMustHear(String file) {
+  /// play it again if it cuts in first. Completes when this copy ends, is
+  /// cut or is dropped.
+  Future<void> _playMustHear(String file) {
     _unfinishedMustHear.add(file);
-    unawaited(
-      _audio
-          .playVoice(file)
-          .whenComplete(() => _unfinishedMustHear.remove(file)),
-    );
+    return _audio
+        .playVoice(file)
+        .whenComplete(() => _unfinishedMustHear.remove(file));
   }
 
-  /// Completes when no voice is playing or queued, or after [cap].
-  Future<void> _voiceIdle(Duration cap) {
-    final pipeline = _audio.voicePipelineActiveNotifier;
-    if (!pipeline.value) return Future.value();
-    final idle = Completer<void>();
-    void check() {
-      if (!pipeline.value && !idle.isCompleted) idle.complete();
-    }
+  void _queueMustHear(String file) => unawaited(_playMustHear(file));
 
-    pipeline.addListener(check);
-    return idle.future
-        .timeout(cap, onTimeout: () {})
-        .whenComplete(() => pipeline.removeListener(check));
+  /// Completes when no voice is playing or queued, or after [cap]. A tap
+  /// that queues lines again restarts the cap (see [_onGoalTap]).
+  Future<void> _voiceIdle(Duration cap) {
+    _quietWait?.cancel();
+    final wait = _QuietWait(_audio.voicePipelineActiveNotifier, cap);
+    _quietWait = wait;
+    return wait.done;
   }
 
   /// Shows the goal with the stars the child had before this brush, then
@@ -1036,9 +1044,6 @@ class _VictoryScreenState extends State<VictoryScreen>
     setState(() => _goalUnlocked = true);
     _goalBounceController.stop();
     unawaited(HapticFeedback.heavyImpact());
-    // A fresh burst: the confetti has been falling since the screen opened.
-    _confettiController.reset();
-    unawaited(_confettiController.repeat());
     // It answers the tap, so it plays now, not after what is queued; the
     // lines that must still be heard come after it.
     final replay = _unfinishedMustHear.toList();
@@ -1050,6 +1055,8 @@ class _VictoryScreenState extends State<VictoryScreen>
       ),
     );
     replay.forEach(_queueMustHear);
+    // What is queued now plays before the closing beat goes on.
+    _quietWait?.restartCap();
     unawaited(
       analytics.logGoalUnlocked(
         category: goal.category.name,
@@ -1388,6 +1395,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     _doneSafetyTimer?.cancel();
     _victoryMusicTimer?.cancel();
     _goalFillTimer?.cancel();
+    _quietWait?.cancel();
     _audio.stopVoice();
     _confettiController.dispose();
     _doneButtonController.dispose();
@@ -1405,12 +1413,16 @@ class _VictoryScreenState extends State<VictoryScreen>
   }
 
   Future<void> _goHome() async {
-    // Fire forward hook before navigation if it hasn't been shown yet.
-    // _showForwardHookSequence awaits the voice line (2-4s), so no fixed
-    // delay needed — the voice itself paces the transition. Then stop
-    // any lingering audio before navigation.
+    if (_goingHome) return;
+    _goingHome = true;
+    // A closing beat waiting on the voice channel stands down (see
+    // _showForwardHookSequence).
+    _quietWait?.cancel();
+    // Fire the closing line before navigation if it hasn't played yet (a
+    // DONE from the safety timer, or after an error): just the line, at once.
     if (!_forwardHookFired) {
-      await _showForwardHookSequence();
+      await _audio.stopVoice();
+      await _showForwardHookSequence(leaving: true);
     }
     await AudioService().stopVoice();
     if (!mounted) return;
@@ -2785,5 +2797,45 @@ class _StarFlightOverlayState extends State<_StarFlightOverlay>
         ),
       ),
     );
+  }
+}
+
+/// A capped wait for the voice channel to go quiet: it completes when no line
+/// is playing or queued, when its cap has passed, or when cancelled.
+/// [restartCap] gives it its full cap again from now.
+class _QuietWait {
+  _QuietWait(this._pipeline, this._cap) {
+    if (!_pipeline.value) {
+      _done.complete();
+      return;
+    }
+    _pipeline.addListener(_check);
+    _timer = Timer(_cap, _finish);
+  }
+
+  final ValueNotifier<bool> _pipeline;
+  final Duration _cap;
+  final _done = Completer<void>();
+  Timer? _timer;
+
+  Future<void> get done => _done.future;
+
+  void restartCap() {
+    if (_done.isCompleted) return;
+    _timer?.cancel();
+    _timer = Timer(_cap, _finish);
+  }
+
+  void cancel() => _finish();
+
+  void _check() {
+    if (!_pipeline.value) _finish();
+  }
+
+  void _finish() {
+    if (_done.isCompleted) return;
+    _timer?.cancel();
+    _pipeline.removeListener(_check);
+    _done.complete();
   }
 }
