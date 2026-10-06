@@ -136,15 +136,17 @@ class _PreBrushScreenState extends State<PreBrushScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!_loaded || _closed || _launched) return;
+    if (_closed || _launched) return;
     if (state == AppLifecycleState.paused && !_paused) {
       _paused = true;
+      if (!_loaded) return; // _load waits for the resume
       _cancelStepTimers();
       _commitChoice(speak: false);
       _cancelLaunch();
       unawaited(_audio.stopVoice());
     } else if (state == AppLifecycleState.resumed && _paused) {
       _paused = false;
+      if (!_loaded) return; // _load enters the first step itself
       if (_leaving) {
         // The pause cut "Let's fight!": go straight to brushing.
         _launchBrushing(showWorldIntro: false);
@@ -175,6 +177,8 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     }
     if (!mounted || _closed) return;
     setState(() => _loaded = true);
+    // Paused while loading: the first step starts on resume.
+    if (_paused) return;
     _enterStep(PreBrushStep.hero);
   }
 
@@ -338,9 +342,12 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     _maybeAdvance();
   }
 
-  /// Drags, flings and arrow animations: a moving carousel holds the step
-  /// and the choice; both count from when it comes to rest. (A finger
-  /// resting on the screen without moving it holds nothing.)
+  /// Drags, flings and arrow animations hold the step and the choice; both
+  /// count from when the carousel comes to rest. A finger resting on a
+  /// carousel that can scroll counts too: the PageView takes the drag on
+  /// touch-down, so the step waits until it lifts ("until he stops
+  /// touching", spec §4.2). With a single item there is no drag, and the idle
+  /// wait runs from the touch.
   bool _onCarouselScroll(ScrollNotification notification) {
     if (_leaving) return false;
     if (notification is ScrollStartNotification) {
@@ -544,13 +551,15 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   }
 
   void _onGoalTap() {
+    // A press that began before the steps ended lands here on release.
+    if (_leaving) return;
     _onInteraction();
     final String line;
     if (_step == PreBrushStep.world) {
       line = 'voice_need_more_brushes.mp3';
     } else if (_goal?.affordable ?? false) {
-      line =
-          'voice_ready_to_unlock.mp3'; // the full meter: "Brush to unlock it!"
+      // The full meter: "Brush to unlock it!"
+      line = 'voice_ready_to_unlock.mp3';
     } else {
       line = 'voice_need_stars.mp3';
     }

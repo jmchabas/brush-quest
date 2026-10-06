@@ -488,15 +488,63 @@ void main() {
   testWidgets('a pause after "Let\'s fight!" launches brushing on resume', (
     tester,
   ) async {
-    await pumpScreen(tester, returningKid);
+    // Frames stop while paused, so a route pushed in the background can't be
+    // seen with a finder: watch the navigator instead.
+    final routes = _ReplaceLog();
+    SharedPreferences.setMockInitialValues(returningKid);
+    await tester.pumpWidget(
+      MaterialApp(home: const PreBrushScreen(), navigatorObservers: [routes]),
+    );
+    await tester.pump();
+    await tester.pump();
     await pumpUntilLetsFight(tester);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-    await tester.pump(const Duration(seconds: 2));
-    expect(find.text('BRUSHING'), findsNothing); // not in the background
+    await tester.pump(const Duration(seconds: 5)); // past every launch timer
+    expect(routes.replaced, isEmpty); // nothing launched in the background
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
+    expect(routes.replaced, hasLength(1));
     expect(find.text('BRUSHING'), findsOneWidget);
     expect(launchedWithIntro, isFalse);
+  });
+
+  testWidgets('a goal press released after "Let\'s fight!" says nothing', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    await tester.pump(oneStep); // weapon
+    await tester.pump(oneStep); // world
+    final press = await tester.startGesture(
+      tester.getCenter(find.byKey(const ValueKey('prebrush_goal'))),
+    );
+    await pumpUntilLetsFight(tester); // the step ends under the finger
+    final heard = voices().length;
+    await press.up();
+    await tester.pump();
+    expect(voices().sublist(heard), isEmpty);
+  });
+
+  testWidgets('a finger resting on the carousel holds the step until lifted', (
+    tester,
+  ) async {
+    final prefs = Map<String, Object>.from(returningKid)
+      ..['unlocked_heroes'] = ['blaze', 'frost']; // a carousel that can scroll
+    await pumpScreen(tester, prefs);
+    final finger = await tester.startGesture(
+      tester.getCenter(find.byKey(const ValueKey('carousel_hero'))),
+    );
+    await tester.pump(const Duration(seconds: 2)); // never moves
+    expect(find.byKey(const ValueKey('prebrush_step_hero')), findsOneWidget);
+    await finger.up();
+    final weaponStep = find.byKey(const ValueKey('prebrush_step_weapon'));
+    var waited = Duration.zero;
+    while (weaponStep.evaluate().isEmpty &&
+        waited < const Duration(seconds: 2)) {
+      await tester.pump(const Duration(milliseconds: 50));
+      waited += const Duration(milliseconds: 50);
+    }
+    expect(weaponStep, findsOneWidget);
+    expect(waited, greaterThanOrEqualTo(PreBrushScreen.idleAfterTouch));
   });
 
   testWidgets('"Let\'s fight!" plays out before brushing starts', (
@@ -831,4 +879,14 @@ void main() {
       await disposeBrushing(tester);
     });
   });
+}
+
+/// Records route replacements (brushing replaces the pre-brush screen).
+class _ReplaceLog extends NavigatorObserver {
+  final replaced = <Route<dynamic>?>[];
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    replaced.add(newRoute);
+  }
 }
