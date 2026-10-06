@@ -5,6 +5,7 @@ import 'package:brush_quest/services/audio_service.dart';
 import 'package:brush_quest/services/streak_service.dart';
 import 'package:brush_quest/services/world_service.dart';
 import 'package:brush_quest/widgets/flame_view.dart';
+import 'package:brush_quest/widgets/goal_art.dart';
 import 'package:brush_quest/widgets/goal_meter.dart';
 import 'package:brush_quest/widgets/item_silhouette.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -17,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../audio/fake_audio_service.dart';
+import '../audio/timed_fake_audio_service.dart';
 
 /// Records the events the victory screen sends. AnalyticsService only reaches
 /// FirebaseAnalytics on Android (it is a no-op on the test host), so the
@@ -678,6 +680,196 @@ void main() {
         expect(voices(), isEmpty);
         await tester.pump(const Duration(seconds: 15));
         expect(find.text('DONE'), findsOneWidget);
+        await drain(tester);
+      });
+    });
+
+    group('voice budget, timing and the full goal (review fixes)', () {
+      /// This brush catches the last Candy Crater monster: the world is
+      /// complete.
+      Map<String, Object> lastCandyMonster() => {
+        'trophy_captured': ['cc_t1', 'cc_t2', 'cc_t3', 'cc_t4'],
+        'trophy_defeats_cc_t5': 2, // needs 3
+      };
+
+      testWidgets('a goal on a capture brush leaves the world-complete line '
+          'its slot', (tester) async {
+        SharedPreferences.setMockInitialValues({
+          ...base(),
+          'star_wallet': 3,
+          ...lastCandyMonster(),
+        });
+        await pumpVictory(tester, trophy: 'cc_t5');
+        await pumpToGoal(tester);
+        expect(goalKey, findsOneWidget);
+        await tester.pump(const Duration(seconds: 20));
+        expect(voices(), contains('voice_card_new.mp3'));
+        expect(voices(), contains('voice_world_complete.mp3'));
+        await drain(tester);
+      });
+
+      testWidgets('a goal on a capture brush leaves the star milestone its '
+          'slot', (tester) async {
+        SharedPreferences.setMockInitialValues({
+          ...base(),
+          'total_stars': 68, // this brush passes 70
+          'star_wallet': 3,
+        });
+        await pumpVictory(tester, trophy: 'cc_t1');
+        await pumpToGoal(tester);
+        expect(goalKey, findsOneWidget);
+        await tester.pump(const Duration(seconds: 20));
+        expect(voices(), contains('voice_milestone_70.mp3'));
+        await drain(tester);
+      });
+
+      /// Lengths of the lines these tests turn on (afinfo); other lines take
+      /// the fake's default 2 s.
+      const realLengths = {
+        'voice_card_new.mp3': Duration(milliseconds: 2664),
+        'voice_card_cc_01.mp3': Duration(milliseconds: 4441),
+        'voice_unlocked_yours.mp3': Duration(milliseconds: 1463),
+        'voice_tap_to_unlock.mp3': Duration(milliseconds: 888),
+        'voice_flame_see_you_next.mp3': Duration(milliseconds: 2769),
+        'voice_flame_see_you_keep.mp3': Duration(milliseconds: 2273),
+        'voice_forward_tonight.mp3': Duration(milliseconds: 3605),
+      };
+
+      /// Installs a voice channel that takes time, with its clock on the
+      /// test's fake time.
+      TimedFakeAudioService useTimedVoices(WidgetTester tester) {
+        final timed = TimedFakeAudioService(lengths: realLengths);
+        final start = tester.binding.clock.now();
+        timed.clock = () => tester.binding.clock.now().difference(start);
+        AudioService.testInstance = timed;
+        return timed;
+      }
+
+      /// With voices that take time the chest drops later: wait for it,
+      /// let it scale in, open it.
+      Future<void> openChestWhenItComes(WidgetTester tester) async {
+        for (var i = 0; i < 200 && chestKey.evaluate().isEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(chestKey, findsOneWidget);
+        await frames(tester, const Duration(seconds: 1));
+        await tester.tap(chestKey);
+      }
+
+      bool isClosing(TimedVoice v) =>
+          v.file.startsWith('voice_flame_see_you_') ||
+          v.file == 'voice_forward_tonight.mp3';
+
+      testWidgets('the strip comes with its line, and DONE only after the '
+          'line has played', (tester) async {
+        final timed = useTimedVoices(tester);
+        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+        await pumpVictory(tester, trophy: 'cc_t1');
+        await openChestWhenItComes(tester);
+        Duration? stripAt;
+        Duration? doneAt;
+        for (var i = 0; i < 600 && doneAt == null; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          if (stripAt == null &&
+              find.byType(FlameStrip).evaluate().isNotEmpty) {
+            stripAt = timed.clock();
+          }
+          if (find.text('DONE').evaluate().isNotEmpty) doneAt = timed.clock();
+        }
+        final closing = timed.voices.lastWhere(isClosing);
+        expect(doneAt, isNotNull);
+        expect(closing.cut || closing.dropped, isFalse, reason: '$closing');
+        // The card's lines were queued before it: the strip waits for them.
+        expect(
+          closing.startedAt! - stripAt!,
+          lessThan(const Duration(milliseconds: 200)),
+          reason: 'strip at $stripAt, ${timed.voices}',
+        );
+        expect(
+          doneAt,
+          greaterThanOrEqualTo(closing.endedAt!),
+          reason: 'DONE at $doneAt, ${timed.voices}',
+        );
+        await drain(tester);
+      });
+
+      testWidgets('"It\'s yours!" answers the tap at once; the monster\'s name '
+          'still plays in full after it', (tester) async {
+        final timed = useTimedVoices(tester);
+        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+        await pumpVictory(tester, trophy: 'cc_t1');
+        await openChestWhenItComes(tester);
+        // Until the monster card's first line has been playing a moment.
+        for (var i = 0; i < 300; i++) {
+          final cardNew = timed.voiceNamed('voice_card_new.mp3');
+          final playingFor = cardNew?.startedAt == null
+              ? Duration.zero
+              : timed.clock() - cardNew!.startedAt!;
+          if (playingFor >= const Duration(milliseconds: 800)) break;
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        final tapAt = timed.clock();
+        await tester.tap(goalKey);
+        await frames(tester, const Duration(seconds: 1));
+        final yours = timed.voiceNamed('voice_unlocked_yours.mp3')!;
+        expect(
+          yours.startedAt! - tapAt,
+          lessThan(const Duration(milliseconds: 200)),
+          reason: 'tap at $tapAt, ${timed.voices}',
+        );
+        await tester.pump(const Duration(seconds: 10));
+        final name = timed.voices.lastWhere(
+          (v) => v.file == 'voice_card_cc_01.mp3',
+        );
+        expect(name.startedAt, isNotNull, reason: '${timed.voices}');
+        expect(name.startedAt! >= yours.endedAt!, isTrue);
+        expect(name.cut || name.dropped, isFalse, reason: '${timed.voices}');
+        await drain(tester);
+      });
+
+      Finder goalFigure() =>
+          find.descendant(of: goalKey, matching: find.byType(GoalArt));
+
+      testWidgets('a full goal bounces until he taps it; unlocked, it rests at '
+          'full size', (tester) async {
+        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+        await pumpVictory(tester);
+        await pumpToGoal(tester);
+        final tops = <double>{};
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          tops.add(tester.getRect(goalFigure()).top);
+        }
+        expect(tops.length, greaterThan(1), reason: 'it should bounce: $tops');
+        // A bounce, not a size change.
+        expect(tester.getRect(goalFigure()).width, closeTo(96, 0.5));
+        await tester.tap(goalKey);
+        await frames(tester, const Duration(seconds: 1));
+        final settled = <double>{};
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          settled.add(tester.getRect(goalFigure()).top);
+        }
+        expect(settled, hasLength(1), reason: 'it should rest: $settled');
+        expect(tester.getRect(goalFigure()).width, closeTo(96, 0.5));
+        await drain(tester);
+      });
+
+      testWidgets('a goal that is not full stays still', (tester) async {
+        SharedPreferences.setMockInitialValues({
+          ...base(),
+          'star_wallet': 0,
+          'unlocked_heroes': ['blaze', 'frost', 'bolt'],
+          'unlocked_weapons': ['star_blaster', 'flame_sword'],
+        });
+        await pumpVictory(tester);
+        await pumpToGoal(tester);
+        final tops = <double>{};
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          tops.add(tester.getRect(goalFigure()).top);
+        }
+        expect(tops, hasLength(1));
         await drain(tester);
       });
     });

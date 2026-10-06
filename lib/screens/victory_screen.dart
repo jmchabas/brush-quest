@@ -349,6 +349,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   late AnimationController _cardFlyController;
   late AnimationController _cardGlowController;
   late AnimationController _newBadgeController;
+  // A full goal glows and bounces until he taps it (spec §6 step 4).
+  late AnimationController _goalBounceController;
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
 
@@ -366,6 +368,10 @@ class _VictoryScreenState extends State<VictoryScreen>
   Timer? _goalFillTimer;
   static const _goalFillStep = Duration(milliseconds: 75);
   Goal? _worldGoal;
+
+  // Lines "It's yours!" must not lose: when it cuts in, those not finished
+  // yet (the monster's name, the closing flame line) play again after it.
+  final _unfinishedMustHear = <String>{};
 
   // The screen scrolls, and on small phones the newest beat lands below the
   // fold: these anchor the goal and the monster card for scrolling.
@@ -422,6 +428,10 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
     _newBadgeController = AnimationController(
       duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _goalBounceController = AnimationController(
+      duration: const Duration(milliseconds: 700),
       vsync: this,
     );
     _walletBumpController = AnimationController(
@@ -725,13 +735,16 @@ class _VictoryScreenState extends State<VictoryScreen>
         if (!mounted) return;
         if (goal != null) {
           _showGoalBeat(goal);
-          if (goal.affordable) {
-            unawaited(_audio.playVoice('voice_tap_to_unlock.mp3'));
-            if (voiceSlotsRemaining > 0) voiceSlotsRemaining--;
-          } else if (voiceSlotsRemaining > 0) {
-            unawaited(_audio.playVoice(_audio.starsLeftVoiceFor(goal.left)));
-            voiceSlotsRemaining--;
-          }
+          // About 1 s, and this beat's point: kept out of the voice budget,
+          // which stays with the trophy, world and milestone lines below
+          // (spec §6 step 5: "as today").
+          unawaited(
+            _audio.playVoice(
+              goal.affordable
+                  ? 'voice_tap_to_unlock.mp3'
+                  : _audio.starsLeftVoiceFor(goal.left),
+            ),
+          );
           await Future.delayed(const Duration(milliseconds: 1200));
           if (!mounted) return;
         }
@@ -792,7 +805,7 @@ class _VictoryScreenState extends State<VictoryScreen>
               voiceSlotsRemaining--;
             }
             // Naming voice — always queued, not slot-gated.
-            unawaited(_audio.playVoice('voice_card_$cardVoiceId.mp3'));
+            _queueMustHear('voice_card_$cardVoiceId.mp3');
             if (voiceSlotsRemaining > 0) voiceSlotsRemaining--;
           } else {
             unawaited(_audio.playVoice('voice_keep_going.mp3'));
@@ -922,6 +935,9 @@ class _VictoryScreenState extends State<VictoryScreen>
     } on Object catch (e) {
       debugPrint("Yesterday's slots unavailable: $e");
     }
+    // The monster card's lines may still be queued: the strip comes with its
+    // own line, after them (capped, as every wait on a voice is).
+    await _voiceIdle(const Duration(seconds: 8));
     if (!mounted) return;
     setState(() => _showFlameStrip = true);
     final line = VictoryScreen.closingVoiceFor(
@@ -929,10 +945,36 @@ class _VictoryScreenState extends State<VictoryScreen>
       yesterdayBoth: yesterdayBoth,
       newStreak: _newStreak,
     );
-    // DONE follows this: capped, so a voice that never ends can't hold it.
-    await _audio
-        .playVoice(line)
-        .timeout(const Duration(seconds: 5), onTimeout: () {});
+    _queueMustHear(line);
+    // DONE comes after this: once the queue is quiet (an "It's yours!" may
+    // have queued the line again), but never more than a few seconds.
+    await _voiceIdle(const Duration(seconds: 6));
+  }
+
+  /// Plays [file] and remembers it until it has ended, so "It's yours!" can
+  /// play it again if it cuts in first.
+  void _queueMustHear(String file) {
+    _unfinishedMustHear.add(file);
+    unawaited(
+      _audio
+          .playVoice(file)
+          .whenComplete(() => _unfinishedMustHear.remove(file)),
+    );
+  }
+
+  /// Completes when no voice is playing or queued, or after [cap].
+  Future<void> _voiceIdle(Duration cap) {
+    final pipeline = _audio.voicePipelineActiveNotifier;
+    if (!pipeline.value) return Future.value();
+    final idle = Completer<void>();
+    void check() {
+      if (!pipeline.value && !idle.isCompleted) idle.complete();
+    }
+
+    pipeline.addListener(check);
+    return idle.future
+        .timeout(cap, onTimeout: () {})
+        .whenComplete(() => pipeline.removeListener(check));
   }
 
   /// Shows the goal with the stars the child had before this brush, then
@@ -952,7 +994,23 @@ class _VictoryScreenState extends State<VictoryScreen>
         return;
       }
       setState(() => _goalShownHave++);
+      _maybeStartGoalBounce();
     });
+    _maybeStartGoalBounce();
+  }
+
+  bool get _goalFull {
+    final goal = _goal;
+    return goal != null &&
+        goal.affordable &&
+        !_goalUnlocked &&
+        _goalShownHave >= goal.cost;
+  }
+
+  void _maybeStartGoalBounce() {
+    if (_goalFull && !_goalBounceController.isAnimating) {
+      unawaited(_goalBounceController.repeat(reverse: true));
+    }
   }
 
   Future<void> _onGoalTap() async {
@@ -976,9 +1034,22 @@ class _VictoryScreenState extends State<VictoryScreen>
       return;
     }
     setState(() => _goalUnlocked = true);
+    _goalBounceController.stop();
     unawaited(HapticFeedback.heavyImpact());
+    // A fresh burst: the confetti has been falling since the screen opened.
+    _confettiController.reset();
     unawaited(_confettiController.repeat());
-    unawaited(_audio.playVoice('voice_unlocked_yours.mp3', interrupt: true));
+    // It answers the tap, so it plays now, not after what is queued; the
+    // lines that must still be heard come after it.
+    final replay = _unfinishedMustHear.toList();
+    unawaited(
+      _audio.playVoice(
+        'voice_unlocked_yours.mp3',
+        clearQueue: true,
+        interrupt: true,
+      ),
+    );
+    replay.forEach(_queueMustHear);
     unawaited(
       analytics.logGoalUnlocked(
         category: goal.category.name,
@@ -1009,7 +1080,8 @@ class _VictoryScreenState extends State<VictoryScreen>
       // The offset that puts the card's bottom at the bottom of the view.
       var target = viewport.getOffsetToReveal(card, 1).offset;
       final goal = _goalAnchorKey.currentContext?.findRenderObject();
-      if (goal is RenderBox && goal.attached) {
+      final tappable = (_goal?.affordable ?? false) && !_goalUnlocked;
+      if (tappable && goal is RenderBox && goal.attached) {
         // The offset that puts the goal's top just under the top bar.
         final goalTop =
             viewport.getOffsetToReveal(goal, 0).offset - _topBarHeight;
@@ -1043,6 +1115,35 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
   }
 
+  /// The locked goal: still until it is full, then it glows and bounces until
+  /// he taps it (two effects).
+  Widget _goalFigure(Widget silhouette) {
+    if (!_goalFull) return silhouette;
+    return AnimatedBuilder(
+      animation: _goalBounceController,
+      builder: (context, child) {
+        final t = Curves.easeInOut.transform(_goalBounceController.value);
+        return Transform.translate(
+          offset: Offset(0, -8 * t),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amberAccent.withValues(alpha: 0.3 + 0.3 * t),
+                  blurRadius: 24 + 12 * t,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: silhouette,
+    );
+  }
+
   Widget _buildGoal() {
     final goal = _goal!;
     final art = GoalArt(goal: goal, heroWeaponId: _heroWeaponId, size: 96);
@@ -1059,17 +1160,24 @@ class _VictoryScreenState extends State<VictoryScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedScale(
-                scale: goal.affordable && !_goalUnlocked ? 1.1 : 1.0,
-                duration: const Duration(milliseconds: 400),
-                child: _goalUnlocked
-                    ? art
-                    : ItemSilhouette(
-                        // Only hero art has a transparent background.
-                        opaqueArt: goal.category != GoalCategory.hero,
-                        child: art,
-                      ),
-              ),
+              if (_goalUnlocked)
+                // Its colours come on with a pop.
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.8, end: 1),
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.elasticOut,
+                  builder: (context, scale, child) =>
+                      Transform.scale(scale: scale, child: child),
+                  child: art,
+                )
+              else
+                _goalFigure(
+                  ItemSilhouette(
+                    // Only hero art has a transparent background.
+                    opaqueArt: goal.category != GoalCategory.hero,
+                    child: art,
+                  ),
+                ),
               const SizedBox(height: 6),
               GoalMeter(
                 have: _goalUnlocked ? goal.cost : _goalShownHave,
@@ -1289,6 +1397,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     _cardFlyController.dispose();
     _cardGlowController.dispose();
     _newBadgeController.dispose();
+    _goalBounceController.dispose();
     _walletBumpController.dispose();
     _heroCelebrationController.dispose();
     _heroGlowController.dispose();
