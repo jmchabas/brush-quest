@@ -87,6 +87,12 @@ class _HomeScreenState extends State<HomeScreen>
   int _dailyBonusFlight = 0;
   ({Offset from, Offset to})? _flightPath;
   Timer? _dailyBonusTimer;
+  // claimDailyBonus() reads the date and writes it a few awaits later, so two
+  // overlapping claims would both pay: one runs at a time.
+  bool _bonusClaimInFlight = false;
+  // A claim that came (app resume) while a screen covered Home waits for
+  // didPopNext: the welcome line and the stars are for a Home the child sees.
+  bool _claimWhenShown = false;
   // The flame step Home last showed is compared once per Home (_loadStats).
   bool _flameTierChecked = false;
   static const _lastSeenFlameTierKey = 'last_seen_flame_tier';
@@ -204,7 +210,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
     if (_refreshWhenShown) {
       _refreshWhenShown = false;
+      _claimWhenShown = false; // _afterBrushReturn ends with a claim
       unawaited(_afterBrushReturn());
+    } else if (_claimWhenShown) {
+      _claimWhenShown = false;
+      unawaited(_claimAndAnimateDailyBonus());
     }
   }
 
@@ -251,8 +261,14 @@ class _HomeScreenState extends State<HomeScreen>
       _totalBrushes = totalBrushes;
       _trophyCount = trophyCount;
     });
-    // Daily bonus is idempotent by date — safe to attempt on every resume.
-    unawaited(_claimAndAnimateDailyBonus());
+    // Daily bonus is idempotent by date — safe to attempt on every resume. It
+    // speaks and flies stars, so only while Home is what the child sees; under
+    // another screen it waits for didPopNext.
+    if (ModalRoute.of(context)?.isCurrent ?? false) {
+      unawaited(_claimAndAnimateDailyBonus());
+    } else {
+      _claimWhenShown = true;
+    }
   }
 
   Future<void> _loadStats() async {
@@ -308,11 +324,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   /// The one-time "your flame got bigger" cue (spec 2026-10-05 §7.2): when the
-  /// flame is
-  /// on a higher step than the last time Home showed it: a whoosh and a pulse
-  /// on the streak pill, plus the line when Home opens cold. Takes note of the
-  /// step it saw, so showing the same step again stays silent. A first run
-  /// (nothing noted yet), a first flame (none to small) and a broken streak
+  /// flame is on a higher step than the last time Home showed it, a whoosh and
+  /// a pulse on the streak pill, plus the line when Home opens cold. Takes note
+  /// of the step it saw, so showing the same step again stays silent. A first
+  /// run (nothing noted yet), a first flame (none to small) and a broken streak
   /// (a lower step) just take note, with no sound.
   Future<void> _checkFlameTierUp(int streak) async {
     final prefs = await SharedPreferences.getInstance();
@@ -335,14 +350,14 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// One pulse of the streak pill. The pulse controller is shared with the
   /// star counter, which only follows it while its own flag is set, so only
-  /// this pill moves.
+  /// this pill moves. The flag is cleared on complete or cancel: another
+  /// forward(from: 0) on the shared controller cancels this pulse's future, and
+  /// a cancelled future never completes, which would leave the flag set.
   void _pulseStreakPill() {
     setState(() => _streakPulseActive = true);
-    unawaited(
-      _statPulseController.forward(from: 0).then((_) {
-        if (mounted) setState(() => _streakPulseActive = false);
-      }),
-    );
+    _statPulseController.forward(from: 0).whenCompleteOrCancel(() {
+      if (mounted) setState(() => _streakPulseActive = false);
+    });
   }
 
   /// Start (or restart) the home ambient music at low volume. Called from
@@ -440,11 +455,17 @@ class _HomeScreenState extends State<HomeScreen>
     if (result != null && mounted) {
       await _greetingService.markGreetingShown(todayDate);
       unawaited(AnalyticsService().logDailyLogin(streak: _streak));
-      _showGreetingPopup(
+      // The bonus waits until the dialog is gone, so its stars fly and the
+      // welcome line plays on a clean Home.
+      await _showGreetingPopup(
         result,
         pulseStreak:
             result.state == GreetingState.freshStart && totalBrushes > 2,
       );
+      // A tap on the dialog's barrier started the brush flow. Claiming now
+      // would speak over the pre-brush screen: the bonus is paid when the
+      // child is back (after the brush, or after backing out).
+      if (!mounted || _brushTapLocked) return;
     } else if (lastGreetingDate == todayDate && mounted) {
       // Already greeted today — play a random welcome back voice
       await Future.delayed(const Duration(milliseconds: 800));
@@ -463,7 +484,14 @@ class _HomeScreenState extends State<HomeScreen>
   /// welcome line plays while the bonus stars fly from the flame pill to the
   /// star counter, which takes them when they land.
   Future<void> _claimAndAnimateDailyBonus() async {
-    final bonus = await _streakService.claimDailyBonus();
+    if (_bonusClaimInFlight) return;
+    _bonusClaimInFlight = true;
+    final int bonus;
+    try {
+      bonus = await _streakService.claimDailyBonus();
+    } finally {
+      _bonusClaimInFlight = false;
+    }
     if (bonus <= 0 || !mounted) return;
     final newWallet = await _streakService.getWallet();
     if (!mounted) return;
@@ -484,11 +512,10 @@ class _HomeScreenState extends State<HomeScreen>
         _wallet = newWallet;
         _walletPulseActive = true;
       });
-      unawaited(
-        _statPulseController.forward(from: 0).then((_) {
-          if (mounted) setState(() => _walletPulseActive = false);
-        }),
-      );
+      // On complete or cancel, as in _pulseStreakPill.
+      _statPulseController.forward(from: 0).whenCompleteOrCancel(() {
+        if (mounted) setState(() => _walletPulseActive = false);
+      });
     });
   }
 
@@ -503,7 +530,13 @@ class _HomeScreenState extends State<HomeScreen>
     return pill.localToGlobal(pill.size.center(Offset.zero), ancestor: stack);
   }
 
-  void _showGreetingPopup(GreetingResult greeting, {bool pulseStreak = false}) {
+  /// Shows the greeting dialog. Completes once the dialog has closed and faded
+  /// out completely (and what closing it triggers has run), so the caller can
+  /// go on with a clean Home.
+  Future<void> _showGreetingPopup(
+    GreetingResult greeting, {
+    bool pulseStreak = false,
+  }) {
     AudioService().playVoice(greeting.voiceFile);
     // No streak lesson here any more: the welcome-back flame line, queued by
     // _claimAndAnimateDailyBonus right behind this one, explains the bonus.
@@ -532,6 +565,7 @@ class _HomeScreenState extends State<HomeScreen>
       GreetingState.freshStart => const Color(0xFF00E5FF),
     };
 
+    ModalRoute<void>? dialogRoute;
     final dialogFuture = showDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -541,8 +575,11 @@ class _HomeScreenState extends State<HomeScreen>
           tween: Tween(begin: 0, end: 1),
           duration: const Duration(milliseconds: 400),
           curve: Curves.elasticOut,
-          builder: (context, scale, child) =>
-              Transform.scale(scale: scale, child: child),
+          builder: (context, scale, child) {
+            // The dialog's own route, kept to wait for its exit transition.
+            dialogRoute ??= ModalRoute.of(context);
+            return Transform.scale(scale: scale, child: child);
+          },
           child: Container(
             constraints: const BoxConstraints(maxWidth: 280),
             decoration: BoxDecoration(
@@ -685,11 +722,13 @@ class _HomeScreenState extends State<HomeScreen>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Fire icon (your streak)
-                            const Icon(
-                              Icons.local_fire_department,
-                              color: Colors.orangeAccent,
-                              size: 24,
+                            // Your streak's flame, the one on the pill, at the
+                            // 24 px of the icon it replaced
+                            SizedBox.square(
+                              dimension: 24,
+                              child: FittedBox(
+                                child: FlameIcon(tier: flameTierFor(_streak)),
+                              ),
                             ),
                             const SizedBox(width: 4),
                             // Arrow showing cause -> effect
@@ -770,18 +809,13 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
 
-    dialogFuture.then((_) {
+    final closed = dialogFuture.then((_) {
       if (listenerAttached) {
         audio.voicePipelineActiveNotifier.removeListener(listener);
         listenerAttached = false;
       }
       audio.stopVoice();
-      if (pulseStreak && mounted) {
-        setState(() => _streakPulseActive = true);
-        _statPulseController.forward(from: 0).then((_) {
-          if (mounted) setState(() => _streakPulseActive = false);
-        });
-      }
+      if (pulseStreak && mounted) _pulseStreakPill();
       // User-initiated dismiss → kid was tapping the hero behind the dialog.
       // Honor that intent by launching the brush flow on this single tap.
       if (!autoDismissed && mounted) {
@@ -795,6 +829,10 @@ class _HomeScreenState extends State<HomeScreen>
       audio.voicePipelineActiveNotifier.addListener(listener);
       listenerAttached = true;
     }
+    // The route's transition is over once the dialog has faded out.
+    return closed.then((_) async {
+      await dialogRoute?.completed;
+    });
   }
 
   void _startBrushing() {
@@ -921,6 +959,10 @@ class _HomeScreenState extends State<HomeScreen>
         if (mounted) setState(() => _starDeltaVisible = false);
       });
     }
+    // Backing out of the pre-brush screen (or quitting brushing) is a way back
+    // to Home that the greeting flow does not cover: if the day's bonus is
+    // still unclaimed, it is paid now. Idempotent by date.
+    unawaited(_claimAndAnimateDailyBonus());
   }
 
   void _openShop() {
@@ -1175,44 +1217,64 @@ class _HomeScreenState extends State<HomeScreen>
                                               : Colors.white24)
                                           .withValues(alpha: 0.12),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (_streak == 0 && _totalBrushes > 0) ...[
-                                      const Icon(
-                                        Icons.rocket_launch,
-                                        color: Color(0xFFFFB74D),
-                                        size: 22,
-                                      ),
-                                    ] else ...[
-                                      // The flame grows with the streak
-                                      // (spec 2026-10-05 §7.1): small, big
-                                      // from 3 days, hot from 7, golden from 14.
-                                      FlameIcon(tier: flameTierFor(_streak)),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '$_streak',
-                                        style: TextStyle(
-                                          color: _streak > 0
-                                              ? Colors.white
-                                              : Colors.white.withValues(
-                                                  alpha: 0.3,
-                                                ),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 22,
-                                          shadows: _streak > 0
-                                              ? const [
-                                                  Shadow(
-                                                    color: Color(0x80FF9800),
-                                                    blurRadius: 8,
-                                                  ),
-                                                ]
-                                              : null,
+                                // Shrinks (never grows) when flame and number
+                                // are wider than the pill, e.g. a long streak
+                                // on a narrow phone, instead of overflowing.
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (_streak == 0 &&
+                                          _totalBrushes > 0) ...[
+                                        const Icon(
+                                          Icons.rocket_launch,
+                                          color: Color(0xFFFFB74D),
+                                          size: 22,
                                         ),
-                                      ),
+                                      ] else ...[
+                                        // The flame grows with the streak
+                                        // (spec 2026-10-05 §7.1): small, big
+                                        // from 3 days, hot from 7, golden from
+                                        // 14. It sits in a 26 px slot, the size
+                                        // of the icon it replaced, so the pill
+                                        // stays as tall as its neighbours: the
+                                        // bigger flames paint into its padding.
+                                        SizedOverflowBox(
+                                          size: Size(
+                                            FlameIcon.sizeFor(
+                                              flameTierFor(_streak),
+                                            ),
+                                            26,
+                                          ),
+                                          child: FlameIcon(
+                                            tier: flameTierFor(_streak),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '$_streak',
+                                          style: TextStyle(
+                                            color: _streak > 0
+                                                ? Colors.white
+                                                : Colors.white.withValues(
+                                                    alpha: 0.3,
+                                                  ),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 22,
+                                            shadows: _streak > 0
+                                                ? const [
+                                                    Shadow(
+                                                      color: Color(0x80FF9800),
+                                                      blurRadius: 8,
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
