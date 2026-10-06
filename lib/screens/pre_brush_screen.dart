@@ -11,6 +11,7 @@ import '../services/hero_service.dart';
 import '../services/streak_service.dart';
 import '../services/weapon_service.dart';
 import '../services/world_service.dart';
+import '../widgets/goal_art.dart';
 import '../widgets/goal_meter.dart';
 import '../widgets/item_silhouette.dart';
 import '../widgets/loadout_carousel.dart';
@@ -576,42 +577,6 @@ class _PreBrushScreenState extends State<PreBrushScreen>
         size: size,
       );
 
-  /// Weapon and planet art is an opaque square on a dark background: show it
-  /// the way the shop and the world map do, as a rounded square (weapons) or
-  /// a circle (planets). Without a [size] it takes the largest square that
-  /// fits, so a carousel page doesn't stretch the clip into an oval.
-  Widget _squareArt(String path, {required bool round, double? size}) {
-    final image = Image.asset(
-      path,
-      width: size,
-      height: size,
-      fit: BoxFit.cover,
-    );
-    final clipped = round
-        ? ClipOval(child: image)
-        : ClipRRect(borderRadius: BorderRadius.circular(16), child: image);
-    if (size != null) return clipped;
-    return Center(child: AspectRatio(aspectRatio: 1, child: clipped));
-  }
-
-  Widget _weaponArt(String weaponId, {double? size}) => _squareArt(
-    WeaponService.getWeaponById(weaponId).imagePath,
-    round: false,
-    size: size,
-  );
-
-  Widget _planetArt(String worldId, {double? size}) => _squareArt(
-    WorldService.getWorldById(worldId).imagePath,
-    round: true,
-    size: size,
-  );
-
-  Widget _goalImage(Goal goal, double size) => switch (goal.category) {
-    GoalCategory.hero => _heroImage(goal.heroId, goal.stage, size),
-    GoalCategory.weapon => _weaponArt(goal.itemId, size: size),
-    GoalCategory.world => _planetArt(goal.itemId, size: size),
-  };
-
   ({List<LoadoutItem> items, String selected, ValueChanged<String> onChosen})
   _carousel() {
     switch (_step) {
@@ -635,7 +600,10 @@ class _PreBrushScreenState extends State<PreBrushScreen>
         return (
           items: [
             for (final id in _weaponItems)
-              LoadoutItem(id: id, image: _weaponArt(id)),
+              LoadoutItem(
+                id: id,
+                image: WeaponArt(weaponId: id),
+              ),
           ],
           selected: _weaponId,
           onChosen: _onCarouselChanged,
@@ -644,7 +612,10 @@ class _PreBrushScreenState extends State<PreBrushScreen>
         return (
           items: [
             for (final id in _worldItems)
-              LoadoutItem(id: id, image: _planetArt(id)),
+              LoadoutItem(
+                id: id,
+                image: PlanetArt(worldId: id),
+              ),
           ],
           selected: _worldId,
           onChosen: _onCarouselChanged,
@@ -728,7 +699,11 @@ class _PreBrushScreenState extends State<PreBrushScreen>
                             ItemSilhouette(
                               // Only hero art has a transparent background.
                               opaqueArt: goal.category != GoalCategory.hero,
-                              child: _goalImage(goal, 90),
+                              child: GoalArt(
+                                goal: goal,
+                                heroWeaponId: _weaponId,
+                                size: 90,
+                              ),
                             ),
                           const SizedBox(height: 8),
                           goal == null

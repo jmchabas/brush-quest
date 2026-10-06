@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
 import '../services/streak_service.dart';
@@ -14,24 +15,17 @@ import '../widgets/space_background.dart';
 import '../widgets/achievement_popup.dart';
 import '../widgets/trophy_detail_dialog.dart';
 import '../widgets/flame_view.dart';
+import '../services/goal_service.dart';
+import '../services/unlock_service.dart';
+import '../widgets/goal_art.dart';
+import '../widgets/goal_meter.dart';
+import '../widgets/item_silhouette.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
 import 'home_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
-
-/// Forward hook types shown after the chest sequence to encourage the next brush.
-enum _ForwardHookType {
-  /// Morning done, evening not yet: moon icon + "see you tonight"
-  tonight,
-
-  /// Both slots done today: star burst + "full power!"
-  fullPower,
-
-  /// Evening done, morning was not done: sun icon + "see you in the morning"
-  morning,
-}
 
 class _ChestReward {
   final _ChestRewardType type;
@@ -252,6 +246,26 @@ class VictoryScreen extends StatefulWidget {
     return null;
   }
 
+  /// Closing line (spec §7.3): "see you tonight" only for a child who
+  /// brushed morning and evening yesterday and is brushing in the morning
+  /// now; otherwise the flame line.
+  @visibleForTesting
+  static String closingVoiceFor({
+    required int hour,
+    required bool yesterdayBoth,
+    required int newStreak,
+  }) {
+    if (hour < 12 && yesterdayBoth) return 'voice_forward_tonight.mp3';
+    return daysToNextFlameTier(newStreak) == 1
+        ? 'voice_flame_see_you_next.mp3'
+        : 'voice_flame_see_you_keep.mp3';
+  }
+
+  /// Where the unlock events go. The singleton does nothing on a test host
+  /// (it only reaches Firebase on Android), so tests swap in a recording one.
+  @visibleForTesting
+  static AnalyticsService? debugAnalytics;
+
   @override
   State<VictoryScreen> createState() => _VictoryScreenState();
 }
@@ -338,8 +352,25 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
 
-  // Forward hook state (session-end encouragement — voice only)
+  // Closing beat (spec §6 step 6): the flame strip and its line.
   bool _forwardHookFired = false;
+  bool _showFlameStrip = false;
+
+  // Goal beat (spec §6 step 4): the closest unlock, filled by this brush's
+  // stars; one tap unlocks it when it is full.
+  Goal? _goal;
+  bool _showGoal = false;
+  bool _goalUnlocked = false;
+  bool _unlocking = false;
+  int _goalShownHave = 0;
+  Timer? _goalFillTimer;
+  static const _goalFillStep = Duration(milliseconds: 75);
+  Goal? _worldGoal;
+
+  // The screen scrolls, and on small phones the newest beat lands below the
+  // fold: these anchor the goal and the monster card for scrolling.
+  final _goalAnchorKey = GlobalKey();
+  final _cardAnchorKey = GlobalKey();
 
   // Victory celebration arcs: 2-beat connected story
   // [beat1 = celebration, beat2 = star earned]
@@ -681,6 +712,30 @@ class _VictoryScreenState extends State<VictoryScreen>
           voiceSlotsRemaining--;
         }
 
+        // ── Goal beat (spec §6 step 4): this brush's stars fill the closest
+        // unlock; when it is full, one tap unlocks it. The chest and comeback
+        // lines are awaited above, so its line cuts nothing. "Tap to unlock
+        // it!" is the child's cue to act: it doesn't depend on the budget.
+        Goal? goal;
+        try {
+          goal = await GoalService().overallGoal();
+        } on Object catch (e) {
+          debugPrint('Goal beat skipped: $e');
+        }
+        if (!mounted) return;
+        if (goal != null) {
+          _showGoalBeat(goal);
+          if (goal.affordable) {
+            unawaited(_audio.playVoice('voice_tap_to_unlock.mp3'));
+            if (voiceSlotsRemaining > 0) voiceSlotsRemaining--;
+          } else if (voiceSlotsRemaining > 0) {
+            unawaited(_audio.playVoice(_audio.starsLeftVoiceFor(goal.left)));
+            voiceSlotsRemaining--;
+          }
+          await Future.delayed(const Duration(milliseconds: 1200));
+          if (!mounted) return;
+        }
+
         // ── Trophy defeat/capture ──
         if (widget.trophyTargetId != null) {
           final result = await _trophyService.recordDefeat(
@@ -703,6 +758,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             _trophyRequired = result.required;
             _revealedTrophy = trophy;
           });
+          _scrollCardIntoView();
 
           unawaited(HapticFeedback.mediumImpact());
           unawaited(_cardFlyController.forward());
@@ -750,11 +806,20 @@ class _VictoryScreenState extends State<VictoryScreen>
 
           // Show world progress
           final worldComplete = await _trophyService.isWorldComplete(_world.id);
+          // The rockets fill toward the next planet (spec §6 step 5).
+          Goal? worldGoal;
+          try {
+            worldGoal = await GoalService().worldGoal();
+          } on Object catch (e) {
+            debugPrint('World rockets skipped: $e');
+          }
           if (!mounted) return;
           setState(() {
             _showWorldProgress = true;
             _worldJustCompleted = worldComplete;
+            _worldGoal = worldGoal;
           });
+          _scrollCardIntoView();
 
           // P2: World complete
           if (_worldJustCompleted && voiceSlotsRemaining > 0) {
@@ -783,6 +848,7 @@ class _VictoryScreenState extends State<VictoryScreen>
               _trophyRequired = trophy.defeatsRequired;
               _revealedTrophy = trophy;
             });
+            _scrollCardIntoView();
 
             unawaited(HapticFeedback.mediumImpact());
             unawaited(_cardFlyController.forward());
@@ -843,32 +909,177 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
   }
 
-  /// Determine which forward hook voice to play. No visual — voice only.
+  /// The closing beat (spec §6 step 6): the flame strip, and the line for
+  /// the next flame, or "see you tonight" for a twice-a-day child brushing in
+  /// the morning (spec §7.3).
   Future<void> _showForwardHookSequence() async {
     if (_forwardHookFired) return;
     _forwardHookFired = true;
-
-    final now = DateTime.now();
-    final slots = await _streakService.getTodaySlots();
-
-    _ForwardHookType? hookType;
-
-    if (now.hour < 15 && !slots.eveningDone) {
-      hookType = _ForwardHookType.tonight;
-    } else if (slots.morningDone && slots.eveningDone) {
-      hookType = _ForwardHookType.fullPower;
-    } else if (now.hour >= 15 && !slots.morningDone) {
-      hookType = _ForwardHookType.morning;
+    var yesterdayBoth = false;
+    try {
+      final yesterday = await _streakService.getYesterdaySlots();
+      yesterdayBoth = yesterday.morningDone && yesterday.eveningDone;
+    } on Object catch (e) {
+      debugPrint("Yesterday's slots unavailable: $e");
     }
+    if (!mounted) return;
+    setState(() => _showFlameStrip = true);
+    final line = VictoryScreen.closingVoiceFor(
+      hour: DateTime.now().hour,
+      yesterdayBoth: yesterdayBoth,
+      newStreak: _newStreak,
+    );
+    // DONE follows this: capped, so a voice that never ends can't hold it.
+    await _audio
+        .playVoice(line)
+        .timeout(const Duration(seconds: 5), onTimeout: () {});
+  }
 
-    if (hookType == null || !mounted) return;
+  /// Shows the goal with the stars the child had before this brush, then
+  /// counts this brush's stars into it, one at a time.
+  void _showGoalBeat(Goal goal) {
+    final target = min(_newWallet, goal.cost);
+    setState(() {
+      _goal = goal;
+      _showGoal = true;
+      _goalShownHave = min(_previousWallet, target);
+    });
+    _scrollIntoView(_goalAnchorKey);
+    _goalFillTimer?.cancel();
+    _goalFillTimer = Timer.periodic(_goalFillStep, (timer) {
+      if (!mounted || _goalShownHave >= target) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _goalShownHave++);
+    });
+  }
 
-    final voiceFile = switch (hookType) {
-      _ForwardHookType.tonight => 'voice_forward_tonight.mp3',
-      _ForwardHookType.fullPower => 'voice_full_power.mp3',
-      _ForwardHookType.morning => 'voice_forward_morning.mp3',
-    };
-    await _audio.playVoice(voiceFile);
+  Future<void> _onGoalTap() async {
+    final goal = _goal;
+    if (goal == null || !goal.affordable || _goalUnlocked || _unlocking) {
+      return;
+    }
+    // Held for the whole tap: unlockGoal() reports success for an item that
+    // is already owned, so a second tap must never reach it.
+    _unlocking = true;
+    final analytics = VictoryScreen.debugAnalytics ?? AnalyticsService();
+    var ok = false;
+    try {
+      ok = await UnlockService(analytics: analytics).unlockGoal(goal);
+    } on Object catch (e) {
+      debugPrint('Goal unlock failed: $e');
+    }
+    if (!mounted) return;
+    if (!ok) {
+      _unlocking = false; // refused or failed: he can tap again
+      return;
+    }
+    setState(() => _goalUnlocked = true);
+    unawaited(HapticFeedback.heavyImpact());
+    unawaited(_confettiController.repeat());
+    unawaited(_audio.playVoice('voice_unlocked_yours.mp3', interrupt: true));
+    unawaited(
+      analytics.logGoalUnlocked(
+        category: goal.category.name,
+        item: goal.itemId,
+      ),
+    );
+    final wallet = await _streakService.getWallet();
+    if (mounted) setState(() => _newWallet = wallet);
+  }
+
+  /// Height of the fixed pills row over the top of the scroll view (8 px
+  /// down, 48 px high).
+  static const double _topBarHeight = 56;
+
+  /// Scrolls toward the monster card when it arrives (and when it grows),
+  /// but never so far that the goal, which he may still want to tap, slips
+  /// under the top bar. On a small phone that shows the goal and the top of
+  /// the card; on a tall one, everything, without scrolling.
+  void _scrollCardIntoView() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final card = _cardAnchorKey.currentContext?.findRenderObject();
+      if (!mounted || card is! RenderBox || !card.attached) return;
+      final position = Scrollable.maybeOf(
+        _cardAnchorKey.currentContext!,
+      )?.position;
+      final viewport = RenderAbstractViewport.maybeOf(card);
+      if (position == null || viewport == null) return;
+      // The offset that puts the card's bottom at the bottom of the view.
+      var target = viewport.getOffsetToReveal(card, 1).offset;
+      final goal = _goalAnchorKey.currentContext?.findRenderObject();
+      if (goal is RenderBox && goal.attached) {
+        // The offset that puts the goal's top just under the top bar.
+        final goalTop =
+            viewport.getOffsetToReveal(goal, 0).offset - _topBarHeight;
+        target = min(target, goalTop);
+      }
+      target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+      if (target <= position.pixels) return; // already in view
+      unawaited(
+        position.animateTo(
+          target,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        ),
+      );
+    });
+  }
+
+  /// Brings [key]'s widget into view, only scrolling when it isn't already.
+  void _scrollIntoView(GlobalKey key) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final target = key.currentContext;
+      if (!mounted || target == null) return;
+      unawaited(
+        Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+        ),
+      );
+    });
+  }
+
+  Widget _buildGoal() {
+    final goal = _goal!;
+    final art = GoalArt(goal: goal, heroWeaponId: _heroWeaponId, size: 96);
+    return KeyedSubtree(
+      key: _goalAnchorKey,
+      child: Padding(
+        // The bottom margin keeps it clear of the screen's edge when it is
+        // scrolled into view.
+        padding: const EdgeInsets.only(top: 16, bottom: 16),
+        child: GestureDetector(
+          key: const ValueKey('victory_goal'),
+          behavior: HitTestBehavior.opaque,
+          onTap: _onGoalTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedScale(
+                scale: goal.affordable && !_goalUnlocked ? 1.1 : 1.0,
+                duration: const Duration(milliseconds: 400),
+                child: _goalUnlocked
+                    ? art
+                    : ItemSilhouette(
+                        // Only hero art has a transparent background.
+                        opaqueArt: goal.category != GoalCategory.hero,
+                        child: art,
+                      ),
+              ),
+              const SizedBox(height: 6),
+              GoalMeter(
+                have: _goalUnlocked ? goal.cost : _goalShownHave,
+                cost: goal.cost,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildTrophyReveal() {
@@ -1015,6 +1226,17 @@ class _VictoryScreenState extends State<VictoryScreen>
                         fontSize: 14,
                       ),
                     ),
+                    // Rockets toward the next planet; none once every planet
+                    // is finished.
+                    if (_worldGoal != null) ...[
+                      const SizedBox(height: 6),
+                      GoalMeter(
+                        have: _worldGoal!.have,
+                        cost: _worldGoal!.cost,
+                        style: GoalMeterStyle.rockets,
+                        unit: 18,
+                      ),
+                    ],
                   ],
                 ],
               ),
@@ -1057,6 +1279,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   void dispose() {
     _doneSafetyTimer?.cancel();
     _victoryMusicTimer?.cancel();
+    _goalFillTimer?.cancel();
     _audio.stopVoice();
     _confettiController.dispose();
     _doneButtonController.dispose();
@@ -1298,6 +1521,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                           // TREASURE CHEST
                           if (_showChest) _buildChest(),
 
+                          // Goal fill (spec §6 step 4)
+                          if (_showGoal && _goal != null) _buildGoal(),
+
                           // Trophy collection progress
                           if (_chestOpened &&
                               _totalTrophies < TrophyService.allTrophies.length)
@@ -1352,12 +1578,36 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                           // Trophy reveal — tappable for all trophy cards
                           if (_showTrophyReveal && _revealedTrophy != null)
-                            GestureDetector(
-                              onTap: _showTrophyCardDetail,
-                              child: _buildTrophyReveal(),
+                            KeyedSubtree(
+                              key: _cardAnchorKey,
+                              child: Padding(
+                                // Kept clear of the screen's edge when it is
+                                // scrolled into view.
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: GestureDetector(
+                                  onTap: _showTrophyCardDetail,
+                                  child: _buildTrophyReveal(),
+                                ),
+                              ),
                             ),
 
                           const SizedBox(height: 24),
+
+                          // Flame hook strip (spec §6 step 6): the flame and
+                          // the days to its next step. Scaled down on narrow
+                          // phones (day 7 is the widest).
+                          if (_showFlameStrip) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: FlameStrip(streak: _newStreak),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
                           // Buttons (only after full reward sequence)
                           if (_showDoneButton) ...[
@@ -1430,123 +1680,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                   top: 8,
                   left: 0,
                   right: 0,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Streak pill (fire icon + streak count, orange)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: Colors.orangeAccent.withValues(alpha: 0.6),
-                            width: 2,
-                          ),
-                          color: Colors.orangeAccent.withValues(alpha: 0.12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.local_fire_department,
-                              color: Colors.orangeAccent,
-                              size: 28,
-                            ),
-                            const SizedBox(width: 4),
-                            TweenAnimationBuilder<int>(
-                              tween: IntTween(
-                                begin: _previousStreak,
-                                end: _newStreak,
-                              ),
-                              duration: const Duration(milliseconds: 1500),
-                              builder: (context, val, _) => Text(
-                                '$val',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 22,
-                                  shadows: [
-                                    Shadow(
-                                      color: Color(0x80FF9800),
-                                      blurRadius: 8,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Rank pill (diamond icon + total stars, purple) — secondary size
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(
-                              0xFF7C4DFF,
-                            ).withValues(alpha: 0.6),
-                            width: 2,
-                          ),
-                          color: const Color(
-                            0xFF7C4DFF,
-                          ).withValues(alpha: 0.12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.diamond,
-                              color: Color(0xFF7C4DFF),
-                              size: 22,
-                            ),
-                            const SizedBox(width: 4),
-                            TweenAnimationBuilder<int>(
-                              tween: IntTween(
-                                begin: _previousStars,
-                                end: _newStars,
-                              ),
-                              duration: const Duration(milliseconds: 1500),
-                              builder: (context, val, _) => Text(
-                                '$val',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                  shadows: [
-                                    Shadow(
-                                      color: Color(0x807C4DFF),
-                                      blurRadius: 8,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      // Wallet pill (star icon + wallet count, yellow) with GlobalKey + glow
-                      AnimatedBuilder(
-                        animation: _walletBumpController,
-                        builder: (context, child) {
-                          final bump = Curves.elasticOut.transform(
-                            _walletBumpController.value,
-                          );
-                          return Transform.scale(
-                            scale: 1.0 + bump * 0.15,
-                            child: child,
-                          );
-                        },
-                        child: Container(
-                          key: _walletPillKey,
+                  // Scaled down rather than overflowing on very narrow phones.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Streak pill (fire icon + streak count, orange)
+                        Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 6,
@@ -1554,44 +1696,24 @@ class _VictoryScreenState extends State<VictoryScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: const Color(
-                                0xFFFFD54F,
-                              ).withValues(alpha: 0.7),
-                              width: 2.5,
+                              color: Colors.orangeAccent.withValues(alpha: 0.6),
+                              width: 2,
                             ),
-                            color: const Color(
-                              0xFFFFD54F,
-                            ).withValues(alpha: 0.15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(
-                                  0xFFFFD54F,
-                                ).withValues(alpha: 0.35),
-                                blurRadius: 16,
-                                spreadRadius: 2,
-                              ),
-                              BoxShadow(
-                                color: const Color(
-                                  0xFFFF8F00,
-                                ).withValues(alpha: 0.15),
-                                blurRadius: 24,
-                                spreadRadius: 4,
-                              ),
-                            ],
+                            color: Colors.orangeAccent.withValues(alpha: 0.12),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
-                                Icons.star,
-                                color: Color(0xFFFFD54F),
+                                Icons.local_fire_department,
+                                color: Colors.orangeAccent,
                                 size: 28,
                               ),
                               const SizedBox(width: 4),
                               TweenAnimationBuilder<int>(
                                 tween: IntTween(
-                                  begin: _previousWallet,
-                                  end: _newWallet,
+                                  begin: _previousStreak,
+                                  end: _newStreak,
                                 ),
                                 duration: const Duration(milliseconds: 1500),
                                 builder: (context, val, _) => Text(
@@ -1599,11 +1721,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 24,
+                                    fontSize: 22,
                                     shadows: [
                                       Shadow(
-                                        color: Color(0xB0FFD54F),
-                                        blurRadius: 10,
+                                        color: Color(0x80FF9800),
+                                        blurRadius: 8,
                                       ),
                                     ],
                                   ),
@@ -1612,8 +1734,141 @@ class _VictoryScreenState extends State<VictoryScreen>
                             ],
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 10),
+                        // Rank pill (diamond icon + total stars, purple) — secondary size
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF7C4DFF,
+                              ).withValues(alpha: 0.6),
+                              width: 2,
+                            ),
+                            color: const Color(
+                              0xFF7C4DFF,
+                            ).withValues(alpha: 0.12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.diamond,
+                                color: Color(0xFF7C4DFF),
+                                size: 22,
+                              ),
+                              const SizedBox(width: 4),
+                              TweenAnimationBuilder<int>(
+                                tween: IntTween(
+                                  begin: _previousStars,
+                                  end: _newStars,
+                                ),
+                                duration: const Duration(milliseconds: 1500),
+                                builder: (context, val, _) => Text(
+                                  '$val',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                    shadows: [
+                                      Shadow(
+                                        color: Color(0x807C4DFF),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Wallet pill (star icon + wallet count, yellow) with GlobalKey + glow
+                        AnimatedBuilder(
+                          animation: _walletBumpController,
+                          builder: (context, child) {
+                            final bump = Curves.elasticOut.transform(
+                              _walletBumpController.value,
+                            );
+                            return Transform.scale(
+                              scale: 1.0 + bump * 0.15,
+                              child: child,
+                            );
+                          },
+                          child: Container(
+                            key: _walletPillKey,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFFFFD54F,
+                                ).withValues(alpha: 0.7),
+                                width: 2.5,
+                              ),
+                              color: const Color(
+                                0xFFFFD54F,
+                              ).withValues(alpha: 0.15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFFFD54F,
+                                  ).withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  spreadRadius: 2,
+                                ),
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFFF8F00,
+                                  ).withValues(alpha: 0.15),
+                                  blurRadius: 24,
+                                  spreadRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.star,
+                                  color: Color(0xFFFFD54F),
+                                  size: 28,
+                                ),
+                                const SizedBox(width: 4),
+                                TweenAnimationBuilder<int>(
+                                  tween: IntTween(
+                                    begin: _previousWallet,
+                                    end: _newWallet,
+                                  ),
+                                  duration: const Duration(milliseconds: 1500),
+                                  builder: (context, val, _) => Text(
+                                    '$val',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 24,
+                                      shadows: [
+                                        Shadow(
+                                          color: Color(0xB0FFD54F),
+                                          blurRadius: 10,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
