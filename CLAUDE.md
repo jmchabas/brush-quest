@@ -82,7 +82,7 @@ assets/
 
 ## Game Flow
 1. First launch → Onboarding (3 pages: welcome, how to play, mouth guide tutorial)
-2. Home screen → big pulsing BRUSH button with hero + weapon badge, shows streak/stars/today count
+2. Home screen → tap the hero (it IS the brush button); the streak pill shows a flame that grows with the streak. From the second brush on: Hero → Weapon → World steps (auto-advance about 3 s each, after each line; switch to anything owned; closest next unlock with a star or rocket meter; "Let's fight!" plays out before brushing)
 3. Countdown → "3, 2, 1, GO!" with voice + animation
 4. Brushing → 4 phases (TL, TR, BL, BR) x configurable seconds each:
    - Visual mouth guide overlay shows which teeth to brush (3s per transition)
@@ -92,7 +92,7 @@ assets/
    - Voiced encouragements play at ~65% and ~33% of each phase
    - Companion bubbles show icons (no text) since kids can't read
    - Music health check every 5s recovers stuck AudioPlayer
-5. Victory → +1 star, monsters defeated count, total stars, next hero progress bar
+5. Victory → stars fly in → flame beat (bonus stars from the streak flame, with the line that explains them) → chest (wooden/silver/gold by streak) → goal fill with one-tap unlock → trophy and world rockets → flame closing strip and line → DONE
 6. Progress auto-synced to cloud if signed in
 
 ## Audio System
