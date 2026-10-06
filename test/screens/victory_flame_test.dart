@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:brush_quest/screens/victory_screen.dart';
 import 'package:brush_quest/services/audio_service.dart';
 import 'package:brush_quest/services/flame_tier.dart';
@@ -55,6 +57,31 @@ final _woodenOnly = <Color>{
   _woodenLockEdge,
   _woodenLockIcon,
 };
+
+bool _isArcBeat2(String file) =>
+    RegExp(r'^voice_victory_arc\d+_beat2\.mp3$').hasMatch(file);
+
+/// A fake whose arc-beat-2 voice stays "playing" until the test ends it by
+/// hand, like a real clip that takes a while. Muted, it returns at once, as
+/// the real service does.
+class _HeldArcAudio extends FakeAudioService {
+  final Completer<void> arcBeat2 = Completer<void>();
+
+  @override
+  Future<void> playVoice(
+    String fileName, {
+    bool clearQueue = false,
+    bool interrupt = false,
+  }) async {
+    await super.playVoice(
+      fileName,
+      clearQueue: clearQueue,
+      interrupt: interrupt,
+    );
+    if (isMuted || !_isArcBeat2(fileName)) return;
+    await arcBeat2.future;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -116,7 +143,11 @@ void main() {
     /// A kid whose last brush was [lastBrushDaysAgo] days ago, with a
     /// [streak]-day streak. Yesterday continues the streak (this brush makes it
     /// [streak] + 1), today is a second brush, and 3+ days ago breaks it.
-    void seedPrefs({required int streak, int lastBrushDaysAgo = 1}) {
+    void seedPrefs({
+      required int streak,
+      int lastBrushDaysAgo = 1,
+      Map<String, Object> extra = const {},
+    }) {
       SharedPreferences.setMockInitialValues({
         'total_stars': 5,
         'star_wallet': 0,
@@ -131,6 +162,7 @@ void main() {
         'current_world': 'candy_crater',
         'collected_cards': <String>[],
         'muted': false,
+        ...extra,
       });
     }
 
@@ -202,6 +234,19 @@ void main() {
           w.color == Colors.amberAccent &&
           w.size == 22,
     );
+
+    /// Total area (px squared) where the bonus stars overlap the flame.
+    double starsOverFlame(WidgetTester tester) {
+      final flame = tester.getRect(find.byType(FlameIcon));
+      var area = 0.0;
+      for (var i = 0; i < bonusStars.evaluate().length; i++) {
+        final overlap = flame.intersect(tester.getRect(bonusStars.at(i)));
+        if (overlap.width > 0 && overlap.height > 0) {
+          area += overlap.width * overlap.height;
+        }
+      }
+      return area;
+    }
 
     /// The chest's own widgets: the closed chest carries the key, the opened
     /// chest is the 260x280 box. Scoping keeps the rest of the screen out.
@@ -300,16 +345,61 @@ void main() {
       await drain(tester);
     });
 
-    testWidgets('after a break: a new small flame and the comeback stars', (
-      tester,
-    ) async {
-      seedPrefs(streak: 9, lastBrushDaysAgo: 5); // streak lapsed, restarts at 1
-      await pumpVictory(tester);
-      await pumpToChest(tester);
-      expect(shownFlame(tester), FlameTier.small);
-      expect(bonusStars, findsNWidgets(3)); // the +3 welcome-back stars
-      expect(fakeAudio.playedVoiceLines, contains('voice_flame_new.mp3'));
-      await drain(tester);
+    group('comeback day: the +3 works as today, apart from the flame', () {
+      testWidgets('first time: no flame stars, the welcome-back line comes '
+          'after the chest opens', (tester) async {
+        seedPrefs(streak: 9, lastBrushDaysAgo: 5); // streak lapsed, restarts
+        await pumpVictory(tester);
+        await pumpToChest(tester);
+        expect(shownFlame(tester), FlameTier.small);
+        // A small flame pays nothing; the 3 comeback stars are not its.
+        expect(bonusStars, findsNothing);
+        final voices = fakeAudio.playedVoiceLines;
+        expect(voices, contains('voice_flame_new.mp3'));
+        expect(voices, isNot(contains('voice_first_comeback.mp3')));
+        final before = voices.length;
+        await openChest(tester);
+        await tester.pump(const Duration(seconds: 3));
+        final afterOpen = voices.sublist(before);
+        expect(afterOpen.first, startsWith('voice_chest_')); // the chest line
+        expect(afterOpen.skip(1), contains('voice_first_comeback.mp3'));
+        final prefs = await SharedPreferences.getInstance();
+        expect(prefs.getBool('has_seen_first_comeback'), isTrue);
+        await drain(tester);
+      });
+
+      testWidgets('after the first time: the short comeback line', (
+        tester,
+      ) async {
+        seedPrefs(
+          streak: 9,
+          lastBrushDaysAgo: 5,
+          extra: {'has_seen_first_comeback': true},
+        );
+        await pumpVictory(tester);
+        await pumpToChest(tester);
+        expect(bonusStars, findsNothing);
+        final voices = fakeAudio.playedVoiceLines;
+        final before = voices.length;
+        await openChest(tester);
+        await tester.pump(const Duration(seconds: 3));
+        final afterOpen = voices.sublist(before);
+        expect(afterOpen, contains('voice_chest_comeback.mp3'));
+        expect(afterOpen, isNot(contains('voice_first_comeback.mp3')));
+        await drain(tester);
+      });
+
+      testWidgets('an ordinary day has no comeback line', (tester) async {
+        seedPrefs(streak: 2);
+        await pumpVictory(tester);
+        await pumpToChest(tester);
+        await openChest(tester);
+        await tester.pump(const Duration(seconds: 3));
+        final voices = fakeAudio.playedVoiceLines;
+        expect(voices, isNot(contains('voice_first_comeback.mp3')));
+        expect(voices, isNot(contains('voice_chest_comeback.mp3')));
+        await drain(tester);
+      });
     });
 
     testWidgets('leaving during the flame beat is safe', (tester) async {
@@ -320,6 +410,143 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       await tester.pump(const Duration(seconds: 5)); // the beat's pause ends
       expect(tester.takeException(), isNull);
+    });
+
+    group('the beat follows the voice (capped)', () {
+      /// Built inside the test body: its Completer must live in the
+      /// fake-async zone, or completing it would never be flushed by pump.
+      _HeldArcAudio useHeldAudio() {
+        final held = _HeldArcAudio();
+        AudioService.testInstance = held;
+        return held;
+      }
+
+      testWidgets('waits for arc beat 2 to end, then flame, line, chest', (
+        tester,
+      ) async {
+        final held = useHeldAudio();
+        seedPrefs(streak: 2); // streak 3: the flame line is the tier-up one
+        await pumpVictory(tester);
+        await tester.pump(const Duration(milliseconds: 1400));
+        // Arc beat 2 starts at 1.5 s, as before.
+        expect(held.playedVoiceLines.where(_isArcBeat2), isEmpty);
+        await tester.pump(const Duration(milliseconds: 600)); // 2.0 s
+        expect(held.playedVoiceLines.where(_isArcBeat2), hasLength(1));
+        // It is still playing: no flame yet, no flame line asked for.
+        expect(find.byType(FlameIcon), findsNothing);
+        expect(
+          held.playedVoiceLines,
+          isNot(contains('voice_flame_tier_3.mp3')),
+        );
+        held.arcBeat2.complete();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(find.byType(FlameIcon), findsOneWidget);
+        expect(held.playedVoiceLines, contains('voice_flame_tier_3.mp3'));
+        // The chest still follows 1.6 s after the beat starts.
+        await tester.pump(const Duration(milliseconds: 1400));
+        expect(chestKey, findsNothing);
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(chestKey, findsOneWidget);
+        await drain(tester);
+      });
+
+      testWidgets(
+        'a beat 2 that never ends cannot hold the beat past the cap',
+        (tester) async {
+          final held = useHeldAudio();
+          seedPrefs(streak: 2);
+          await pumpVictory(tester);
+          // The cap is 2.5 s after beat 2 was asked for (1.5 s): 4.0 s.
+          await tester.pump(const Duration(milliseconds: 3900));
+          expect(find.byType(FlameIcon), findsNothing);
+          expect(
+            held.playedVoiceLines,
+            isNot(contains('voice_flame_tier_3.mp3')),
+          );
+          await tester.pump(const Duration(milliseconds: 200));
+          expect(find.byType(FlameIcon), findsOneWidget);
+          expect(held.playedVoiceLines, contains('voice_flame_tier_3.mp3'));
+          await tester.pump(const Duration(milliseconds: 1300));
+          expect(chestKey, findsNothing);
+          await tester.pump(const Duration(milliseconds: 500));
+          expect(chestKey, findsOneWidget);
+          await drain(tester);
+        },
+      );
+
+      testWidgets('muted: the voice never plays, the beat starts at once', (
+        tester,
+      ) async {
+        final held = useHeldAudio();
+        await held.toggleMute();
+        seedPrefs(streak: 2);
+        await pumpVictory(tester);
+        await tester.pump(const Duration(milliseconds: 1600));
+        expect(find.byType(FlameIcon), findsOneWidget);
+        expect(held.playedVoiceLines, isEmpty);
+        await drain(tester);
+      });
+
+      testWidgets('leaving while the beat waits for the voice is safe', (
+        tester,
+      ) async {
+        final held = useHeldAudio();
+        seedPrefs(streak: 2);
+        await pumpVictory(tester);
+        await tester.pump(const Duration(milliseconds: 2000));
+        expect(find.byType(FlameIcon), findsNothing);
+        await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+        held.arcBeat2.complete();
+        await tester.pump(const Duration(seconds: 5));
+        expect(tester.takeException(), isNull);
+      });
+    });
+
+    group('the beat animates', () {
+      testWidgets('the flame grows in', (tester) async {
+        seedPrefs(streak: 2); // the big flame, 30 px
+        await pumpVictory(tester);
+        await tester.pump(const Duration(milliseconds: 1500)); // beat is built
+        final start = tester.getRect(find.byType(FlameIcon)).width;
+        await tester.pump(const Duration(milliseconds: 16));
+        await tester.pump(const Duration(milliseconds: 800));
+        final end = tester.getRect(find.byType(FlameIcon)).width;
+        expect(end, closeTo(FlameIcon.sizeFor(FlameTier.big), 0.01));
+        expect(start, lessThan(end * 0.7));
+        await drain(tester);
+      });
+
+      testWidgets('the stars slide out of the flame and end clear of it', (
+        tester,
+      ) async {
+        seedPrefs(streak: 6); // the hot flame pays 2 stars
+        await pumpVictory(tester);
+        await tester.pump(const Duration(milliseconds: 1500)); // beat is built
+        await tester.pump(const Duration(milliseconds: 16)); // animations start
+        await tester.pump(const Duration(milliseconds: 300)); // half way
+        expect(bonusStars, findsNWidgets(2));
+        expect(starsOverFlame(tester), greaterThan(1)); // still over the flame
+        await tester.pump(const Duration(milliseconds: 700)); // slide done
+        expect(starsOverFlame(tester), lessThan(0.5)); // clear of it
+        await drain(tester);
+      });
+
+      testWidgets('the hero and the title do not jump when the beat appears', (
+        tester,
+      ) async {
+        seedPrefs(streak: 2);
+        await pumpVictory(tester);
+        await tester.pump(const Duration(milliseconds: 1000)); // data loaded
+        expect(find.byType(FlameIcon), findsNothing);
+        final title = tester.getRect(find.text('GREAT JOB!'));
+        await tester.pump(const Duration(milliseconds: 1000)); // beat is shown
+        expect(find.byType(FlameIcon), findsOneWidget);
+        expect(chestKey, findsNothing); // the chest's own jump comes later
+        final after = tester.getRect(find.text('GREAT JOB!'));
+        expect(after.top, closeTo(title.top, 0.01));
+        expect(after.left, closeTo(title.left, 0.01));
+        await drain(tester);
+      });
     });
 
     group('chest look follows the streak', () {

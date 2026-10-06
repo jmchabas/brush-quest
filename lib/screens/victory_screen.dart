@@ -471,13 +471,16 @@ class _VictoryScreenState extends State<VictoryScreen>
     _dailyBonus = outcome.breakdown.dailyBonus;
     _streakMultiplierBonus = outcome.breakdown.streakMultiplierBonus;
     _comebackBonus = outcome.comebackBonus;
+    // The flame pays the streak bonus, and the morning-plus-evening bonus
+    // rides along as a small extra. The comeback +3 is not the flame's (a
+    // small flame pays nothing): it keeps its own line after the chest.
+    _flameBonusStars = _streakMultiplierBonus + _dailyBonus;
     if (outcome.starsEarned > 0) {
       await _worldService.recordMission();
     }
     _newStreak = await _streakService.getStreak();
     _newStars = await _streakService.getTotalStars();
     _newWallet = await _streakService.getWallet();
-    await _worldService.getWorldProgress(_world.id);
 
     final lifetimeBrushes = await _streakService.getTotalBrushes();
 
@@ -553,15 +556,22 @@ class _VictoryScreenState extends State<VictoryScreen>
     await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
-    // Arc beat 2 (star earned) — start concurrently with the star flight and
-    // the flame beat below. No await, no dead time.
-    unawaited(_audio.playVoice(arc[1])); // "+1 star!" (fire-and-forget)
+    // Arc beat 2 (star earned) starts with the star flight. The flame beat
+    // waits for it to end, up to a cap, so the flame line is spoken as the
+    // flame appears instead of queueing behind both arc beats (spec §7.3).
+    // The voice queue is FIFO, so beat 1 is done by then too. The cap keeps
+    // the visuals from ever depending on a voice that never completes; muted,
+    // playVoice returns at once. A failing voice must not stop the sequence.
+    final starLine = _audio.playVoice(arc[1]); // "+1 star!"
     _triggerStarFlight();
+    await starLine
+        .timeout(const Duration(milliseconds: 2500), onTimeout: () {})
+        .catchError((Object _) {});
+    if (!mounted) return;
 
     // ── Flame beat (spec §6 step 2): the flame grows and the bonus stars come
     // out of it, with the line that says why. Fire-and-forget voice;
     // a fixed pause paces the visuals (never wait on voice completion).
-    _flameBonusStars = _streakMultiplierBonus + _dailyBonus + _comebackBonus;
     setState(() => _showFlameBeat = true);
     if (_flameBonusStars > 0) unawaited(_audio.playSfx('star_chime.mp3'));
     final flameLine = VictoryScreen.flameBeatVoiceFor(
@@ -613,6 +623,20 @@ class _VictoryScreenState extends State<VictoryScreen>
     _audio.playSfx('star_chime.mp3');
   }
 
+  /// The comeback line, as it was before the flame beat existed: the long
+  /// welcome-back line the first time ever (with a heavy haptic), the short
+  /// one after that. Plays after the chest reward voice, and is awaited.
+  Future<void> _revealComebackBonus() async {
+    if (!mounted || _comebackBonus <= 0) return;
+    final firstTime = !(await _streakService.hasSeenFirstComeback());
+    if (firstTime) await _streakService.markFirstComebackSeen();
+    if (!mounted) return;
+    if (firstTime) unawaited(HapticFeedback.heavyImpact());
+    await _audio.playVoice(
+      firstTime ? 'voice_first_comeback.mp3' : 'voice_chest_comeback.mp3',
+    );
+  }
+
   void _openChest() {
     if (_chestOpened) return;
     setState(() => _chestOpened = true);
@@ -643,11 +667,19 @@ class _VictoryScreenState extends State<VictoryScreen>
 
         // ── 3-slot priority voice budget ──
         // After chest reward (slot 0), allow max 3 more voice slots.
-        // Priority: P2 trophy/world > P3 star milestone
-        //         > P5 legendary (voice only) > P6 achievements (SFX only)
-        // The bonus-star lines (old P1/P4) now play in the flame beat, before
-        // the chest (see _recordAndAnimate).
+        // Priority: P1 first-time milestones > P2 trophy/world > P3 star milestone
+        //         > P4 repeat bonus > P5 legendary (voice only) > P6 achievements (SFX only)
+        // The streak lines now play in the flame beat, before the chest (see
+        // _recordAndAnimate); the daily pair has no line. Only the comeback
+        // line is left among the bonus lines.
         int voiceSlotsRemaining = 3;
+
+        // ── Post-chest comeback line (spec §6 step 2: "the comeback bonus
+        // works as today"): P1 the first time ever, P4 after that.
+        if (_comebackBonus > 0 && voiceSlotsRemaining > 0) {
+          await _revealComebackBonus();
+          voiceSlotsRemaining--;
+        }
 
         // ── Trophy defeat/capture ──
         if (widget.trophyTargetId != null) {
@@ -1113,8 +1145,12 @@ class _VictoryScreenState extends State<VictoryScreen>
                           // Extra top padding to clear the fixed top bar
                           const SizedBox(height: 48),
 
-                          // Flame beat (spec §6 step 2), directly under the pill row.
-                          if (_showFlameBeat) _buildFlameBeat(),
+                          // Flame beat (spec §6 step 2), directly under the pill
+                          // row. Its room is reserved from the start.
+                          SizedBox(
+                            height: _flameBeatHeight,
+                            child: _showFlameBeat ? _buildFlameBeat() : null,
+                          ),
 
                           Text(
                             'GREAT JOB!',
@@ -1600,13 +1636,30 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  /// Today's flame, with the bonus stars it paid out rising from it
-  /// (icons only, no text).
+  static const double _flameStarSize = 22;
+
+  /// Room for the flame beat (the flame, plus the star row when it pays
+  /// stars). Kept from the start, so the hero and the title don't jump when
+  /// the beat appears.
+  double get _flameBeatHeight =>
+      FlameIcon.sizeFor(flameTierFor(_newStreak)) +
+      (_flameBonusStars > 0 ? _flameStarSize : 0);
+
+  /// Today's flame, with the bonus stars it paid out sliding out of it
+  /// (icons only, no text). Two effects at most: the flame grows in, and the
+  /// stars slide out and fade in.
   Widget _buildFlameBeat() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FlameIcon(tier: flameTierFor(_newStreak)),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.6, end: 1),
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.elasticOut,
+          builder: (context, scale, child) =>
+              Transform.scale(scale: scale, child: child),
+          child: FlameIcon(tier: flameTierFor(_newStreak)),
+        ),
         if (_flameBonusStars > 0)
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: 1),
@@ -1614,7 +1667,8 @@ class _VictoryScreenState extends State<VictoryScreen>
             builder: (context, t, child) => Opacity(
               opacity: t,
               child: Transform.translate(
-                offset: Offset(0, -20 * t),
+                // From over the flame to just below it.
+                offset: Offset(0, -20 * (1 - t)),
                 child: child,
               ),
             ),
@@ -1622,7 +1676,11 @@ class _VictoryScreenState extends State<VictoryScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (var i = 0; i < _flameBonusStars; i++)
-                  const Icon(Icons.star, color: Colors.amberAccent, size: 22),
+                  const Icon(
+                    Icons.star,
+                    color: Colors.amberAccent,
+                    size: _flameStarSize,
+                  ),
               ],
             ),
           ),
