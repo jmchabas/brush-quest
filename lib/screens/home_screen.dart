@@ -865,6 +865,12 @@ class _HomeScreenState extends State<HomeScreen>
   void _startBrushing() {
     if (_brushTapLocked) return;
     _brushTapLocked = true;
+    // A welcome-back line still waiting would play when he comes back, after
+    // the bonus line: drop it; the bonus is paid on the way back.
+    if (_welcomeBackTimer?.isActive ?? false) {
+      _welcomeBackTimer!.cancel();
+      _claimWhenShown = true;
+    }
     HapticFeedback.heavyImpact();
     AudioService().playSfx('whoosh.mp3');
     // Kid is starting a session without camera enabled — they had their

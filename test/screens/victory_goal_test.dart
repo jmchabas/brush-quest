@@ -2,6 +2,7 @@
 import 'package:brush_quest/screens/victory_screen.dart';
 import 'package:brush_quest/services/analytics_service.dart';
 import 'package:brush_quest/services/audio_service.dart';
+import 'package:brush_quest/services/flame_tier.dart';
 import 'package:brush_quest/services/streak_service.dart';
 import 'package:brush_quest/services/world_service.dart';
 import 'package:brush_quest/widgets/flame_view.dart';
@@ -56,6 +57,9 @@ typedef _Phone = ({Size size, double top, double bottom});
 /// pre-brush tests use the same numbers).
 const _small = (size: Size(360, 640), top: 24.0, bottom: 48.0);
 const _big = (size: Size(430, 932), top: 59.0, bottom: 34.0);
+
+/// A small old phone: the monster card alone nearly fills what it shows.
+const _tiny = (size: Size(320, 568), top: 24.0, bottom: 48.0);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -289,6 +293,17 @@ void main() {
     }
 
     Future<SharedPreferences> prefsOf() => SharedPreferences.getInstance();
+
+    /// The part of the screen the scroll view shows, below the top bar.
+    Rect shown(_Phone phone) => Rect.fromLTRB(
+      0,
+      phone.top + 56, // the pills row: 8 px down, 48 px high at most
+      phone.size.width,
+      phone.size.height - phone.bottom,
+    );
+
+    bool fullyIn(Rect area, Rect r) =>
+        area.contains(r.topLeft) && area.contains(r.bottomRight);
 
     List<String> voices() => fakeAudio.playedVoiceLines;
 
@@ -758,6 +773,10 @@ void main() {
         }
         expect(chestKey, findsOneWidget);
         await frames(tester, const Duration(seconds: 1));
+        // On a small old phone part of it is below the edge: he scrolls to
+        // it (a no-op where it shows).
+        await tester.ensureVisible(chestKey);
+        await frames(tester, const Duration(milliseconds: 300));
         await tester.tap(chestKey);
       }
 
@@ -972,6 +991,142 @@ void main() {
         await tester.pump(const Duration(seconds: 5));
       });
 
+      for (final phone in const [_small, _big]) {
+        final name = '${phone.size.width.toInt()}x${phone.size.height.toInt()}';
+
+        testWidgets('$name: when the closing line starts, its strip and a goal '
+            'he can still tap are both on screen', (tester) async {
+          final timed = useTimedVoices(tester);
+          SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+          await pumpVictory(tester, phone: phone, trophy: 'cc_t1');
+          await openChestWhenItComes(tester);
+          final strip = find.byType(FlameStrip);
+          for (var i = 0; i < 800 && strip.evaluate().isEmpty; i++) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          expect(strip, findsOneWidget);
+          await frames(tester, const Duration(milliseconds: 450)); // its scroll
+          final closing = timed.voices.lastWhere(isClosing);
+          expect(closing.startedAt, isNotNull);
+          expect(closing.endedAt, isNull, reason: 'the line is playing');
+          expect(find.text('DONE'), findsNothing);
+          final area = shown(phone);
+          expect(
+            fullyIn(area, tester.getRect(strip)),
+            isTrue,
+            reason: 'strip ${tester.getRect(strip)} vs $area',
+          );
+          expect(
+            fullyIn(area, tester.getRect(goalKey)),
+            isTrue,
+            reason: 'goal ${tester.getRect(goalKey)} vs $area',
+          );
+          await drain(tester);
+        });
+      }
+
+      testWidgets(
+        '320x568, nothing left to unlock, scrolled down: the strip comes '
+        'back into view for its line',
+        (tester) async {
+          // No goal holds the screen; he scrolls down past the strip's place
+          // to the monster card, and the closing beat brings the strip back.
+          final timed = useTimedVoices(tester);
+          SharedPreferences.setMockInitialValues({
+            ...allOwned(),
+            'star_wallet': 3,
+          });
+          await pumpVictory(tester, phone: _tiny, trophy: 'cc_t1');
+          await openChestWhenItComes(tester);
+          // He scrolls down himself to look at the monster card.
+          final badge = find.textContaining(RegExp('CAUGHT!|HIT!'));
+          for (var i = 0; i < 200 && badge.evaluate().isEmpty; i++) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          await frames(tester, const Duration(milliseconds: 450));
+          await tester.drag(
+            find.byType(SingleChildScrollView),
+            const Offset(0, -600),
+          );
+          await frames(tester, const Duration(seconds: 1));
+          final strip = find.byType(FlameStrip);
+          for (var i = 0; i < 800 && strip.evaluate().isEmpty; i++) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          expect(strip, findsOneWidget);
+          await frames(tester, const Duration(milliseconds: 450));
+          expect(timed.voices.lastWhere(isClosing).endedAt, isNull);
+          expect(
+            fullyIn(shown(_tiny), tester.getRect(strip)),
+            isTrue,
+            reason: '${tester.getRect(strip)} vs ${shown(_tiny)}',
+          );
+          await drain(tester);
+        },
+      );
+
+      testWidgets('360x640: with a goal to tap, DONE waits below; the tap '
+          'brings DONE into view', (tester) async {
+        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+        await pumpVictory(tester, phone: _small, trophy: 'cc_t1');
+        await pumpToChest(tester);
+        await tester.tap(chestKey);
+        final done = find.text('DONE');
+        for (var i = 0; i < 600 && done.evaluate().isEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        await frames(tester, const Duration(milliseconds: 450));
+        final area = shown(_small);
+        expect(fullyIn(area, tester.getRect(goalKey)), isTrue);
+        await tester.tap(goalKey);
+        await frames(tester, const Duration(seconds: 1));
+        expect(
+          fullyIn(area, tester.getRect(done)),
+          isTrue,
+          reason: '${tester.getRect(done)} vs $area',
+        );
+        await drain(tester);
+      });
+
+      testWidgets('430x932: DONE is on screen when it appears', (tester) async {
+        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+        await pumpVictory(tester, phone: _big, trophy: 'cc_t1');
+        await pumpToChest(tester);
+        await tester.tap(chestKey);
+        final done = find.text('DONE');
+        for (var i = 0; i < 600 && done.evaluate().isEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        await frames(tester, const Duration(milliseconds: 450));
+        expect(
+          fullyIn(shown(_big), tester.getRect(done)),
+          isTrue,
+          reason: '${tester.getRect(done)}',
+        );
+        await drain(tester);
+      });
+
+      testWidgets('the top bar\'s streak flame follows the streak', (
+        tester,
+      ) async {
+        // Day 6 -> 7: the hot flame.
+        SharedPreferences.setMockInitialValues({
+          ...base(),
+          'current_streak': 6,
+          'last_brush_date': day(-1),
+          'today_brush_count': 0,
+          'today_date': day(-1),
+          'star_wallet': 3,
+        });
+        await pumpVictory(tester);
+        await tester.pump(const Duration(seconds: 1));
+        final flame = tester.widget<FlameIcon>(
+          find.byKey(const ValueKey('victory_streak_flame')),
+        );
+        expect(flame.tier, FlameTier.hot);
+        await drain(tester);
+      });
+
       Finder goalFigure() =>
           find.descendant(of: goalKey, matching: find.byType(GoalArt));
 
@@ -1020,14 +1175,6 @@ void main() {
     });
 
     group('the goal stays on screen', () {
-      /// The part of the screen the scroll view shows, below the top bar.
-      Rect shown(_Phone phone) => Rect.fromLTRB(
-        0,
-        phone.top + 56, // the pills row: 8 px down, 48 px high at most
-        phone.size.width,
-        phone.size.height - phone.bottom,
-      );
-
       for (final phone in const [_small, _big]) {
         final name = '${phone.size.width.toInt()}x${phone.size.height.toInt()}';
 
@@ -1099,48 +1246,6 @@ void main() {
         expect(tester.getRect(goalKey).bottom, lessThan(1200));
         await drain(tester);
       });
-      for (final phone in const [_small, _big]) {
-        final name = '${phone.size.width.toInt()}x${phone.size.height.toInt()}';
-
-        testWidgets('$name: the flame strip is on screen when its line starts, '
-            'and DONE when it appears', (tester) async {
-          SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
-          await pumpVictory(tester, phone: phone, trophy: 'cc_t1');
-          await pumpToChest(tester);
-          await tester.tap(chestKey);
-          final area = shown(phone);
-          final strip = find.byType(FlameStrip);
-          for (var i = 0; i < 400 && strip.evaluate().isEmpty; i++) {
-            await tester.pump(const Duration(milliseconds: 50));
-          }
-          expect(strip, findsOneWidget);
-          expect(voices().last, startsWith('voice_flame_see_you_'));
-          await frames(tester, const Duration(milliseconds: 450)); // its scroll
-          final stripRect = tester.getRect(strip);
-          expect(
-            area.contains(stripRect.topLeft),
-            isTrue,
-            reason: '$stripRect',
-          );
-          expect(
-            area.contains(stripRect.bottomRight),
-            isTrue,
-            reason: '$stripRect vs $area',
-          );
-          final done = find.text('DONE');
-          for (var i = 0; i < 300 && done.evaluate().isEmpty; i++) {
-            await tester.pump(const Duration(milliseconds: 50));
-          }
-          await frames(tester, const Duration(milliseconds: 450));
-          final doneRect = tester.getRect(done);
-          expect(
-            area.contains(doneRect.bottomRight),
-            isTrue,
-            reason: '$doneRect vs $area',
-          );
-          await drain(tester);
-        });
-      }
     });
 
     group('the world rockets', () {
@@ -1192,7 +1297,8 @@ void main() {
         await drain(tester);
       });
 
-      testWidgets('are not there without the world text', (tester) async {
+      testWidgets('are not there without a monster card (no fight, nothing '
+          'caught yet)', (tester) async {
         SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
         await pumpVictory(tester); // no trophy fight this brush
         await pumpToChest(tester);

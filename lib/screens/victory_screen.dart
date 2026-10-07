@@ -472,7 +472,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         _audio.playSfx('whoosh.mp3');
         setState(() => _showDoneButton = true);
         _doneButtonController.repeat(reverse: true);
-        _scrollIntoView(_doneAnchorKey);
+        _revealInView(_doneAnchorKey);
       }
     });
 
@@ -777,7 +777,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             _trophyRequired = result.required;
             _revealedTrophy = trophy;
           });
-          _scrollCardIntoView();
+          _revealInView(_cardAnchorKey);
 
           unawaited(HapticFeedback.mediumImpact());
           unawaited(_cardFlyController.forward());
@@ -832,7 +832,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             _worldJustCompleted = worldComplete;
             _worldGoal = worldGoal;
           });
-          _scrollCardIntoView();
+          _revealInView(_cardAnchorKey);
 
           // P2: World complete
           if (_worldJustCompleted && voiceSlotsRemaining > 0) {
@@ -861,7 +861,7 @@ class _VictoryScreenState extends State<VictoryScreen>
               _trophyRequired = trophy.defeatsRequired;
               _revealedTrophy = trophy;
             });
-            _scrollCardIntoView();
+            _revealInView(_cardAnchorKey);
 
             unawaited(HapticFeedback.mediumImpact());
             unawaited(_cardFlyController.forward());
@@ -879,7 +879,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             if (!mounted) return;
             if (worldGoal != null) {
               setState(() => _worldGoal = worldGoal);
-              _scrollCardIntoView();
+              _revealInView(_cardAnchorKey);
             }
           }
         }
@@ -929,7 +929,7 @@ class _VictoryScreenState extends State<VictoryScreen>
           setState(() => _showDoneButton = true);
           unawaited(_doneButtonController.repeat(reverse: true));
           // It sits below the fold on most phones: bring it up.
-          _scrollIntoView(_doneAnchorKey);
+          _revealInView(_doneAnchorKey);
         }
       }
     });
@@ -953,6 +953,8 @@ class _VictoryScreenState extends State<VictoryScreen>
     // DONE comes after this: once the queue is quiet (an "It's yours!" may
     // have queued the line again), but never more than a few seconds.
     await _voiceIdle(const Duration(seconds: 6));
+    // A DONE already up (the safety timer) moved down when the strip came in.
+    if (mounted && _showDoneButton) _revealInView(_doneAnchorKey);
   }
 
   /// The closing line for this brush (spec §7.3).
@@ -975,7 +977,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   void _showClosingStrip() {
     _closingBeatShown = true;
     setState(() => _showFlameStrip = true);
-    _scrollIntoView(_closingAnchorKey);
+    _revealInView(_closingAnchorKey);
   }
 
   /// The rockets' goal: the furthest unfinished planet, or null once every
@@ -1019,7 +1021,7 @@ class _VictoryScreenState extends State<VictoryScreen>
       _showGoal = true;
       _goalShownHave = min(_previousWallet, target);
     });
-    _scrollIntoView(_goalAnchorKey);
+    _revealInView(_goalAnchorKey);
     _goalFillTimer?.cancel();
     _goalFillTimer = Timer.periodic(_goalFillStep, (timer) {
       if (!mounted || _goalShownHave >= target) {
@@ -1082,6 +1084,12 @@ class _VictoryScreenState extends State<VictoryScreen>
     replay.forEach(_queueMustHear);
     // What is queued now plays before the closing beat goes on.
     _quietWait?.restartCap();
+    // The goal no longer holds the screen: show the end of it if it is up.
+    if (_showDoneButton) {
+      _revealInView(_doneAnchorKey);
+    } else if (_showFlameStrip) {
+      _revealInView(_closingAnchorKey);
+    }
     unawaited(
       analytics.logGoalUnlocked(
         category: goal.category.name,
@@ -1096,52 +1104,50 @@ class _VictoryScreenState extends State<VictoryScreen>
   /// down, 48 px high).
   static const double _topBarHeight = 56;
 
-  /// Scrolls toward the monster card when it arrives (and when it grows),
-  /// but never so far that the goal, which he may still want to tap, slips
-  /// under the top bar. On a small phone that shows the goal and the top of
-  /// the card; on a tall one, everything, without scrolling.
-  void _scrollCardIntoView() {
+  /// Scrolls just enough to show [key]'s widget below the top bar and above
+  /// the bottom edge (up or down), but never so far that a goal he can still
+  /// tap leaves the screen. On a small phone, with a goal to tap, that shows
+  /// the goal and the top of the monster card, and the flame strip under the
+  /// goal; DONE further down waits for the tap. On a tall phone everything
+  /// shows without scrolling.
+  void _revealInView(GlobalKey key) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final card = _cardAnchorKey.currentContext?.findRenderObject();
-      if (!mounted || card is! RenderBox || !card.attached) return;
-      final position = Scrollable.maybeOf(
-        _cardAnchorKey.currentContext!,
-      )?.position;
-      final viewport = RenderAbstractViewport.maybeOf(card);
+      final box = key.currentContext?.findRenderObject();
+      if (!mounted || box is! RenderBox || !box.attached) return;
+      final position = Scrollable.maybeOf(key.currentContext!)?.position;
+      final viewport = RenderAbstractViewport.maybeOf(box);
       if (position == null || viewport == null) return;
-      // The offset that puts the card's bottom at the bottom of the view.
-      var target = viewport.getOffsetToReveal(card, 1).offset;
+      // The scroll offsets at which the widget's top sits just under the top
+      // bar, and at which its bottom sits on the bottom edge.
+      double topUnderBar(RenderBox b) =>
+          viewport.getOffsetToReveal(b, 0).offset - _topBarHeight;
+      double bottomOnEdge(RenderBox b) =>
+          viewport.getOffsetToReveal(b, 1).offset;
+
+      final now = position.pixels;
+      var target = now;
+      if (now > topUnderBar(box)) {
+        target = topUnderBar(box); // its top is under the bar: scroll up
+      } else if (now < bottomOnEdge(box)) {
+        // Below the edge: scroll down, keeping its own top in view.
+        target = min(bottomOnEdge(box), topUnderBar(box));
+      }
       final goal = _goalAnchorKey.currentContext?.findRenderObject();
       final tappable = (_goal?.affordable ?? false) && !_goalUnlocked;
-      if (tappable && goal is RenderBox && goal.attached) {
-        // The offset that puts the goal's top just under the top bar.
-        final goalTop =
-            viewport.getOffsetToReveal(goal, 0).offset - _topBarHeight;
-        target = min(target, goalTop);
+      if (tappable &&
+          goal is RenderBox &&
+          goal.attached &&
+          !identical(goal, box) &&
+          bottomOnEdge(goal) <= topUnderBar(goal)) {
+        target = target.clamp(bottomOnEdge(goal), topUnderBar(goal));
       }
       target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
-      if (target <= position.pixels) return; // already in view
+      if ((target - now).abs() < 1) return; // already in view
       unawaited(
         position.animateTo(
           target,
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeOut,
-        ),
-      );
-    });
-  }
-
-  /// Brings [key]'s widget into view, only scrolling when it isn't already.
-  void _scrollIntoView(GlobalKey key) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final target = key.currentContext;
-      if (!mounted || target == null) return;
-      unawaited(
-        Scrollable.ensureVisible(
-          target,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
         ),
       );
     });
@@ -1677,6 +1683,29 @@ class _VictoryScreenState extends State<VictoryScreen>
                           // Goal fill (spec §6 step 4)
                           if (_showGoal && _goal != null) _buildGoal(),
 
+                          // Flame hook strip (spec §6 step 6): the flame and
+                          // the days to its next step, under the goal so a
+                          // small phone shows both. Scaled down on narrow
+                          // phones (day 7 is the widest).
+                          if (_showFlameStrip)
+                            KeyedSubtree(
+                              key: _closingAnchorKey,
+                              child: Padding(
+                                // The bottom margin keeps it clear of the
+                                // screen's edge when scrolled into view.
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: FlameStrip(streak: _newStreak),
+                                ),
+                              ),
+                            ),
+
                           // Trophy collection progress
                           if (_chestOpened &&
                               _totalTrophies < TrophyService.allTrophies.length)
@@ -1745,28 +1774,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                             ),
 
                           const SizedBox(height: 24),
-
-                          // Flame hook strip (spec §6 step 6): the flame and
-                          // the days to its next step. Scaled down on narrow
-                          // phones (day 7 is the widest).
-                          if (_showFlameStrip)
-                            KeyedSubtree(
-                              key: _closingAnchorKey,
-                              child: Padding(
-                                // The bottom margin keeps it clear of the
-                                // screen's edge when scrolled into view.
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  16,
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: FlameStrip(streak: _newStreak),
-                                ),
-                              ),
-                            ),
 
                           // Buttons (only after full reward sequence)
                           if (_showDoneButton) ...[
@@ -1874,6 +1881,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   28,
                                 ),
                                 child: FlameIcon(
+                                  key: const ValueKey('victory_streak_flame'),
                                   tier: flameTierFor(_newStreak),
                                 ),
                               ),

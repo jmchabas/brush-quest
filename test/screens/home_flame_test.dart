@@ -356,6 +356,37 @@ void main() {
       await disposeAll(tester);
     });
 
+    testWidgets('tap and back out within the first second: the bonus line, '
+        'and no late welcome-back line after it', (tester) async {
+      PreBrushScreen.minStep = const Duration(seconds: 30);
+      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      addTearDown(() {
+        PreBrushScreen.minStep = const Duration(seconds: 3);
+        PreBrushScreen.maxStep = const Duration(seconds: 5);
+      });
+      await pumpHomeWith(
+        tester,
+        {'current_streak': 4, 'last_brush_date': day(-1)},
+        observers: [routeObserver],
+        settleSteps: 0,
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const ValueKey('home_hero_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      expect(flameVoices(), ['voice_flame_welcome_1.mp3']);
+      expect(
+        fakeAudio.playedVoiceLines.where(
+          (v) => v.startsWith('voice_home_return_'),
+        ),
+        isEmpty,
+      );
+      await disposeAll(tester);
+    });
+
     testWidgets('a 7 day streak gets the two-star welcome line', (
       tester,
     ) async {
