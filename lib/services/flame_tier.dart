@@ -47,8 +47,8 @@ int? daysToNextFlameTier(int streak) {
 /// The flame step this brush moved up to (big, hot or golden), or null.
 /// Going from none to small is a "new flame", not a step-up.
 FlameTier? reachedFlameTier({required int before, required int after}) {
-  final b = flameTierFor(before);
-  final a = flameTierFor(after);
-  if (a.index <= b.index || a == FlameTier.small) return null;
-  return a;
+  final was = flameTierFor(before);
+  final now = flameTierFor(after);
+  if (now.index <= was.index || now == FlameTier.small) return null;
+  return now;
 }

@@ -224,8 +224,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 interrupt: true,
               );
               if (!isUnlocked) {
-                // Locked world — describe world, then say needs more brushing
-                AudioService().playVoice('voice_need_stars.mp3');
+                // Locked world — describe it, then "Keep brushing to reach
+                // this planet!": planets open by brushing, not with stars
+                // (spec 2026-10-05 §4.3).
+                AudioService().playVoice('voice_need_more_brushes.mp3');
                 return;
               }
               if (!isCurrent) {

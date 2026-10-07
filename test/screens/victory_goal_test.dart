@@ -1049,9 +1049,14 @@ void main() {
             reason: '${goalRect()} vs $area',
           );
           // The sequence goes on: the monster card comes in below the goal.
-          await tester.pump(const Duration(seconds: 5));
-          await frames(tester, const Duration(seconds: 1));
-          expect(find.textContaining(RegExp('CAUGHT!|HIT!')), findsOneWidget);
+          // Check as soon as it is in (and scrolled to), before the closing
+          // beat brings the flame strip into view at the bottom.
+          final badge = find.textContaining(RegExp('CAUGHT!|HIT!'));
+          for (var i = 0; i < 200 && badge.evaluate().isEmpty; i++) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          await frames(tester, const Duration(milliseconds: 450));
+          expect(badge, findsOneWidget);
           expect(
             area.contains(goalRect().topLeft),
             isTrue,
@@ -1094,6 +1099,48 @@ void main() {
         expect(tester.getRect(goalKey).bottom, lessThan(1200));
         await drain(tester);
       });
+      for (final phone in const [_small, _big]) {
+        final name = '${phone.size.width.toInt()}x${phone.size.height.toInt()}';
+
+        testWidgets('$name: the flame strip is on screen when its line starts, '
+            'and DONE when it appears', (tester) async {
+          SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+          await pumpVictory(tester, phone: phone, trophy: 'cc_t1');
+          await pumpToChest(tester);
+          await tester.tap(chestKey);
+          final area = shown(phone);
+          final strip = find.byType(FlameStrip);
+          for (var i = 0; i < 400 && strip.evaluate().isEmpty; i++) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          expect(strip, findsOneWidget);
+          expect(voices().last, startsWith('voice_flame_see_you_'));
+          await frames(tester, const Duration(milliseconds: 450)); // its scroll
+          final stripRect = tester.getRect(strip);
+          expect(
+            area.contains(stripRect.topLeft),
+            isTrue,
+            reason: '$stripRect',
+          );
+          expect(
+            area.contains(stripRect.bottomRight),
+            isTrue,
+            reason: '$stripRect vs $area',
+          );
+          final done = find.text('DONE');
+          for (var i = 0; i < 300 && done.evaluate().isEmpty; i++) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          await frames(tester, const Duration(milliseconds: 450));
+          final doneRect = tester.getRect(done);
+          expect(
+            area.contains(doneRect.bottomRight),
+            isTrue,
+            reason: '$doneRect vs $area',
+          );
+          await drain(tester);
+        });
+      }
     });
 
     group('the world rockets', () {
@@ -1173,6 +1220,31 @@ void main() {
           findsOneWidget,
         ); // the world text is there
         expect(rocketMeter(), findsNothing);
+        await drain(tester);
+      });
+
+      testWidgets('a brush on a finished planet: the showcase card shows the '
+          'rockets to the next one', (tester) async {
+        // Candy Crater is done and its monsters caught: no fight there, a
+        // showcase card instead. The brush counts toward Slime Swamp.
+        SharedPreferences.setMockInitialValues({
+          ...base(),
+          'star_wallet': 3,
+          'world_progress_candy_crater': 5,
+          'trophy_captured': ['cc_t1', 'cc_t2', 'cc_t3', 'cc_t4', 'cc_t5'],
+        });
+        await pumpVictory(tester);
+        await pumpToChest(tester);
+        await tester.tap(chestKey);
+        await tester.pump(const Duration(seconds: 5));
+        await frames(tester, const Duration(seconds: 1));
+        final meter = tester.widget<GoalMeter>(rocketMeter());
+        expect(
+          meter.cost,
+          WorldService.getWorldById('slime_swamp').missionsRequired,
+        );
+        expect(meter.have, 1);
+        expect(find.textContaining('trophies collected!'), findsNothing);
         await drain(tester);
       });
     });
@@ -1283,6 +1355,55 @@ void main() {
         await drain(tester);
       });
 
+      testWidgets('a sequence that fails before the closing beat: DONE still '
+          'plays the closing line once, then goes home', (tester) async {
+        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+        final pushes = _PushLog();
+        await tester.binding.setSurfaceSize(const Size(430, 1600));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorObservers: [pushes],
+            home: const VictoryScreen(
+              totalHits: 10,
+              monstersDefeated: 4,
+              trophyTargetId: 'cc_t1',
+            ),
+          ),
+        );
+        await tester.pump();
+        await pumpToChest(tester);
+        // A malformed save makes the trophy beat throw a TypeError.
+        final prefs = await prefsOf();
+        await prefs.setString('trophy_captured', 'oops');
+        final printed = <String?>[];
+        final original = debugPrint;
+        debugPrint = (message, {wrapWidth}) => printed.add(message);
+        try {
+          await tester.tap(chestKey);
+          await tester.pump(const Duration(seconds: 3));
+        } finally {
+          debugPrint = original;
+        }
+        expect(printed.join(), contains('Victory chest sequence error'));
+        expect(find.text('DONE'), findsOneWidget);
+        expect(find.byType(FlameStrip), findsNothing); // never reached
+        await prefs.setStringList('trophy_captured', []); // for Home
+        await frames(tester, const Duration(milliseconds: 500));
+        await tester.tap(find.text('DONE'), warnIfMissed: false);
+        for (var i = 0; i < 100 && pushes.at.isEmpty; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(pushes.at, isNotEmpty, reason: 'it never went home');
+        expect(
+          voices().where((v) => v.startsWith('voice_flame_see_you_')),
+          hasLength(1),
+          reason: '${voices()}',
+        );
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 5));
+      });
+
       testWidgets('DONE appears when muted', (tester) async {
         SharedPreferences.setMockInitialValues(base());
         await fakeAudio.toggleMute();
@@ -1341,13 +1462,13 @@ void main() {
 
 /// Records when routes are pushed (the victory screen going home).
 class _PushLog extends NavigatorObserver {
-  _PushLog(this.timed);
+  _PushLog([this.timed]);
 
-  final TimedFakeAudioService timed;
+  final TimedFakeAudioService? timed;
   final List<Duration> at = [];
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (previousRoute != null) at.add(timed.clock());
+    if (previousRoute != null) at.add(timed?.clock() ?? Duration.zero);
   }
 }

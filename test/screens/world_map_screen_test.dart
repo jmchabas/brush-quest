@@ -134,6 +134,24 @@ void main() {
     await tester.binding.setSurfaceSize(null);
   });
 
+  testWidgets('a locked planet says "keep brushing", not "need stars"', (
+    tester,
+  ) async {
+    // Planets open by brushing (spec 2026-10-05 §4.3).
+    await pumpWorldMap(tester);
+    final lock = find.byIcon(Icons.lock).first;
+    await tester.ensureVisible(lock);
+    await tester.pump();
+    fakeAudio.resetTracking();
+    await tester.tap(lock);
+    await tester.pump();
+    final spoken = fakeAudio.playedVoiceLines;
+    expect(spoken.first, startsWith('voice_world_'), reason: '$spoken');
+    expect(spoken, contains('voice_need_more_brushes.mp3'));
+    expect(spoken, isNot(contains('voice_need_stars.mp3')));
+    await tester.binding.setSurfaceSize(null);
+  });
+
   // ── Current world indicator ──────────────────────────────────
 
   testWidgets('current world shows rocket launch icon', (tester) async {

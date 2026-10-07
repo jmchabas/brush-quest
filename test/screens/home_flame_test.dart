@@ -316,6 +316,46 @@ void main() {
       await disposeAll(tester);
     });
 
+    testWidgets('a quick hero tap: the welcome-back line and the bonus wait '
+        'until Home is shown again', (tester) async {
+      PreBrushScreen.minStep = const Duration(seconds: 30);
+      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      addTearDown(() {
+        PreBrushScreen.minStep = const Duration(seconds: 3);
+        PreBrushScreen.maxStep = const Duration(seconds: 5);
+      });
+      await pumpHomeWith(
+        tester,
+        {'current_streak': 4, 'last_brush_date': day(-1)},
+        observers: [routeObserver],
+        settleSteps: 0,
+      );
+      // Within the second before Home's welcome-back line.
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const ValueKey('home_hero_button')));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.byType(PreBrushScreen), findsOneWidget);
+      expect(
+        fakeAudio.playedVoiceLines.where(
+          (v) => v.startsWith('voice_home_return_'),
+        ),
+        isEmpty,
+        reason: 'no Home line over the pre-brush steps',
+      );
+      expect(flameVoices(), isEmpty);
+      expect(await lastBonusDate(), isNull);
+
+      // He backs out: Home is shown again and pays the day's bonus.
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pump();
+      await pumpUntil(tester, stars);
+      expect(stars, findsOneWidget);
+      expect(flameVoices(), ['voice_flame_welcome_1.mp3']);
+      expect(await lastBonusDate(), isNotNull);
+      await disposeAll(tester);
+    });
+
     testWidgets('a 7 day streak gets the two-star welcome line', (
       tester,
     ) async {
@@ -803,14 +843,19 @@ void main() {
       expect(find.byType(PreBrushScreen), findsOneWidget);
       final whooshesBeforeBack = whooshes();
       final musicStarts = fakeAudio.callsFor('playMusic').length;
+      // A wallet change Home can only show by reloading its stats.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('star_wallet', 42);
       tester.state<NavigatorState>(find.byType(Navigator)).pop();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
       expect(
-        fakeAudio.callsFor('playMusic').length,
-        greaterThan(musicStarts),
+        find.text('42'),
+        findsOneWidget,
         reason: 'Home must really have reloaded for this test to mean much',
       );
+      // The music kept going under the pre-brush steps: not restarted.
+      expect(fakeAudio.callsFor('playMusic'), hasLength(musicStarts));
       expect(whooshes(), whooshesBeforeBack);
       expect(
         fakeAudio.playedVoiceLines,

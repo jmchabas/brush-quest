@@ -72,9 +72,8 @@ void main() {
       },
     );
 
-    // Not in the brief: HeroService.getEvolutionById throws StateError (its
-    // `on Exception` misses it) for an unknown id, so a stale or synced save
-    // must not reach it.
+    // Not in the brief: a stale or synced save can hold an evolution id that
+    // doesn't exist; the goal ignores it rather than offering it.
     test('ignores evolution ids it does not know', () {
       final g = GoalRules.heroGoal(
         unlockedHeroIds: ['blaze'],
@@ -197,6 +196,9 @@ void main() {
     final s = GoalService();
     expect((await s.heroGoal())!.itemId, 'frost');
     expect((await s.weaponGoal())!.itemId, 'flame_sword');
+    // The meters count the wallet.
+    expect((await s.heroGoal())!.have, 4);
+    expect((await s.weaponGoal())!.have, 4);
     final w = (await s.worldGoal())!;
     expect(w.itemId, 'slime_swamp');
     expect(w.left, 4);

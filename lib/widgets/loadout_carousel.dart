@@ -9,6 +9,10 @@ class LoadoutItem {
 
 /// Owned items in a swipe row: the choice is centred and big, neighbours
 /// peek in from the sides, ‹ › arrows for kids who don't swipe (spec §4.1).
+///
+/// Uncontrolled: [items] and [selectedId] are read once, when it is first
+/// built, and the carousel keeps its own position after that. To show other
+/// items, give it a new key (the pre-brush screen keys one per step).
 class LoadoutCarousel extends StatefulWidget {
   final List<LoadoutItem> items;
   final String selectedId;

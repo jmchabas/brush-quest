@@ -84,6 +84,11 @@ class _HeldArcAudio extends FakeAudioService {
 }
 
 void main() {
+  // The beat's flame (the top bar's streak pill has one too).
+  final beatFlame = find.descendant(
+    of: find.byKey(const ValueKey('victory_flame_beat')),
+    matching: find.byType(FlameIcon),
+  );
   TestWidgetsFlutterBinding.ensureInitialized();
 
   String? v(int prev, int next, {int mult = 0, int comeback = 0}) =>
@@ -237,7 +242,7 @@ void main() {
 
     /// Total area (px squared) where the bonus stars overlap the flame.
     double starsOverFlame(WidgetTester tester) {
-      final flame = tester.getRect(find.byType(FlameIcon));
+      final flame = tester.getRect(beatFlame);
       var area = 0.0;
       for (var i = 0; i < bonusStars.evaluate().length; i++) {
         final overlap = flame.intersect(tester.getRect(bonusStars.at(i)));
@@ -274,7 +279,7 @@ void main() {
     );
 
     FlameTier shownFlame(WidgetTester tester) =>
-        tester.widget<FlameIcon>(find.byType(FlameIcon)).tier;
+        tester.widget<FlameIcon>(beatFlame).tier;
 
     testWidgets('reaching 3 days: tier line before the chest, old lines gone', (
       tester,
@@ -318,9 +323,9 @@ void main() {
     ) async {
       seedPrefs(streak: 2); // streak 3 -> the big flame
       await pumpVictory(tester);
-      expect(find.byType(FlameIcon), findsNothing);
+      expect(beatFlame, findsNothing);
       await tester.pump(const Duration(milliseconds: 2000)); // mid flame beat
-      expect(find.byType(FlameIcon), findsOneWidget);
+      expect(beatFlame, findsOneWidget);
       expect(shownFlame(tester), FlameTier.big);
       expect(chestKey, findsNothing);
       await tester.pump(const Duration(seconds: 2));
@@ -406,7 +411,7 @@ void main() {
       seedPrefs(streak: 2);
       await pumpVictory(tester);
       await tester.pump(const Duration(milliseconds: 2000)); // mid flame beat
-      expect(find.byType(FlameIcon), findsOneWidget);
+      expect(beatFlame, findsOneWidget);
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       await tester.pump(const Duration(seconds: 5)); // the beat's pause ends
       expect(tester.takeException(), isNull);
@@ -433,14 +438,14 @@ void main() {
         await tester.pump(const Duration(milliseconds: 600)); // 2.0 s
         expect(held.playedVoiceLines.where(_isArcBeat2), hasLength(1));
         // It is still playing: no flame yet, no flame line asked for.
-        expect(find.byType(FlameIcon), findsNothing);
+        expect(beatFlame, findsNothing);
         expect(
           held.playedVoiceLines,
           isNot(contains('voice_flame_tier_3.mp3')),
         );
         held.arcBeat2.complete();
         await tester.pump(const Duration(milliseconds: 50));
-        expect(find.byType(FlameIcon), findsOneWidget);
+        expect(beatFlame, findsOneWidget);
         expect(held.playedVoiceLines, contains('voice_flame_tier_3.mp3'));
         // The chest still follows 1.6 s after the beat starts.
         await tester.pump(const Duration(milliseconds: 1400));
@@ -458,13 +463,13 @@ void main() {
           await pumpVictory(tester);
           // The cap is 2.5 s after beat 2 was asked for (1.5 s): 4.0 s.
           await tester.pump(const Duration(milliseconds: 3900));
-          expect(find.byType(FlameIcon), findsNothing);
+          expect(beatFlame, findsNothing);
           expect(
             held.playedVoiceLines,
             isNot(contains('voice_flame_tier_3.mp3')),
           );
           await tester.pump(const Duration(milliseconds: 200));
-          expect(find.byType(FlameIcon), findsOneWidget);
+          expect(beatFlame, findsOneWidget);
           expect(held.playedVoiceLines, contains('voice_flame_tier_3.mp3'));
           await tester.pump(const Duration(milliseconds: 1300));
           expect(chestKey, findsNothing);
@@ -482,7 +487,7 @@ void main() {
         seedPrefs(streak: 2);
         await pumpVictory(tester);
         await tester.pump(const Duration(milliseconds: 1600));
-        expect(find.byType(FlameIcon), findsOneWidget);
+        expect(beatFlame, findsOneWidget);
         expect(held.playedVoiceLines, isEmpty);
         await drain(tester);
       });
@@ -494,7 +499,7 @@ void main() {
         seedPrefs(streak: 2);
         await pumpVictory(tester);
         await tester.pump(const Duration(milliseconds: 2000));
-        expect(find.byType(FlameIcon), findsNothing);
+        expect(beatFlame, findsNothing);
         await tester.pumpWidget(const MaterialApp(home: SizedBox()));
         held.arcBeat2.complete();
         await tester.pump(const Duration(seconds: 5));
@@ -507,10 +512,10 @@ void main() {
         seedPrefs(streak: 2); // the big flame, 30 px
         await pumpVictory(tester);
         await tester.pump(const Duration(milliseconds: 1500)); // beat is built
-        final start = tester.getRect(find.byType(FlameIcon)).width;
+        final start = tester.getRect(beatFlame).width;
         await tester.pump(const Duration(milliseconds: 16));
         await tester.pump(const Duration(milliseconds: 800));
-        final end = tester.getRect(find.byType(FlameIcon)).width;
+        final end = tester.getRect(beatFlame).width;
         expect(end, closeTo(FlameIcon.sizeFor(FlameTier.big), 0.01));
         expect(start, lessThan(end * 0.7));
         await drain(tester);
@@ -537,10 +542,10 @@ void main() {
         seedPrefs(streak: 2);
         await pumpVictory(tester);
         await tester.pump(const Duration(milliseconds: 1000)); // data loaded
-        expect(find.byType(FlameIcon), findsNothing);
+        expect(beatFlame, findsNothing);
         final title = tester.getRect(find.text('GREAT JOB!'));
         await tester.pump(const Duration(milliseconds: 1000)); // beat is shown
-        expect(find.byType(FlameIcon), findsOneWidget);
+        expect(beatFlame, findsOneWidget);
         expect(chestKey, findsNothing); // the chest's own jump comes later
         final after = tester.getRect(find.text('GREAT JOB!'));
         expect(after.top, closeTo(title.top, 0.01));

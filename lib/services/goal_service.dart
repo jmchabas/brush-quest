@@ -62,10 +62,9 @@ class GoalRules {
     required List<String> unlockedEvolutionIds,
     required int wallet,
   }) {
-    // Walk the selected hero's own ladder rather than looking ids up with
-    // HeroService.getEvolutionById: that helper throws StateError (its
-    // `on Exception` misses it) for an id that doesn't exist, such as
-    // '<hero>_stage4' once a hero is maxed, or an unknown id in a saved game.
+    // Walk the selected hero's own ladder: it holds exactly the stages that
+    // exist, so an id that doesn't (such as '<hero>_stage4' once a hero is
+    // maxed, or an unknown id in a saved game) is simply never matched.
     final ladder = HeroService.evolutionsForHero(selectedHeroId);
     var topStage = 1;
     for (final evo in ladder) {

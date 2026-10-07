@@ -374,6 +374,10 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _unfinishedMustHear = <String>{};
   _QuietWait? _quietWait;
   bool _goingHome = false;
+  // The closing line has been queued, with its strip on screen.
+  bool _closingBeatShown = false;
+  final _closingAnchorKey = GlobalKey();
+  final _doneAnchorKey = GlobalKey();
 
   // The screen scrolls, and on small phones the newest beat lands below the
   // fold: these anchor the goal and the monster card for scrolling.
@@ -468,6 +472,7 @@ class _VictoryScreenState extends State<VictoryScreen>
         _audio.playSfx('whoosh.mp3');
         setState(() => _showDoneButton = true);
         _doneButtonController.repeat(reverse: true);
+        _scrollIntoView(_doneAnchorKey);
       }
     });
 
@@ -585,12 +590,11 @@ class _VictoryScreenState extends State<VictoryScreen>
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    // t=300ms   Arc beat 1 (celebration). Fire-and-forget — do NOT await the
-    // voice before showing the chest. On Android the completion signal can
-    // fail to fire, stalling the chest reveal for the full 15s voice timeout
-    // (audio_service.dart:613). Pace the chest with a fixed delay instead so
-    // the visual flow never depends on voice completion. The voice plays
-    // concurrently over the chest drop.
+    // t=300ms   Arc beat 1 (celebration). Fire-and-forget. A visual may wait
+    // on a voice only with a cap: on Android the completion signal can fail
+    // to fire, which would stall the screen for the full 15s voice timeout
+    // (audio_service.dart:613). The flame beat below waits for arc beat 2
+    // that way (2.5 s cap); the chest follows it on a fixed delay.
     final arcIndex = _random.nextInt(_victoryArcs.length);
     final arc = _victoryArcs[arcIndex];
     unawaited(
@@ -821,13 +825,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
           // Show world progress
           final worldComplete = await _trophyService.isWorldComplete(_world.id);
-          // The rockets fill toward the next planet (spec §6 step 5).
-          Goal? worldGoal;
-          try {
-            worldGoal = await GoalService().worldGoal();
-          } on Object catch (e) {
-            debugPrint('World rockets skipped: $e');
-          }
+          final worldGoal = await _loadWorldGoal();
           if (!mounted) return;
           setState(() {
             _showWorldProgress = true;
@@ -874,6 +872,15 @@ class _VictoryScreenState extends State<VictoryScreen>
             unawaited(_cardGlowController.repeat(reverse: true));
             // No banner animation — badge is hidden in showcase mode.
             // No auto-voice — kid taps monster to hear its description.
+
+            // No fight on this planet (it is finished), but the brush still
+            // counts toward the next one: show the rockets (spec §6 step 5).
+            final worldGoal = await _loadWorldGoal();
+            if (!mounted) return;
+            if (worldGoal != null) {
+              setState(() => _worldGoal = worldGoal);
+              _scrollCardIntoView();
+            }
           }
         }
 
@@ -909,7 +916,9 @@ class _VictoryScreenState extends State<VictoryScreen>
         if (mounted) {
           await _showForwardHookSequence();
         }
-      } on Exception catch (e) {
+      } on Object catch (e) {
+        // Object, not Exception: a TypeError from a malformed save must not
+        // skip the rest; DONE still comes in finally.
         debugPrint('Victory chest sequence error: $e');
       } finally {
         // Guarantee the DONE button is visible even if the reward chain fails.
@@ -919,6 +928,8 @@ class _VictoryScreenState extends State<VictoryScreen>
           unawaited(_audio.playSfx('whoosh.mp3'));
           setState(() => _showDoneButton = true);
           unawaited(_doneButtonController.repeat(reverse: true));
+          // It sits below the fold on most phones: bring it up.
+          _scrollIntoView(_doneAnchorKey);
         }
       }
     });
@@ -927,9 +938,25 @@ class _VictoryScreenState extends State<VictoryScreen>
   /// The closing beat (spec §6 step 6): the flame strip, and the line for
   /// the next flame, or "see you tonight" for a twice-a-day child brushing in
   /// the morning (spec §7.3).
-  Future<void> _showForwardHookSequence({bool leaving = false}) async {
+  Future<void> _showForwardHookSequence() async {
     if (_forwardHookFired) return;
     _forwardHookFired = true;
+    // The monster card's lines may still be queued: the strip comes with its
+    // own line, after them (capped, as every wait on a voice is).
+    await _voiceIdle(const Duration(seconds: 8));
+    // He tapped DONE meanwhile (the safety-timer DONE): _goHome plays it.
+    if (!mounted || _goingHome) return;
+    final line = await _closingLine();
+    if (!mounted || _goingHome) return;
+    _showClosingStrip();
+    _queueMustHear(line);
+    // DONE comes after this: once the queue is quiet (an "It's yours!" may
+    // have queued the line again), but never more than a few seconds.
+    await _voiceIdle(const Duration(seconds: 6));
+  }
+
+  /// The closing line for this brush (spec §7.3).
+  Future<String> _closingLine() async {
     var yesterdayBoth = false;
     try {
       final yesterday = await _streakService.getYesterdaySlots();
@@ -937,31 +964,29 @@ class _VictoryScreenState extends State<VictoryScreen>
     } on Object catch (e) {
       debugPrint("Yesterday's slots unavailable: $e");
     }
-    if (!mounted) return;
-    if (!leaving) {
-      // The monster card's lines may still be queued: the strip comes with
-      // its own line, after them (capped, as every wait on a voice is).
-      await _voiceIdle(const Duration(seconds: 8));
-      // He tapped DONE meanwhile (the safety-timer DONE): leave quietly.
-      if (!mounted || _goingHome) return;
-    }
-    setState(() => _showFlameStrip = true);
-    final line = VictoryScreen.closingVoiceFor(
+    return VictoryScreen.closingVoiceFor(
       hour: DateTime.now().hour,
       yesterdayBoth: yesterdayBoth,
       newStreak: _newStreak,
     );
-    if (leaving) {
-      // From a DONE tap (the session-end hook): just the line, then go.
-      await _audio
-          .playVoice(line)
-          .timeout(const Duration(seconds: 5), onTimeout: () {});
-      return;
+  }
+
+  /// Shows the flame strip and brings it into view: its line is about it.
+  void _showClosingStrip() {
+    _closingBeatShown = true;
+    setState(() => _showFlameStrip = true);
+    _scrollIntoView(_closingAnchorKey);
+  }
+
+  /// The rockets' goal: the furthest unfinished planet, or null once every
+  /// planet is finished (or if it can't be worked out).
+  Future<Goal?> _loadWorldGoal() async {
+    try {
+      return await GoalService().worldGoal();
+    } on Object catch (e) {
+      debugPrint('World rockets skipped: $e');
+      return null;
     }
-    _queueMustHear(line);
-    // DONE comes after this: once the queue is quiet (an "It's yours!" may
-    // have queued the line again), but never more than a few seconds.
-    await _voiceIdle(const Duration(seconds: 6));
   }
 
   /// Plays [file] and remembers it until it has ended, so "It's yours!" can
@@ -1341,17 +1366,19 @@ class _VictoryScreenState extends State<VictoryScreen>
                         fontSize: 14,
                       ),
                     ),
-                    // Rockets toward the next planet; none once every planet
-                    // is finished.
-                    if (_worldGoal != null) ...[
-                      const SizedBox(height: 6),
-                      GoalMeter(
-                        have: _worldGoal!.have,
-                        cost: _worldGoal!.cost,
-                        style: GoalMeterStyle.rockets,
-                        unit: 18,
-                      ),
-                    ],
+                  ],
+                  // Rockets toward the next planet, after a fight's world text
+                  // or under a showcase card; none once every planet is
+                  // finished.
+                  if (_worldGoal != null &&
+                      (_showWorldProgress || _isShowcase)) ...[
+                    const SizedBox(height: 6),
+                    GoalMeter(
+                      have: _worldGoal!.have,
+                      cost: _worldGoal!.cost,
+                      style: GoalMeterStyle.rockets,
+                      unit: 18,
+                    ),
                   ],
                 ],
               ),
@@ -1415,14 +1442,19 @@ class _VictoryScreenState extends State<VictoryScreen>
   Future<void> _goHome() async {
     if (_goingHome) return;
     _goingHome = true;
-    // A closing beat waiting on the voice channel stands down (see
-    // _showForwardHookSequence).
+    // A closing beat that hasn't started won't now; one waiting on the voice
+    // channel stands down (see _showForwardHookSequence).
+    _forwardHookFired = true;
     _quietWait?.cancel();
-    // Fire the closing line before navigation if it hasn't played yet (a
-    // DONE from the safety timer, or after an error): just the line, at once.
-    if (!_forwardHookFired) {
+    // The session-end hook: if the closing line hasn't played yet (a DONE
+    // from the safety timer, or after an error), play just the line, then go.
+    if (!_closingBeatShown) {
       await _audio.stopVoice();
-      await _showForwardHookSequence(leaving: true);
+      final line = await _closingLine();
+      if (mounted) _showClosingStrip();
+      await _audio
+          .playVoice(line)
+          .timeout(const Duration(seconds: 5), onTimeout: () {});
     }
     await AudioService().stopVoice();
     if (!mounted) return;
@@ -1717,18 +1749,24 @@ class _VictoryScreenState extends State<VictoryScreen>
                           // Flame hook strip (spec §6 step 6): the flame and
                           // the days to its next step. Scaled down on narrow
                           // phones (day 7 is the widest).
-                          if (_showFlameStrip) ...[
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: FlameStrip(streak: _newStreak),
+                          if (_showFlameStrip)
+                            KeyedSubtree(
+                              key: _closingAnchorKey,
+                              child: Padding(
+                                // The bottom margin keeps it clear of the
+                                // screen's edge when scrolled into view.
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: FlameStrip(streak: _newStreak),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-                          ],
 
                           // Buttons (only after full reward sequence)
                           if (_showDoneButton) ...[
@@ -1788,6 +1826,9 @@ class _VictoryScreenState extends State<VictoryScreen>
                                 ),
                               ),
                             ),
+                            // Scrolled into view (with this margin) when DONE
+                            // appears.
+                            SizedBox(key: _doneAnchorKey, height: 12),
                           ],
                           const SizedBox(height: 28),
                         ],
@@ -1825,10 +1866,16 @@ class _VictoryScreenState extends State<VictoryScreen>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.local_fire_department,
-                                color: Colors.orangeAccent,
-                                size: 28,
+                              // The streak's flame, the one on Home's pill, in
+                              // the 28 px slot of the icon it replaced.
+                              SizedOverflowBox(
+                                size: Size(
+                                  FlameIcon.sizeFor(flameTierFor(_newStreak)),
+                                  28,
+                                ),
+                                child: FlameIcon(
+                                  tier: flameTierFor(_newStreak),
+                                ),
                               ),
                               const SizedBox(width: 4),
                               TweenAnimationBuilder<int>(
@@ -2026,6 +2073,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   /// stars slide out and fade in.
   Widget _buildFlameBeat() {
     return Column(
+      key: const ValueKey('victory_flame_beat'),
       mainAxisSize: MainAxisSize.min,
       children: [
         TweenAnimationBuilder<double>(

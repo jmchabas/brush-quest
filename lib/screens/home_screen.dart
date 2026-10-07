@@ -109,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _affirmationTimer;
   Timer? _firstBrushLaunchTimer;
   Timer? _starDeltaTimer;
+  Timer? _welcomeBackTimer;
   // One-time discoverability nudge for the camera. Fires after onboarding
   // for users who haven't yet enabled camera in Settings (or skipped the
   // parent-gated camera page). Persists until the kid taps BRUSH (started
@@ -225,6 +226,7 @@ class _HomeScreenState extends State<HomeScreen>
     _firstBrushLaunchTimer?.cancel();
     _starDeltaTimer?.cancel();
     _dailyBonusTimer?.cancel();
+    _welcomeBackTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     AudioService().stopVoice();
     AudioService().stopMusic();
@@ -264,14 +266,46 @@ class _HomeScreenState extends State<HomeScreen>
     // Daily bonus is idempotent by date — safe to attempt on every resume. It
     // speaks and flies stars, so only while Home is what the child sees; under
     // another screen it waits for didPopNext.
-    if (ModalRoute.of(context)?.isCurrent ?? false) {
+    _claimWhenHomeShows();
+  }
+
+  /// Home is what the child sees (not covered by the pre-brush steps or any
+  /// other screen).
+  bool get _homeIsShowing =>
+      mounted && (ModalRoute.of(context)?.isCurrent ?? false);
+
+  /// The daily bonus speaks and flies stars, so it is claimed only while Home
+  /// is showing; otherwise when Home is shown again (didPopNext).
+  void _claimWhenHomeShows() {
+    if (_homeIsShowing) {
       unawaited(_claimAndAnimateDailyBonus());
     } else {
       _claimWhenShown = true;
     }
   }
 
-  Future<void> _loadStats() async {
+  /// A welcome-back line after [delay], then the daily bonus: both only if
+  /// Home is still showing (a quick hero tap may already have opened the
+  /// pre-brush steps; the bonus then waits for the return).
+  void _welcomeBackThenClaim(Duration delay) {
+    _welcomeBackTimer?.cancel();
+    _welcomeBackTimer = Timer(delay, () {
+      if (!mounted) return;
+      if (!_homeIsShowing) {
+        _claimWhenShown = true;
+        return;
+      }
+      final voice =
+          _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
+      unawaited(AudioService().playVoice(voice));
+      unawaited(_claimAndAnimateDailyBonus());
+    });
+  }
+
+  /// [startMusic] is false when coming back to Home: didPopNext has already
+  /// kept the music going (or restarted it), and starting it here again would
+  /// restart it from the top.
+  Future<void> _loadStats({bool startMusic = true}) async {
     // Auto-grant trophies for worlds already cleared
     await TrophyService().autoGrantClearedWorldTrophies();
 
@@ -319,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
       unawaited(_checkGreeting());
       unawaited(_maybeShowCameraNudge());
-      _startHomeMusic();
+      if (startMusic) _startHomeMusic();
     }
   }
 
@@ -411,26 +445,23 @@ class _HomeScreenState extends State<HomeScreen>
     // Skip full greeting when returning from a brush session,
     // but play a brief closure voice so the transition isn't silent.
     if (widget.skipGreeting) {
-      if (!AudioService().isMuted) {
-        await Future.delayed(const Duration(seconds: 1));
-        if (mounted) {
-          final voice =
-              _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
-          unawaited(AudioService().playVoice(voice));
-        }
-      }
       // Ensure daily bonus is claimed on the brush-return path too, not only
       // on the greeting-popup path — otherwise a session where the kid opens
       // the app post-brush via an unusual route loses the bonus for the day.
-      unawaited(_claimAndAnimateDailyBonus());
+      if (AudioService().isMuted) {
+        _claimWhenHomeShows();
+      } else {
+        _welcomeBackThenClaim(const Duration(seconds: 1));
+      }
       return;
     }
 
     final totalBrushes = await _streakService.getTotalBrushes();
     if (totalBrushes == 0) {
       // First-launch: kid just finished onboarding, guide them to tap the hero
+      // (not if he already has, and brushing is on screen).
       await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
+      if (_homeIsShowing) {
         unawaited(AudioService().playVoice('voice_tap_hero.mp3'));
       }
       return;
@@ -467,17 +498,13 @@ class _HomeScreenState extends State<HomeScreen>
       // child is back (after the brush, or after backing out).
       if (!mounted || _brushTapLocked) return;
     } else if (lastGreetingDate == todayDate && mounted) {
-      // Already greeted today — play a random welcome back voice
-      await Future.delayed(const Duration(milliseconds: 800));
-      if (mounted) {
-        final voice =
-            _welcomeBackVoices[Random().nextInt(_welcomeBackVoices.length)];
-        unawaited(AudioService().playVoice(voice));
-      }
+      // Already greeted today — a random welcome-back line, then the bonus.
+      _welcomeBackThenClaim(const Duration(milliseconds: 800));
+      return;
     }
     // Claim daily bonus AFTER greeting flow (so wallet pill shows pre-bonus
     // value during popup, then bumps after dismissal).
-    await _claimAndAnimateDailyBonus();
+    if (mounted) _claimWhenHomeShows();
   }
 
   /// Claims the daily streak bonus and pays it off (spec 2026-10-05 §7.2): the
@@ -943,7 +970,7 @@ class _HomeScreenState extends State<HomeScreen>
     _brushTapLocked = false;
     final prevWallet = _wallet;
     final prevStreak = _streak;
-    await _loadStats();
+    await _loadStats(startMusic: false);
     if (!mounted) return;
     final walletDelta = _wallet - prevWallet;
     if (walletDelta > 0 || _streak != prevStreak) {

@@ -202,6 +202,10 @@ class WorldService {
     return null;
   }
 
+  /// Records this brush as a mission on the furthest unfinished planet
+  /// ([getFrontierWorld]), whichever planet the child brushed on, and moves
+  /// the current world on when that planet is finished (spec 2026-10-05
+  /// §8.4). Once every planet is finished it records nothing.
   Future<void> recordMission() async {
     final frontier = await getFrontierWorld();
     if (frontier == null) return; // every world finished
