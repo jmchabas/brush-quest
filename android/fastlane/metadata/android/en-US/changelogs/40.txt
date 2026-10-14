@@ -1,0 +1,1 @@
+v1.1 test build. Tap the hero to pick a hero, weapon and world before each brush. The streak flame grows day by day and pays bonus stars. Silver and gold chests at 3- and 7-day streaks. When the next unlock is full, tap it on the victory screen.
