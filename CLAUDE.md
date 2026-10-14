@@ -82,7 +82,7 @@ assets/
 
 ## Game Flow
 1. First launch → Onboarding (3 pages: welcome, how to play, mouth guide tutorial)
-2. Home screen → tap the hero (it IS the brush button); the streak pill shows a flame that grows with the streak. From the second brush on: Hero → Weapon → World steps (auto-advance about 3 s each, after each line; switch to anything owned; closest next unlock with a star or rocket meter; "Let's fight!" plays out before brushing)
+2. Home screen → tap the hero (it IS the brush button); the streak pill shows a flame that grows with the streak. From the second brush on, the steps run on the real pages in brush mode: the Heroes & Weapons page (HEROES tab, then WEAPONS), then the World Map. Each has an X (back to Home), a big GO and a gold glow on the closest next unlock, which he can buy right there; taps play the page's own lines. About 8 s without a touch moves on once the voice is quiet. "Let's fight!" plays out before brushing
 3. Countdown → "3, 2, 1, GO!" with voice + animation
 4. Brushing → 4 phases (TL, TR, BL, BR) x configurable seconds each:
    - Visual mouth guide overlay shows which teeth to brush (3s per transition)

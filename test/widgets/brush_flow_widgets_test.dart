@@ -5,7 +5,6 @@ import 'package:brush_quest/services/flame_tier.dart';
 import 'package:brush_quest/widgets/flame_view.dart';
 import 'package:brush_quest/widgets/goal_meter.dart';
 import 'package:brush_quest/widgets/item_silhouette.dart';
-import 'package:brush_quest/widgets/loadout_carousel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,59 +61,6 @@ void main() {
     expect(find.byType(ColorFiltered), findsOneWidget);
   });
 
-  group('LoadoutCarousel', () {
-    final items = [
-      for (final id in ['a', 'b', 'c'])
-        LoadoutItem(
-          id: id,
-          image: SizedBox(key: ValueKey('img_$id'), width: 50, height: 50),
-        ),
-    ];
-    testWidgets('arrows move the choice and report a touch', (tester) async {
-      String? selected;
-      var touches = 0;
-      await tester.pumpWidget(
-        _wrap(
-          SizedBox(
-            width: 360,
-            height: 300,
-            child: LoadoutCarousel(
-              items: items,
-              selectedId: 'a',
-              onSelected: (id) => selected = id,
-              onInteraction: () => touches++,
-            ),
-          ),
-        ),
-      );
-      await tester.tap(find.byKey(const ValueKey('carousel_next')));
-      await tester.pumpAndSettle();
-      expect(selected, 'b');
-      expect(touches, greaterThanOrEqualTo(1));
-      await tester.tap(find.byKey(const ValueKey('carousel_prev')));
-      await tester.pumpAndSettle();
-      expect(selected, 'a');
-    });
-    testWidgets('a single item hides the arrows', (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          SizedBox(
-            width: 360,
-            height: 300,
-            child: LoadoutCarousel(
-              items: [items.first],
-              selectedId: 'a',
-              onSelected: (_) {},
-              onInteraction: () {},
-            ),
-          ),
-        ),
-      );
-      expect(find.byKey(const ValueKey('carousel_next')), findsNothing);
-      expect(find.byKey(const ValueKey('carousel_prev')), findsNothing);
-    });
-  });
-
   group('Flame', () {
     testWidgets('FlameIcon grows with the tier', (tester) async {
       double sizeFor(FlameTier t) {
@@ -139,29 +85,6 @@ void main() {
   // ---- Added in the Task 6 self-review: requirements the brief's tests
   // above don't pin (spec §4.1, §7.1) and the rebuild path of GoalMeter.
   group('Task 6 additions', () {
-    Widget carousel({
-      String selectedId = 'a',
-      ValueChanged<String>? onSelected,
-      VoidCallback? onInteraction,
-    }) => _wrap(
-      SizedBox(
-        width: 360,
-        height: 300,
-        child: LoadoutCarousel(
-          items: [
-            for (final id in ['a', 'b', 'c'])
-              LoadoutItem(
-                id: id,
-                image: SizedBox.expand(key: ValueKey('img_$id')),
-              ),
-          ],
-          selectedId: selectedId,
-          onSelected: onSelected ?? (_) {},
-          onInteraction: onInteraction ?? () {},
-        ),
-      ),
-    );
-
     testWidgets('GoalMeter: 10 stars is still slots, 11 is a bar', (
       tester,
     ) async {
@@ -217,40 +140,6 @@ void main() {
           BlendMode.srcATop,
         ),
       );
-    });
-
-    testWidgets('carousel opens on the selected item', (tester) async {
-      await tester.pumpWidget(carousel(selectedId: 'c'));
-      await tester.pumpAndSettle();
-      final page = tester.getRect(find.byType(PageView));
-      final chosen = tester.getCenter(find.byKey(const ValueKey('img_c')));
-      expect((chosen.dx - page.center.dx).abs(), lessThan(1));
-    });
-
-    testWidgets('a swipe moves the choice and reports a touch', (tester) async {
-      String? selected;
-      var touches = 0;
-      await tester.pumpWidget(
-        carousel(
-          onSelected: (id) => selected = id,
-          onInteraction: () => touches++,
-        ),
-      );
-      await tester.drag(find.byType(PageView), const Offset(-150, 0));
-      await tester.pumpAndSettle();
-      expect(selected, 'b');
-      expect(touches, greaterThanOrEqualTo(1));
-    });
-
-    testWidgets('carousel arrows are at least 48 px (small fingers)', (
-      tester,
-    ) async {
-      await tester.pumpWidget(carousel(selectedId: 'b'));
-      for (final key in ['carousel_prev', 'carousel_next']) {
-        final size = tester.getSize(find.byKey(ValueKey(key)));
-        expect(size.width, greaterThanOrEqualTo(48), reason: key);
-        expect(size.height, greaterThanOrEqualTo(48), reason: key);
-      }
     });
 
     testWidgets('FlameStrip shows the next flame and its chest tier', (
