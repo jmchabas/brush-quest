@@ -2,7 +2,7 @@
 <!-- Every session reads this at start. Every session updates its section at end. -->
 <!-- Jim says "update the status board" → session updates its workstream below. -->
 
-**Current #1 Priority** (2026-10-01): ship v29 on both stores (iPhone launch) — build 29 is on Play internal + TestFlight; see APP. Previous: Both stores launch in flight. **Android v22 submitted to Play Store production review 2026-05-11** (auto-checks running, then human review ≤7 days). **iOS v22 on TestFlight** awaiting feedback from 3 testers (Antoine, Matt, Jan) before clicking "Add for Review" — Apple submission is one click away once test confirms build is sound.
+**Current #1 Priority** (2026-10-13): ship v29 on both stores — Android build 30 is in production at 20%; the iPhone waits on the borrowed-iPhone session; see APP. Previous: Both stores launch in flight. **Android v22 submitted to Play Store production review 2026-05-11** (auto-checks running, then human review ≤7 days). **iOS v22 on TestFlight** awaiting feedback from 3 testers (Antoine, Matt, Jan) before clicking "Add for Review" — Apple submission is one click away once test confirms build is sound.
 **CEO Streak**: Week 0 (starting fresh)
 **Phase**: 2 — production launch in flight on both platforms
 
@@ -11,6 +11,7 @@
 ## Workstream Status
 
 ### APP
+- **2026-10-13 — v29 Android in production at 20%; v1.1 on Play internal.** Jim's build-30 smoke test passed. His camera retest ("Only this time") was run by Claude on the Android 14 emulator instead: Android asks about the camera only in the parent Settings flow; once the one-time grant expires, the next brush asks nothing, runs on the timer and switches Brushing detection off. Play now: production = build 30 in progress at 20%, build 28 for everyone else; internal = v1.1 (1.1.0+40; code 40 leaves 31–39 for v29 hotfixes). The v1.1 bundle's "failed to strip debug symbols" build warning is harmless (native libraries are normal size). **Next:** about 48 h of clean vitals → `fastlane complete_production_rollout` (around 2026-10-15); Jim and Oliver test v1.1; borrowed-iPhone session → publish policy → App Store submission.
 - **2026-10-06 — v1.1 "brush flow + visible hooks" built on `feat/v1.1-brush-flow` (local, not pushed; v29 ships first).**
   - **Pre-brush:** from the second brush on, tapping the hero runs Hero → Weapon → World steps before brushing. Each step shows the closest next unlock with a star or rocket meter, and the child can switch to anything he owns.
   - **Victory:** a flame beat (bonus stars come out of the streak flame, with the line that explains them), a chest tiered by streak, a goal fill with a one-tap unlock, world rockets and a flame closing strip.
