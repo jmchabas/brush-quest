@@ -196,14 +196,17 @@ class AnalyticsService {
     );
   }
 
+  /// [source]: 'victory' (the victory screen's one-tap unlock) or
+  /// 'pre_brush' (bought on a page during the brush steps).
   Future<void> logGoalUnlocked({
     required String category,
     required String item,
+    String source = 'victory',
   }) async {
     if (!_enabled) return;
     await _fa.logEvent(
       name: 'goal_unlocked',
-      parameters: {'category': category, 'item': item, 'source': 'victory'},
+      parameters: {'category': category, 'item': item, 'source': source},
     );
   }
 

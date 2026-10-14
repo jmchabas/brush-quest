@@ -10,6 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 class _RecordingAnalytics extends Fake implements FirebaseAnalytics {
   final List<String> calls = [];
 
+  /// Every event with its parameters: {'name': ..., ...parameters}.
+  final List<Map<String, Object?>> events = [];
+
   @override
   Future<void> setAnalyticsCollectionEnabled(bool enabled) async {
     calls.add('setAnalyticsCollectionEnabled($enabled)');
@@ -39,6 +42,7 @@ class _RecordingAnalytics extends Fake implements FirebaseAnalytics {
     AnalyticsCallOptions? callOptions,
   }) async {
     calls.add('logEvent($name)');
+    events.add({'name': name, ...?parameters});
   }
 
   @override
@@ -155,6 +159,35 @@ void main() {
         fake.calls.where((c) => c.startsWith('setAnalyticsCollectionEnabled')),
         hasLength(1),
       );
+    });
+
+    test('goal_unlocked says where the unlock happened', () async {
+      final fake = _RecordingAnalytics();
+      final service = AnalyticsService.forTesting(
+        isAndroid: true,
+        analytics: fake,
+      );
+      await service.init();
+      await service.logGoalUnlocked(category: 'hero', item: 'frost');
+      await service.logGoalUnlocked(
+        category: 'weapon',
+        item: 'flame_sword',
+        source: 'pre_brush',
+      );
+      expect(fake.events, [
+        {
+          'name': 'goal_unlocked',
+          'category': 'hero',
+          'item': 'frost',
+          'source': 'victory',
+        },
+        {
+          'name': 'goal_unlocked',
+          'category': 'weapon',
+          'item': 'flame_sword',
+          'source': 'pre_brush',
+        },
+      ]);
     });
   });
 }
