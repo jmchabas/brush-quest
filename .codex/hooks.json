@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/Users/jimchabas/Projects/brush-quest/.codex/hooks/dart-analyze.sh'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // \"\"' | grep -qE 'git commit.*Cycle [0-9]' && echo '{\"systemMessage\":\"REMINDER: Did you update cycle-history.md in ~/Projects/dev-cycle? Run: cd ~/Projects/dev-cycle && git add -A && git commit -m Cycle_N_summary && git push\"}' || true",
+            "statusMessage": "Checking for cycle commit..."
+          }
+        ]
+      }
+    ]
+  }
+}
