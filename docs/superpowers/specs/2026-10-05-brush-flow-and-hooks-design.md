@@ -16,10 +16,10 @@
 | # | Decision |
 |---|---|
 | D1 | Tapping the hero on Home still starts everything. Nothing is added to Home except the streak-pill change in D7. |
-| D2 | Before brushing come three steps: **Hero → Weapon → World**. Each auto-advances after about 3 s. |
+| D2 | Before brushing come three steps: **Hero → Weapon → World**. Each auto-advances after about 3 s. **Superseded 2026-10-13 (R2 in `2026-10-13-brush-steps-on-real-pages-design.md`):** a GO button, and the page moves on by itself after about 8 s without a touch. |
 | D3 | On every step the child can switch to anything already unlocked in that category (heroes, weapons, worlds). |
 | D4 | Each step shows the **closest next unlock**. On the hero step that is whichever is cheapest: the next upgrade (evolution) of the current hero or the next new hero. |
-| D5 | When a goal is affordable, the child **unlocks it right after brushing**, on the victory screen, with one tap. |
+| D5 | When a goal is affordable, the child **unlocks it right after brushing**, on the victory screen, with one tap. **Amended 2026-10-13 (R3):** he can also unlock it during the steps, exactly as in the shop. |
 | D6 | The very first brush after install skips the three steps, since there is nothing to choose yet. |
 | D7 | Home changes only the streak pill: its flame grows in steps. There are no sun/moon slots on Home. |
 | D8 | Hooks approach "A": make the existing rewards visible (growing flame, chest tiers, bonus stars that come out of the flame, goal fill). No economy change and no new screens. |
@@ -44,6 +44,8 @@ Home ──tap hero──► [first-ever brush?] ──yes──► Brushing (wi
 **First-ever brush:** `total_brushes == 0`. **Failure rule:** if any data the pre-brush screen needs fails to load, it is skipped and brushing starts as today. Brushing is never blocked.
 
 ## 4. Pre-brush screen
+
+> **Superseded 2026-10-13** by `2026-10-13-brush-steps-on-real-pages-design.md`: the steps are now the real Heroes & Weapons and Map pages in brush mode. This section is kept for history.
 
 ### 4.1 Layout (each step)
 - **Center, big:** the item he will brush with, shown as a carousel of everything unlocked in that category. The current choice is centered; neighbours peek in from the sides. There are ‹ › arrows and swipe.
