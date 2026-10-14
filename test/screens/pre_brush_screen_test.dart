@@ -532,6 +532,29 @@ void main() {
     expect(waited, greaterThanOrEqualTo(PreBrushScreen.idleAdvance));
   });
 
+  testWidgets('a finger on GO holds the count: one press, one step', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    await pumpFor(tester, const Duration(milliseconds: 900));
+    // Pressed just before the idle count runs out, and held past it.
+    final finger = await tester.startGesture(tester.getCenter(go));
+    await pumpFor(tester, const Duration(milliseconds: 300));
+    expect(stepIs(PreBrushStep.hero), findsOneWidget);
+    await finger.up();
+    await tester.pump();
+    expect(stepIs(PreBrushStep.weapon), findsOneWidget);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(stepIs(PreBrushStep.weapon), findsOneWidget); // not the Map
+    expect(voices(), [
+      'voice_picker_hero_blaze.mp3',
+      'voice_stars_left_2.mp3',
+      'voice_picker_weapon_star_blaster.mp3',
+      'voice_stars_left_2.mp3',
+    ]);
+    expect(audio.playedSfx, ['whoosh.mp3']);
+  });
+
   testWidgets('a scroll holds the count until it ends', (tester) async {
     await pumpScreen(tester, returningKid);
     unawaited(
@@ -980,6 +1003,55 @@ void main() {
     );
     // The Map's lines have just begun: end them, or their timer outlives the
     // test.
+    await timed.stopVoice();
+  });
+
+  testWidgets('timeline: each tap re-arms the voice cap; the count waits '
+      'for what he taps', (tester) async {
+    // The real knobs. The step's lines and two descriptions he taps make
+    // one unbroken run of voice of 21.5 s, longer than the 12 s cap.
+    PreBrushScreen.idleAdvance = const Duration(seconds: 8);
+    final timed = useTimedVoices(
+      tester,
+      lengths: const {
+        'voice_picker_hero_blaze.mp3': Duration(seconds: 6),
+        'voice_stars_left_2.mp3': Duration(seconds: 1),
+        'voice_picker_hero_bolt.mp3': Duration(seconds: 6),
+        'voice_picker_hero_frost.mp3': Duration(seconds: 7),
+        'voice_shop_nudge_default.mp3': Duration(seconds: 2),
+      },
+    );
+    await pumpScreen(tester, returningKid);
+    await pumpFor(tester, const Duration(seconds: 5));
+    // Bolt (8) and Frost (5) are out of reach: each tap plays the hero's
+    // line, then the nudge.
+    await tester.tap(find.byKey(const ValueKey('evo_cell_bolt_stage1')));
+    final boltAt = timed.clock();
+    await pumpFor(tester, const Duration(milliseconds: 7500));
+    await tester.tap(find.byKey(const ValueKey('evo_cell_frost_stage1')));
+    final frostAt = timed.clock();
+    await pumpUntilFound(tester, stepIs(PreBrushStep.weapon));
+    final lastLine = timed.voices.lastWhere(
+      (v) => v.file == 'voice_shop_nudge_default.mp3',
+    );
+    final weapon = timed.voiceNamed('voice_picker_weapon_star_blaster.mp3')!;
+    // His last line played out, and the whole idle time passed after it.
+    expect(lastLine.cut, isFalse, reason: '${timed.voices}');
+    expect(
+      weapon.queuedAt - lastLine.endedAt!,
+      greaterThanOrEqualTo(PreBrushScreen.idleAdvance),
+      reason: '${timed.voices}',
+    );
+    // Only his own taps cut a line (the page's way), never a step change.
+    for (final voice in timed.voices.where((v) => v.cut)) {
+      expect(
+        [boltAt, frostAt],
+        contains(voice.endedAt),
+        reason: '${timed.voices}',
+      );
+    }
+    // The WEAPONS lines have just begun: end them, or their timer outlives
+    // the test.
     await timed.stopVoice();
   });
 

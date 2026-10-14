@@ -433,6 +433,10 @@ class _PreBrushScreenState extends State<PreBrushScreen>
 
   void _onPointerEnd(PointerEvent event) {
     _pointers.remove(event.pointer);
+    // A tap can start a line (a description, a nudge) while the voice is
+    // busy, so the pipeline never goes quiet in between: the cap counts
+    // from here, not from the start of the run.
+    _armVoiceCap();
     _reconsider();
   }
 
@@ -598,10 +602,17 @@ class _PreBrushScreenState extends State<PreBrushScreen>
         // first frame (disabled until the first step): a floating button
         // that appears later scales in from nothing, and a tap then misses.
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-        floatingActionButton: GoButton(
-          key: const ValueKey('prebrush_go'),
-          rocket: _step == PreBrushStep.world,
-          onPressed: _entered && !_leaving ? _onGo : null,
+        // A finger on GO holds the count like one on the page; otherwise
+        // the count could run out under it and one press move on twice.
+        floatingActionButton: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerUp: _onPointerEnd,
+          onPointerCancel: _onPointerEnd,
+          child: GoButton(
+            key: const ValueKey('prebrush_go'),
+            rocket: _step == PreBrushStep.world,
+            onPressed: _entered && !_leaving ? _onGo : null,
+          ),
         ),
         body: _loaded
             ? _buildSteps()
