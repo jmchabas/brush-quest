@@ -11,9 +11,22 @@ import '../services/unlock_service.dart';
 import '../widgets/space_background.dart';
 import '../widgets/glass_card.dart';
 import '../services/analytics_service.dart';
+import '../services/goal_service.dart';
+import '../widgets/goal_glow.dart';
+import 'brush_mode.dart';
 
 class HeroShopScreen extends StatefulWidget {
-  const HeroShopScreen({super.key});
+  const HeroShopScreen({super.key, this.brushMode});
+
+  /// Set when the page is a step of the brush flow (pre_brush_screen.dart);
+  /// null when it is opened from Home, where it works exactly as it always
+  /// has.
+  final BrushMode? brushMode;
+
+  /// Where shop_visit goes. The singleton does nothing on a test host (it
+  /// only reaches Firebase on Android), so tests swap in a recording one.
+  @visibleForTesting
+  static AnalyticsService? debugAnalytics;
 
   @override
   State<HeroShopScreen> createState() => _HeroShopScreenState();
@@ -37,17 +50,36 @@ class _HeroShopScreenState extends State<HeroShopScreen>
 
   late TabController _tabController;
 
+  /// Brush mode: the tab the steps last knew about.
+  int _reportedTab = 0;
+
+  /// Brush mode: the id that glows (see BrushMode.highlightId).
+  String? _highlightId;
+
+  /// Wraps the glowing cell or card, so a reveal can find it.
+  final _glowKey = GlobalKey();
+
+  Timer? _entryVoiceTimer;
+
+  static const _brushCacheExtent = 4000.0;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) return;
-      final voice = _tabController.index == 0
-          ? 'voice_tab_heroes.mp3'
-          : 'voice_tab_weapons.mp3';
-      AudioService().playVoice(voice, clearQueue: true, interrupt: true);
-    });
+    final brush = widget.brushMode;
+    _reportedTab = brush?.tab.value ?? 0;
+    _highlightId = brush?.highlightId.value;
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: _reportedTab,
+    );
+    _tabController.addListener(_onTabControllerChanged);
+    if (brush != null) {
+      brush.tab.addListener(_followStepsTab);
+      brush.highlightId.addListener(_onHighlightChanged);
+      brush.reveal.addListener(_revealGlow);
+    }
     // Show the wallet immediately before async load refines it
     SharedPreferences.getInstance().then((p) {
       if (mounted) {
@@ -57,7 +89,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       }
     });
     _loadData();
-    Future.delayed(const Duration(milliseconds: 300), () {
+    // In brush mode the steps speak, Home's music plays on, and it is not a
+    // shop visit (spec 2026-10-13 §4.3, §6).
+    if (brush != null) return;
+    _entryVoiceTimer = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
         AudioService().playVoice(
           'voice_entry_hero_hq.mp3',
@@ -79,17 +114,75 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (!mounted) return;
       unawaited(AudioService().ensureMusicPlaying());
     });
-    AnalyticsService().logShopVisit();
+    (HeroShopScreen.debugAnalytics ?? AnalyticsService()).logShopVisit();
+  }
+
+  @override
+  void didUpdateWidget(covariant HeroShopScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    assert(
+      identical(oldWidget.brushMode, widget.brushMode),
+      'A page keeps its brush mode for its whole life.',
+    );
   }
 
   @override
   void dispose() {
-    AudioService().stopVoice();
+    final brush = widget.brushMode;
+    if (brush == null) {
+      AudioService().stopVoice();
+    } else {
+      // The steps own the voice: the next step speaks while this page
+      // slides away.
+      brush.tab.removeListener(_followStepsTab);
+      brush.highlightId.removeListener(_onHighlightChanged);
+      brush.reveal.removeListener(_revealGlow);
+    }
+    _entryVoiceTimer?.cancel();
     // Do NOT stopMusic here — see world_map_screen dispose. Shared
     // battle_music_loop; Home restores volume on didPopNext.
     _tabController.dispose();
     super.dispose();
   }
+
+  void _onTabControllerChanged() {
+    final brush = widget.brushMode;
+    if (brush == null) {
+      if (!_tabController.indexIsChanging) return;
+      final voice = _tabController.index == 0
+          ? 'voice_tab_heroes.mp3'
+          : 'voice_tab_weapons.mp3';
+      AudioService().playVoice(voice, clearQueue: true, interrupt: true);
+      return;
+    }
+    // Brush mode: a tab tap or a swipe moves the steps; they speak, not the
+    // tab.
+    final index = _tabController.index;
+    if (index == _reportedTab) return;
+    _reportedTab = index;
+    brush.onTabChanged(index);
+  }
+
+  /// The steps moved to the other tab (GO or the idle count).
+  void _followStepsTab() {
+    final index = widget.brushMode!.tab.value;
+    _reportedTab = index;
+    if (_tabController.index != index) _tabController.animateTo(index);
+  }
+
+  void _onHighlightChanged() {
+    if (!mounted) return;
+    setState(() => _highlightId = widget.brushMode!.highlightId.value);
+  }
+
+  void _revealGlow() {
+    final glow = _glowKey.currentContext;
+    if (glow != null) unawaited(revealIfHidden(glow));
+  }
+
+  /// Brush mode: tells the steps what changed, even if this page is already
+  /// sliding away.
+  void _reportChange(BrushChange change) => widget.brushMode?.onChanged(change);
 
   Future<void> _loadData() async {
     final unlockedHeroes = await _heroService.getUnlockedHeroIds();
@@ -201,6 +294,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           unawaited(HapticFeedback.heavyImpact());
           if (mounted) _showHeroUnlockAnimation(hero);
           await _loadData();
+          _reportChange(BrushChange.unlocked(GoalCategory.hero, hero.id));
         }
       } else {
         unawaited(HapticFeedback.lightImpact());
@@ -226,6 +320,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         AudioService().evolutionPickerVoiceFor(hero.id, evolution.stage),
       );
       await _loadData();
+      _reportChange(const BrushChange.selected(GoalCategory.hero));
     } else if (_wallet >= evolution.price) {
       // Check sequential gating: stage 3 needs stage 2
       if (evolution.stage >= 3) {
@@ -303,6 +398,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       if (success) {
         unawaited(HapticFeedback.heavyImpact());
         await _loadData();
+        _reportChange(BrushChange.unlocked(GoalCategory.hero, evolution.id));
       }
     } else {
       unawaited(HapticFeedback.lightImpact());
@@ -326,6 +422,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       unawaited(HapticFeedback.mediumImpact());
       _playSelectionVoice(AudioService().weaponPickerVoiceFor(weapon.id));
       await _loadData();
+      _reportChange(const BrushChange.selected(GoalCategory.weapon));
     } else if (_wallet >= weapon.price) {
       if (weapon.price > 0) {
         final confirmed = await _showPurchaseConfirmation(
@@ -341,6 +438,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         // plays the intro voice. Playing it here too causes an audible stutter.
         if (mounted) _showWeaponUnlockAnimation(weapon);
         await _loadData();
+        _reportChange(BrushChange.unlocked(GoalCategory.weapon, weapon.id));
       }
     } else {
       unawaited(HapticFeedback.lightImpact());
@@ -502,6 +600,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
 
   @override
   Widget build(BuildContext context) {
+    final brush = widget.brushMode;
     return Scaffold(
       body: SpaceBackground(
         child: SafeArea(
@@ -512,21 +611,24 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        AudioService().stopVoice();
-                        Navigator.of(context).pop();
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: 28,
+                    if (brush != null)
+                      BrushCloseButton(onTap: brush.onClose)
+                    else
+                      GestureDetector(
+                        onTap: () {
+                          AudioService().stopVoice();
+                          Navigator.of(context).pop();
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         ),
                       ),
-                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
@@ -652,11 +754,20 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       orElse: () => HeroService.allHeroes.first,
     );
     final selectedStage = _evolutionStages[selectedHero.id] ?? 1;
+    final brush = widget.brushMode;
 
     // +1 item for the featured hero header at index 0 (C15 T3-19 symmetry
     // with Weapons tab). The remaining indices map to the hero roster.
+    // Brush mode: room under the last row for GO, and every row built so a
+    // reveal can reach the glow.
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        8,
+        12,
+        16.0 + (brush == null ? 0.0 : kBrushGoClearance),
+      ),
+      cacheExtent: brush == null ? null : _brushCacheExtent,
       itemCount: HeroService.allHeroes.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
@@ -677,6 +788,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           wallet: _wallet,
           selectedWeaponId: _selectedWeaponId,
           unlockedEvolutions: _unlockedEvolutions,
+          highlightId: _highlightId,
+          glowKey: _glowKey,
           onEvolutionTap: (evo) => _onEvolutionTap(hero, evo),
         );
       },
@@ -688,8 +801,10 @@ class _HeroShopScreenState extends State<HeroShopScreen>
       (w) => w.id == _selectedWeaponId,
       orElse: () => WeaponService.allWeapons.first,
     );
+    final brush = widget.brushMode;
 
     return CustomScrollView(
+      cacheExtent: brush == null ? null : _brushCacheExtent,
       slivers: [
         // Featured selected weapon display
         SliverToBoxAdapter(
@@ -697,7 +812,12 @@ class _HeroShopScreenState extends State<HeroShopScreen>
         ),
         // Weapon grid
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            8,
+            16,
+            16.0 + (brush == null ? 0.0 : kBrushGoClearance),
+          ),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
@@ -712,11 +832,14 @@ class _HeroShopScreenState extends State<HeroShopScreen>
               final canAfford = _wallet >= weapon.price;
 
               return _WeaponCard(
+                key: ValueKey('weapon_card_${weapon.id}'),
                 weapon: weapon,
                 isUnlocked: isUnlocked,
                 isSelected: isSelected,
                 canAfford: canAfford,
                 currentStars: _wallet,
+                highlighted: weapon.id == _highlightId,
+                glowKey: _glowKey,
                 onTap: () => _onWeaponTap(weapon),
               );
             }, childCount: WeaponService.allWeapons.length),
@@ -736,6 +859,10 @@ class _HeroEvolutionRow extends StatelessWidget {
   final int wallet;
   final String selectedWeaponId;
   final List<String> unlockedEvolutions;
+
+  /// Brush mode: the evolution id that glows, or null.
+  final String? highlightId;
+  final Key? glowKey;
   final ValueChanged<HeroEvolution> onEvolutionTap;
 
   const _HeroEvolutionRow({
@@ -747,6 +874,8 @@ class _HeroEvolutionRow extends StatelessWidget {
     required this.wallet,
     required this.selectedWeaponId,
     required this.unlockedEvolutions,
+    required this.highlightId,
+    required this.glowKey,
     required this.onEvolutionTap,
   });
 
@@ -788,6 +917,7 @@ class _HeroEvolutionRow extends StatelessWidget {
               ],
               Expanded(
                 child: _EvolutionCell(
+                  key: ValueKey('evo_cell_${evolutions[i].id}'),
                   hero: hero,
                   evolution: evolutions[i],
                   isHeroOwned: isHeroOwned,
@@ -802,6 +932,8 @@ class _HeroEvolutionRow extends StatelessWidget {
                       ),
                   wallet: wallet,
                   weaponId: selectedWeaponId,
+                  highlighted: evolutions[i].id == highlightId,
+                  glowKey: glowKey,
                   onTap: () => onEvolutionTap(evolutions[i]),
                 ),
               ),
@@ -824,7 +956,12 @@ class _EvolutionCell extends StatefulWidget {
   final String weaponId;
   final VoidCallback onTap;
 
+  /// Brush mode: the closest next unlock.
+  final bool highlighted;
+  final Key? glowKey;
+
   const _EvolutionCell({
+    super.key,
     required this.hero,
     required this.evolution,
     required this.isHeroOwned,
@@ -834,6 +971,8 @@ class _EvolutionCell extends StatefulWidget {
     required this.wallet,
     required this.weaponId,
     required this.onTap,
+    this.highlighted = false,
+    this.glowKey,
   });
 
   @override
@@ -1128,6 +1267,9 @@ class _EvolutionCellState extends State<_EvolutionCell>
       );
     }
 
+    if (widget.highlighted) {
+      cell = GoalGlow(key: widget.glowKey, child: cell);
+    }
     return cell;
   }
 }
@@ -1140,13 +1282,20 @@ class _WeaponCard extends StatefulWidget {
   final int currentStars;
   final VoidCallback onTap;
 
+  /// Brush mode: the closest next unlock.
+  final bool highlighted;
+  final Key? glowKey;
+
   const _WeaponCard({
+    super.key,
     required this.weapon,
     required this.isUnlocked,
     required this.isSelected,
     required this.canAfford,
     required this.currentStars,
     required this.onTap,
+    this.highlighted = false,
+    this.glowKey,
   });
 
   @override
@@ -1375,6 +1524,9 @@ class _WeaponCardState extends State<_WeaponCard>
       );
     }
 
+    if (widget.highlighted) {
+      card = GoalGlow(key: widget.glowKey, borderRadius: 20, child: card);
+    }
     return card;
   }
 }
