@@ -67,7 +67,7 @@ android/key.properties
 .superpowers/
 .antigravitycli/
 
-# Videos live on Google Drive (gdrive:Projects/backups/media/brush-quest/), not in git.
+# Videos live on Google Drive (gdrive:Projects/Brush-quest/), not in git.
 # Exception: docs/gameplay.mp4 is served by the brushquest.app landing page.
 *.mp4
 *.mov
