@@ -40,15 +40,12 @@ void main() {
     testWidgets('a tap presses it; without onPressed it does nothing', (
       tester,
     ) async {
-      // GoButton's outermost render object is its pulsing Transform, which
-      // never reports itself as hit, so the tester's "would not hit test"
-      // warning is a false alarm here; `presses` is the real check.
       var presses = 0;
       await tester.pumpWidget(_wrap(GoButton(onPressed: () => presses++)));
-      await tester.tap(find.byType(GoButton), warnIfMissed: false);
+      await tester.tap(find.byType(GoButton));
       expect(presses, 1);
       await tester.pumpWidget(_wrap(const GoButton(onPressed: null)));
-      await tester.tap(find.byType(GoButton), warnIfMissed: false);
+      await tester.tap(find.byType(GoButton));
       expect(presses, 1);
     });
 
@@ -225,6 +222,25 @@ void main() {
         tester.getRect(find.byKey(key)).bottom,
         lessThanOrEqualTo(view.bottom - kBrushGoClearance),
       );
+    });
+
+    testWidgets('scrolls a row above the screen back into view', (
+      tester,
+    ) async {
+      final key = GlobalKey();
+      final position = await pumpList(tester, key, 2);
+      position.jumpTo(800);
+      await tester.pump(); // row 2 (200..300) is now above the top edge
+      unawaited(revealIfHidden(key.currentContext!));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+      // First, so a missed reveal reads "800 is not less than 800" and not
+      // "the finder cannot find a row that is off screen".
+      expect(position.pixels, lessThan(800));
+      final row = tester.getRect(find.byKey(key));
+      final view = tester.getRect(find.byType(ListView));
+      expect(row.top, greaterThanOrEqualTo(view.top));
+      expect(row.bottom, lessThanOrEqualTo(view.bottom - kBrushGoClearance));
     });
 
     testWidgets('leaves a row that is fully visible alone', (tester) async {

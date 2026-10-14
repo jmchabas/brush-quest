@@ -57,12 +57,15 @@ class _GoButtonState extends State<GoButton>
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
-    return AnimatedBuilder(
-      animation: _pulse,
-      builder: (context, child) =>
-          Transform.scale(scale: 1.0 + _pulse.value * 0.04, child: child),
-      child: Semantics(
-        button: true,
+    // Semantics goes outside the pulsing Transform on purpose: a
+    // RenderTransform never joins the hit-test path, so with it outermost a
+    // tap on this widget reported "would not hit test" in widget tests.
+    return Semantics(
+      button: true,
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (context, child) =>
+            Transform.scale(scale: 1.0 + _pulse.value * 0.04, child: child),
         child: GestureDetector(
           onTap: widget.onPressed,
           child: AnimatedOpacity(
