@@ -3,11 +3,19 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/audio_service.dart';
+import '../services/goal_service.dart';
 import '../services/world_service.dart';
+import '../widgets/goal_glow.dart';
 import '../widgets/space_background.dart';
+import 'brush_mode.dart';
 
 class WorldMapScreen extends StatefulWidget {
-  const WorldMapScreen({super.key});
+  const WorldMapScreen({super.key, this.brushMode});
+
+  /// Set when the Map is the last step of the brush flow
+  /// (pre_brush_screen.dart); null when it is opened from Home, where it
+  /// works exactly as it always has.
+  final BrushMode? brushMode;
 
   @override
   State<WorldMapScreen> createState() => _WorldMapScreenState();
@@ -21,10 +29,41 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   final Map<String, int> _progress = {};
   final Map<String, bool> _unlocked = {};
 
+  /// Brush mode: the planet that glows (see BrushMode.highlightId).
+  String? _highlightId;
+
+  /// Wraps the glowing planet, so a reveal can find it.
+  final _glowKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
+    final brush = widget.brushMode;
+    if (brush != null) {
+      _highlightId = brush.highlightId.value;
+      brush.highlightId.addListener(_onHighlightChanged);
+      brush.reveal.addListener(_revealGlow);
+    }
     _loadData();
+  }
+
+  @override
+  void didUpdateWidget(covariant WorldMapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    assert(
+      identical(oldWidget.brushMode, widget.brushMode),
+      'A page keeps its brush mode for its whole life.',
+    );
+  }
+
+  void _onHighlightChanged() {
+    if (!mounted) return;
+    setState(() => _highlightId = widget.brushMode!.highlightId.value);
+  }
+
+  void _revealGlow() {
+    final glow = _glowKey.currentContext;
+    if (glow != null) unawaited(revealIfHidden(glow));
   }
 
   Future<void> _loadData() async {
@@ -43,6 +82,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         _progress.addAll(progress);
         _unlocked.addAll(unlocked);
       });
+      // In brush mode the steps speak and Home's music plays on (spec
+      // 2026-10-13 §4.3): no music change, no intro, no world line.
+      if (widget.brushMode != null) return;
       // Ambient music — low volume so voice lines stay clear.
       // Serialize playMusic + setMusicVolume (proven pattern from
       // home_screen.dart:232-241) so the volume isn't applied to the prior
@@ -79,7 +121,15 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
   @override
   void dispose() {
-    AudioService().stopVoice();
+    final brush = widget.brushMode;
+    if (brush == null) {
+      AudioService().stopVoice();
+    } else {
+      // The steps own the voice: brushing's countdown starts while the Map
+      // fades away.
+      brush.highlightId.removeListener(_onHighlightChanged);
+      brush.reveal.removeListener(_revealGlow);
+    }
     // Do NOT stopMusic here. All screens share battle_music_loop; this dispose
     // runs ~300ms after Home's didPopNext restarts music (route exit
     // animation), so stopping here killed the music Home just started (v25
@@ -89,6 +139,7 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brush = widget.brushMode;
     return Scaffold(
       body: SpaceBackground(
         child: SafeArea(
@@ -99,33 +150,36 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          AudioService().stopVoice();
-                          Navigator.of(context).pop();
-                        },
-                        borderRadius: BorderRadius.circular(18),
-                        child: Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              width: 1.5,
+                    if (brush != null)
+                      BrushCloseButton(onTap: brush.onClose)
+                    else
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            AudioService().stopVoice();
+                            Navigator.of(context).pop();
+                          },
+                          borderRadius: BorderRadius.circular(18),
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                width: 1.5,
+                              ),
                             ),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.white,
-                            size: 30,
+                            child: const Icon(
+                              Icons.arrow_back,
+                              color: Colors.white,
+                              size: 30,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                     const SizedBox(width: 16),
                     Text(
                       'WORLD MAP',
@@ -144,7 +198,11 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
               // World path — scrollable adventure trail
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 40, top: 8),
+                  // Brush mode: room under the last planet for GO.
+                  padding: EdgeInsets.only(
+                    bottom: 40.0 + (brush == null ? 0.0 : kBrushGoClearance),
+                    top: 8,
+                  ),
                   child: _buildAdventurePath(context),
                 ),
               ),
@@ -206,11 +264,14 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
         Padding(
           padding: horizontalPadding,
           child: _PlanetNode(
+            key: ValueKey('planet_${world.id}'),
             world: world,
             isUnlocked: isUnlocked,
             isCurrent: isCurrent,
             isCompleted: isCompleted,
             progress: progress,
+            highlighted: world.id == _highlightId,
+            glowKey: _glowKey,
             onTap: () {
               // Immediate tactile feedback — matches every other tap target
               // in the app (home nav, trophy tabs, shop cells). Without these
@@ -246,11 +307,9 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
   Future<void> _setCurrentWorld(WorldData world) async {
     await _worldService.setCurrentWorld(world.id);
     await _loadData();
-    if (mounted) {
-      // Visual confirmation: brief glow animation on the selected planet
-      // (the planet node already shows a check icon when selected)
-      // Voice already played by onTap handler — no duplicate here
-    }
+    // The planet node already shows the new current planet; the voice was
+    // played by onTap. Brush mode: the steps read the new world back.
+    widget.brushMode?.onChanged(const BrushChange.selected(GoalCategory.world));
   }
 }
 
@@ -340,13 +399,20 @@ class _PlanetNode extends StatefulWidget {
   final int progress;
   final VoidCallback onTap;
 
+  /// Brush mode: the planet that opens next.
+  final bool highlighted;
+  final Key? glowKey;
+
   const _PlanetNode({
+    super.key,
     required this.world,
     required this.isUnlocked,
     required this.isCurrent,
     required this.isCompleted,
     required this.progress,
     required this.onTap,
+    this.highlighted = false,
+    this.glowKey,
   });
 
   @override
@@ -390,6 +456,21 @@ class _PlanetNodeState extends State<_PlanetNode>
   Widget build(BuildContext context) {
     final planetSize = widget.isCurrent ? 120.0 : 100.0;
     final opacity = widget.isUnlocked ? 1.0 : 0.65;
+    final planet = SizedBox(
+      width: planetSize,
+      height: planetSize,
+      child: ColorFiltered(
+        colorFilter: widget.isUnlocked
+            ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+            : ColorFilter.mode(
+                Colors.black.withValues(alpha: 0.35),
+                BlendMode.srcATop,
+              ),
+        child: ClipOval(
+          child: Image.asset(widget.world.imagePath, fit: BoxFit.cover),
+        ),
+      ),
+    );
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -472,28 +553,12 @@ class _PlanetNodeState extends State<_PlanetNode>
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Planet image
-                  SizedBox(
-                    width: planetSize,
-                    height: planetSize,
-                    child: ColorFiltered(
-                      colorFilter: widget.isUnlocked
-                          ? const ColorFilter.mode(
-                              Colors.transparent,
-                              BlendMode.dst,
-                            )
-                          : ColorFilter.mode(
-                              Colors.black.withValues(alpha: 0.35),
-                              BlendMode.srcATop,
-                            ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          widget.world.imagePath,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Planet image (brush mode: the planet that opens next
+                  // glows)
+                  if (widget.highlighted)
+                    GoalGlow(key: widget.glowKey, circle: true, child: planet)
+                  else
+                    planet,
 
                   // Completed checkmark overlay
                   if (widget.isCompleted)
