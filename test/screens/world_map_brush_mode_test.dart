@@ -94,6 +94,12 @@ void main() {
   Rect scrollView(WidgetTester tester) =>
       tester.getRect(find.byType(SingleChildScrollView));
 
+  /// The locked look: a locked planet is dimmed to this opacity.
+  Finder lockedDim() => find.byWidgetPredicate(
+    (widget) => widget is Opacity && widget.opacity == 0.65,
+    description: 'Opacity 0.65',
+  );
+
   testWidgets('brush mode: no intro, world line or music when it opens', (
     tester,
   ) async {
@@ -147,6 +153,50 @@ void main() {
     );
     expect(find.byType(GoalGlow), findsOneWidget);
     expect(tester.widget<GoalGlow>(find.byType(GoalGlow)).circle, isTrue);
+  });
+
+  testWidgets('the glow on a locked planet is at full strength; the planet '
+      'keeps its locked look', (tester) async {
+    await pumpMap(tester, highlight: 'slime_swamp');
+    final glow = find.byType(GoalGlow);
+    // Nothing dims the glow: no Opacity above it is below 1.0.
+    final above = tester.widgetList<Opacity>(
+      find.ancestor(of: glow, matching: find.byType(Opacity)),
+    );
+    expect(above.where((opacity) => opacity.opacity < 1.0), isEmpty);
+    // The parts of the planet are dimmed one by one instead: its image
+    // (inside the glow), its name and its lock.
+    expect(find.descendant(of: glow, matching: lockedDim()), findsOneWidget);
+    expect(
+      find.ancestor(of: find.text('SLIME SWAMP'), matching: lockedDim()),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.descendant(
+          of: find.byKey(const ValueKey('planet_slime_swamp')),
+          matching: find.byIcon(Icons.lock),
+        ),
+        matching: lockedDim(),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a locked planet that is not glowing is dimmed as a whole, as '
+      'before', (tester) async {
+    await pumpMap(tester, highlight: 'slime_swamp');
+    final node = find.byKey(const ValueKey('planet_sugar_volcano'));
+    // One Opacity in the whole node: its own, around everything.
+    expect(
+      find.descendant(of: node, matching: find.byType(Opacity)),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: node, matching: lockedDim()), findsOneWidget);
+    expect(
+      find.ancestor(of: find.text('SUGAR VOLCANO'), matching: lockedDim()),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a reveal scrolls a far planet above GO', (tester) async {

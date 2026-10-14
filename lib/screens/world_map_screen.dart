@@ -456,6 +456,12 @@ class _PlanetNodeState extends State<_PlanetNode>
   Widget build(BuildContext context) {
     final planetSize = widget.isCurrent ? 120.0 : 100.0;
     final opacity = widget.isUnlocked ? 1.0 : 0.65;
+    // Brush mode: the glow stays at full strength, so a glowing planet is
+    // dimmed part by part (image, lock, name) and the parts keep the locked
+    // look. Every other planet is dimmed as a whole, exactly as before.
+    final glowing = widget.highlighted;
+    Widget dimmed(Widget child) =>
+        glowing ? Opacity(opacity: opacity, child: child) : child;
     final planet = SizedBox(
       width: planetSize,
       height: planetSize,
@@ -475,7 +481,7 @@ class _PlanetNodeState extends State<_PlanetNode>
     return GestureDetector(
       onTap: widget.onTap,
       child: Opacity(
-        opacity: opacity,
+        opacity: glowing ? 1.0 : opacity,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -555,8 +561,12 @@ class _PlanetNodeState extends State<_PlanetNode>
                 children: [
                   // Planet image (brush mode: the planet that opens next
                   // glows)
-                  if (widget.highlighted)
-                    GoalGlow(key: widget.glowKey, circle: true, child: planet)
+                  if (glowing)
+                    GoalGlow(
+                      key: widget.glowKey,
+                      circle: true,
+                      child: dimmed(planet),
+                    )
                   else
                     planet,
 
@@ -594,21 +604,23 @@ class _PlanetNodeState extends State<_PlanetNode>
                     Positioned(
                       right: 0,
                       bottom: 0,
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            width: 1.5,
+                      child: dimmed(
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        child: Icon(
-                          Icons.lock,
-                          color: Colors.white.withValues(alpha: 0.7),
-                          size: 14,
+                          child: Icon(
+                            Icons.lock,
+                            color: Colors.white.withValues(alpha: 0.7),
+                            size: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -619,17 +631,19 @@ class _PlanetNodeState extends State<_PlanetNode>
             const SizedBox(height: 6),
 
             // World name
-            Text(
-              widget.world.name.toUpperCase(),
-              style: TextStyle(
-                color: widget.isCurrent
-                    ? Colors.white
-                    : widget.isUnlocked
-                    ? Colors.white.withValues(alpha: 0.85)
-                    : Colors.white.withValues(alpha: 0.4),
-                fontWeight: FontWeight.bold,
-                fontSize: widget.isCurrent ? 15 : 13,
-                letterSpacing: 1.5,
+            dimmed(
+              Text(
+                widget.world.name.toUpperCase(),
+                style: TextStyle(
+                  color: widget.isCurrent
+                      ? Colors.white
+                      : widget.isUnlocked
+                      ? Colors.white.withValues(alpha: 0.85)
+                      : Colors.white.withValues(alpha: 0.4),
+                  fontWeight: FontWeight.bold,
+                  fontSize: widget.isCurrent ? 15 : 13,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
 
