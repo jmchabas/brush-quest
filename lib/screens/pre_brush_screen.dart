@@ -8,35 +8,59 @@ import '../services/analytics_service.dart';
 import '../services/audio_service.dart';
 import '../services/goal_service.dart';
 import '../services/hero_service.dart';
-import '../services/streak_service.dart';
 import '../services/weapon_service.dart';
 import '../services/world_service.dart';
-import '../widgets/goal_art.dart';
-import '../widgets/goal_meter.dart';
-import '../widgets/item_silhouette.dart';
-import '../widgets/loadout_carousel.dart';
+import '../widgets/go_button.dart';
 import '../widgets/space_background.dart';
+import 'brush_mode.dart';
 import 'brushing_screen.dart';
+import 'hero_shop_screen.dart';
+import 'world_map_screen.dart';
 
 enum PreBrushStep { hero, weapon, world }
 
-/// Hero → Weapon → World before each brush (spec
-/// docs/superpowers/specs/2026-10-05-brush-flow-and-hooks-design.md §4).
-/// Each step shows the child's choice in a carousel of everything he owns,
-/// and the closest next unlock as a silhouette with a meter. Steps advance
-/// by themselves once their line has played; a touch holds the step until
-/// he has stopped touching for [idleAfterTouch].
+/// What the steps speak and glow about: the child's choices and goals.
+typedef _Loadout = ({
+  String heroId,
+  int heroStage,
+  String weaponId,
+  String worldId,
+  Goal? heroGoal,
+  Goal? weaponGoal,
+  Goal? worldGoal,
+});
+
+/// Until the first read: what a new game starts with.
+const _Loadout _starterLoadout = (
+  heroId: 'blaze',
+  heroStage: 1,
+  weaponId: 'star_blaster',
+  worldId: 'candy_crater',
+  heroGoal: null,
+  weaponGoal: null,
+  worldGoal: null,
+);
+
+/// Hero → Weapon → World before each brush, on the real pages (spec
+/// docs/superpowers/specs/2026-10-13-brush-steps-on-real-pages-design.md):
+/// the Heroes & Weapons page on its HEROES tab, the same page on its
+/// WEAPONS tab, then the Map, each in brush mode under a big GO. A step
+/// also moves on by itself after [idleAdvance] with no touch, scroll or
+/// dialog once the voice is quiet. After the Map: "Let's fight!", then
+/// brushing.
 class PreBrushScreen extends StatefulWidget {
   const PreBrushScreen({super.key});
 
+  /// How long a quiet step waits before it moves on by itself.
   @visibleForTesting
-  static Duration minStep = const Duration(seconds: 3);
+  static Duration idleAdvance = const Duration(seconds: 8);
+
+  /// A voice that never ends cannot hold a step: past this the idle count
+  /// runs anyway. Longer than the longest real wait: a world line and its
+  /// progress line (7.8 s), an unlock's intro line (8.8 s).
   @visibleForTesting
-  static Duration maxStep = const Duration(seconds: 5);
-  @visibleForTesting
-  static Duration maxBriefingStep = const Duration(seconds: 8);
-  @visibleForTesting
-  static Duration idleAfterTouch = const Duration(seconds: 4);
+  static Duration maxVoiceWait = const Duration(seconds: 12);
+
   @visibleForTesting
   static Duration launchDelay = const Duration(milliseconds: 400);
 
@@ -44,8 +68,14 @@ class PreBrushScreen extends StatefulWidget {
   /// (2.7 s) to finish. Brushing's countdown takes the voice channel.
   @visibleForTesting
   static Duration maxLaunchWait = const Duration(seconds: 3);
+
   @visibleForTesting
   static Widget Function({required bool showWorldIntro})? debugBrushingBuilder;
+
+  /// Where the step events go. The singleton does nothing on a test host (it
+  /// only reaches Firebase on Android), so tests swap in a recording one.
+  @visibleForTesting
+  static AnalyticsService? debugAnalytics;
 
   @override
   State<PreBrushScreen> createState() => _PreBrushScreenState();
@@ -56,66 +86,73 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   final _heroes = HeroService();
   final _weapons = WeaponService();
   final _worlds = WorldService();
-  final _streak = StreakService();
   final _goals = GoalService();
   AudioService get _audio => AudioService();
+  AnalyticsService get _analytics =>
+      PreBrushScreen.debugAnalytics ?? AnalyticsService();
 
-  /// Loading never holds up brushing (spec §8.5): past this, skip the steps.
+  /// Loading never holds up brushing: past this, skip the steps.
   static const _loadTimeout = Duration(seconds: 3);
 
-  /// Brushing reads the saved choices; it starts anyway after this.
-  static const _saveTimeout = Duration(seconds: 2);
+  /// "Let's fight!" waits at most this long for a change to be read back.
+  static const _refreshTimeout = Duration(seconds: 2);
+
+  /// A scroll that sends no end (its page went away mid-fling) stops
+  /// holding the count after this long without a scroll notification.
+  static const _scrollQuiet = Duration(milliseconds: 400);
+
+  static const _shopKey = ValueKey('prebrush_shop');
+  static const _mapKey = ValueKey('prebrush_map');
 
   PreBrushStep _step = PreBrushStep.hero;
+  _Loadout _now = _starterLoadout;
+
   bool _loaded = false;
-  bool _minElapsed = false;
 
-  /// The child touched during this step: ✓ shows.
-  bool _touched = false;
+  /// The first step has started.
+  bool _entered = false;
 
-  /// Auto-advance waits from a touch until [PreBrushScreen.idleAfterTouch]
-  /// has passed with no touch and the carousel at rest.
-  bool _holdForTouch = false;
-  bool _carouselMoving = false;
-
-  /// In the background: nothing advances, speaks or launches.
+  /// In the background: nothing counts, speaks or launches.
   bool _paused = false;
 
-  /// The steps are over, finishing (→ brushing) or closed (→ Home): nothing
-  /// advances, speaks or saves from here on.
+  /// After "Let's fight!" (→ brushing) or X (→ Home): nothing counts,
+  /// speaks or changes any more.
   bool _leaving = false;
   bool _closed = false;
   bool _waitingToLaunch = false;
   bool _launched = false;
 
-  String _heroId = 'blaze';
-  int _heroStage = 1;
-  String _weaponId = 'star_blaster';
-  String _worldId = 'candy_crater';
-  String? _lastBrushedWorldId;
+  // What the pages follow.
+  final _tab = ValueNotifier<int>(0);
+  final _highlight = ValueNotifier<String?>(null);
+  final _reveal = BrushPing();
+  late final BrushMode _brushMode = BrushMode(
+    onClose: _onClose,
+    tab: _tab,
+    onTabChanged: _onTabChanged,
+    highlightId: _highlight,
+    reveal: _reveal,
+    onChanged: _onPageChanged,
+  );
 
-  List<String> _heroItems = const [];
-  List<String> _weaponItems = const [];
-  List<String> _worldItems = const [];
+  // What holds the idle count (spec §4.2).
+  final Set<int> _pointers = {};
+  bool _scrolling = false;
+  bool _routeCurrent = true;
+  bool _voiceCapReached = false;
 
-  Goal? _heroGoal;
-  Goal? _weaponGoal;
-  Goal? _worldGoal;
+  /// Scroll the glow into view once this step's lines are over, unless he
+  /// touches first.
+  bool _revealPending = false;
 
-  Timer? _minTimer;
-  Timer? _capTimer;
   Timer? _idleTimer;
+  Timer? _voiceCapTimer;
+  Timer? _scrollQuietTimer;
   Timer? _launchTimer;
   Timer? _launchCapTimer;
 
-  /// The carousel reports a new item when a page crosses its midpoint, so a
-  /// quick swipe passes through items it never stops on. The choice is only
-  /// saved (and its picker line spoken) once the carousel has been at rest
-  /// for [_choiceSettle]; advancing saves a pending choice at once, silently.
-  static const _choiceSettle = Duration(milliseconds: 300);
-  Timer? _choiceTimer;
-  String? _pendingChoice;
-  final List<Future<void>> _saves = [];
+  /// Page changes are read back one at a time, in order.
+  Future<void> _refreshing = Future<void>.value();
 
   @override
   void initState() {
@@ -126,12 +163,26 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // A dialog on top (purchase, unlock celebration) holds the count; it
+    // starts again from zero once the dialog closes.
+    final current = ModalRoute.isCurrentOf(context) ?? true;
+    if (current == _routeCurrent) return;
+    _routeCurrent = current;
+    _reconsider();
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _audio.voicePipelineActiveNotifier.removeListener(_onVoiceChanged);
-    _cancelStepTimers();
-    _choiceTimer?.cancel();
+    _stopCounting();
     _cancelLaunch();
+    // The pages (children) have already removed their listeners.
+    _tab.dispose();
+    _highlight.dispose();
+    _reveal.dispose();
     super.dispose();
   }
 
@@ -140,37 +191,43 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     if (_closed || _launched) return;
     if (state == AppLifecycleState.paused && !_paused) {
       _paused = true;
+      _stopCounting();
+      _scrolling = false;
+      _pointers.clear();
       if (!_loaded) return; // _load waits for the resume
-      _cancelStepTimers();
-      _commitChoice(speak: false);
       _cancelLaunch();
       unawaited(_audio.stopVoice());
     } else if (state == AppLifecycleState.resumed && _paused) {
       _paused = false;
-      if (!_loaded) return; // _load enters the first step itself
+      if (!_loaded) return; // _load starts the first step itself
       if (_leaving) {
         // The pause cut "Let's fight!": go straight to brushing.
         _launchBrushing(showWorldIntro: false);
+      } else if (!_entered) {
+        _enterStep(PreBrushStep.hero);
       } else {
-        _enterStep(_step);
+        _armVoiceCap();
+        _reconsider(); // the count starts again from zero
       }
     }
   }
 
+  // ── Loading ─────────────────────────────────────────────────
+
   Future<void> _load() async {
     try {
-      await _loadChoices().timeout(_loadTimeout);
+      _now = await _readLoadout().timeout(_loadTimeout);
     } on Object catch (e) {
       // Any failure (a TypeError from a malformed record too) skips the
       // steps rather than leave the child on a blank screen.
       debugPrint('PreBrush load failed: $e');
       if (!mounted || _closed) return;
-      unawaited(AnalyticsService().logPreBrushSkipped(reason: 'error'));
+      unawaited(_analytics.logPreBrushSkipped(reason: 'error'));
       unawaited(
-        AnalyticsService().logBrushSessionStart(
-          heroId: _heroId,
-          weaponId: _weaponId,
-          worldId: _worldId,
+        _analytics.logBrushSessionStart(
+          heroId: _now.heroId,
+          weaponId: _now.weaponId,
+          worldId: _now.worldId,
         ),
       );
       _launchBrushing(showWorldIntro: true);
@@ -178,134 +235,98 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     }
     if (!mounted || _closed) return;
     setState(() => _loaded = true);
-    // Paused while loading: the first step starts on resume.
-    if (_paused) return;
+    if (_paused) return; // the first step starts on resume
     _enterStep(PreBrushStep.hero);
   }
 
-  Future<void> _loadChoices() async {
-    final unlockedHeroes = await _heroes.getUnlockedHeroIds();
-    final unlockedEvos = await _heroes.getUnlockedEvolutionIds();
-    _heroId = await _heroes.getSelectedHeroId();
-    _heroStage = await _heroes.getEvolutionStage(_heroId);
-    final unlockedWeapons = await _weapons.getUnlockedWeaponIds();
-    _weaponId = await _weapons.getSelectedWeaponId();
-    _worldId = await _worlds.getCurrentWorldId();
-    final history = await _streak.getHistory();
-    // getHistory() is most recent first.
-    _lastBrushedWorldId = history.isEmpty ? null : history.first.worldId;
-
-    _heroItems = [
-      for (final hero in HeroService.allHeroes)
-        if (unlockedHeroes.contains(hero.id)) ...[
-          '${hero.id}_stage1',
-          for (final evo in HeroService.evolutionsForHero(hero.id))
-            if (evo.stage > 1 && unlockedEvos.contains(evo.id)) evo.id,
-        ],
-    ];
-    _weaponItems = [
-      for (final w in WeaponService.allWeapons)
-        if (unlockedWeapons.contains(w.id)) w.id,
-    ];
-    final worlds = <String>[];
-    for (final w in WorldService.allWorlds) {
-      if (await _worlds.isWorldUnlocked(w.id)) worlds.add(w.id);
-    }
-    _worldItems = worlds;
-
-    _heroGoal = await _goals.heroGoal();
-    _weaponGoal = await _goals.weaponGoal();
-    _worldGoal = await _goals.worldGoal();
+  Future<_Loadout> _readLoadout() async {
+    final heroId = await _heroes.getSelectedHeroId();
+    return (
+      heroId: heroId,
+      heroStage: await _heroes.getEvolutionStage(heroId),
+      weaponId: await _weapons.getSelectedWeaponId(),
+      worldId: await _worlds.getCurrentWorldId(),
+      heroGoal: await _goals.heroGoal(),
+      weaponGoal: await _goals.weaponGoal(),
+      worldGoal: await _goals.worldGoal(),
+    );
   }
 
-  // ── Step machine ────────────────────────────────────────────
+  // ── Steps ───────────────────────────────────────────────────
 
-  bool get _isBriefing =>
-      _step == PreBrushStep.world && _worldId != _lastBrushedWorldId;
-
-  Goal? get _goal => switch (_step) {
-    PreBrushStep.hero => _heroGoal,
-    PreBrushStep.weapon => _weaponGoal,
-    PreBrushStep.world => _worldGoal,
+  Goal? _goalFor(PreBrushStep step) => switch (step) {
+    PreBrushStep.hero => _now.heroGoal,
+    PreBrushStep.weapon => _now.weaponGoal,
+    PreBrushStep.world => _now.worldGoal,
   };
 
-  void _cancelStepTimers() {
-    _minTimer?.cancel();
-    _capTimer?.cancel();
-    _idleTimer?.cancel();
+  /// What the page glows: a new hero on its first cell, anything else on
+  /// its own id.
+  String? _highlightFor(PreBrushStep step) {
+    final goal = _goalFor(step);
+    if (goal == null) return null;
+    if (goal.category == GoalCategory.hero && !goal.isEvolution) {
+      return '${goal.itemId}_stage1';
+    }
+    return goal.itemId;
+  }
+
+  /// The step's description line, then how far its goal is (spec §4.3).
+  List<String> _entryLines(PreBrushStep step) => [
+    switch (step) {
+      PreBrushStep.hero => _audio.evolutionPickerVoiceFor(
+        _now.heroId,
+        _now.heroStage,
+      ),
+      PreBrushStep.weapon => _audio.weaponPickerVoiceFor(_now.weaponId),
+      PreBrushStep.world => 'voice_world_${_now.worldId}.mp3',
+    },
+    _progressLine(_goalFor(step)),
+  ];
+
+  String _progressLine(Goal? goal) {
+    if (goal == null) return 'voice_have_them_all.mp3';
+    if (goal.category == GoalCategory.world) {
+      return _audio.brushesLeftVoiceFor(goal.left);
+    }
+    // He can buy it right here, so not "Brush to unlock it!".
+    if (goal.affordable) return 'voice_tap_to_unlock.mp3';
+    return _audio.starsLeftVoiceFor(goal.left);
   }
 
   void _enterStep(PreBrushStep step) {
-    _cancelStepTimers();
-    setState(() {
-      _step = step;
-      _touched = false;
-      _holdForTouch = false;
-      _carouselMoving = false; // the new step builds a new carousel
-      _minElapsed = false;
-    });
-    final lines = _entryVoices();
+    _entered = true;
+    _cancelIdle();
+    ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
+    setState(() => _step = step);
+    // A scroll on the page left behind may never send its end. Reset before
+    // the tab moves: the tab's own slide starts right after.
+    _scrolling = false;
+    _scrollQuietTimer?.cancel();
+    if (step != PreBrushStep.world) {
+      _tab.value = step == PreBrushStep.hero ? 0 : 1;
+    }
+    _highlight.value = _highlightFor(step);
+    _revealPending = true;
+    final lines = _entryLines(step);
     for (var i = 0; i < lines.length; i++) {
       unawaited(
         _audio.playVoice(lines[i], clearQueue: i == 0, interrupt: i == 0),
       );
     }
-    _minTimer = Timer(PreBrushScreen.minStep, () {
-      _minElapsed = true;
-      _maybeAdvance();
-    });
-    _capTimer = Timer(
-      _isBriefing ? PreBrushScreen.maxBriefingStep : PreBrushScreen.maxStep,
-      _advance,
-    );
+    _armVoiceCap();
+    _reconsider();
   }
 
-  List<String> _entryVoices() {
-    switch (_step) {
-      case PreBrushStep.hero:
-        return [_progressVoice(_heroGoal)];
-      case PreBrushStep.weapon:
-        return [_progressVoice(_weaponGoal)];
-      case PreBrushStep.world:
-        return [
-          if (_isBriefing) 'voice_world_$_worldId.mp3',
-          _progressVoice(_worldGoal),
-        ];
-    }
-  }
-
-  String _progressVoice(Goal? goal) {
-    if (goal == null) return 'voice_have_them_all.mp3';
-    if (goal.category == GoalCategory.world) {
-      return _audio.brushesLeftVoiceFor(goal.left);
-    }
-    if (goal.affordable) return 'voice_ready_to_unlock.mp3';
-    return _audio.starsLeftVoiceFor(goal.left);
-  }
-
-  void _onVoiceChanged() {
-    if (_waitingToLaunch) {
-      _launchWhenQuiet();
-    } else {
-      _maybeAdvance();
-    }
-  }
-
-  /// Advances once the step's line has played (voice-end gate). The caps in
-  /// [_enterStep] and [_endTouchHold] advance anyway, so a voice that never
-  /// ends can't hold the child here.
-  void _maybeAdvance() {
-    if (!mounted || _leaving || _paused || _holdForTouch || !_minElapsed) {
-      return;
-    }
-    if (_audio.voicePipelineActiveNotifier.value) return;
+  void _onGo() {
+    if (!_entered || _leaving) return;
+    unawaited(HapticFeedback.mediumImpact());
+    unawaited(_audio.playSfx('whoosh.mp3'));
     _advance();
   }
 
   void _advance() {
-    if (!mounted || _leaving || _paused) return;
-    _cancelStepTimers();
-    _commitChoice(speak: false);
+    if (!mounted || _leaving) return;
     switch (_step) {
       case PreBrushStep.hero:
         _enterStep(PreBrushStep.weapon);
@@ -316,57 +337,173 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     }
   }
 
-  // ── Touch ───────────────────────────────────────────────────
-
-  void _onInteraction() {
-    if (!_loaded || _leaving) return;
-    _cancelStepTimers();
-    _holdForTouch = true;
-    if (!_touched) setState(() => _touched = true);
-    _armIdle();
+  /// A tab tap or a swipe on the Heroes & Weapons page.
+  void _onTabChanged(int index) {
+    if (!_entered || _leaving || _step == PreBrushStep.world) return;
+    final step = index == 1 ? PreBrushStep.weapon : PreBrushStep.hero;
+    if (step != _step) _enterStep(step);
   }
 
-  void _armIdle() {
+  // ── The idle count ──────────────────────────────────────────
+
+  bool get _countHeld =>
+      !_entered ||
+      _leaving ||
+      _paused ||
+      !_routeCurrent ||
+      _pointers.isNotEmpty ||
+      _scrolling ||
+      (_audio.voicePipelineActiveNotifier.value && !_voiceCapReached);
+
+  /// Runs the idle count when nothing holds it and stops it when something
+  /// does: each start counts from zero.
+  void _reconsider() {
+    if (!mounted || _countHeld) {
+      _cancelIdle();
+      return;
+    }
+    if (_revealPending) {
+      _revealPending = false;
+      _revealWhenStill();
+    }
+    _idleTimer ??= Timer(PreBrushScreen.idleAdvance, _onIdle);
+  }
+
+  /// The step's lines are over: once its layout is done and nothing moves,
+  /// the page shows its glow if it is off screen. Never under his finger.
+  void _revealWhenStill() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _leaving || _pointers.isNotEmpty) return;
+      if (_scrolling) {
+        _revealPending = true; // after the tab slide
+        return;
+      }
+      _reveal.ping();
+    });
+  }
+
+  void _onIdle() {
+    _idleTimer = null;
+    if (!mounted || _countHeld) return;
+    _advance();
+  }
+
+  void _cancelIdle() {
     _idleTimer?.cancel();
-    _idleTimer = Timer(PreBrushScreen.idleAfterTouch, _endTouchHold);
+    _idleTimer = null;
   }
 
-  /// The child stopped touching. A picker line starts when the swipe
-  /// settles, so it is usually still playing: hand over to the voice-end
-  /// gate, capped like a step, rather than cut it.
-  void _endTouchHold() {
-    if (_carouselMoving) return; // its scroll end re-arms the idle wait
-    _holdForTouch = false;
-    _minElapsed = true;
-    _capTimer?.cancel();
-    _capTimer = Timer(PreBrushScreen.maxStep, _advance);
-    _maybeAdvance();
+  /// Stops the idle count and what feeds it.
+  void _stopCounting() {
+    _cancelIdle();
+    _voiceCapTimer?.cancel();
+    _scrollQuietTimer?.cancel();
   }
 
-  /// Drags, flings and arrow animations hold the step and the choice; both
-  /// count from when the carousel comes to rest. A finger resting on a
-  /// carousel that can scroll counts too: the PageView takes the drag on
-  /// touch-down, so the step waits until it lifts ("until he stops
-  /// touching", spec §4.2). With a single item there is no drag, and the idle
-  /// wait runs from the touch.
-  bool _onCarouselScroll(ScrollNotification notification) {
-    if (_leaving) return false;
-    if (notification is ScrollStartNotification) {
-      _carouselMoving = true;
-    } else if (notification is ScrollEndNotification) {
-      _carouselMoving = false;
-      if (_holdForTouch) _armIdle();
-      if (_pendingChoice != null) _armChoiceSettle();
+  void _onVoiceChanged() {
+    if (_waitingToLaunch) {
+      _launchWhenQuiet();
+      return;
+    }
+    if (_leaving || _closed) return;
+    if (_audio.voicePipelineActiveNotifier.value) {
+      _armVoiceCap(); // a new line: the cap counts from here
+    } else {
+      _voiceCapTimer?.cancel();
+      _voiceCapReached = false;
+    }
+    _reconsider();
+  }
+
+  void _armVoiceCap() {
+    _voiceCapTimer?.cancel();
+    _voiceCapReached = false;
+    _voiceCapTimer = Timer(PreBrushScreen.maxVoiceWait, () {
+      _voiceCapReached = true;
+      _reconsider();
+    });
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    _pointers.add(event.pointer);
+    // He is exploring: never move the page under his finger.
+    _revealPending = false;
+    _reconsider();
+  }
+
+  void _onPointerEnd(PointerEvent event) {
+    _pointers.remove(event.pointer);
+    _reconsider();
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    if (notification is ScrollEndNotification) {
+      _scrollQuietTimer?.cancel();
+      _scrolling = false;
+      _reconsider();
+    } else if (notification is ScrollStartNotification ||
+        notification is ScrollUpdateNotification) {
+      _scrollQuietTimer?.cancel();
+      _scrollQuietTimer = Timer(_scrollQuiet, () {
+        _scrolling = false;
+        _reconsider();
+      });
+      if (!_scrolling) {
+        _scrolling = true;
+        _reconsider();
+      }
     }
     return false;
   }
 
-  // ── Finish ──────────────────────────────────────────────────
+  // ── What the pages report ───────────────────────────────────
+
+  void _onPageChanged(BrushChange change) {
+    if (!mounted || _closed) return;
+    final unlocked = change.unlockedId;
+    if (unlocked != null) {
+      unawaited(
+        _analytics.logGoalUnlocked(
+          category: change.category.name,
+          item: unlocked,
+          source: 'pre_brush',
+        ),
+      );
+    }
+    _refreshing = _refreshing.then((_) => _refresh());
+  }
+
+  /// Reads the choices and goals back after the page changed something:
+  /// logs what changed and moves the glow to the next closest unlock.
+  Future<void> _refresh() async {
+    final _Loadout next;
+    try {
+      next = await _readLoadout();
+    } on Object catch (e) {
+      debugPrint('PreBrush refresh failed: $e');
+      return;
+    }
+    if (!mounted || _closed) return;
+    final before = _now;
+    _now = next;
+    if (next.heroId != before.heroId || next.heroStage != before.heroStage) {
+      unawaited(_analytics.logPreBrushChange(category: 'hero'));
+    }
+    if (next.weaponId != before.weaponId) {
+      unawaited(_analytics.logPreBrushChange(category: 'weapon'));
+    }
+    if (next.worldId != before.worldId) {
+      unawaited(_analytics.logPreBrushChange(category: 'world'));
+    }
+    if (!_leaving) _highlight.value = _highlightFor(_step);
+  }
+
+  // ── Leaving ─────────────────────────────────────────────────
 
   Future<void> _finish() async {
     if (_leaving) return;
     setState(() => _leaving = true);
-    _choiceTimer?.cancel();
+    _stopCounting();
     unawaited(HapticFeedback.heavyImpact());
     unawaited(
       _audio.playVoice(
@@ -375,21 +512,22 @@ class _PreBrushScreenState extends State<PreBrushScreen>
         interrupt: true,
       ),
     );
+    // The last change is read back, so the session starts with it.
+    try {
+      await _refreshing.timeout(_refreshTimeout);
+    } on Object catch (e) {
+      debugPrint('PreBrush refresh not finished: $e');
+    }
+    if (!mounted || _closed) return;
     unawaited(
-      AnalyticsService().logBrushSessionStart(
-        heroId: _heroId,
-        weaponId: _weaponId,
-        worldId: _worldId,
+      _analytics.logBrushSessionStart(
+        heroId: _now.heroId,
+        weaponId: _now.weaponId,
+        worldId: _now.worldId,
       ),
     );
-    // The brushing screen reads the saved hero, weapon and world.
-    try {
-      await Future.wait(_saves).timeout(_saveTimeout);
-    } on Object catch (e) {
-      debugPrint('PreBrush saves not finished: $e');
-    }
-    // A pause meanwhile launches on resume; X meanwhile stays closed.
-    if (!mounted || _closed || _paused || _launched) return;
+    // A pause meanwhile launches on resume.
+    if (_paused || _launched) return;
     _launchTimer = Timer(PreBrushScreen.launchDelay, () {
       _waitingToLaunch = true;
       _launchCapTimer = Timer(PreBrushScreen.maxLaunchWait, _launchNow);
@@ -434,313 +572,85 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     );
   }
 
+  void _onClose() => unawaited(Navigator.of(context).maybePop());
+
   void _onPop(bool didPop, Object? result) {
     if (!didPop) return;
-    // Keep what is centred, then go quiet: the screen stays mounted (and its
-    // voice listener live) during the exit animation.
-    _commitChoice(speak: false);
+    // Go quiet: the screen stays mounted (and its voice listener live)
+    // during the exit animation.
     _closed = true;
     _leaving = true;
-    _cancelStepTimers();
+    _stopCounting();
     _cancelLaunch();
     unawaited(_audio.stopVoice());
   }
 
-  // ── Choices ─────────────────────────────────────────────────
-
-  void _onCarouselChanged(String id) {
-    if (_leaving) return;
-    _pendingChoice = id;
-    _armChoiceSettle();
-  }
-
-  void _armChoiceSettle() {
-    _choiceTimer?.cancel();
-    _choiceTimer = Timer(_choiceSettle, () {
-      if (_carouselMoving) return; // its scroll end re-arms this
-      _commitChoice(speak: true);
-    });
-  }
-
-  String get _currentChoiceId => switch (_step) {
-    PreBrushStep.hero => '${_heroId}_stage$_heroStage',
-    PreBrushStep.weapon => _weaponId,
-    PreBrushStep.world => _worldId,
-  };
-
-  /// Saves the settled carousel choice. Settling back on the current item
-  /// saves and says nothing.
-  void _commitChoice({required bool speak}) {
-    _choiceTimer?.cancel();
-    final id = _pendingChoice;
-    _pendingChoice = null;
-    if (id == null || id == _currentChoiceId) return;
-    _saves.add(
-      _guarded(switch (_step) {
-        PreBrushStep.hero => () => _saveHero(id, speak: speak),
-        PreBrushStep.weapon => () => _saveWeapon(id, speak: speak),
-        PreBrushStep.world => () => _saveWorld(id, speak: speak),
-      }),
-    );
-  }
-
-  /// Runs [save] now (its first part updates the screen synchronously) and
-  /// never fails: a failed write keeps the child's visible choice and is
-  /// logged, and [_finish] can always await it.
-  Future<void> _guarded(Future<void> Function() save) async {
-    try {
-      await save();
-    } on Object catch (e) {
-      debugPrint('PreBrush save failed: $e');
-    }
-  }
-
-  Future<void> _saveHero(String itemId, {required bool speak}) async {
-    final parts = itemId.split('_stage');
-    final heroId = parts.first;
-    final stage = int.parse(parts.last);
-    setState(() {
-      _heroId = heroId;
-      _heroStage = stage;
-    });
-    if (speak) {
-      unawaited(
-        _audio.playVoice(
-          stage == 1
-              ? _audio.heroPickerVoiceFor(heroId)
-              : _audio.evolutionPickerVoiceFor(heroId, stage),
-          clearQueue: true,
-          interrupt: true,
-        ),
-      );
-    }
-    unawaited(AnalyticsService().logPreBrushChange(category: 'hero'));
-    await _heroes.selectHero(heroId);
-    await _heroes.setEvolutionStage(heroId, stage);
-    final goal = await _goals.heroGoal();
-    if (mounted) setState(() => _heroGoal = goal);
-  }
-
-  Future<void> _saveWeapon(String weaponId, {required bool speak}) async {
-    setState(() => _weaponId = weaponId);
-    if (speak) {
-      unawaited(
-        _audio.playVoice(
-          _audio.weaponPickerVoiceFor(weaponId),
-          clearQueue: true,
-          interrupt: true,
-        ),
-      );
-    }
-    unawaited(AnalyticsService().logPreBrushChange(category: 'weapon'));
-    await _weapons.selectWeapon(weaponId);
-  }
-
-  Future<void> _saveWorld(String worldId, {required bool speak}) async {
-    setState(() => _worldId = worldId);
-    if (speak) {
-      unawaited(
-        _audio.playVoice(
-          'voice_world_$worldId.mp3',
-          clearQueue: true,
-          interrupt: true,
-        ),
-      );
-    }
-    unawaited(AnalyticsService().logPreBrushChange(category: 'world'));
-    await _worlds.setCurrentWorld(worldId);
-  }
-
-  void _onGoalTap() {
-    // A press that began before the steps ended lands here on release.
-    if (_leaving) return;
-    _onInteraction();
-    final String line;
-    if (_step == PreBrushStep.world) {
-      line = 'voice_need_more_brushes.mp3';
-    } else if (_goal?.affordable ?? false) {
-      // The full meter: "Brush to unlock it!"
-      line = 'voice_ready_to_unlock.mp3';
-    } else {
-      line = 'voice_need_stars.mp3';
-    }
-    unawaited(_audio.playVoice(line, clearQueue: true, interrupt: true));
-  }
-
   // ── Build ───────────────────────────────────────────────────
-
-  Widget _heroImage(String heroId, int stage, double size) =>
-      HeroService.buildHeroImage(
-        heroId,
-        stage: stage,
-        weaponId: _weaponId,
-        size: size,
-      );
-
-  ({List<LoadoutItem> items, String selected, ValueChanged<String> onChosen})
-  _carousel() {
-    switch (_step) {
-      case PreBrushStep.hero:
-        return (
-          items: [
-            for (final id in _heroItems)
-              LoadoutItem(
-                id: id,
-                image: _heroImage(
-                  id.split('_stage').first,
-                  int.parse(id.split('_stage').last),
-                  220,
-                ),
-              ),
-          ],
-          selected: '${_heroId}_stage$_heroStage',
-          onChosen: _onCarouselChanged,
-        );
-      case PreBrushStep.weapon:
-        return (
-          items: [
-            for (final id in _weaponItems)
-              LoadoutItem(
-                id: id,
-                image: WeaponArt(weaponId: id),
-              ),
-          ],
-          selected: _weaponId,
-          onChosen: _onCarouselChanged,
-        );
-      case PreBrushStep.world:
-        return (
-          items: [
-            for (final id in _worldItems)
-              LoadoutItem(
-                id: id,
-                image: PlanetArt(worldId: id),
-              ),
-          ],
-          selected: _worldId,
-          onChosen: _onCarouselChanged,
-        );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
       onPopInvokedWithResult: _onPop,
       child: Scaffold(
-        body: SpaceBackground(
-          child: _loaded ? _buildSteps() : const SizedBox.expand(),
+        backgroundColor: const Color(0xFF0D0B2E),
+        // As the Scaffold's floating button, GO has the page's floating
+        // snack bars ("2 more stars") shown above it. It is there from the
+        // first frame (disabled until the first step): a floating button
+        // that appears later scales in from nothing, and a tap then misses.
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        floatingActionButton: GoButton(
+          key: const ValueKey('prebrush_go'),
+          rocket: _step == PreBrushStep.world,
+          onPressed: _entered && !_leaving ? _onGo : null,
         ),
+        body: _loaded
+            ? _buildSteps()
+            : const SpaceBackground(child: SizedBox.expand()),
       ),
     );
   }
 
   Widget _buildSteps() {
-    final c = _carousel();
-    final goal = _goal;
-    return SafeArea(
-      child: Column(
-        key: ValueKey('prebrush_step_${_step.name}'),
-        children: [
-          Row(
-            children: [
-              IconButton(
-                key: const ValueKey('prebrush_back'),
-                iconSize: 36,
-                color: Colors.white70,
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).maybePop(),
-              ),
-              const Spacer(),
-              for (final s in PreBrushStep.values)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Icon(
-                    switch (s) {
-                      PreBrushStep.hero => Icons.person,
-                      PreBrushStep.weapon => Icons.bolt,
-                      PreBrushStep.world => Icons.public,
-                    },
-                    size: s == _step ? 30 : 22,
-                    color: s == _step ? Colors.cyanAccent : Colors.white38,
-                  ),
-                ),
-              const SizedBox(width: 12),
-            ],
-          ),
-          // Once finishing, the choices are fixed: no swipes or taps that
-          // could change the world brushing has already been told about.
-          Expanded(
+    final pageKey = _step == PreBrushStep.world ? _mapKey : _shopKey;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Listener(
+          onPointerDown: _onPointerDown,
+          onPointerUp: _onPointerEnd,
+          onPointerCancel: _onPointerEnd,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            // After "Let's fight!" the choices are fixed.
             child: IgnorePointer(
               ignoring: _leaving,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: _onCarouselScroll,
-                      child: LoadoutCarousel(
-                        key: ValueKey('carousel_${_step.name}'),
-                        items: c.items,
-                        selectedId: c.selected,
-                        onSelected: c.onChosen,
-                        onInteraction: _onInteraction,
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    key: const ValueKey('prebrush_goal'),
-                    onTap: goal == null ? null : _onGoalTap,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (goal != null)
-                            ItemSilhouette(
-                              // Only hero art has a transparent background.
-                              opaqueArt: goal.category != GoalCategory.hero,
-                              child: GoalArt(
-                                goal: goal,
-                                heroWeaponId: _weaponId,
-                                size: 90,
-                              ),
-                            ),
-                          const SizedBox(height: 8),
-                          goal == null
-                              ? const GoalMeter(
-                                  have: 0,
-                                  cost: 0,
-                                  complete: true,
-                                )
-                              : GoalMeter(
-                                  have: goal.have,
-                                  cost: goal.cost,
-                                  style: goal.category == GoalCategory.world
-                                      ? GoalMeterStyle.rockets
-                                      : GoalMeterStyle.stars,
-                                ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: 88,
-                    child: _touched
-                        ? IconButton(
-                            key: const ValueKey('prebrush_go'),
-                            iconSize: 72,
-                            color: Colors.greenAccent,
-                            icon: const Icon(Icons.check_circle),
-                            onPressed: _advance,
-                          )
-                        : null,
-                  ),
-                ],
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                // A new closure each build: Flutter then rebuilds the page
+                // on its way out with the outgoing slide (to the left).
+                transitionBuilder: (child, animation) => SlideTransition(
+                  position: Tween<Offset>(
+                    begin: Offset(child.key == pageKey ? 1.0 : -1.0, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+                child: _step == PreBrushStep.world
+                    ? WorldMapScreen(key: _mapKey, brushMode: _brushMode)
+                    : HeroShopScreen(key: _shopKey, brushMode: _brushMode),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+        // Which step this is (for tests); draws nothing.
+        Positioned(
+          left: 0,
+          top: 0,
+          child: SizedBox.shrink(key: ValueKey('prebrush_step_${_step.name}')),
+        ),
+      ],
     );
   }
 }

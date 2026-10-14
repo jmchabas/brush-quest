@@ -278,6 +278,43 @@ void main() {
       expect(heroList(tester).position.pixels, 0);
     });
 
+    testWidgets('the glow crosses to WEAPONS as the tabs slide; a reveal '
+        'there scrolls the grid', (tester) async {
+      // The Flame Sword is owned, so the goal is the Ice Hammer, on the
+      // grid's second row.
+      final steps = await pumpShop(
+        tester,
+        prefs: {
+          'unlocked_weapons': ['star_blaster', 'flame_sword'],
+        },
+        highlight: 'frost_stage1',
+      );
+      // What the steps do on GO: the tab and the glow change together.
+      // TabBarView keeps the HEROES page as it was while it slides out, its
+      // glow too, as the WEAPONS page builds the new one.
+      steps
+        ..tab.value = 1
+        ..highlight.value = 'ice_hammer';
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(tester.takeException(), isNull); // no duplicate GlobalKey
+      final glowFinder = glowIn('weapon_card_ice_hammer');
+      expect(glowFinder, findsOneWidget);
+      final grid = tester.getRect(find.byType(CustomScrollView));
+      expect(
+        tester.getRect(glowFinder).bottom,
+        greaterThan(grid.bottom - kBrushGoClearance),
+        reason: 'the second row ends behind GO at first',
+      );
+      steps.reveal.ping();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 700));
+      final glow = tester.getRect(glowFinder);
+      expect(glow.top, greaterThanOrEqualTo(grid.top));
+      expect(glow.bottom, lessThanOrEqualTo(grid.bottom - kBrushGoClearance));
+    });
+
     testWidgets('the last row can scroll above GO', (tester) async {
       await pumpShop(tester);
       expect(

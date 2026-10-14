@@ -56,8 +56,12 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   /// Brush mode: the id that glows (see BrushMode.highlightId).
   String? _highlightId;
 
-  /// Wraps the glowing cell or card, so a reveal can find it.
-  final _glowKey = GlobalKey();
+  /// Wrap the glowing cell (HEROES tab) or card (WEAPONS tab), so a reveal
+  /// can find it. One per tab: while the tabs slide, TabBarView keeps the
+  /// page sliding out as it was, its old glow too (flutter/flutter#31269),
+  /// as the page sliding in builds the new one.
+  final _heroGlowKey = GlobalKey();
+  final _weaponGlowKey = GlobalKey();
 
   Timer? _entryVoiceTimer;
 
@@ -176,7 +180,8 @@ class _HeroShopScreenState extends State<HeroShopScreen>
   }
 
   void _revealGlow() {
-    final glow = _glowKey.currentContext;
+    final key = _tabController.index == 0 ? _heroGlowKey : _weaponGlowKey;
+    final glow = key.currentContext;
     if (glow != null) unawaited(revealIfHidden(glow));
   }
 
@@ -789,7 +794,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
           selectedWeaponId: _selectedWeaponId,
           unlockedEvolutions: _unlockedEvolutions,
           highlightId: _highlightId,
-          glowKey: _glowKey,
+          glowKey: _heroGlowKey,
           onEvolutionTap: (evo) => _onEvolutionTap(hero, evo),
         );
       },
@@ -839,7 +844,7 @@ class _HeroShopScreenState extends State<HeroShopScreen>
                 canAfford: canAfford,
                 currentStars: _wallet,
                 highlighted: weapon.id == _highlightId,
-                glowKey: _glowKey,
+                glowKey: _weaponGlowKey,
                 onTap: () => _onWeaponTap(weapon),
               );
             }, childCount: WeaponService.allWeapons.length),

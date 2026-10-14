@@ -170,15 +170,13 @@ void main() {
   group('brush flow routing (v1.1)', () {
     setUp(() {
       // Keep the pre-brush screen on its first step for these tests.
-      PreBrushScreen.minStep = const Duration(seconds: 30);
-      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      PreBrushScreen.idleAdvance = const Duration(seconds: 30);
       PreBrushScreen.debugBrushingBuilder = ({required showWorldIntro}) =>
           const Scaffold(body: Text('BRUSHING'));
     });
     tearDown(() {
       PreBrushScreen.debugBrushingBuilder = null;
-      PreBrushScreen.minStep = const Duration(seconds: 3);
-      PreBrushScreen.maxStep = const Duration(seconds: 5);
+      PreBrushScreen.idleAdvance = const Duration(seconds: 8);
     });
 
     Future<void> pumpHomeWith(
@@ -256,8 +254,7 @@ void main() {
     testWidgets(
       'Home waits to refresh until it is shown again after brushing starts',
       (tester) async {
-        PreBrushScreen.minStep = const Duration(milliseconds: 100);
-        PreBrushScreen.maxStep = const Duration(milliseconds: 200);
+        PreBrushScreen.idleAdvance = const Duration(milliseconds: 100);
         PreBrushScreen.launchDelay = const Duration(milliseconds: 50);
         addTearDown(
           () => PreBrushScreen.launchDelay = const Duration(milliseconds: 400),
@@ -266,7 +263,7 @@ void main() {
         final musicStarts = fakeAudio.callsFor('playMusic').length;
 
         await tester.tap(find.byKey(const ValueKey('home_hero_button')));
-        for (var i = 0; i < 20; i++) {
+        for (var i = 0; i < 40; i++) {
           await tester.pump(const Duration(milliseconds: 100));
         }
         expect(find.text('BRUSHING'), findsOneWidget);
@@ -276,8 +273,7 @@ void main() {
 
         // The child quits brushing: Home is shown again and refreshes, and
         // the hero starts the flow again.
-        PreBrushScreen.minStep = const Duration(seconds: 30);
-        PreBrushScreen.maxStep = const Duration(seconds: 30);
+        PreBrushScreen.idleAdvance = const Duration(seconds: 30);
         tester.state<NavigatorState>(find.byType(Navigator)).pop();
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 600));

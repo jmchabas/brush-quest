@@ -318,11 +318,9 @@ void main() {
 
     testWidgets('a quick hero tap: the welcome-back line and the bonus wait '
         'until Home is shown again', (tester) async {
-      PreBrushScreen.minStep = const Duration(seconds: 30);
-      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      PreBrushScreen.idleAdvance = const Duration(seconds: 30);
       addTearDown(() {
-        PreBrushScreen.minStep = const Duration(seconds: 3);
-        PreBrushScreen.maxStep = const Duration(seconds: 5);
+        PreBrushScreen.idleAdvance = const Duration(seconds: 8);
       });
       await pumpHomeWith(
         tester,
@@ -358,11 +356,9 @@ void main() {
 
     testWidgets('tap and back out within the first second: the bonus line, '
         'and no late welcome-back line after it', (tester) async {
-      PreBrushScreen.minStep = const Duration(seconds: 30);
-      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      PreBrushScreen.idleAdvance = const Duration(seconds: 30);
       addTearDown(() {
-        PreBrushScreen.minStep = const Duration(seconds: 3);
-        PreBrushScreen.maxStep = const Duration(seconds: 5);
+        PreBrushScreen.idleAdvance = const Duration(seconds: 8);
       });
       await pumpHomeWith(
         tester,
@@ -452,11 +448,9 @@ void main() {
       'tapping through the greeting to brush, then backing out, pays the '
       'bonus on return',
       (tester) async {
-        PreBrushScreen.minStep = const Duration(seconds: 30);
-        PreBrushScreen.maxStep = const Duration(seconds: 30);
+        PreBrushScreen.idleAdvance = const Duration(seconds: 30);
         addTearDown(() {
-          PreBrushScreen.minStep = const Duration(seconds: 3);
-          PreBrushScreen.maxStep = const Duration(seconds: 5);
+          PreBrushScreen.idleAdvance = const Duration(seconds: 8);
         });
         await pumpHomeWith(
           tester,
@@ -710,11 +704,9 @@ void main() {
 
     testWidgets('a pulse cut short by a reload does not leave the flame pill '
         'following later pulses', (tester) async {
-      PreBrushScreen.minStep = const Duration(seconds: 30);
-      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      PreBrushScreen.idleAdvance = const Duration(seconds: 30);
       addTearDown(() {
-        PreBrushScreen.minStep = const Duration(seconds: 3);
-        PreBrushScreen.maxStep = const Duration(seconds: 5);
+        PreBrushScreen.idleAdvance = const Duration(seconds: 8);
       });
       await pumpHomeWith(
         tester,
@@ -748,11 +740,9 @@ void main() {
 
     testWidgets('a landing pulse cut short by a reload does not leave the '
         'star counter following later pulses', (tester) async {
-      PreBrushScreen.minStep = const Duration(seconds: 30);
-      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      PreBrushScreen.idleAdvance = const Duration(seconds: 30);
       addTearDown(() {
-        PreBrushScreen.minStep = const Duration(seconds: 3);
-        PreBrushScreen.maxStep = const Duration(seconds: 5);
+        PreBrushScreen.idleAdvance = const Duration(seconds: 8);
       });
       await pumpHomeWith(
         tester,
@@ -848,11 +838,9 @@ void main() {
     testWidgets('Home refreshing after a sub-screen does not whoosh again', (
       tester,
     ) async {
-      PreBrushScreen.minStep = const Duration(seconds: 30);
-      PreBrushScreen.maxStep = const Duration(seconds: 30);
+      PreBrushScreen.idleAdvance = const Duration(seconds: 30);
       addTearDown(() {
-        PreBrushScreen.minStep = const Duration(seconds: 3);
-        PreBrushScreen.maxStep = const Duration(seconds: 5);
+        PreBrushScreen.idleAdvance = const Duration(seconds: 8);
       });
       await pumpHomeWith(
         tester,
