@@ -1771,6 +1771,7 @@ class _HeroUnlockDialog extends StatefulWidget {
 class _HeroUnlockDialogState extends State<_HeroUnlockDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  Timer? _autoClose;
 
   @override
   void initState() {
@@ -1786,13 +1787,18 @@ class _HeroUnlockDialogState extends State<_HeroUnlockDialog>
       interrupt: true,
     );
 
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted) Navigator.of(context).pop();
+    // Only while it is on top: tapped away in its last moments it is
+    // still here, closing, and a pop would close the page below.
+    _autoClose = Timer(const Duration(seconds: 6), () {
+      if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        Navigator.of(context).pop();
+      }
     });
   }
 
   @override
   void dispose() {
+    _autoClose?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -1859,6 +1865,7 @@ class _WeaponUnlockDialog extends StatefulWidget {
 class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  Timer? _autoClose;
 
   @override
   void initState() {
@@ -1874,13 +1881,18 @@ class _WeaponUnlockDialogState extends State<_WeaponUnlockDialog>
       interrupt: true,
     );
 
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted) Navigator.of(context).pop();
+    // Only while it is on top: tapped away in its last moments it is
+    // still here, closing, and a pop would close the page below.
+    _autoClose = Timer(const Duration(seconds: 6), () {
+      if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+        Navigator.of(context).pop();
+      }
     });
   }
 
   @override
   void dispose() {
+    _autoClose?.cancel();
     _controller.dispose();
     super.dispose();
   }

@@ -445,4 +445,121 @@ void main() {
       expect(fakeAudio.callsFor('stopVoice'), isNotEmpty);
     });
   });
+
+  // The unlock celebrations close by themselves after 6 s, on both paths;
+  // these run from Home.
+  group('the unlock celebration', () {
+    /// The page opened from a stand-in Home, so a stray pop would show.
+    Future<void> openFromHome(WidgetTester tester) async {
+      SharedPreferences.setMockInitialValues({
+        'star_wallet': 6,
+        'total_stars': 16,
+        'unlocked_heroes': ['blaze'],
+        'selected_hero': 'blaze',
+        'unlocked_weapons': ['star_blaster'],
+        'selected_weapon': 'star_blaster',
+        'muted': false,
+        'current_world': 'candy_crater',
+      });
+      await tester.binding.setSurfaceSize(const Size(_buyWidth, 932));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: IconButton(
+                  key: const ValueKey('open'),
+                  icon: const Icon(Icons.store),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const HeroShopScreen(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('open')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    /// Buys [item] (5 stars of his 6); returns once its celebration is up,
+    /// in the frame it opened: its 6 s count from now.
+    Future<void> buyAndCelebrate(
+      WidgetTester tester, {
+      required String item,
+      required String title,
+      required bool weapons,
+    }) async {
+      if (weapons) {
+        await tester.tap(find.text('WEAPONS'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      await tester.tap(find.byKey(ValueKey(item)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('YES!'));
+      for (var i = 0; i < 10 && find.text(title).evaluate().isEmpty; i++) {
+        await tester.pump(); // no time passes
+      }
+      expect(find.text(title), findsOneWidget);
+    }
+
+    for (final unlock in const [
+      (weapons: false, item: 'evo_cell_frost_stage1', title: 'FROST UNLOCKED!'),
+      (
+        weapons: true,
+        item: 'weapon_card_flame_sword',
+        title: 'FLAME SWORD UNLOCKED!',
+      ),
+    ]) {
+      testWidgets('${unlock.title} tapped as it closes itself: only it '
+          'closes', (tester) async {
+        await openFromHome(tester);
+        await buyAndCelebrate(
+          tester,
+          item: unlock.item,
+          title: unlock.title,
+          weapons: unlock.weapons,
+        );
+        await tester.pump(const Duration(milliseconds: 5900));
+        // Closing (150 ms) when its own 6 s are up.
+        await tester.tap(find.text(unlock.title));
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        expect(find.text(unlock.title), findsNothing);
+        expect(find.byType(HeroShopScreen), findsOneWidget);
+        expect(
+          tester.state<NavigatorState>(find.byType(Navigator)).canPop(),
+          isTrue,
+        );
+      });
+
+      testWidgets('${unlock.title} closes by itself after 6 s, as before', (
+        tester,
+      ) async {
+        await openFromHome(tester);
+        await buyAndCelebrate(
+          tester,
+          item: unlock.item,
+          title: unlock.title,
+          weapons: unlock.weapons,
+        );
+        await tester.pump(const Duration(milliseconds: 5900));
+        expect(find.text(unlock.title), findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 100)); // 6 s
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 50)); // its exit
+        }
+        expect(find.text(unlock.title), findsNothing);
+        expect(find.byType(HeroShopScreen), findsOneWidget);
+      });
+    }
+  });
 }
