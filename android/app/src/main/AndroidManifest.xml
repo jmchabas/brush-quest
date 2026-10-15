@@ -39,6 +39,14 @@
         <meta-data
             android:name="google_analytics_adid_collection_enabled"
             android:value="false" />
+        <!-- Improvement-loop journey builds (-P bq_test_run=true) turn analytics and crash
+             reporting off; every other build keeps them on (see app/build.gradle.kts). -->
+        <meta-data
+            android:name="firebase_analytics_collection_deactivated"
+            android:value="${analyticsDeactivated}" />
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="${crashlyticsCollectionEnabled}" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

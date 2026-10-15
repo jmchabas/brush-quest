@@ -41,6 +41,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Improvement-loop journey builds pass -P bq_test_run=true so emulator runs never
+        // reach analytics or crash reports. Every other build keeps both on.
+        val bqTestRun = project.findProperty("bq_test_run")?.toString() == "true"
+        manifestPlaceholders["analyticsDeactivated"] = bqTestRun.toString()
+        manifestPlaceholders["crashlyticsCollectionEnabled"] = (!bqTestRun).toString()
     }
 
     signingConfigs {
