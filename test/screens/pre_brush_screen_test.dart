@@ -733,7 +733,7 @@ void main() {
     );
     await tapGo(tester);
     // The tab slide, then the goal (the Ice Hammer, behind GO) scrolls into
-    // view (600 ms); a list ignores taps while it scrolls.
+    // view (400 ms); a list ignores taps while it scrolls.
     await pumpFor(tester, const Duration(milliseconds: 1100));
     await tester.tap(find.byKey(const ValueKey('weapon_card_flame_sword')));
     await tester.pump();
@@ -918,7 +918,7 @@ void main() {
       }),
     );
     await openFromHome(tester);
-    // The goal (Bolt, behind GO) first scrolls into view (600 ms); a list
+    // The goal (Bolt, behind GO) first scrolls into view (400 ms); a list
     // ignores taps while it scrolls.
     await pumpFor(tester, const Duration(milliseconds: 700));
     await tester.tap(find.byKey(const ValueKey('evo_cell_frost_stage1')));

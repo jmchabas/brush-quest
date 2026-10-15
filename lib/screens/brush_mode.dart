@@ -100,7 +100,7 @@ Future<void> revealIfHidden(
   await scrollable.position.ensureVisible(
     item,
     alignment: 0.35,
-    duration: const Duration(milliseconds: 600),
+    duration: const Duration(milliseconds: 400),
     curve: Curves.easeInOut,
   );
 }

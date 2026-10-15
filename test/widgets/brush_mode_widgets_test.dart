@@ -210,6 +210,19 @@ void main() {
       expect(row.bottom, lessThanOrEqualTo(view.bottom - kBrushGoClearance));
     });
 
+    testWidgets('scrolls in 400 ms', (tester) async {
+      final key = GlobalKey();
+      final position = await pumpList(tester, key, 12);
+      var done = false;
+      unawaited(revealIfHidden(key.currentContext!).then((_) => done = true));
+      await tester.pump(); // the scroll starts
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(position.pixels, greaterThan(0));
+      expect(done, isFalse);
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(done, isTrue);
+    });
+
     testWidgets('a row behind the GO zone counts as hidden', (tester) async {
       final key = GlobalKey();
       final position = await pumpList(tester, key, 5); // 500..600 of 600
