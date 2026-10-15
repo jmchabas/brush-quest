@@ -101,6 +101,11 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   /// holding the count after this long without a scroll notification.
   static const _scrollQuiet = Duration(milliseconds: 400);
 
+  /// After a step change GO ignores taps this long, while the next page
+  /// slides in (the tab 300 ms, the Map 400 ms): a double tap moves one
+  /// step, not two.
+  static const _goSettle = Duration(milliseconds: 400);
+
   static const _shopKey = ValueKey('prebrush_shop');
   static const _mapKey = ValueKey('prebrush_map');
 
@@ -150,6 +155,7 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   Timer? _scrollQuietTimer;
   Timer? _launchTimer;
   Timer? _launchCapTimer;
+  Timer? _goSettleTimer;
 
   /// Page changes are read back one at a time, in order.
   Future<void> _refreshing = Future<void>.value();
@@ -295,6 +301,12 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   }
 
   void _enterStep(PreBrushStep step) {
+    // A step change slides the next page in, and the second tap of a double
+    // tap lands then. The first step follows no change: GO works at once.
+    if (_entered) {
+      _goSettleTimer?.cancel();
+      _goSettleTimer = Timer(_goSettle, () => _goSettleTimer = null);
+    }
     _entered = true;
     _cancelIdle();
     ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
@@ -319,7 +331,7 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   }
 
   void _onGo() {
-    if (!_entered || _leaving) return;
+    if (!_entered || _leaving || _goSettleTimer != null) return;
     unawaited(HapticFeedback.mediumImpact());
     unawaited(_audio.playSfx('whoosh.mp3'));
     _advance();
@@ -393,11 +405,13 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     _idleTimer = null;
   }
 
-  /// Stops the idle count and what feeds it.
+  /// Stops the idle count and what feeds it, and GO's settle.
   void _stopCounting() {
     _cancelIdle();
     _voiceCapTimer?.cancel();
     _scrollQuietTimer?.cancel();
+    _goSettleTimer?.cancel();
+    _goSettleTimer = null;
   }
 
   void _onVoiceChanged() {

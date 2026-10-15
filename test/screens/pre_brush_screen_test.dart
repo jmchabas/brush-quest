@@ -236,6 +236,19 @@ void main() {
     await tester.pump();
   }
 
+  /// GO ignores taps for 400 ms after a step change (a double tap moves one
+  /// step), so presses in a row wait this long.
+  const goSettled = Duration(milliseconds: 450);
+
+  /// GO on each step, the Map's too: "Let's fight!".
+  Future<void> goToTheFight(WidgetTester tester) async {
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    await tapGo(tester);
+  }
+
   /// Opens the screen from a stand-in Home, so X has somewhere to go back to.
   Future<void> openFromHome(WidgetTester tester) async {
     await useSurface(tester);
@@ -555,6 +568,48 @@ void main() {
     expect(audio.playedSfx, ['whoosh.mp3']);
   });
 
+  testWidgets('a double tap on GO on HEROES moves one step', (tester) async {
+    await pumpScreen(tester, returningKid);
+    await tapGo(tester);
+    await tester.pump(const Duration(milliseconds: 150));
+    await tapGo(tester); // as the tabs slide
+    expect(stepIs(PreBrushStep.weapon), findsOneWidget);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(stepIs(PreBrushStep.weapon), findsOneWidget); // not the Map
+    expect(voices(), [
+      'voice_picker_hero_blaze.mp3',
+      'voice_stars_left_2.mp3',
+      'voice_picker_weapon_star_blaster.mp3',
+      'voice_stars_left_2.mp3',
+    ]);
+    expect(audio.playedSfx, ['whoosh.mp3']); // the second tap did nothing
+  });
+
+  testWidgets('a double tap on GO on WEAPONS: the Map, not the fight', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    await tapGo(tester);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    await tapGo(tester);
+    await tester.pump(const Duration(milliseconds: 150));
+    await tapGo(tester); // as the Map slides in
+    expect(stepIs(PreBrushStep.world), findsOneWidget);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(stepIs(PreBrushStep.world), findsOneWidget);
+    expect(voices(), isNot(contains('voice_lets_fight.mp3')));
+    expect(audio.playedSfx, ['whoosh.mp3', 'whoosh.mp3']);
+  });
+
+  testWidgets('GO again once the next page is in: it moves on', (tester) async {
+    await pumpScreen(tester, returningKid);
+    await tapGo(tester);
+    await pumpFor(tester, goSettled); // 450 ms: past the settle
+    await tapGo(tester);
+    expect(stepIs(PreBrushStep.world), findsOneWidget);
+    expect(audio.playedSfx, ['whoosh.mp3', 'whoosh.mp3']);
+  });
+
   testWidgets('a scroll holds the count until it ends', (tester) async {
     await pumpScreen(tester, returningKid);
     unawaited(
@@ -798,9 +853,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    await tapGo(tester);
-    await tapGo(tester);
-    await tapGo(tester);
+    await goToTheFight(tester);
     expect(voices().last, 'voice_lets_fight.mp3');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump(const Duration(seconds: 5)); // past every launch timer
@@ -850,9 +903,7 @@ void main() {
     PreBrushScreen.launchDelay = const Duration(milliseconds: 400);
     SharedPreferences.setMockInitialValues(returningKid);
     await openFromHome(tester);
-    await tapGo(tester);
-    await tapGo(tester);
-    await tapGo(tester);
+    await goToTheFight(tester);
     expect(voices().last, 'voice_lets_fight.mp3');
     await tester.pump(const Duration(milliseconds: 200)); // inside the delay
     unawaited(tester.state<NavigatorState>(find.byType(Navigator)).maybePop());
@@ -872,6 +923,7 @@ void main() {
     // Slime Swamp is open too.
     await pumpScreen(tester, kid({'world_progress_candy_crater': 5}));
     await tapGo(tester);
+    await pumpFor(tester, goSettled);
     await tapGo(tester);
     await pumpFor(tester, const Duration(milliseconds: 500));
     await tapGo(tester);
@@ -894,9 +946,7 @@ void main() {
     tester,
   ) async {
     await pumpScreen(tester, returningKid);
-    await tapGo(tester);
-    await tapGo(tester);
-    await tapGo(tester);
+    await goToTheFight(tester);
     audio.voicePipelineActiveNotifier.value = true; // "Let's fight!" playing
     await tester.pump(const Duration(milliseconds: 500)); // past the delay
     expect(find.text('BRUSHING'), findsNothing);
@@ -911,9 +961,7 @@ void main() {
   ) async {
     PreBrushScreen.maxLaunchWait = const Duration(milliseconds: 500);
     await pumpScreen(tester, returningKid);
-    await tapGo(tester);
-    await tapGo(tester);
-    await tapGo(tester);
+    await goToTheFight(tester);
     audio.voicePipelineActiveNotifier.value = true; // stuck
     await tester.pump(const Duration(milliseconds: 400)); // delay + part of cap
     expect(find.text('BRUSHING'), findsNothing);
