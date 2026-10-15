@@ -747,6 +747,47 @@ void main() {
     expect(saved.getString('selected_weapon'), 'flame_sword');
   });
 
+  testWidgets('the page sliding away takes no taps', (tester) async {
+    final timed = useTimedVoices(tester); // each line 2 s
+    await pumpScreen(
+      tester,
+      kid({
+        'unlocked_weapons': ['star_blaster', 'flame_sword'],
+      }),
+    );
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    final shop = tester.state(find.byType(HeroShopScreen));
+    await tapGo(tester); // the Map slides in, the shop slides away
+    await tester.pump(const Duration(milliseconds: 16));
+    // The page on its way out is still the same page.
+    expect(tester.state(find.byType(HeroShopScreen)), same(shop));
+    final map = tester.state(find.byType(WorldMapScreen));
+    // The Flame Sword is his: a tap on its card would equip it.
+    await tester.tap(
+      find.byKey(const ValueKey('weapon_card_flame_sword')),
+      warnIfMissed: false, // ignored on purpose
+    );
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    // The Map stays the same page once the shop is gone.
+    expect(find.byType(HeroShopScreen), findsNothing);
+    expect(tester.state(find.byType(WorldMapScreen)), same(map));
+    expect(timed.voiceNamed('voice_picker_weapon_flame_sword.mp3'), isNull);
+    expect(eventsNamed('pre_brush_change'), isEmpty);
+    final saved = await SharedPreferences.getInstance();
+    expect(saved.getString('selected_weapon'), 'star_blaster');
+    // The Map's lines play out.
+    await pumpFor(tester, const Duration(seconds: 4));
+    final world = timed.voiceNamed('voice_world_candy_crater.mp3')!;
+    final left = timed.voiceNamed('voice_brushes_left_3.mp3')!;
+    expect(world.cut, isFalse, reason: '${timed.voices}');
+    expect(left.cut || left.dropped, isFalse, reason: '${timed.voices}');
+    expect(left.endedAt, isNotNull, reason: '${timed.voices}');
+    // The idle count has begun: end any line, or its timer outlives the
+    // test.
+    await timed.stopVoice();
+  });
+
   testWidgets('a goal far down the list scrolls into view after the lines', (
     tester,
   ) async {

@@ -653,6 +653,25 @@ class _PreBrushScreenState extends State<PreBrushScreen>
                 duration: const Duration(milliseconds: 400),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
+                // The default layout (the pages stacked, centred), but the
+                // page on its way out takes no taps: one landing on it as GO
+                // moves on would change a choice the next step already
+                // speaks about. Every page sits in an IgnorePointer under the
+                // page's own key: neither page is rebuilt from scratch as one
+                // starts to leave or is gone.
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    for (final page in previous)
+                      IgnorePointer(key: page.key, child: page),
+                    if (current != null)
+                      IgnorePointer(
+                        key: current.key,
+                        ignoring: false,
+                        child: current,
+                      ),
+                  ],
+                ),
                 // A new closure each build: Flutter then rebuilds the page
                 // on its way out with the outgoing slide (to the left).
                 transitionBuilder: (child, animation) => SlideTransition(
