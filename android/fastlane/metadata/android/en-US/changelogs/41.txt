@@ -1,0 +1,1 @@
+v1.1 test build 41. Tapping the hero now opens the real Heroes & Weapons page, then the World Map, each with a big GO and a gold glow on the next unlock, which can be bought right there. Tap anything to hear it. About 8 seconds without a touch moves on, then "Let's fight!" and the countdown. Streak flame, bonus stars, chests and victory unlocks are as in build 40.
