@@ -171,10 +171,11 @@ Note: JDK 17 required. JDK 25 is incompatible with AGP 8.11.1.
 - Monetization model changes
 - Anything affecting existing user data/saves
 
-### Remote Triggers (claude.ai/code/scheduled)
-- **Weekly Code Review + Economy Audit**: Mondays 8:17am PT — opens PR with analysis
-- **Weekly GTM Prep**: Wednesdays 8:43am PT — opens PR with marketing copy drafts
-- Remote agents cannot run flutter test/dart analyze (no SDK in cloud)
+### Recurring jobs
+- **Improvement loop**: every other Monday, a scheduled job on Jim's Mac (private dev-cycle repo, `/improve`). Proposals arrive as the Improvement Board doc plus an email; building starts only when Jim says go.
+- **Crashlytics monitor** (claude.ai routine): daily.
+- The weekly code-review/economy and GTM routines were turned off on 2026-10-14 (replaced by the improvement loop; code quality stays with `/cyclepro`).
+- Remote agents cannot run flutter test/dart analyze (no SDK in cloud).
 - Local `/health` skill handles build verification (requires Jim to run it)
 
 ## Next Steps / Ideas

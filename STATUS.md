@@ -413,9 +413,10 @@
 - **Needs CEO decision**: None
 
 ### AUTOMATION
-- **Status**: Active — 2 remote triggers, 2 local skills, tiered autonomy model
-- **Last session**: 2026-03-27
-- **What happened**:
+- **Status**: Active — improvement loop being set up (replaces the 2 weekly remote triggers, now off), 2 local skills, tiered autonomy model
+- **Last session**: 2026-10-14
+- **2026-10-14**: improvement loop set up (every other Monday; private dev-cycle repo, `/improve`; Round 1 live on 2026-10-19); weekly GTM and code-review routines turned off (not deleted).
+- **What happened** (2026-03-27):
   - Created tiered autonomy model (Tier 1: full auto, Tier 2: do+show, Tier 3: propose+wait)
   - Created `/health` local skill — daily build verification (dart analyze + flutter test + economy sim)
   - Created `/gtm-prep` local skill — generates app store listing drafts for Jim to review
@@ -430,7 +431,7 @@
   - Tier 2 (do + PR for review): economy analysis, code review, GTM copy drafts
   - Tier 3 (propose only, wait for Jim): ANY user-facing change, economy values, UI, audio, onboarding
 - **Blocked on**: Nothing
-- **Next up**: Review first round of PRs from remote triggers, adjust prompts based on quality
+- **Next up**: Round 1 of the improvement loop, live with Jim (2026-10-19); install the schedule after it
 - **Needs CEO decision**: None
 
 ---
