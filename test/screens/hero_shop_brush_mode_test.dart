@@ -375,6 +375,24 @@ void main() {
       expect(saved.getInt('evolution_stage_blaze'), 2);
     });
 
+    testWidgets('buying an upgrade reports it; his hero wears it', (
+      tester,
+    ) async {
+      // Blaze's stage 2 costs 10.
+      final steps = await pumpShop(
+        tester,
+        prefs: {'star_wallet': 12},
+        width: _buyWidth,
+      );
+      await buy(tester, find.byKey(const ValueKey('evo_cell_blaze_stage2')));
+      expect(steps.changes, [
+        const BrushChange.unlocked(GoalCategory.hero, 'blaze_stage2'),
+      ]);
+      final saved = await SharedPreferences.getInstance();
+      expect(saved.getInt('evolution_stage_blaze'), 2); // Blaze is his hero
+      expect(saved.getInt('star_wallet'), 2);
+    });
+
     testWidgets('buying a weapon reports it', (tester) async {
       final steps = await pumpShop(
         tester,

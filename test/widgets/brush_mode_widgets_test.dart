@@ -265,31 +265,38 @@ void main() {
       expect(position.pixels, 0);
     });
 
-    testWidgets('moves only the nearest scroll view, not the pages around it', (
+    testWidgets('moves only the nearest scroll view, not the ones around it', (
       tester,
     ) async {
       final key = GlobalKey();
-      final pages = PageController();
-      addTearDown(pages.dispose);
+      final outer = ScrollController();
+      addTearDown(outer.dispose);
+      // A 300 px list, 300 px down a page that scrolls too.
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PageView(
-              controller: pages,
-              children: [
-                ListView(
-                  cacheExtent: 3000,
-                  children: [
-                    for (var i = 0; i < 20; i++)
-                      SizedBox(
-                        key: i == 12 ? key : null,
-                        height: 100,
-                        child: Text('row $i'),
-                      ),
-                  ],
-                ),
-                const SizedBox.expand(),
-              ],
+            body: SingleChildScrollView(
+              controller: outer,
+              child: Column(
+                children: [
+                  const SizedBox(height: 300),
+                  SizedBox(
+                    height: 300,
+                    child: ListView(
+                      cacheExtent: 3000,
+                      children: [
+                        for (var i = 0; i < 20; i++)
+                          SizedBox(
+                            key: i == 12 ? key : null,
+                            height: 100,
+                            child: Text('row $i'),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 1500),
+                ],
+              ),
             ),
           ),
         ),
@@ -297,11 +304,11 @@ void main() {
       unawaited(revealIfHidden(key.currentContext!));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 700));
-      expect(pages.page, 0);
-      expect(
-        tester.getRect(find.byKey(key)).bottom,
-        lessThanOrEqualTo(600 - kBrushGoClearance),
-      );
+      expect(outer.position.pixels, 0);
+      final row = tester.getRect(find.byKey(key));
+      final list = tester.getRect(find.byType(ListView));
+      expect(row.top, greaterThanOrEqualTo(list.top));
+      expect(row.bottom, lessThanOrEqualTo(list.bottom - kBrushGoClearance));
     });
   });
 }

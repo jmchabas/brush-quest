@@ -1062,6 +1062,25 @@ void main() {
     await timed.stopVoice();
   });
 
+  testWidgets('timeline: a far goal scrolls into view once the lines end', (
+    tester,
+  ) async {
+    final timed = useTimedVoices(tester); // each line 2 s
+    await pumpScreen(tester, farGoal);
+    await pumpFor(tester, const Duration(milliseconds: 3500));
+    expect(timed.voices.last.endedAt, isNull); // the goal's line plays
+    expect(heroList(tester).position.pixels, 0);
+    // The lines end at 4 s; then the 400 ms scroll and a frame.
+    await pumpFor(tester, const Duration(milliseconds: 950));
+    expect(timed.voices.every((v) => v.endedAt != null), isTrue);
+    expect(heroList(tester).position.pixels, greaterThan(0));
+    final glow = tester.getRect(find.byType(GoalGlow));
+    final list = tester.getRect(find.byType(ListView));
+    expect(glow.top, greaterThanOrEqualTo(list.top));
+    expect(glow.bottom, lessThanOrEqualTo(list.bottom - kBrushGoClearance));
+    await timed.stopVoice();
+  });
+
   testWidgets('timeline: the count waits for a description he taps', (
     tester,
   ) async {

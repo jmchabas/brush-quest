@@ -85,6 +85,14 @@ Future<void> _exerciseEveryEntryPoint(AnalyticsService service) async {
   await service.logHeroUnlock(heroId: 'frost', starsAtUnlock: 5);
   await service.logWeaponUnlock(weaponId: 'ice_beam', starsAtUnlock: 5);
   await service.logSignIn();
+  await service.logGoalUnlocked(
+    category: 'hero',
+    item: 'frost',
+    source: 'pre_brush',
+  );
+  await service.logPreBrushChange(category: 'hero');
+  await service.logPreBrushSkipped(reason: 'error');
+  await service.logFlameTierReached(tier: 'small');
 }
 
 void main() {
