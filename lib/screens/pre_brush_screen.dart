@@ -151,8 +151,8 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   );
 
   /// The last change of page (shop ↔ Map) went back to an earlier step (a
-  /// header tap): the shop and the Map then slide the other way. A change
-  /// between HEROES and WEAPONS leaves it as it was.
+  /// header tap or the back gesture): the shop and the Map then slide the
+  /// other way. A change between HEROES and WEAPONS leaves it as it was.
   bool _backward = false;
 
   // What holds the idle count (spec §4.2).
@@ -623,10 +623,23 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     );
   }
 
-  void _onClose() => unawaited(Navigator.of(context).maybePop());
+  /// The X: Home from any step (spec 2026-10-15 §3.3). pop() leaves
+  /// whatever the back gesture would do aside; [_onPop] then goes quiet.
+  void _onClose() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) navigator.pop();
+  }
+
+  /// The back gesture leaves the screen only from HEROES, before the first
+  /// step and after "Let's fight!" (ruling 2 of the rebuilt steps); on
+  /// WEAPONS and the Map it goes one step back.
+  bool get _canPop => !_entered || _leaving || _step == PreBrushStep.hero;
 
   void _onPop(bool didPop, Object? result) {
-    if (!didPop) return;
+    if (!didPop) {
+      _stepBack();
+      return;
+    }
     // Go quiet: the screen stays mounted (and its voice listener live)
     // during the exit animation.
     _closed = true;
@@ -636,11 +649,26 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     unawaited(_audio.stopVoice());
   }
 
+  /// The back gesture on WEAPONS or the Map: the step before, with its
+  /// lines (spec 2026-10-15 §3.3).
+  void _stepBack() {
+    if (!_entered || _leaving) return;
+    switch (_step) {
+      case PreBrushStep.hero:
+        return; // [_canPop] lets this one through to Home
+      case PreBrushStep.weapon:
+        _enterStep(PreBrushStep.hero);
+      case PreBrushStep.world:
+        _enterStep(PreBrushStep.weapon);
+    }
+  }
+
   // ── Build ───────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
+      canPop: _canPop,
       onPopInvokedWithResult: _onPop,
       child: Scaffold(
         backgroundColor: const Color(0xFF0D0B2E),

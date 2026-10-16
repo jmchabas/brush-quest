@@ -1,9 +1,11 @@
 // test/screens/pre_brush_screen_test.dart
 //
 // The brush steps on the real pages (spec
-// docs/superpowers/specs/2026-10-13-brush-steps-on-real-pages-design.md):
-// HEROES tab → WEAPONS tab → Map, GO and the idle count, dialogs, the
-// background, X, "Let's fight!" and the voice timelines.
+// docs/superpowers/specs/2026-10-13-brush-steps-on-real-pages-design.md,
+// amended by 2026-10-15-sticker-card-design.md §3): HEROES tab → WEAPONS
+// tab → Map under one header, the instruction lines, GO and the idle count,
+// dialogs, the background, X, the back gesture, "Let's fight!" and the
+// voice timelines.
 import 'dart:async';
 
 import 'package:brush_quest/screens/brush_mode.dart';
@@ -281,6 +283,27 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('open')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500)); // route transition
+  }
+
+  /// A system back (Android's back button or gesture): the message the
+  /// engine sends, as Flutter's own navigator tests do.
+  Future<void> systemBack(WidgetTester tester) async {
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'flutter/navigation',
+      const JSONMessageCodec().encodeMessage(const {'method': 'popRoute'}),
+      (_) {},
+    );
+    await tester.pump();
+  }
+
+  /// From a stand-in Home, GO twice: the Map, slid in.
+  Future<void> openOnTheMap(WidgetTester tester) async {
+    await openFromHome(tester);
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    await tapGo(tester);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(stepIs(PreBrushStep.world), findsOneWidget);
   }
 
   /// Installs a voice channel that takes time, with its clock on the test's
@@ -1063,6 +1086,115 @@ void main() {
     expect(launchedWithIntro, isNull);
   });
 
+  testWidgets('the back gesture: the Map, WEAPONS, HEROES, then Home', (
+    tester,
+  ) async {
+    PreBrushScreen.idleAdvance = const Duration(seconds: 30);
+    SharedPreferences.setMockInitialValues(returningKid);
+    await openOnTheMap(tester);
+
+    audio.resetTracking();
+    await systemBack(tester);
+    expect(stepIs(PreBrushStep.weapon), findsOneWidget);
+    expect(voices(), ['voice_step_pick_weapon.mp3', 'voice_stars_left_2.mp3']);
+    await pumpFor(tester, const Duration(milliseconds: 100));
+    // The shop comes back from the left, on its WEAPONS tab, its glow on.
+    expect(tester.getTopLeft(find.byType(HeroShopScreen)).dx, lessThan(0));
+    await pumpFor(tester, const Duration(milliseconds: 400));
+    expect(find.byType(WorldMapScreen), findsNothing);
+    expect(tabIndex(tester), 1);
+    expect(glowOn('weapon_card_flame_sword'), findsOneWidget);
+
+    audio.resetTracking();
+    await systemBack(tester);
+    expect(stepIs(PreBrushStep.hero), findsOneWidget);
+    expect(voices(), ['voice_step_pick_hero.mp3', 'voice_stars_left_2.mp3']);
+    await pumpFor(tester, const Duration(milliseconds: 400));
+    expect(tabIndex(tester), 0);
+    expect(find.byType(PreBrushScreen), findsOneWidget);
+
+    await systemBack(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(PreBrushScreen), findsNothing);
+    expect(find.byKey(const ValueKey('open')), findsOneWidget);
+    expect(audio.callsFor('stopVoice'), isNotEmpty);
+    expect(launchedWithIntro, isNull);
+  });
+
+  testWidgets('X goes Home from the Map, not one step back', (tester) async {
+    PreBrushScreen.idleAdvance = const Duration(seconds: 30);
+    SharedPreferences.setMockInitialValues(returningKid);
+    await openOnTheMap(tester);
+    final heard = voices().length;
+    await tester.tap(find.byKey(const ValueKey('brush_close')));
+    await tester.pumpAndSettle();
+    expect(find.byType(PreBrushScreen), findsNothing);
+    expect(find.byKey(const ValueKey('open')), findsOneWidget);
+    expect(voices(), hasLength(heard)); // no WEAPONS lines on the way out
+    expect(launchedWithIntro, isNull);
+  });
+
+  testWidgets('the back gesture with a dialog open closes only the dialog', (
+    tester,
+  ) async {
+    PreBrushScreen.idleAdvance = const Duration(seconds: 30);
+    SharedPreferences.setMockInitialValues(kid({'star_wallet': 6}));
+    await openFromHome(tester);
+    await tapGo(tester);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    // The Flame Sword (5) is his to buy: its confirmation opens.
+    await tester.tap(find.byKey(const ValueKey('weapon_card_flame_sword')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Get FLAME SWORD?'), findsOneWidget);
+    final heard = voices().length;
+    await systemBack(tester);
+    await pumpFor(tester, const Duration(milliseconds: 300));
+    expect(find.text('Get FLAME SWORD?'), findsNothing);
+    expect(stepIs(PreBrushStep.weapon), findsOneWidget);
+    expect(voices(), hasLength(heard));
+    final saved = await SharedPreferences.getInstance();
+    expect(saved.getInt('star_wallet'), 6); // nothing bought
+  });
+
+  testWidgets('two quick backs from the Map: HEROES; one more is Home', (
+    tester,
+  ) async {
+    PreBrushScreen.idleAdvance = const Duration(seconds: 30);
+    SharedPreferences.setMockInitialValues(returningKid);
+    await openOnTheMap(tester);
+    await systemBack(tester);
+    await tester.pump(const Duration(milliseconds: 100)); // shop sliding in
+    await systemBack(tester);
+    expect(stepIs(PreBrushStep.hero), findsOneWidget);
+    await pumpFor(tester, const Duration(milliseconds: 600));
+    expect(tester.takeException(), isNull);
+    expect(find.byType(WorldMapScreen), findsNothing);
+    expect(tabIndex(tester), 0);
+    expect(voices().sublist(voices().length - 2), [
+      'voice_step_pick_hero.mp3',
+      'voice_stars_left_2.mp3',
+    ]);
+    await systemBack(tester);
+    await tester.pumpAndSettle();
+    expect(find.byType(PreBrushScreen), findsNothing);
+  });
+
+  testWidgets('after a step back the count runs again, and GO works', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues(returningKid);
+    await openOnTheMap(tester);
+    await systemBack(tester); // WEAPONS
+    final waited = await pumpUntilFound(tester, stepIs(PreBrushStep.world));
+    expect(waited, greaterThanOrEqualTo(PreBrushScreen.idleAdvance));
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    await systemBack(tester); // WEAPONS again
+    await pumpFor(tester, goSettled);
+    await tapGo(tester);
+    expect(stepIs(PreBrushStep.world), findsOneWidget);
+  });
+
   testWidgets('back after "Let\'s fight!" goes Home; brushing never starts', (
     tester,
   ) async {
@@ -1072,7 +1204,7 @@ void main() {
     await goToTheFight(tester);
     expect(voices().last, 'voice_lets_fight.mp3');
     await tester.pump(const Duration(milliseconds: 200)); // inside the delay
-    unawaited(tester.state<NavigatorState>(find.byType(Navigator)).maybePop());
+    await systemBack(tester); // Home, not the Map: ruling 2 stands
     await tester.pumpAndSettle();
     expect(find.text('BRUSHING'), findsNothing);
     expect(find.byKey(const ValueKey('open')), findsOneWidget);
