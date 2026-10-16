@@ -1865,12 +1865,6 @@ class _BrushingScreenState extends State<BrushingScreen>
     );
   }
 
-  /// Returns the phase progress as 0.0 to 1.0 (0 = just started, 1 = phase ending)
-  double _getPhaseProgress() {
-    if (_phaseDuration <= 0) return 0.0;
-    return (1.0 - _phaseSecondsLeft / _phaseDuration).clamp(0.0, 1.0);
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -2237,19 +2231,11 @@ class _BrushingScreenState extends State<BrushingScreen>
 
                               // Timer
                               _buildTimer(screenHeight),
-                              const SizedBox(height: 4),
-                              // Phase-progress icon strip (replaces text encouragements)
-                              AnimatedBuilder(
-                                animation: _timerPulseController,
-                                builder: (context, _) => CustomPaint(
-                                  size: const Size(40, 40),
-                                  painter: _PhaseProgressIconPainter(
-                                    progress: _getPhaseProgress(),
-                                    themeColor: _world.themeColor,
-                                    pulseValue: _timerPulseController.value,
-                                  ),
-                                ),
-                              ),
+                              // Where the phase sign was (its 4 px gap and
+                              // 40 px; spec 2026-10-15 §3.4): the monster,
+                              // the hero and the effects placed around them
+                              // keep their places.
+                              const SizedBox(height: 44),
                             ],
                           ),
 
@@ -2550,7 +2536,9 @@ class _BrushingScreenState extends State<BrushingScreen>
             key: ValueKey('mission-hud-${_phase.name}'),
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mouth guide — prominent so the kid sees where to brush
+              // Mouth guide — prominent so the kid sees where to brush. The
+              // monster counter beside it is gone (spec 2026-10-15 §3.4); the
+              // Row keeps the guide at the left.
               AnimatedBuilder(
                 animation: _mouthGuideGlowController,
                 builder: (context, _) => MouthGuide(
@@ -2559,47 +2547,6 @@ class _BrushingScreenState extends State<BrushingScreen>
                   glowAnim: _mouthGuideGlowController.value,
                   highlightColor: _world.themeColor,
                   size: 82,
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Phase name + zone label
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Monster defeated counter — burst icon + number only
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.34),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CustomPaint(
-                            size: const Size(16, 16),
-                            painter: _SmallBurstPainter(
-                              color: _world.themeColor,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$_monstersDefeated',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -4635,301 +4582,6 @@ class _ImpactShapePainter extends CustomPainter {
       shapeType != oldDelegate.shapeType ||
       color != oldDelegate.color ||
       comboNumber != oldDelegate.comboNumber;
-}
-
-/// Small burst/explosion icon for the defeated counter in the HUD.
-class _SmallBurstPainter extends CustomPainter {
-  final Color color;
-  _SmallBurstPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width * 0.45;
-
-    // Glow
-    canvas.drawCircle(
-      Offset(cx, cy),
-      r * 1.2,
-      Paint()
-        ..color = color.withValues(alpha: 0.3)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
-    );
-
-    // 6-point star burst
-    final path = Path();
-    for (int i = 0; i < 12; i++) {
-      final angle = i * pi / 6 - pi / 2;
-      final radius = i.isEven ? r : r * 0.4;
-      final x = cx + cos(angle) * radius;
-      final y = cy + sin(angle) * radius;
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, Paint()..color = color);
-    // White center
-    canvas.drawCircle(
-      Offset(cx, cy),
-      r * 0.25,
-      Paint()..color = Colors.white.withValues(alpha: 0.7),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_SmallBurstPainter oldDelegate) =>
-      color != oldDelegate.color;
-}
-
-/// Phase-progress icon that changes based on time elapsed in the current phase.
-/// Replaces text encouragements with visual cues:
-/// - 0-33%: Crossed swords (attack!)
-/// - 34-66%: Shield (steady)
-/// - 67-83%: Hourglass (time running)
-/// - 84-100%: Target/bullseye (finish it!)
-class _PhaseProgressIconPainter extends CustomPainter {
-  final double progress; // 0.0 = just started, 1.0 = phase ending
-  final Color themeColor;
-  final double pulseValue;
-
-  _PhaseProgressIconPainter({
-    required this.progress,
-    required this.themeColor,
-    required this.pulseValue,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width * 0.4;
-
-    if (progress <= 0.33) {
-      _drawCrossedSwords(canvas, cx, cy, r, themeColor, pulseValue);
-    } else if (progress <= 0.66) {
-      _drawShield(canvas, cx, cy, r, themeColor);
-    } else if (progress <= 0.83) {
-      _drawHourglass(canvas, cx, cy, r, Colors.orange, pulseValue);
-    } else {
-      _drawTarget(canvas, cx, cy, r, Colors.red, pulseValue);
-    }
-  }
-
-  void _drawCrossedSwords(
-    Canvas canvas,
-    double cx,
-    double cy,
-    double r,
-    Color c,
-    double pulse,
-  ) {
-    final glowAlpha = 0.3 + pulse * 0.3;
-    final paint = Paint()
-      ..color = c
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    final glowPaint = Paint()
-      ..color = c.withValues(alpha: glowAlpha)
-      ..strokeWidth = 6
-      ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    // Sword 1: top-left to bottom-right
-    canvas.drawLine(
-      Offset(cx - r, cy - r * 0.8),
-      Offset(cx + r, cy + r * 0.8),
-      glowPaint,
-    );
-    canvas.drawLine(
-      Offset(cx - r, cy - r * 0.8),
-      Offset(cx + r, cy + r * 0.8),
-      paint,
-    );
-    // Sword 2: top-right to bottom-left
-    canvas.drawLine(
-      Offset(cx + r, cy - r * 0.8),
-      Offset(cx - r, cy + r * 0.8),
-      glowPaint,
-    );
-    canvas.drawLine(
-      Offset(cx + r, cy - r * 0.8),
-      Offset(cx - r, cy + r * 0.8),
-      paint,
-    );
-    // Cross guards (short perpendicular lines at 1/3 from top)
-    final guardY = cy - r * 0.3;
-    canvas.drawLine(
-      Offset(cx - r * 0.5, guardY - r * 0.15),
-      Offset(cx - r * 0.5, guardY + r * 0.15),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(cx + r * 0.5, guardY - r * 0.15),
-      Offset(cx + r * 0.5, guardY + r * 0.15),
-      paint,
-    );
-  }
-
-  void _drawShield(Canvas canvas, double cx, double cy, double r, Color c) {
-    final shieldPath = Path();
-    shieldPath.moveTo(cx, cy - r);
-    shieldPath.quadraticBezierTo(cx + r * 0.9, cy - r * 0.7, cx + r * 0.7, cy);
-    shieldPath.quadraticBezierTo(cx + r * 0.5, cy + r * 0.6, cx, cy + r);
-    shieldPath.quadraticBezierTo(cx - r * 0.5, cy + r * 0.6, cx - r * 0.7, cy);
-    shieldPath.quadraticBezierTo(cx - r * 0.9, cy - r * 0.7, cx, cy - r);
-    shieldPath.close();
-    // Glow
-    canvas.drawPath(
-      shieldPath,
-      Paint()
-        ..color = c.withValues(alpha: 0.3)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-    );
-    // Fill
-    canvas.drawPath(shieldPath, Paint()..color = c.withValues(alpha: 0.7));
-    // Border
-    canvas.drawPath(
-      shieldPath,
-      Paint()
-        ..color = c
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    // Chevron in center
-    final chevronPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(cx - r * 0.25, cy - r * 0.1),
-      Offset(cx, cy - r * 0.35),
-      chevronPaint,
-    );
-    canvas.drawLine(
-      Offset(cx, cy - r * 0.35),
-      Offset(cx + r * 0.25, cy - r * 0.1),
-      chevronPaint,
-    );
-  }
-
-  void _drawHourglass(
-    Canvas canvas,
-    double cx,
-    double cy,
-    double r,
-    Color c,
-    double pulse,
-  ) {
-    final scale = 1.0 + pulse * 0.08;
-    canvas.save();
-    canvas.translate(cx, cy);
-    canvas.scale(scale, scale);
-    canvas.translate(-cx, -cy);
-
-    // Hourglass shape
-    final path = Path();
-    // Top triangle (wide at top, narrow at center)
-    path.moveTo(cx - r * 0.6, cy - r);
-    path.lineTo(cx + r * 0.6, cy - r);
-    path.lineTo(cx + r * 0.08, cy);
-    path.lineTo(cx - r * 0.08, cy);
-    path.close();
-    // Bottom triangle (narrow at center, wide at bottom)
-    path.moveTo(cx - r * 0.08, cy);
-    path.lineTo(cx + r * 0.08, cy);
-    path.lineTo(cx + r * 0.6, cy + r);
-    path.lineTo(cx - r * 0.6, cy + r);
-    path.close();
-
-    // Glow
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = c.withValues(alpha: 0.3)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
-    );
-    // Fill
-    canvas.drawPath(path, Paint()..color = c.withValues(alpha: 0.7));
-    // Border
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = c
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    // Top/bottom bars
-    canvas.drawLine(
-      Offset(cx - r * 0.7, cy - r),
-      Offset(cx + r * 0.7, cy - r),
-      Paint()
-        ..color = c
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawLine(
-      Offset(cx - r * 0.7, cy + r),
-      Offset(cx + r * 0.7, cy + r),
-      Paint()
-        ..color = c
-        ..strokeWidth = 3
-        ..strokeCap = StrokeCap.round,
-    );
-
-    canvas.restore();
-  }
-
-  void _drawTarget(
-    Canvas canvas,
-    double cx,
-    double cy,
-    double r,
-    Color c,
-    double pulse,
-  ) {
-    final glowAlpha = 0.3 + pulse * 0.4;
-    // Outer glow pulse
-    canvas.drawCircle(
-      Offset(cx, cy),
-      r * 1.2,
-      Paint()
-        ..color = c.withValues(alpha: glowAlpha * 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
-    );
-    // Rings
-    for (int i = 3; i >= 1; i--) {
-      final ringR = r * (i / 3);
-      final ringPaint = Paint()
-        ..color = i.isOdd ? c : Colors.white
-        ..style = i == 3 ? PaintingStyle.fill : PaintingStyle.fill;
-      canvas.drawCircle(Offset(cx, cy), ringR, ringPaint);
-    }
-    // Bullseye center
-    canvas.drawCircle(Offset(cx, cy), r * 0.15, Paint()..color = Colors.white);
-    // Urgency lines radiating outward
-    final linePaint = Paint()
-      ..color = c.withValues(alpha: 0.6 + pulse * 0.3)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    for (int i = 0; i < 8; i++) {
-      final angle = i * pi / 4;
-      final x1 = cx + cos(angle) * r * 1.1;
-      final y1 = cy + sin(angle) * r * 1.1;
-      final x2 = cx + cos(angle) * r * 1.4;
-      final y2 = cy + sin(angle) * r * 1.4;
-      canvas.drawLine(Offset(x1, y1), Offset(x2, y2), linePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_PhaseProgressIconPainter oldDelegate) =>
-      progress != oldDelegate.progress ||
-      themeColor != oldDelegate.themeColor ||
-      pulseValue != oldDelegate.pulseValue;
 }
 
 /// Pulsing pause icon for the pause overlay (replaces static icon + "PAUSED" text).
