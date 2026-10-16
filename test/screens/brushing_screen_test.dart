@@ -127,4 +127,72 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 2));
   });
+
+  testWidgets('brushing, a normal start: once the HUD has slid in, the mouth '
+      'guide stays at the left and the timer where it was (R-A6)', (
+    tester,
+  ) async {
+    // No checkpoint: the screen counts down, and the HUD slides in as the
+    // first zone starts (a resume from a checkpoint never slides it in).
+    SharedPreferences.setMockInitialValues({
+      'phase_duration': 30,
+      'camera_enabled': false,
+      'camera_mode_configured': true,
+      'selected_hero': 'blaze',
+      'selected_weapon': 'star_blaster',
+      'current_world': 'candy_crater',
+      'muted': false,
+      'total_brushes': 5,
+    });
+    // The layout below is measured at this surface size.
+    const surface = Size(430, 932);
+    await tester.binding.setSurfaceSize(surface);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    // The game screen's own layout is not under test here.
+    final origOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      if (details.toString().contains('overflowed')) return;
+      origOnError?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = origOnError);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: BrushingScreen(showWorldIntro: false)),
+    );
+    // The countdown (3 s) and "GO!" (0.8 s), in frames, until the brushing
+    // screen is up.
+    for (var waited = 0; find.byType(MouthGuide).evaluate().isEmpty; waited++) {
+      if (waited > 200) fail('the brushing screen never came up');
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    // The HUD slides in over 500 ms; the first second has not ticked yet.
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    // The HUD's own guide (the zone's big overlay holds another one).
+    final guide = find.descendant(
+      of: find.byKey(const ValueKey('mission-hud-topLeft')),
+      matching: find.byType(MouthGuide),
+    );
+    final guideTopLeft = tester.getTopLeft(guide);
+    expect(guideTopLeft.dy, 12.0, reason: 'the HUD has slid in');
+    expect(guideTopLeft.dx, 12.0, reason: 'the guide stays at the left');
+    // The zone's seconds (not ticked yet), where they were when the sign
+    // under them was still there: the box that replaced it keeps its room.
+    // Measured at 430 x 932, the same as before the sign went (R-A6).
+    final timer = find.text('30');
+    expect(timer, findsOneWidget);
+    expect(
+      tester.getRect(timer),
+      rectMoreOrLessEquals(
+        const Rect.fromLTRB(179, 703.65, 251, 748.65),
+        epsilon: 0.01,
+      ),
+    );
+
+    // Past the zone's delays, so no timer outlives the test.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 4));
+  });
 }
