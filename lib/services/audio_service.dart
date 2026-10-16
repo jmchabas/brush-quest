@@ -567,6 +567,10 @@ class AudioService {
     'voice_step_pick_world.mp3',
   ];
 
+  /// The parent bedtime reminder's hand-off (spec 2026-10-15 §3.1): "Great
+  /// mission! Grown-ups, tap the lock for a bedtime reminder."
+  static const _reminderVoices = ['voice_reminder_handoff.mp3'];
+
   /// Complete list of files to preload, built once from core list + named
   /// const lists so each file appears exactly once.
   static List<String> get _allPreloadFiles => [
@@ -578,6 +582,7 @@ class AudioService {
     ...heroIntroVoices.values,
     ...weaponIntroVoices.values,
     ..._brushFlowVoices,
+    ..._reminderVoices,
   ];
 
   List<String> get encouragementVoices =>

@@ -293,6 +293,9 @@ const _brushFlowVoices = [
   'voice_step_pick_world.mp3',
 ];
 
+/// The bedtime reminder's hand-off line (mirrors AudioService._reminderVoices).
+const _reminderVoices = ['voice_reminder_handoff.mp3'];
+
 /// Complete preload list, matching AudioService._allPreloadFiles.
 final _allAudioFiles = [
   ..._audioFilesCore,
@@ -303,6 +306,7 @@ final _allAudioFiles = [
   ..._heroIntroVoices,
   ..._weaponIntroVoices,
   ..._brushFlowVoices,
+  ..._reminderVoices,
 ];
 
 // ---------------------------------------------------------------------------
@@ -619,5 +623,21 @@ void main() {
     ]) {
       expect(list, contains("'$file'"), reason: file);
     }
+  });
+
+  // -----------------------------------------------------------------------
+  // 7. The bedtime reminder's hand-off line is in AudioService's own preload
+  //    list too (the mirror can't see that private list either).
+  // -----------------------------------------------------------------------
+  test("the bedtime reminder's hand-off line is preloaded", () {
+    final source = File(
+      '$root/lib/services/audio_service.dart',
+    ).readAsStringSync();
+    final start = source.indexOf('static const _reminderVoices = [');
+    expect(start, isNonNegative);
+    final list = source.substring(start, source.indexOf('];', start));
+    expect(list, contains("'voice_reminder_handoff.mp3'"));
+    // The preload list spreads it in.
+    expect(source, contains('..._reminderVoices,'));
   });
 }
