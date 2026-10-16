@@ -110,6 +110,10 @@ class _HomeScreenState extends State<HomeScreen>
   Timer? _firstBrushLaunchTimer;
   Timer? _starDeltaTimer;
   Timer? _welcomeBackTimer;
+  // The greeting dialog's own auto-close (it follows the greeting's voice).
+  // Cancelled when the dialog closes, whichever way: a tap on the barrier opens
+  // the steps, and a close that comes late must never reach them.
+  Timer? _greetingDismissTimer;
   // One-time discoverability nudge for the camera. Fires after onboarding
   // for users who haven't yet enabled camera in Settings (or skipped the
   // parent-gated camera page). Persists until the kid taps BRUSH (started
@@ -227,6 +231,7 @@ class _HomeScreenState extends State<HomeScreen>
     _starDeltaTimer?.cancel();
     _dailyBonusTimer?.cancel();
     _welcomeBackTimer?.cancel();
+    _greetingDismissTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     AudioService().stopVoice();
     AudioService().stopMusic();
@@ -806,8 +811,12 @@ class _HomeScreenState extends State<HomeScreen>
     var autoDismissed = false;
     final showTime = DateTime.now();
     void scheduleAutoDismiss(Duration delay) {
-      Future.delayed(delay, () {
-        if (!mounted) return;
+      _greetingDismissTimer?.cancel();
+      _greetingDismissTimer = Timer(delay, () {
+        // Only while the greeting's own dialog is the top route: a tap on its
+        // barrier may have closed it and opened the steps, and a pop now would
+        // close (or step back) those.
+        if (!mounted || !(dialogRoute?.isCurrent ?? false)) return;
         autoDismissed = true;
         Navigator.of(context, rootNavigator: true).maybePop();
       });
@@ -837,6 +846,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     final closed = dialogFuture.then((_) {
+      _greetingDismissTimer?.cancel();
+      _greetingDismissTimer = null;
       if (listenerAttached) {
         audio.voicePipelineActiveNotifier.removeListener(listener);
         listenerAttached = false;

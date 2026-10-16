@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../audio/fake_audio_service.dart';
+import '../audio/timed_fake_audio_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -135,6 +136,15 @@ void main() {
       waited += 50
     ) {
       await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
+
+  // Pumps [total] in 50 ms frames, so frame-driven animations run as on a
+  // device (and no pumpAndSettle on these animated screens).
+  Future<void> pumpFor(WidgetTester tester, Duration total) async {
+    const frame = Duration(milliseconds: 50);
+    for (var left = total; left > Duration.zero; left -= frame) {
+      await tester.pump(left < frame ? left : frame);
     }
   }
 
@@ -487,6 +497,63 @@ void main() {
           fakeAudio.playedSfx.where((s) => s == 'star_chime.mp3'),
           hasLength(1),
         );
+        await disposeAll(tester);
+      },
+    );
+
+    testWidgets(
+      'a tap on the barrier just after the greeting\'s voice ends opens the '
+      'steps, and the greeting\'s own late auto-close never touches them',
+      (tester) async {
+        PreBrushScreen.idleAdvance = const Duration(seconds: 30);
+        addTearDown(() {
+          PreBrushScreen.idleAdvance = const Duration(seconds: 8);
+        });
+        // A voice channel that takes time: the greeting's voice ends while
+        // the dialog is up, which is what arms its auto-close.
+        final timed = TimedFakeAudioService(
+          defaultLength: const Duration(seconds: 3),
+        );
+        final start = tester.binding.clock.now();
+        timed.clock = () => tester.binding.clock.now().difference(start);
+        AudioService.testInstance = timed;
+        fakeAudio = timed;
+        await pumpHomeWith(
+          tester,
+          {'current_streak': 4, 'last_brush_date': day(-1)},
+          skipGreeting: false,
+          observers: [routeObserver],
+          settleSteps: 0,
+        );
+        await pumpUntil(tester, find.byType(Dialog));
+        expect(find.byType(Dialog), findsOneWidget);
+        final greeting = timed.voices.first;
+        expect(greeting.file, startsWith('voice_greet_streak_low_'));
+        for (var i = 0; greeting.endedAt == null; i++) {
+          if (i > 200) fail('the greeting voice never ended: $greeting');
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+
+        // Inside the auto-close window (it follows the voice by 0.5 to 2 s):
+        // the child reaches for the hero behind the dialog, and the steps open.
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(find.byType(Dialog), findsOneWidget);
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pump();
+        await pumpUntil(tester, find.byType(PreBrushScreen));
+        await pumpFor(tester, const Duration(milliseconds: 500)); // it fades
+        expect(find.byType(Dialog), findsNothing);
+        expect(find.byType(PreBrushScreen), findsOneWidget);
+
+        // Past the moment the greeting's auto-close was due, and then some.
+        await pumpFor(tester, const Duration(seconds: 3));
+        expect(find.byType(PreBrushScreen), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('prebrush_step_hero')),
+          findsOneWidget,
+          reason: 'still on HEROES: not closed, not stepped anywhere',
+        );
+        await timed.stopVoice(); // a line playing outlives the test otherwise
         await disposeAll(tester);
       },
     );
