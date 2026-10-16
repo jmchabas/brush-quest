@@ -1,6 +1,7 @@
 import AVFoundation
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -16,6 +17,12 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     setupAudioSessionObservers()
+    // Bedtime reminder (flutter_local_notifications): FlutterAppDelegate is
+    // the notification-centre delegate and hands each notification to the
+    // plugin, which keeps reminders off the screen while the app is open.
+    // Separate from the audio-session observers above. No permission is asked
+    // here: that happens behind the parent gate.
+    UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

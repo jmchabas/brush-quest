@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- flutter_local_notifications looks the reminder's icons up by name at run time, so the
+     resource shrinker can't see that they are used. Without this, a release build strips
+     them and reminders silently fail (the plugin rejects a missing default icon). -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_brush_reminder,@drawable/ic_reminder_large" />

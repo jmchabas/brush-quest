@@ -32,6 +32,13 @@ dependencies:
   url_launcher: ^6.3.1
   sign_in_with_apple: ^6.1.0
   crypto: ^3.0.6
+  # The parent bedtime reminder (docs/superpowers/specs/2026-10-15-bedtime-
+  # reminder-design.md): local notifications only, no FCM, no server.
+  # Pinned exactly: 22.3.2 needs Flutter >= 3.38.1 (we are on 3.41.4); 23.x
+  # needs Dart 3.12. timezone is imported directly (TZDateTime), so it is a
+  # direct dependency too.
+  flutter_local_notifications: 22.3.2
+  timezone: 0.11.2
 
 # Force the iOS-side audioplayers implementation to 6.3.0 exactly.
 # audioplayers ^6.3.0 transitively allows darwin 6.4.0+, which has the

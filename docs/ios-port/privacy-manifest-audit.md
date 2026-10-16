@@ -9,6 +9,7 @@
 - ⚪ **5 plugins**: not on Apple's required-SDK list, manifest not required.
 - ⚪ **1 plugin**: pure Dart, no native code (`lottie`).
 - 🔵 **5 Firebase packages**: manifest is bundled with the underlying Firebase iOS Pod (FirebaseCore, FirebaseAuth, etc.) — not the Flutter wrapper. Firebase 10+ ships them. Verified after `pod install` lands the actual frameworks.
+- ✅ **flutter_local_notifications 22.3.2** (v1.1, the parent bedtime reminder): its own manifest, no tracking, no collected data, UserDefaults `CA92.1` only.
 
 ## Audit table
 
@@ -31,6 +32,7 @@
 | `sign_in_with_apple ^6.1.0` | `sign_in_with_apple 6.1.4` | ⚪ | Pure wrapper around Apple's native `AuthenticationServices`. **No third-party SDK** — Apple does not require a manifest from a wrapper of its own framework. Confirmed acceptable. |
 | `crypto ^3.0.6` | (pure Dart) | ⚪ | No native iOS code |
 | `lottie ^3.3.1` | (pure Dart, uses Skia rendering) | ⚪ | No native iOS code; ITMS-91061 doesn't apply |
+| `flutter_local_notifications 22.3.2` | `flutter_local_notifications 22.3.2` (own iOS) | ✅ | `flutter_local_notifications_privacy.bundle/PrivacyInfo.xcprivacy`: NSPrivacyTracking false, no collected data types, UserDefaults `CA92.1` only. Local notifications; nothing leaves the device. |
 
 ## Verification command (re-run before each submission)
 

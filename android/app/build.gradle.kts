@@ -24,6 +24,9 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // flutter_local_notifications (the bedtime reminder) needs core library
+        // desugaring: its scheduling uses java.time below Android 8.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -73,4 +76,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // The desugaring library flutter_local_notifications asks for.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
