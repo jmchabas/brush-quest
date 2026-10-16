@@ -102,6 +102,41 @@ void main() {
     expect(fill(tester, 0), Colors.transparent);
   });
 
+  testWidgets('each tab is a button that says whether it is the lit step', (
+    tester,
+  ) async {
+    // The handle must be disposed inside the test, before its end checks.
+    final handle = tester.ensureSemantics();
+    try {
+      final current = await pumpHeader(tester);
+      const labels = ['HEROES', 'WEAPONS', 'WORLD'];
+      void expectLit(int lit) {
+        for (var i = 0; i < labels.length; i++) {
+          // One node per tab: its own label, a button he can tap, and a
+          // selected state that is true only for the lit step.
+          expect(
+            tester.getSemantics(tab(i)),
+            isSemantics(
+              label: labels[i],
+              isButton: true,
+              hasTapAction: true,
+              hasSelectedState: true,
+              isSelected: i == lit,
+            ),
+            reason: 'tab $i, with tab $lit lit',
+          );
+        }
+      }
+
+      expectLit(0);
+      current.value = 2;
+      await tester.pump();
+      expectLit(2);
+    } finally {
+      handle.dispose();
+    }
+  });
+
   testWidgets('reports every tap, on the lit tab too', (tester) async {
     final taps = <int>[];
     await pumpHeader(tester, onTap: taps.add);

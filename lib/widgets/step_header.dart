@@ -72,40 +72,48 @@ class _StepTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = lit ? Colors.white : Colors.white54;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(
-            color: lit
-                ? const Color(0xFF7C4DFF).withValues(alpha: 0.4)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          // A narrow phone or a large system text size shrinks the label
-          // instead of cutting it.
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 20, color: color),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    letterSpacing: 2,
+    // One screen-reader node per tab (container), merged with its label and
+    // its tap: "WEAPONS, button, selected". The lit colour alone says nothing
+    // to a screen reader.
+    return Semantics(
+      container: true,
+      button: true,
+      selected: lit,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            decoration: BoxDecoration(
+              color: lit
+                  ? const Color(0xFF7C4DFF).withValues(alpha: 0.4)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            // A narrow phone or a large system text size shrinks the label
+            // instead of cutting it.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 20, color: color),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      letterSpacing: 2,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
