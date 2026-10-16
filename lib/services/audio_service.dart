@@ -521,7 +521,8 @@ class AudioService {
     'voice_full_power.mp3',
   ];
 
-  /// v1.1 brush flow + streak flame lines (spec 2026-10-05 §7.3, §9).
+  /// v1.1 brush flow + streak flame lines (spec 2026-10-05 §7.3, §9), and
+  /// the steps' instruction lines (spec 2026-10-15 §3.2).
   static const _brushFlowVoices = [
     'voice_flame_grow.mp3',
     'voice_flame_tier_3.mp3',
@@ -561,6 +562,9 @@ class AudioService {
     'voice_have_them_all.mp3',
     'voice_need_more_brushes.mp3',
     'voice_ready_to_unlock.mp3',
+    'voice_step_pick_hero.mp3',
+    'voice_step_pick_weapon.mp3',
+    'voice_step_pick_world.mp3',
   ];
 
   /// Complete list of files to preload, built once from core list + named

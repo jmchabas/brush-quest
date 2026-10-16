@@ -314,15 +314,16 @@ void main() {
 
   // ── The three pages ───────────────────────────────────────────
 
-  testWidgets('opens on the HEROES tab with the hero line and the goal', (
+  testWidgets('opens on the HEROES tab with its instruction and the goal', (
     tester,
   ) async {
     await pumpScreen(tester, returningKid);
     expect(stepIs(PreBrushStep.hero), findsOneWidget);
     expect(find.byType(HeroShopScreen), findsOneWidget);
     expect(tabIndex(tester), 0);
-    // Blaze's picker line, then Frost (5) minus the wallet (3).
-    expect(voices(), ['voice_picker_hero_blaze.mp3', 'voice_stars_left_2.mp3']);
+    // "Pick the hero who'll brush with you!", then Frost (5) minus the
+    // wallet (3). Not Blaze's own description: that plays when he taps him.
+    expect(voices(), ['voice_step_pick_hero.mp3', 'voice_stars_left_2.mp3']);
     expect(glowOn('evo_cell_frost_stage1'), findsOneWidget);
     expect(find.byType(GoalGlow), findsOneWidget);
     expect(find.byKey(const ValueKey('brush_close')), findsOneWidget);
@@ -341,9 +342,9 @@ void main() {
     await tapGo(tester);
     expect(stepIs(PreBrushStep.weapon), findsOneWidget);
     expect(audio.playedSfx, ['whoosh.mp3']);
-    // The Star Blaster's line, then the Flame Sword (5) minus 3.
+    // "Now pick your weapon!", then the Flame Sword (5) minus 3.
     expect(voices().sublist(2), [
-      'voice_picker_weapon_star_blaster.mp3',
+      'voice_step_pick_weapon.mp3',
       'voice_stars_left_2.mp3',
     ]);
     await pumpFor(tester, const Duration(milliseconds: 400));
@@ -353,9 +354,10 @@ void main() {
 
     await tapGo(tester);
     expect(stepIs(PreBrushStep.world), findsOneWidget);
-    // Candy Crater's line, then 3 of its 5 missions to go.
+    // "Pick the world where you'll fight!", then 3 of Candy Crater's 5
+    // missions to go.
     expect(voices().sublist(4), [
-      'voice_world_candy_crater.mp3',
+      'voice_step_pick_world.mp3',
       'voice_brushes_left_3.mp3',
     ]);
     await pumpFor(tester, const Duration(milliseconds: 500)); // the slide
@@ -444,10 +446,7 @@ void main() {
       'world_progress_dark_dimension': 10,
       'muted': false,
     });
-    expect(voices(), [
-      'voice_picker_evo_nova_stage3.mp3',
-      'voice_have_them_all.mp3',
-    ]);
+    expect(voices(), ['voice_step_pick_hero.mp3', 'voice_have_them_all.mp3']);
     expect(find.byType(GoalGlow), findsNothing);
     await tapGo(tester);
     expect(voices().last, 'voice_have_them_all.mp3');
@@ -455,7 +454,7 @@ void main() {
     expect(find.byType(GoalGlow), findsNothing);
     await tapGo(tester);
     expect(voices().sublist(4), [
-      'voice_world_dark_dimension.mp3',
+      'voice_step_pick_world.mp3',
       'voice_have_them_all.mp3',
     ]);
     await pumpFor(tester, const Duration(milliseconds: 500));
@@ -472,16 +471,13 @@ void main() {
     await tester.tap(find.text('WEAPONS'));
     await tester.pump();
     expect(stepIs(PreBrushStep.weapon), findsOneWidget);
-    expect(voices(), [
-      'voice_picker_weapon_star_blaster.mp3',
-      'voice_stars_left_2.mp3',
-    ]);
+    expect(voices(), ['voice_step_pick_weapon.mp3', 'voice_stars_left_2.mp3']);
     await pumpFor(tester, const Duration(milliseconds: 400));
     audio.resetTracking();
     await tester.tap(find.text('HEROES'));
     await tester.pump();
     expect(stepIs(PreBrushStep.hero), findsOneWidget);
-    expect(voices(), ['voice_picker_hero_blaze.mp3', 'voice_stars_left_2.mp3']);
+    expect(voices(), ['voice_step_pick_hero.mp3', 'voice_stars_left_2.mp3']);
     expect(
       audio
           .callsFor('playVoice')
@@ -498,7 +494,7 @@ void main() {
     expect(stepIs(PreBrushStep.weapon), findsOneWidget);
     expect(tabIndex(tester), 1);
     expect(voices().sublist(2), [
-      'voice_picker_weapon_star_blaster.mp3',
+      'voice_step_pick_weapon.mp3',
       'voice_stars_left_2.mp3',
     ]);
   });
@@ -560,9 +556,9 @@ void main() {
     await pumpFor(tester, const Duration(milliseconds: 500));
     expect(stepIs(PreBrushStep.weapon), findsOneWidget); // not the Map
     expect(voices(), [
-      'voice_picker_hero_blaze.mp3',
+      'voice_step_pick_hero.mp3',
       'voice_stars_left_2.mp3',
-      'voice_picker_weapon_star_blaster.mp3',
+      'voice_step_pick_weapon.mp3',
       'voice_stars_left_2.mp3',
     ]);
     expect(audio.playedSfx, ['whoosh.mp3']);
@@ -577,9 +573,9 @@ void main() {
     await pumpFor(tester, const Duration(milliseconds: 500));
     expect(stepIs(PreBrushStep.weapon), findsOneWidget); // not the Map
     expect(voices(), [
-      'voice_picker_hero_blaze.mp3',
+      'voice_step_pick_hero.mp3',
       'voice_stars_left_2.mp3',
-      'voice_picker_weapon_star_blaster.mp3',
+      'voice_step_pick_weapon.mp3',
       'voice_stars_left_2.mp3',
     ]);
     expect(audio.playedSfx, ['whoosh.mp3']); // the second tap did nothing
@@ -778,7 +774,7 @@ void main() {
     expect(saved.getString('selected_weapon'), 'star_blaster');
     // The Map's lines play out.
     await pumpFor(tester, const Duration(seconds: 4));
-    final world = timed.voiceNamed('voice_world_candy_crater.mp3')!;
+    final world = timed.voiceNamed('voice_step_pick_world.mp3')!;
     final left = timed.voiceNamed('voice_brushes_left_3.mp3')!;
     expect(world.cut, isFalse, reason: '${timed.voices}');
     expect(left.cut || left.dropped, isFalse, reason: '${timed.voices}');
@@ -817,17 +813,16 @@ void main() {
     expect(heroList(tester).position.pixels, 0);
   });
 
-  testWidgets('a saved hero or weapon the game does not know: still a line', (
-    tester,
-  ) async {
+  testWidgets('a saved hero or weapon the game does not know: the steps '
+      'run as usual', (tester) async {
     await pumpScreen(
       tester,
       kid({'selected_hero': 'robo', 'selected_weapon': 'laser_sword'}),
     );
-    expect(voices().first, 'voice_great_choice.mp3');
+    expect(voices().first, 'voice_step_pick_hero.mp3');
     expect(tester.takeException(), isNull);
     await tapGo(tester);
-    expect(voices()[2], 'voice_awesome.mp3');
+    expect(voices()[2], 'voice_step_pick_weapon.mp3');
     await pumpFor(tester, const Duration(milliseconds: 400));
     expect(tester.takeException(), isNull);
     expect(find.byType(HeroShopScreen), findsOneWidget);
@@ -1036,21 +1031,22 @@ void main() {
   testWidgets('timeline: a step\'s lines in turn, and the count waits', (
     tester,
   ) async {
+    // The clips' real lengths.
     final timed = useTimedVoices(
       tester,
       lengths: const {
-        'voice_picker_hero_blaze.mp3': Duration(milliseconds: 6008),
+        'voice_step_pick_hero.mp3': Duration(milliseconds: 1672),
         'voice_stars_left_2.mp3': Duration(milliseconds: 993),
       },
     );
     await pumpScreen(tester, returningKid);
-    await pumpFor(tester, const Duration(milliseconds: 7900)); // lines: 7.0 s
+    await pumpFor(tester, const Duration(milliseconds: 3500)); // lines: 2.7 s
     expect(stepIs(PreBrushStep.hero), findsOneWidget);
     await pumpUntilFound(tester, stepIs(PreBrushStep.weapon));
-    final picker = timed.voiceNamed('voice_picker_hero_blaze.mp3')!;
+    final instruction = timed.voiceNamed('voice_step_pick_hero.mp3')!;
     final progress = timed.voiceNamed('voice_stars_left_2.mp3')!;
-    expect(picker.cut, isFalse);
-    expect(progress.startedAt, greaterThanOrEqualTo(picker.endedAt!));
+    expect(instruction.cut, isFalse);
+    expect(progress.startedAt, greaterThanOrEqualTo(instruction.endedAt!));
     final quiet = timed.clock() - progress.endedAt!;
     expect(quiet, greaterThanOrEqualTo(PreBrushScreen.idleAdvance));
     expect(
@@ -1117,12 +1113,12 @@ void main() {
   testWidgets('timeline: each tap re-arms the voice cap; the count waits '
       'for what he taps', (tester) async {
     // The real knobs. The step's lines and two descriptions he taps make
-    // one unbroken run of voice of 21.5 s, longer than the 12 s cap.
+    // one unbroken run of voice of 18.5 s, longer than the 12 s cap.
     PreBrushScreen.idleAdvance = const Duration(seconds: 8);
     final timed = useTimedVoices(
       tester,
       lengths: const {
-        'voice_picker_hero_blaze.mp3': Duration(seconds: 6),
+        'voice_step_pick_hero.mp3': Duration(milliseconds: 1672),
         'voice_stars_left_2.mp3': Duration(seconds: 1),
         'voice_picker_hero_bolt.mp3': Duration(seconds: 6),
         'voice_picker_hero_frost.mp3': Duration(seconds: 7),
@@ -1130,7 +1126,8 @@ void main() {
       },
     );
     await pumpScreen(tester, returningKid);
-    await pumpFor(tester, const Duration(seconds: 5));
+    // Before the step's lines are over (2.7 s).
+    await pumpFor(tester, const Duration(seconds: 2));
     // Bolt (8) and Frost (5) are out of reach: each tap plays the hero's
     // line, then the nudge.
     await tester.tap(find.byKey(const ValueKey('evo_cell_bolt_stage1')));
@@ -1142,7 +1139,7 @@ void main() {
     final lastLine = timed.voices.lastWhere(
       (v) => v.file == 'voice_shop_nudge_default.mp3',
     );
-    final weapon = timed.voiceNamed('voice_picker_weapon_star_blaster.mp3')!;
+    final weapon = timed.voiceNamed('voice_step_pick_weapon.mp3')!;
     // His last line played out, and the whole idle time passed after it.
     expect(lastLine.cut, isFalse, reason: '${timed.voices}');
     expect(
@@ -1168,14 +1165,14 @@ void main() {
   ) async {
     final timed = useTimedVoices(
       tester,
-      lengths: const {'voice_picker_hero_blaze.mp3': Duration(seconds: 6)},
+      lengths: const {'voice_step_pick_hero.mp3': Duration(milliseconds: 1672)},
     );
     await pumpScreen(tester, returningKid);
     await pumpFor(tester, const Duration(seconds: 1));
-    await tapGo(tester);
+    await tapGo(tester); // inside "Pick the hero..."
     await pumpFor(tester, const Duration(seconds: 5));
-    final hero = timed.voiceNamed('voice_picker_hero_blaze.mp3')!;
-    final weapon = timed.voiceNamed('voice_picker_weapon_star_blaster.mp3')!;
+    final hero = timed.voiceNamed('voice_step_pick_hero.mp3')!;
+    final weapon = timed.voiceNamed('voice_step_pick_weapon.mp3')!;
     expect(hero.cut, isTrue);
     // The hero step's "two more stars" never played: dropped from the queue.
     expect(timed.voiceNamed('voice_stars_left_2.mp3')!.dropped, isTrue);

@@ -247,7 +247,8 @@ const _weaponIntroVoices = [
   'voice_intro_weapon_cosmic_burst.mp3',
 ];
 
-/// v1.1 brush flow + streak flame lines (mirrors AudioService._brushFlowVoices).
+/// v1.1 brush flow + streak flame lines and the steps' instruction lines
+/// (mirrors AudioService._brushFlowVoices).
 const _brushFlowVoices = [
   'voice_flame_grow.mp3',
   'voice_flame_tier_3.mp3',
@@ -287,6 +288,9 @@ const _brushFlowVoices = [
   'voice_have_them_all.mp3',
   'voice_need_more_brushes.mp3',
   'voice_ready_to_unlock.mp3',
+  'voice_step_pick_hero.mp3',
+  'voice_step_pick_weapon.mp3',
+  'voice_step_pick_world.mp3',
 ];
 
 /// Complete preload list, matching AudioService._allPreloadFiles.
@@ -595,5 +599,25 @@ void main() {
     }
     // Intentionally does not fail — just informational.
     expect(true, isTrue);
+  });
+
+  // -----------------------------------------------------------------------
+  // 6. The steps' instruction lines are in AudioService's own preload list
+  //    (the mirror above can't see that private list, so read the source).
+  // -----------------------------------------------------------------------
+  test("the steps' instruction lines are preloaded", () {
+    final source = File(
+      '$root/lib/services/audio_service.dart',
+    ).readAsStringSync();
+    final start = source.indexOf('static const _brushFlowVoices = [');
+    expect(start, isNonNegative);
+    final list = source.substring(start, source.indexOf('];', start));
+    for (final file in const [
+      'voice_step_pick_hero.mp3',
+      'voice_step_pick_weapon.mp3',
+      'voice_step_pick_world.mp3',
+    ]) {
+      expect(list, contains("'$file'"), reason: file);
+    }
   });
 }

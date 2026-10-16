@@ -56,8 +56,8 @@ class PreBrushScreen extends StatefulWidget {
   static Duration idleAdvance = const Duration(seconds: 8);
 
   /// A voice that never ends cannot hold a step: past this the idle count
-  /// runs anyway. Longer than the longest real wait: a world line and its
-  /// progress line (7.8 s), an unlock's intro line (8.8 s).
+  /// runs anyway. Longer than the longest real wait: a description he taps
+  /// and its nudge (about 8 s), an unlock's intro line (8.8 s).
   @visibleForTesting
   static Duration maxVoiceWait = const Duration(seconds: 12);
 
@@ -277,15 +277,13 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     return goal.itemId;
   }
 
-  /// The step's description line, then how far its goal is (spec §4.3).
+  /// What the step asks him to do, then how far its goal is (spec
+  /// 2026-10-15 §3.2). The item's own description plays when he taps it.
   List<String> _entryLines(PreBrushStep step) => [
     switch (step) {
-      PreBrushStep.hero => _audio.evolutionPickerVoiceFor(
-        _now.heroId,
-        _now.heroStage,
-      ),
-      PreBrushStep.weapon => _audio.weaponPickerVoiceFor(_now.weaponId),
-      PreBrushStep.world => 'voice_world_${_now.worldId}.mp3',
+      PreBrushStep.hero => 'voice_step_pick_hero.mp3',
+      PreBrushStep.weapon => 'voice_step_pick_weapon.mp3',
+      PreBrushStep.world => 'voice_step_pick_world.mp3',
     },
     _progressLine(_goalFor(step)),
   ];
