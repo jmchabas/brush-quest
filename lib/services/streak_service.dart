@@ -318,13 +318,23 @@ class StreakService {
     return prefs.getInt(_keyTodayBrushCount) ?? 0;
   }
 
-  Future<TodaySlotsStatus> getTodaySlots() async {
+  Future<TodaySlotsStatus> getTodaySlots() => getSlotsOn(DateTime.now());
+
+  /// Which slots were brushed on [day]'s date. The done-date keys hold only
+  /// the latest date, so this answers for today (and a later day: nothing).
+  /// The bedtime reminder passes its own clock here.
+  Future<TodaySlotsStatus> getSlotsOn(DateTime day) async {
     final prefs = await SharedPreferences.getInstance();
-    final today = _todayString();
-    final morningDone = prefs.getString(_keyMorningDoneDate) == today;
-    final eveningDone = prefs.getString(_keyEveningDoneDate) == today;
-    return TodaySlotsStatus(morningDone: morningDone, eveningDone: eveningDone);
+    final date = dateKey(day);
+    return TodaySlotsStatus(
+      morningDone: prefs.getString(_keyMorningDoneDate) == date,
+      eveningDone: prefs.getString(_keyEveningDoneDate) == date,
+    );
   }
+
+  /// 'yyyy-mm-dd' for [day]: the form of every date this service saves.
+  static String dateKey(DateTime day) =>
+      '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
 
   Future<TodaySlotsStatus> getYesterdaySlots() async {
     final history = await getHistory();

@@ -1,8 +1,12 @@
 // test/services/reminder_fakes.dart
 import 'dart:async';
 
+import 'package:brush_quest/services/analytics_service.dart';
 import 'package:brush_quest/services/reminder_plan.dart';
 import 'package:brush_quest/services/reminder_platform.dart';
+import 'package:brush_quest/services/reminder_service.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// The phone's notification system, in memory. [pending] is what waits to
 /// show; [calls] lists every call by name.
@@ -121,4 +125,74 @@ class FakeReminderPlatform implements ReminderPlatform {
     _enter('openSettings');
     openSettingsCalls++;
   }
+}
+
+/// FirebaseAnalytics that records, for an Android-mode AnalyticsService (on
+/// the test host AnalyticsService is otherwise a no-op).
+class RecordingAnalytics extends Fake implements FirebaseAnalytics {
+  final List<Map<String, Object?>> events = [];
+  final Map<String, String?> properties = {};
+
+  /// The events called [name], with their parameters.
+  Iterable<Map<String, Object?>> named(String name) =>
+      events.where((e) => e['name'] == name);
+
+  @override
+  Future<void> setAnalyticsCollectionEnabled(bool enabled) async {}
+
+  @override
+  Future<void> setConsent({
+    bool? adStorageConsentGranted,
+    bool? analyticsStorageConsentGranted,
+    bool? adPersonalizationSignalsConsentGranted,
+    bool? adUserDataConsentGranted,
+    bool? functionalityStorageConsentGranted,
+    bool? personalizationStorageConsentGranted,
+    bool? securityStorageConsentGranted,
+  }) async {}
+
+  @override
+  Future<void> logEvent({
+    required String name,
+    Map<String, Object>? parameters,
+    AnalyticsCallOptions? callOptions,
+  }) async {
+    events.add({'name': name, ...?parameters});
+  }
+
+  @override
+  Future<void> setUserProperty({
+    required String name,
+    required String? value,
+    AnalyticsCallOptions? callOptions,
+  }) async {
+    properties[name] = value;
+  }
+}
+
+/// A ReminderService on [platform], recording analytics in [recorder], with
+/// its clock at [now]. It is installed as the app's ReminderService (reset
+/// `ReminderService.testInstance = null` in tearDown). [initialise] runs
+/// `init()`, as app start does.
+Future<ReminderService> installReminderService({
+  required FakeReminderPlatform platform,
+  required RecordingAnalytics recorder,
+  DateTime Function()? now,
+  GiftNightCheck nextStickerOpensGift = noStickerGifts,
+  bool initialise = true,
+}) async {
+  final analytics = AnalyticsService.forTesting(
+    isAndroid: true,
+    analytics: recorder,
+  );
+  await analytics.init();
+  final service = ReminderService.forTesting(
+    platform: platform,
+    analytics: analytics,
+    now: now,
+    nextStickerOpensGift: nextStickerOpensGift,
+  );
+  ReminderService.testInstance = service;
+  if (initialise) await service.init();
+  return service;
 }

@@ -214,4 +214,53 @@ class AnalyticsService {
     if (!_enabled) return;
     await _fa.logEvent(name: 'flame_tier_reached', parameters: {'tier': tier});
   }
+
+  // ── Parent bedtime reminder (spec 2026-10-15-bedtime-reminder-design §6) ──
+
+  /// [offer]: '1' or '2' (the hand-off after a brush) or 'parent_zone'.
+  Future<void> logReminderOfferShown({required String offer}) async {
+    if (!_enabled) return;
+    await _fa.logEvent(
+      name: 'reminder_offer_shown',
+      parameters: {'offer': offer},
+    );
+  }
+
+  /// [result]: gate_opened, skipped, timeout, not_now, os_denied or enabled.
+  Future<void> logReminderOfferResult({required String result}) async {
+    if (!_enabled) return;
+    await _fa.logEvent(
+      name: 'reminder_offer_result',
+      parameters: {'result': result},
+    );
+  }
+
+  Future<void> logReminderEnabled({
+    required int eveningHour,
+    required bool morning,
+  }) async {
+    if (!_enabled) return;
+    await _fa.logEvent(
+      name: 'reminder_enabled',
+      parameters: {'evening_hour': eveningHour, 'morning': morning ? 1 : 0},
+    );
+  }
+
+  /// [slot]: 'evening' or 'morning'.
+  Future<void> logAppOpenFromReminder({required String slot}) async {
+    if (!_enabled) return;
+    await _fa.logEvent(
+      name: 'app_open_from_reminder',
+      parameters: {'slot': slot},
+    );
+  }
+
+  /// User property reminder_on: whether a reminder is on.
+  Future<void> setReminderOn({required bool on}) async {
+    if (!_enabled) return;
+    await _fa.setUserProperty(
+      name: 'reminder_on',
+      value: on ? 'true' : 'false',
+    );
+  }
 }

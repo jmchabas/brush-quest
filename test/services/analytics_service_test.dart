@@ -93,6 +93,11 @@ Future<void> _exerciseEveryEntryPoint(AnalyticsService service) async {
   await service.logPreBrushChange(category: 'hero');
   await service.logPreBrushSkipped(reason: 'error');
   await service.logFlameTierReached(tier: 'small');
+  await service.logReminderOfferShown(offer: '1');
+  await service.logReminderOfferResult(result: 'skipped');
+  await service.logReminderEnabled(eveningHour: 19, morning: false);
+  await service.logAppOpenFromReminder(slot: 'evening');
+  await service.setReminderOn(on: true);
 }
 
 void main() {
@@ -197,5 +202,30 @@ void main() {
         },
       ]);
     });
+
+    test(
+      'the bedtime reminder: four events and the reminder_on property',
+      () async {
+        final fake = _RecordingAnalytics();
+        final service = AnalyticsService.forTesting(
+          isAndroid: true,
+          analytics: fake,
+        );
+        await service.init();
+        fake.calls.clear();
+        await service.logReminderOfferShown(offer: 'parent_zone');
+        await service.logReminderOfferResult(result: 'os_denied');
+        await service.logReminderEnabled(eveningHour: 19, morning: true);
+        await service.logAppOpenFromReminder(slot: 'morning');
+        await service.setReminderOn(on: false);
+        expect(fake.events, [
+          {'name': 'reminder_offer_shown', 'offer': 'parent_zone'},
+          {'name': 'reminder_offer_result', 'result': 'os_denied'},
+          {'name': 'reminder_enabled', 'evening_hour': 19, 'morning': 1},
+          {'name': 'app_open_from_reminder', 'slot': 'morning'},
+        ]);
+        expect(fake.calls.last, 'setUserProperty(reminder_on=false)');
+      },
+    );
   });
 }

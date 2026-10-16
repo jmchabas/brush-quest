@@ -512,6 +512,32 @@ void main() {
       expect(record.heroId, 'blaze');
       expect(record.worldId, 'candy_crater');
     });
+
+    // ── Slots on a date (the bedtime reminder) ────────────────────
+
+    test(
+      'getSlotsOn answers for the given date; getTodaySlots agrees',
+      () async {
+        final now = DateTime.now();
+        SharedPreferences.setMockInitialValues({
+          'morning_done_date': StreakService.dateKey(now),
+        });
+        final service = StreakService();
+        final today = await service.getSlotsOn(now);
+        expect(today.morningDone, isTrue);
+        expect(today.eveningDone, isFalse);
+        expect((await service.getTodaySlots()).morningDone, isTrue);
+        final tomorrow = await service.getSlotsOn(
+          DateTime(now.year, now.month, now.day + 1),
+        );
+        expect(tomorrow.completedCount, 0);
+      },
+    );
+
+    test('dateKey is yyyy-mm-dd, padded', () {
+      expect(StreakService.dateKey(DateTime(2026, 3, 7, 23, 59)), '2026-03-07');
+      expect(StreakService.dateKey(DateTime(2026, 12, 25)), '2026-12-25');
+    });
   });
 
   group('Wallet and Ranger Rank', () {
