@@ -271,6 +271,32 @@ void main() {
     expect(results(), ['gate_opened', 'enabled']);
   });
 
+  testWidgets('backing out in the last moments of "Reminder set": Home once, '
+      'not again when its hold runs out', (tester) async {
+    final routes = _PushedRoutes();
+    await pumpScreen(tester, observers: [routes]);
+    await openLock(tester);
+    await passGate(tester);
+    await tester.tap(key('parent_turn_on'));
+    await tester.pump();
+    await tester.pump();
+    expect(key('parent_confirmation'), findsOneWidget);
+    // 300 ms before the hold ends, the parent uses the system back. The
+    // popped page stays mounted through its exit transition, so its own hold
+    // timer still fires then, and must not send Home a second time.
+    await tester.pump(
+      ReminderParentScreen.confirmationHold - const Duration(milliseconds: 300),
+    );
+    unawaited(tester.state<NavigatorState>(find.byType(Navigator)).maybePop());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await fadeHome(tester);
+    expect(find.text('HOME'), findsOneWidget);
+    expect(routes.pushed.whereType<PageRouteBuilder<void>>(), hasLength(1));
+    await tester.pump(const Duration(seconds: 20));
+    expect(results(), ['gate_opened', 'enabled']);
+  });
+
   testWidgets('TURN ON and the 2.5 s: the parent screen takes Home, and this '
       'screen does not take it again', (tester) async {
     final routes = _PushedRoutes();

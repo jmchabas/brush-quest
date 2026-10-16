@@ -22,7 +22,15 @@ abstract final class AfterBrushHome {
   static Route<void> route() =>
       fadeTo(debugBuilder ?? (_) => const HomeScreen(skipGreeting: true));
 
-  /// Leaves for Home, removing every route below.
-  static Future<void> go(BuildContext context) =>
-      Navigator.of(context).pushAndRemoveUntil<void>(route(), (_) => false);
+  /// Leaves for Home, removing every route below. Does nothing when the
+  /// caller's own page is no longer on the navigator (removed, or popped and
+  /// still sliding out): it has nowhere to go, and a timer on such a page
+  /// would otherwise send Home a second time.
+  static Future<void> go(BuildContext context) {
+    final page = ModalRoute.of(context);
+    if (page != null && !page.isActive) return Future<void>.value();
+    return Navigator.of(
+      context,
+    ).pushAndRemoveUntil<void>(route(), (_) => false);
+  }
 }
