@@ -82,11 +82,12 @@ assets/
 
 ## Game Flow
 1. First launch → Onboarding (3 pages: welcome, how to play, mouth guide tutorial)
-2. Home screen → tap the hero (it IS the brush button); the streak pill shows a flame that grows with the streak. From the second brush on, the steps run on the real pages in brush mode: the Heroes & Weapons page (HEROES tab, then WEAPONS), then the World Map. Each has an X (back to Home), a big GO and a gold glow on the closest next unlock, which he can buy right there; taps play the page's own lines. About 8 s without a touch moves on once the voice is quiet. "Let's fight!" plays out before brushing
+2. Home screen → tap the hero (it IS the brush button); the streak pill shows a flame that grows with the streak. From the second brush on, the steps run on the real pages in brush mode: the Heroes & Weapons page (HEROES tab, then WEAPONS), then the World Map, under one HEROES · WEAPONS · WORLD header (a tap on a tab goes to that step). Each step opens with what to do ("Pick the hero who'll brush with you!") and how far the next unlock is; taps on items play the page's own lines. Each has an X (back to Home), a big GO and a gold glow on the closest next unlock, which he can buy right there. The back gesture goes one step back (from HEROES, Home). About 8 s without a touch moves on once the voice is quiet. "Let's fight!" plays out before brushing
 3. Countdown → "3, 2, 1, GO!" with voice + animation
 4. Brushing → 4 phases (TL, TR, BL, BR) x configurable seconds each:
    - Visual mouth guide overlay shows which teeth to brush (3s per transition)
    - Compact mouth indicator stays visible in header during brushing
+   - No monster counter and no sign under the timer (removed in v1.1: Oliver couldn't tell what they meant)
    - Each monster has unique personality (name, movement, size, tint, entrance style)
    - Camera-based motion detection drives attack frequency
    - Voiced encouragements play at ~65% and ~33% of each phase
