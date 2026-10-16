@@ -77,6 +77,7 @@ void main() {
       'badge: false',
       'provisional: false',
       'presentBadge: false',
+      'channelShowBadge: false',
       'presentBanner: false',
       'presentList: false',
       'presentAlert: false',

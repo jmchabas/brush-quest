@@ -20,10 +20,16 @@ abstract interface class ReminderPlatform {
   Future<String?> launchSlot();
 
   /// The OS prompt (Android 13+ POST_NOTIFICATIONS; iOS alert and sound, no
-  /// badge, never provisional). True when notifications are allowed.
+  /// badge, never provisional). True when the OS lets the app show
+  /// notifications. It does not look at the Android reminder channel; that is
+  /// [notificationsAllowed].
   Future<bool> requestPermission();
 
-  /// Whether the OS lets Brush Quest show notifications now.
+  /// Whether the OS lets Brush Quest show its reminders now. iOS: the app's
+  /// notifications are allowed. Android: the app's notifications are allowed
+  /// and the "Brushing reminders" channel isn't switched off in the phone's
+  /// settings (a channel that doesn't exist yet counts as on: Android creates
+  /// it when its first reminder shows).
   Future<bool> notificationsAllowed();
 
   /// The ids of the notifications waiting to show.
@@ -69,6 +75,10 @@ class PluginReminderPlatform implements ReminderPlatform {
       largeIcon: DrawableResourceAndroidBitmap(largeIcon),
       color: Color(0xFF7C4DFF),
       category: AndroidNotificationCategory.reminder,
+      // No dot on the launcher icon, ever (spec §1). Android keeps a channel's
+      // settings from the moment it is created on a phone, so this has to be
+      // right in the first build that schedules a reminder.
+      channelShowBadge: false,
     ),
     // Nothing on screen while the app is open (spec §4), and no badge ever.
     // presentSound must stay true: the plugin gives the notification its
@@ -138,11 +148,29 @@ class PluginReminderPlatform implements ReminderPlatform {
 
   @override
   Future<bool> notificationsAllowed() async => switch (defaultTargetPlatform) {
-    TargetPlatform.android =>
-      await _android?.areNotificationsEnabled() ?? false,
+    TargetPlatform.android => await _androidAllowed(),
     TargetPlatform.iOS => (await _ios?.checkPermissions())?.isEnabled ?? false,
     _ => false,
   };
+
+  /// Android has two off switches (spec §4): the app's notifications as a
+  /// whole, and the "Brushing reminders" channel. Android creates the channel
+  /// when its first reminder shows, so until then there is nothing to switch
+  /// off: a channel that isn't listed counts as on. Only importance none
+  /// counts as off: a channel the parent made silent or minimised still shows
+  /// its reminder.
+  Future<bool> _androidAllowed() async {
+    final android = _android;
+    if (android == null ||
+        !(await android.areNotificationsEnabled() ?? false)) {
+      return false;
+    }
+    final channels = await android.getNotificationChannels() ?? const [];
+    return !channels.any(
+      (channel) =>
+          channel.id == channelId && channel.importance == Importance.none,
+    );
+  }
 
   @override
   Future<List<int>> pendingIds() async => [
