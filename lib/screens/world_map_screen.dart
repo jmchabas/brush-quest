@@ -195,6 +195,10 @@ class _WorldMapScreenState extends State<WorldMapScreen> {
                 ),
               ),
 
+              // Brush mode: the steps' header, where the Heroes & Weapons
+              // page has its tab bar (spec 2026-10-15 §3.1).
+              if (brush != null) ...[brush.header, const SizedBox(height: 8)],
+
               // World path — scrollable adventure trail
               Expanded(
                 child: SingleChildScrollView(

@@ -171,8 +171,15 @@ void main() {
     of: find.byKey(ValueKey(key), skipOffstage: skipOffstage),
     matching: find.byType(GoalGlow, skipOffstage: skipOffstage),
   );
+
+  /// The shop's tab (its own tab bar is hidden in brush mode).
   int tabIndex(WidgetTester tester) =>
-      tester.widget<TabBar>(find.byType(TabBar)).controller!.index;
+      tester.widget<TabBarView>(find.byType(TabBarView)).controller!.index;
+  final header = find.byKey(const ValueKey('prebrush_header'));
+  Finder headerTab(PreBrushStep step) =>
+      find.byKey(ValueKey('step_tab_${step.index}'));
+  Color labelColor(WidgetTester tester, String label) =>
+      tester.widget<Text>(find.text(label)).style!.color!;
   ScrollableState heroList(WidgetTester tester) =>
       tester.state<ScrollableState>(
         find
@@ -463,27 +470,125 @@ void main() {
 
   // ── Tabs ──────────────────────────────────────────────────────
 
-  testWidgets('tapping a tab is a step change, with that step\'s lines', (
+  testWidgets('one header on every step, the step he is on lit', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    expect(header, findsOneWidget);
+    // The page's own HEROES/WEAPONS bar gives way to it.
+    expect(find.byType(TabBar), findsNothing);
+    expect(labelColor(tester, 'HEROES'), Colors.white);
+    expect(labelColor(tester, 'WEAPONS'), Colors.white54);
+    expect(labelColor(tester, 'WORLD'), Colors.white54);
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    expect(header, findsOneWidget);
+    expect(labelColor(tester, 'HEROES'), Colors.white54);
+    expect(labelColor(tester, 'WEAPONS'), Colors.white);
+    await tapGo(tester);
+    await pumpFor(tester, const Duration(milliseconds: 500)); // the slide
+    expect(find.byType(WorldMapScreen), findsOneWidget);
+    expect(header, findsOneWidget);
+    expect(labelColor(tester, 'WEAPONS'), Colors.white54);
+    expect(labelColor(tester, 'WORLD'), Colors.white);
+    expect(find.byType(TabBar), findsNothing);
+  });
+
+  testWidgets('a header tab goes to its step with its lines, the Map too', (
     tester,
   ) async {
     await pumpScreen(tester, returningKid);
     audio.resetTracking();
-    await tester.tap(find.text('WEAPONS'));
+    await tester.tap(headerTab(PreBrushStep.world));
+    await tester.pump();
+    expect(stepIs(PreBrushStep.world), findsOneWidget);
+    expect(voices(), ['voice_step_pick_world.mp3', 'voice_brushes_left_3.mp3']);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(find.byType(WorldMapScreen), findsOneWidget);
+    expect(find.byType(HeroShopScreen), findsNothing);
+    expect(glowOn('planet_slime_swamp'), findsOneWidget);
+
+    audio.resetTracking();
+    await tester.tap(headerTab(PreBrushStep.weapon));
     await tester.pump();
     expect(stepIs(PreBrushStep.weapon), findsOneWidget);
     expect(voices(), ['voice_step_pick_weapon.mp3', 'voice_stars_left_2.mp3']);
-    await pumpFor(tester, const Duration(milliseconds: 400));
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(find.byType(WorldMapScreen), findsNothing);
+    expect(tabIndex(tester), 1); // the shop comes back on its WEAPONS tab
+    expect(glowOn('weapon_card_flame_sword'), findsOneWidget);
+
     audio.resetTracking();
-    await tester.tap(find.text('HEROES'));
+    await tester.tap(headerTab(PreBrushStep.hero));
     await tester.pump();
     expect(stepIs(PreBrushStep.hero), findsOneWidget);
     expect(voices(), ['voice_step_pick_hero.mp3', 'voice_stars_left_2.mp3']);
+    await pumpFor(tester, const Duration(milliseconds: 400));
+    expect(tabIndex(tester), 0);
+    expect(glowOn('evo_cell_frost_stage1'), findsOneWidget);
+    // The steps speak, never the page's tab lines.
     expect(
       audio
           .callsFor('playVoice')
           .where((c) => '${c.args['fileName']}'.startsWith('voice_tab_')),
       isEmpty,
     );
+  });
+
+  testWidgets('the lit tab does nothing', (tester) async {
+    await pumpScreen(tester, returningKid);
+    final heard = voices().length;
+    await tester.tap(headerTab(PreBrushStep.hero));
+    await tester.pump();
+    expect(stepIs(PreBrushStep.hero), findsOneWidget);
+    expect(voices(), hasLength(heard));
+  });
+
+  testWidgets('going back, the page comes in from the left', (tester) async {
+    await pumpScreen(tester, returningKid);
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    await tapGo(tester);
+    await pumpFor(tester, const Duration(milliseconds: 200)); // mid-slide
+    // On to the Map: it comes in from the right, the shop leaves left.
+    expect(tester.getTopLeft(find.byType(WorldMapScreen)).dx, greaterThan(0));
+    expect(tester.getTopLeft(find.byType(HeroShopScreen)).dx, lessThan(0));
+    await pumpFor(tester, const Duration(milliseconds: 300));
+    await tester.tap(headerTab(PreBrushStep.hero));
+    await tester.pump();
+    await pumpFor(tester, const Duration(milliseconds: 200)); // mid-slide
+    // Back to the shop: it comes in from the left, the Map leaves right.
+    expect(tester.getTopLeft(find.byType(HeroShopScreen)).dx, lessThan(0));
+    expect(tester.getTopLeft(find.byType(WorldMapScreen)).dx, greaterThan(0));
+    await pumpFor(tester, const Duration(milliseconds: 300));
+    expect(tester.getTopLeft(find.byType(HeroShopScreen)).dx, 0);
+  });
+
+  testWidgets('a header tap as the Map slides in: HEROES, cleanly', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    await tapGo(tester); // the Map slides in
+    await pumpFor(tester, const Duration(milliseconds: 150));
+    // Two headers for now: the shop's, leaving (it takes no taps), and the
+    // Map's, coming in.
+    expect(header, findsNWidgets(2));
+    await tester.tap(headerTab(PreBrushStep.hero).last);
+    await tester.pump();
+    expect(stepIs(PreBrushStep.hero), findsOneWidget);
+    await pumpFor(tester, const Duration(milliseconds: 600));
+    expect(tester.takeException(), isNull); // no duplicate GlobalKey
+    expect(find.byType(WorldMapScreen), findsNothing);
+    expect(find.byType(HeroShopScreen), findsOneWidget);
+    expect(header, findsOneWidget);
+    expect(tabIndex(tester), 0);
+    expect(glowOn('evo_cell_frost_stage1'), findsOneWidget);
+    expect(voices().sublist(voices().length - 2), [
+      'voice_step_pick_hero.mp3',
+      'voice_stars_left_2.mp3',
+    ]);
   });
 
   testWidgets('a swipe to the other tab is a step change too', (tester) async {
@@ -978,6 +1083,25 @@ void main() {
     expect(find.text('BRUSHING'), findsOneWidget);
   });
 
+  testWidgets('after "Let\'s fight!" the header changes nothing', (
+    tester,
+  ) async {
+    await pumpScreen(tester, returningKid);
+    await goToTheFight(tester);
+    audio.voicePipelineActiveNotifier.value = true; // hold the launch
+    final heard = voices().length;
+    await tester.tap(
+      headerTab(PreBrushStep.hero),
+      warnIfMissed: false, // ignored on purpose
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(stepIs(PreBrushStep.world), findsOneWidget);
+    expect(voices().sublist(heard), isEmpty);
+    audio.voicePipelineActiveNotifier.value = false;
+    await pumpFor(tester, const Duration(milliseconds: 600));
+    expect(find.text('BRUSHING'), findsOneWidget);
+  });
+
   testWidgets('"Let\'s fight!" plays out before brushing starts', (
     tester,
   ) async {
@@ -1235,6 +1359,12 @@ void main() {
       for (final step in PreBrushStep.values) {
         expect(stepIs(step), findsOneWidget);
         expect(tester.takeException(), isNull, reason: step.name);
+        final headerRect = tester.getRect(header);
+        expect(
+          screen.intersect(headerRect),
+          headerRect,
+          reason: '${step.name}: $headerRect',
+        );
         final goRect = tester.getRect(go);
         expect(
           screen.contains(goRect.topLeft) &&

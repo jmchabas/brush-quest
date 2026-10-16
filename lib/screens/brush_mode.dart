@@ -7,8 +7,9 @@ import '../services/goal_service.dart';
 /// What the Heroes & Weapons page and the Map need to run as a step of the
 /// brush flow (spec
 /// docs/superpowers/specs/2026-10-13-brush-steps-on-real-pages-design.md
-/// §5). A page built without one behaves exactly as when it is opened from
-/// Home. A page keeps the same instance for its whole life.
+/// §5, and 2026-10-15-sticker-card-design.md §3). A page built without one
+/// behaves exactly as when it is opened from Home. A page keeps the same
+/// instance for its whole life.
 @immutable
 class BrushMode {
   const BrushMode({
@@ -18,6 +19,7 @@ class BrushMode {
     required this.highlightId,
     required this.reveal,
     required this.onChanged,
+    required this.header,
   });
 
   /// The X: back to Home.
@@ -40,6 +42,11 @@ class BrushMode {
 
   /// After a selection or an unlock on the page.
   final ValueChanged<BrushChange> onChanged;
+
+  /// The steps' HEROES · WEAPONS · WORLD header. The page shows it under its
+  /// title row: the Heroes & Weapons page in place of its own tab bar, the
+  /// Map in the same place.
+  final Widget header;
 }
 
 /// What a page did during the brush steps: equipped something he owns, or

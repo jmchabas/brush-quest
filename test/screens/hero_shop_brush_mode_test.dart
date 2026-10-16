@@ -1,7 +1,8 @@
 // test/screens/hero_shop_brush_mode_test.dart
 //
-// The Heroes & Weapons page in brush mode (spec 2026-10-13 §4, §5) and the
-// pins that it is unchanged when opened from Home (R6).
+// The Heroes & Weapons page in brush mode (spec 2026-10-13 §4, §5; the
+// steps' header, spec 2026-10-15 §3.1) and the pins that it is unchanged
+// when opened from Home (R6).
 import 'package:brush_quest/screens/brush_mode.dart';
 import 'package:brush_quest/screens/hero_shop_screen.dart';
 import 'package:brush_quest/services/analytics_service.dart';
@@ -9,6 +10,7 @@ import 'package:brush_quest/services/audio_service.dart';
 import 'package:brush_quest/services/goal_service.dart';
 import 'package:brush_quest/services/streak_service.dart';
 import 'package:brush_quest/widgets/goal_glow.dart';
+import 'package:brush_quest/widgets/step_header.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
@@ -71,6 +73,13 @@ class _Steps {
     highlightId: highlight,
     reveal: reveal,
     onChanged: changes.add,
+    // Stands in for the steps' header: as wide as the page, as tall as the
+    // real one.
+    header: const SizedBox(
+      key: ValueKey('steps_header'),
+      width: double.infinity,
+      height: StepHeader.height,
+    ),
   );
 }
 
@@ -163,6 +172,18 @@ void main() {
   Iterable<Map<String, Object?>> shopVisits() =>
       recorder.events.where((e) => e['name'] == 'shop_visit');
 
+  int tabIndex(WidgetTester tester) =>
+      tester.widget<TabBarView>(find.byType(TabBarView)).controller!.index;
+
+  /// A swipe across the tabs. It reaches the tab controller only once the
+  /// page has settled, about 0.75 s after the fling.
+  Future<void> swipe(WidgetTester tester, double dx) async {
+    await tester.fling(find.byType(TabBarView), Offset(dx, 0), 1500);
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+  }
+
   Future<void> buy(WidgetTester tester, Finder item) async {
     await tester.tap(item);
     await tester.pump();
@@ -189,9 +210,8 @@ void main() {
     testWidgets('no entry line, tab line, music or shop visit', (tester) async {
       await pumpShop(tester);
       await tester.pump(const Duration(seconds: 1));
-      await tester.tap(find.text('WEAPONS'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+      // Its tab bar is hidden: a swipe is how the page itself changes tab.
+      await swipe(tester, -300);
       expect(fakeAudio.playedVoiceLines, isEmpty);
       expect(fakeAudio.callsFor('playMusic'), isEmpty);
       expect(fakeAudio.callsFor('setMusicVolume'), isEmpty);
@@ -205,7 +225,7 @@ void main() {
       steps.tab.value = 1;
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(tester.widget<TabBar>(find.byType(TabBar)).controller!.index, 1);
+      expect(tabIndex(tester), 1);
       expect(
         find.byKey(const ValueKey('weapon_card_flame_sword')),
         findsOneWidget,
@@ -213,21 +233,32 @@ void main() {
       expect(steps.tabsReported, isEmpty);
     });
 
-    testWidgets('reports a tab tap and a swipe to the steps', (tester) async {
+    testWidgets('reports a swipe either way to the steps', (tester) async {
       final steps = await pumpShop(tester);
-      await tester.tap(find.text('WEAPONS'));
-      await tester.pump();
+      await swipe(tester, -300);
       expect(steps.tabsReported, [1]);
       steps.tab.value = 1; // the steps take the weapon step
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.fling(find.byType(TabBarView), const Offset(300, 0), 1500);
-      // A swipe reaches the tab controller only once the page has settled,
-      // about 0.75 s after the fling.
-      for (var i = 0; i < 20; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-      }
+      await swipe(tester, 300);
       expect(steps.tabsReported, [1, 0]);
       expect(fakeAudio.playedVoiceLines, isEmpty); // no tab lines
+    });
+
+    testWidgets("the steps' header takes the place of its tab bar", (
+      tester,
+    ) async {
+      await pumpShop(tester, brush: false);
+      final tabBar = tester.getRect(find.byType(TabBar));
+      final pageTop = tester.getRect(find.byType(TabBarView)).top;
+      await tester.pumpWidget(const SizedBox()); // a fresh page next
+      await tester.pump(const Duration(seconds: 1));
+      await pumpShop(tester);
+      expect(find.byType(TabBar), findsNothing);
+      final header = tester.getRect(find.byKey(const ValueKey('steps_header')));
+      expect(header.top, tabBar.top);
+      expect(header.bottom, tabBar.bottom);
+      // Below it the heroes and weapons start where they do from Home.
+      expect(tester.getRect(find.byType(TabBarView)).top, pageTop);
     });
 
     testWidgets('the highlighted hero cell glows, and only it', (tester) async {
@@ -444,11 +475,12 @@ void main() {
       expect(fakeAudio.playedVoiceLines.last, 'voice_tab_weapons.mp3');
     });
 
-    testWidgets('a back arrow, its own padding, no X and no glow', (
+    testWidgets('a back arrow, its own tab bar and padding, no X and no glow', (
       tester,
     ) async {
       await pumpShop(tester, brush: false);
       expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+      expect(find.byType(TabBar), findsOneWidget);
       expect(find.byIcon(Icons.close), findsNothing);
       expect(find.byType(GoalGlow), findsNothing);
       expect(

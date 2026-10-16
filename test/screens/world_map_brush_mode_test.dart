@@ -1,15 +1,17 @@
 // test/screens/world_map_brush_mode_test.dart
 //
-// The Map in brush mode (spec 2026-10-13 §4, §5) and the pins that it is
-// unchanged when opened from Home (R6). Test order matters: the first test
-// opens the Map in brush mode, and the second checks that this did not use
-// up the once-a-session intro (a static flag).
+// The Map in brush mode (spec 2026-10-13 §4, §5; the steps' header, spec
+// 2026-10-15 §3.1) and the pins that it is unchanged when opened from Home
+// (R6). Test order matters: the first test opens the Map in brush mode, and
+// the second checks that this did not use up the once-a-session intro (a
+// static flag).
 import 'package:brush_quest/screens/brush_mode.dart';
 import 'package:brush_quest/screens/world_map_screen.dart';
 import 'package:brush_quest/services/audio_service.dart';
 import 'package:brush_quest/services/goal_service.dart';
 import 'package:brush_quest/services/world_service.dart';
 import 'package:brush_quest/widgets/goal_glow.dart';
+import 'package:brush_quest/widgets/step_header.dart';
 import 'package:firebase_core/firebase_core.dart';
 // ignore: depend_on_referenced_packages
 import 'package:firebase_core_platform_interface/test.dart';
@@ -36,6 +38,13 @@ class _Steps {
     highlightId: highlight,
     reveal: reveal,
     onChanged: changes.add,
+    // Stands in for the steps' header: as wide as the page, as tall as the
+    // real one.
+    header: const SizedBox(
+      key: ValueKey('steps_header'),
+      width: double.infinity,
+      height: StepHeader.height,
+    ),
   );
 }
 
@@ -129,6 +138,18 @@ void main() {
           .padding,
       const EdgeInsets.only(bottom: 40, top: 8),
     );
+  });
+
+  testWidgets("brush mode: the steps' header under the title row, as on the "
+      'shop', (tester) async {
+    await pumpMap(tester);
+    final header = tester.getRect(find.byKey(const ValueKey('steps_header')));
+    final close = tester.getRect(find.byKey(const ValueKey('brush_close')));
+    // The title row is the X with 16 px around it.
+    expect(header.top, close.bottom + 16);
+    expect(header.height, StepHeader.height);
+    // 8 px below it, as on the shop, the path begins.
+    expect(scrollView(tester).top, header.bottom + 8);
   });
 
   testWidgets('an X instead of the back arrow; it asks the steps to close', (

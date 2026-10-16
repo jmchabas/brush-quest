@@ -12,6 +12,7 @@ import '../services/weapon_service.dart';
 import '../services/world_service.dart';
 import '../widgets/go_button.dart';
 import '../widgets/space_background.dart';
+import '../widgets/step_header.dart';
 import 'brush_mode.dart';
 import 'brushing_screen.dart';
 import 'hero_shop_screen.dart';
@@ -42,12 +43,13 @@ const _Loadout _starterLoadout = (
 );
 
 /// Hero → Weapon → World before each brush, on the real pages (spec
-/// docs/superpowers/specs/2026-10-13-brush-steps-on-real-pages-design.md):
-/// the Heroes & Weapons page on its HEROES tab, the same page on its
-/// WEAPONS tab, then the Map, each in brush mode under a big GO. A step
-/// also moves on by itself after [idleAdvance] with no touch, scroll or
-/// dialog once the voice is quiet. After the Map: "Let's fight!", then
-/// brushing.
+/// docs/superpowers/specs/2026-10-13-brush-steps-on-real-pages-design.md,
+/// amended by 2026-10-15-sticker-card-design.md §3): the Heroes & Weapons
+/// page on its HEROES tab, the same page on its WEAPONS tab, then the Map,
+/// each in brush mode under one HEROES · WEAPONS · WORLD header and above a
+/// big GO. A step also moves on by itself after [idleAdvance] with no touch,
+/// scroll or dialog once the voice is quiet. After the Map: "Let's fight!",
+/// then brushing.
 class PreBrushScreen extends StatefulWidget {
   const PreBrushScreen({super.key});
 
@@ -131,6 +133,9 @@ class _PreBrushScreenState extends State<PreBrushScreen>
   final _tab = ValueNotifier<int>(0);
   final _highlight = ValueNotifier<String?>(null);
   final _reveal = BrushPing();
+
+  /// The step the header lights (a [PreBrushStep] index).
+  final _headerStep = ValueNotifier<int>(0);
   late final BrushMode _brushMode = BrushMode(
     onClose: _onClose,
     tab: _tab,
@@ -138,7 +143,16 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     highlightId: _highlight,
     reveal: _reveal,
     onChanged: _onPageChanged,
+    header: StepHeader(
+      key: const ValueKey('prebrush_header'),
+      current: _headerStep,
+      onTap: _onHeaderTap,
+    ),
   );
+
+  /// The last step change went back (a header tap): the shop and the Map
+  /// then slide the other way.
+  bool _backward = false;
 
   // What holds the idle count (spec §4.2).
   final Set<int> _pointers = {};
@@ -189,6 +203,7 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     _tab.dispose();
     _highlight.dispose();
     _reveal.dispose();
+    _headerStep.dispose();
     super.dispose();
   }
 
@@ -308,7 +323,11 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     _entered = true;
     _cancelIdle();
     ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
-    setState(() => _step = step);
+    setState(() {
+      _backward = step.index < _step.index;
+      _step = step;
+    });
+    _headerStep.value = step.index;
     // A scroll on the page left behind may never send its end. Reset before
     // the tab moves: the tab's own slide starts right after.
     _scrolling = false;
@@ -347,10 +366,20 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     }
   }
 
-  /// A tab tap or a swipe on the Heroes & Weapons page.
+  /// A swipe on the Heroes & Weapons page (its own tab bar is hidden in
+  /// brush mode).
   void _onTabChanged(int index) {
     if (!_entered || _leaving || _step == PreBrushStep.world) return;
     final step = index == 1 ? PreBrushStep.weapon : PreBrushStep.hero;
+    if (step != _step) _enterStep(step);
+  }
+
+  /// A tab of the steps' header: that step, with its lines (spec 2026-10-15
+  /// §3.1). The page follows: the shop's tabs slide, or the shop and the Map
+  /// change places. The lit tab does nothing, as a tab bar's lit tab.
+  void _onHeaderTap(int index) {
+    if (!_entered || _leaving) return;
+    final step = PreBrushStep.values[index];
     if (step != _step) _enterStep(step);
   }
 
@@ -671,14 +700,19 @@ class _PreBrushScreenState extends State<PreBrushScreen>
                   ],
                 ),
                 // A new closure each build: Flutter then rebuilds the page
-                // on its way out with the outgoing slide (to the left).
-                transitionBuilder: (child, animation) => SlideTransition(
-                  position: Tween<Offset>(
-                    begin: Offset(child.key == pageKey ? 1.0 : -1.0, 0),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
+                // on its way out with this build's slide. Going on, the new
+                // page comes in from the right and the old one leaves to the
+                // left; going back, the other way round.
+                transitionBuilder: (child, animation) {
+                  final fromRight = (child.key == pageKey) != _backward;
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: Offset(fromRight ? 1.0 : -1.0, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  );
+                },
                 child: _step == PreBrushStep.world
                     ? WorldMapScreen(key: _mapKey, brushMode: _brushMode)
                     : HeroShopScreen(key: _shopKey, brushMode: _brushMode),
