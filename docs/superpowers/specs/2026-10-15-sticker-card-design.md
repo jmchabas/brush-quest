@@ -131,26 +131,26 @@ The reminder's approved rules stand: parent-facing, offered once after the first
 The Parent Guide's star and chest copy is rewritten to match (with `settings_copy_test.dart`).
 
 ## 6. Voice lines (Buddy/George, house format)
-New clips in `assets/audio/voices/buddy/`: mp3, 22 050 Hz, mono, 64 kbps, about −24 LUFS (the 2026-10-05 recipe). The 19 marked ✓ were recorded for the prototype and are reused after G1; the rest are new.
+New clips in `assets/audio/voices/buddy/` (prefix `voice_sticker_`, because `voice_card_*` already names the monster-card lines): mp3, 22 050 Hz, mono, 64 kbps, about −24 LUFS (the 2026-10-05 recipe). The 19 marked ✓ were recorded for the prototype and are reused after G1; the rest are new.
 
 | File | Line | |
 |---|---|---|
-| `voice_card_hi` | "Hi Ranger!" | ✓ |
-| `voice_card_welcome_back` | "Welcome back, Ranger!" | ✓ |
-| `voice_card_count_1` … `_6` | "One sticker! Two more open the little gift!", "Two stickers! One more opens the little gift!", "Three stickers! Four more open the big gift!", "Four stickers! Three more open the big gift!", "Five stickers! Two more open the big gift!", "Six stickers! One more opens the big gift!" | ✓ |
-| `voice_card_full` | "Your card is full! Brush to start a new one!" | ✓ |
-| `voice_card_got_sticker` | "You brushed today, so you get a sticker!" | ✓ |
-| `voice_card_gift_little` | "Three stickers! You open the little gift! Five stars!" | ✓ |
-| `voice_card_gift_big` | "Seven stickers! Your card is full! Here's the big gift! Twenty stars!" | ✓ |
-| `voice_card_new` | "A new card!" | ✓ |
-| `voice_card_second_brush` | "You brushed two times today! Two bonus stars!" | ✓ |
-| `voice_card_bye_tomorrow` | "See you tomorrow! Your next sticker is waiting." | ✓ |
-| `voice_card_bye_new_card` | "See you tomorrow for a new card!" | ✓ |
-| `voice_card_bye_second` | "Great job! See you tomorrow for a new sticker!" | ✓ |
-| `voice_card_intro_1` | "This is your sticker card! Every day you brush, you get a sticker!" | ✓ |
-| `voice_card_intro_2` | "Three stickers open the little gift. Seven open the big gift!" | ✓ |
-| `voice_card_bye_tonight` | "See you tonight! Brush again for two bonus stars!" | new |
-| `voice_card_seeded` | "Look, Ranger! Your brushing made stickers! Every day you brush, you get a sticker!" | new |
+| `voice_sticker_hi` | "Hi Ranger!" | ✓ |
+| `voice_sticker_welcome_back` | "Welcome back, Ranger!" | ✓ |
+| `voice_sticker_count_1` … `_6` | "One sticker! Two more open the little gift!", "Two stickers! One more opens the little gift!", "Three stickers! Four more open the big gift!", "Four stickers! Three more open the big gift!", "Five stickers! Two more open the big gift!", "Six stickers! One more opens the big gift!" | ✓ |
+| `voice_sticker_full` | "Your card is full! Brush to start a new one!" | ✓ |
+| `voice_sticker_got` | "You brushed today, so you get a sticker!" | ✓ |
+| `voice_sticker_gift_little` | "Three stickers! You open the little gift! Five stars!" | ✓ |
+| `voice_sticker_gift_big` | "Seven stickers! Your card is full! Here's the big gift! Twenty stars!" | ✓ |
+| `voice_sticker_new_card` | "A new card!" | ✓ |
+| `voice_sticker_second_brush` | "You brushed two times today! Two bonus stars!" | ✓ |
+| `voice_sticker_bye_tomorrow` | "See you tomorrow! Your next sticker is waiting." | ✓ |
+| `voice_sticker_bye_new_card` | "See you tomorrow for a new card!" | ✓ |
+| `voice_sticker_bye_second` | "Great job! See you tomorrow for a new sticker!" | ✓ |
+| `voice_sticker_intro_1` | "This is your sticker card! Every day you brush, you get a sticker!" | ✓ |
+| `voice_sticker_intro_2` | "Three stickers open the little gift. Seven open the big gift!" | ✓ |
+| `voice_sticker_bye_tonight` | "See you tonight! Brush again for two bonus stars!" | new |
+| `voice_sticker_seeded` | "Look, Ranger! Your brushing made stickers! Every day you brush, you get a sticker!" | new |
 | `voice_step_pick_hero` | "Pick the hero who'll brush with you!" | new (Part A) |
 | `voice_step_pick_weapon` | "Now pick your weapon!" | new (Part A) |
 | `voice_step_pick_world` | "Pick the world where you'll fight!" | new (Part A) |
