@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../audio/fake_audio_service.dart';
 
 /// Apple Guideline 1.3 (Kids Category) tests for the GROWN-UP CHECK on the
-/// onboarding camera page (`_ParentGateDialog` in onboarding_screen.dart).
+/// onboarding camera page (the shared `ParentGateDialog`, lib/widgets/parent_gate_dialog.dart).
 ///
 /// The old gate was a fixed "7 × 8" with three tap targets (48 / 56 / 64): a
 /// child could memorise 56 or brute-force it in three taps. It is now a typed,

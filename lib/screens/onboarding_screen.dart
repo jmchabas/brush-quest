@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/mouth_guide.dart';
+import '../widgets/parent_gate_dialog.dart';
 import '../widgets/space_background.dart';
 import '../services/audio_service.dart';
 import '../services/analytics_service.dart';
@@ -1178,20 +1179,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     await _completeOnboarding();
   }
 
-  /// Parental gate: a typed, random multiplication like the Settings Parent
-  /// Check (see [_ParentGateDialog]). A fixed question with tap targets could
-  /// be memorised or brute-forced by a child. Mirrors the COPPA "parent gate"
-  /// pattern used by Apple-Kids-approved apps.
-  Future<bool?> _showParentGate() {
-    return showDialog<bool>(
-      context: context,
-      // No barrier-dismiss: an accidental tap just outside the dialog
-      // (Android emulator regression Jim hit) shouldn't silently bail and
-      // bounce the user back to the camera page.
-      barrierDismissible: false,
-      builder: (_) => const _ParentGateDialog(),
-    );
-  }
+  /// Parental gate: the shared GROWN-UP CHECK ([showParentGate]), a typed,
+  /// random multiplication like the Settings Parent Check, dealt from this
+  /// screen's test seed. Mirrors the COPPA "parent gate" pattern used by
+  /// Apple-Kids-approved apps.
+  Future<bool?> _showParentGate() =>
+      showParentGate(context, random: OnboardingScreen.debugGateRandom);
 
   /// Mirrors `_toggleCamera`'s consent dialog in settings_screen.dart so
   /// the parent sees the same legal copy regardless of where they enable.
@@ -1236,159 +1229,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The GROWN-UP CHECK shown before the camera consent. Same kind of check as
-/// the Settings Parent Check: a typed answer to "A × B" with A in 4..9 and
-/// B in 3..7. A wrong or empty answer clears the field and deals a new
-/// problem, so the answer can't be memorised or brute-forced. Pops `true`
-/// on a correct answer and `false` on CANCEL.
-class _ParentGateDialog extends StatefulWidget {
-  const _ParentGateDialog();
-
-  @override
-  State<_ParentGateDialog> createState() => _ParentGateDialogState();
-}
-
-class _ParentGateDialogState extends State<_ParentGateDialog> {
-  final _answerController = TextEditingController();
-  final Random _random = OnboardingScreen.debugGateRandom ?? Random();
-  late int _mathA;
-  late int _mathB;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _newProblem();
-  }
-
-  @override
-  void dispose() {
-    _answerController.dispose();
-    super.dispose();
-  }
-
-  void _newProblem() {
-    _mathA = 4 + _random.nextInt(6);
-    _mathB = 3 + _random.nextInt(5);
-  }
-
-  void _checkAnswer() {
-    final answer = int.tryParse(_answerController.text.trim());
-    if (answer == _mathA * _mathB) {
-      Navigator.pop(context, true);
-    } else {
-      setState(() {
-        _error = 'Try again!';
-        _answerController.clear();
-        _newProblem();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      // The number keypad shrinks the screen: scroll instead of overflowing.
-      scrollable: true,
-      backgroundColor: const Color(0xFF1A0A3E),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: const Text(
-        'GROWN-UP CHECK',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-          letterSpacing: 2,
-        ),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Type the answer:',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '$_mathA × $_mathB = ?',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: 120,
-            child: TextField(
-              controller: _answerController,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-              onSubmitted: (_) => _checkAnswer(),
-              decoration: InputDecoration(
-                hintText: '?',
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  fontSize: 24,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    width: 2,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF00E5FF),
-                    width: 2,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              _error!,
-              style: const TextStyle(
-                color: Colors.orangeAccent,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
-        ),
-        TextButton(
-          onPressed: _checkAnswer,
-          child: const Text(
-            'CONTINUE',
-            style: TextStyle(
-              color: Color(0xFF00E5FF),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

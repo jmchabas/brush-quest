@@ -29,10 +29,20 @@ void main() {
     //   2. The "Brushing Detection" consent dialog (mirrors Settings copy),
     //   3. An OS-level Permission.camera.request() prompt.
     // Setting camera_enabled=true is only legal after the OS grant.
+    // The gate itself is the shared GROWN-UP CHECK, also opened by the
+    // bedtime-reminder hand-off (lib/widgets/parent_gate_dialog.dart).
+    final gate = File('lib/widgets/parent_gate_dialog.dart').readAsStringSync();
     expect(
-      source.contains('GROWN-UP CHECK'),
+      // The shared function itself, not onboarding's `_showParentGate(`.
+      RegExp(r'(?<![\w$])showParentGate\(').hasMatch(source),
       isTrue,
       reason: 'Onboarding must show a parental gate before enabling camera',
+    );
+    expect(gate.contains('GROWN-UP CHECK'), isTrue);
+    expect(
+      gate.contains('barrierDismissible: false'),
+      isTrue,
+      reason: 'A tap outside the gate must not dismiss it',
     );
     expect(
       source.contains('Brushing Detection'),
