@@ -1470,6 +1470,66 @@ void main() {
     await timed.stopVoice();
   });
 
+  testWidgets('timeline: a back inside a line cuts it; the step before speaks '
+      'after the cut, never over it', (tester) async {
+    PreBrushScreen.idleAdvance = const Duration(seconds: 30);
+    // The clips' real lengths.
+    final timed = useTimedVoices(
+      tester,
+      lengths: const {
+        'voice_step_pick_hero.mp3': Duration(milliseconds: 1672),
+        'voice_step_pick_weapon.mp3': Duration(milliseconds: 1071),
+        'voice_stars_left_2.mp3': Duration(milliseconds: 993),
+      },
+    );
+    SharedPreferences.setMockInitialValues(returningKid);
+    await openFromHome(tester);
+    await tapGo(tester); // WEAPONS: "Now pick your weapon!" (1.071 s) begins
+    final weapon = timed.voiceNamed('voice_step_pick_weapon.mp3')!;
+    expect(weapon.startedAt, isNotNull);
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(weapon.endedAt, isNull, reason: 'still inside the clip: $weapon');
+
+    await systemBack(tester);
+    expect(stepIs(PreBrushStep.hero), findsOneWidget);
+    // The clip is cut where it was, 0.5 s in, and not left to run on.
+    expect(weapon.cut, isTrue);
+    expect(
+      weapon.endedAt! - weapon.startedAt!,
+      const Duration(milliseconds: 500),
+    );
+    await pumpFor(tester, const Duration(seconds: 4)); // the lines play out
+
+    // The open's two lines (GO cut the first, dropped the second), WEAPONS'
+    // two (the back cut the first, dropped the second), then HEROES' own.
+    expect(timed.voices.map((v) => v.file), [
+      'voice_step_pick_hero.mp3',
+      'voice_stars_left_2.mp3',
+      'voice_step_pick_weapon.mp3',
+      'voice_stars_left_2.mp3',
+      'voice_step_pick_hero.mp3',
+      'voice_stars_left_2.mp3',
+    ]);
+    expect(timed.voices[3].dropped, isTrue, reason: 'WEAPONS\' progress line');
+    final hero = timed.voices[4];
+    final progress = timed.voices[5];
+    expect(hero.cut || hero.dropped, isFalse, reason: '$hero');
+    expect(progress.cut || progress.dropped, isFalse, reason: '$progress');
+    expect(hero.startedAt, greaterThanOrEqualTo(weapon.endedAt!));
+    expect(progress.startedAt, greaterThanOrEqualTo(hero.endedAt!));
+    // Never two lines at once, anywhere in the run.
+    final played = timed.voices.where((v) => v.startedAt != null).toList();
+    for (var i = 1; i < played.length; i++) {
+      expect(
+        played[i].startedAt,
+        greaterThanOrEqualTo(played[i - 1].endedAt!),
+        reason: '$played',
+      );
+    }
+    // A line may still be playing: end it, or its timer outlives the test.
+    await timed.stopVoice();
+  });
+
   // ── Phones ────────────────────────────────────────────────────
 
   for (final phone in const [
