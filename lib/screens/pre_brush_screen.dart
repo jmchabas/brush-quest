@@ -150,8 +150,9 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     ),
   );
 
-  /// The last step change went back (a header tap): the shop and the Map
-  /// then slide the other way.
+  /// The last change of page (shop ↔ Map) went back to an earlier step (a
+  /// header tap): the shop and the Map then slide the other way. A change
+  /// between HEROES and WEAPONS leaves it as it was.
   bool _backward = false;
 
   // What holds the idle count (spec §4.2).
@@ -324,7 +325,12 @@ class _PreBrushScreenState extends State<PreBrushScreen>
     _cancelIdle();
     ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
     setState(() {
-      _backward = step.index < _step.index;
+      // Only a change of page (shop ↔ Map) sets the direction. HEROES ↔
+      // WEAPONS moves the shop's own tabs: it must not re-aim a page slide
+      // that is already running.
+      if ((step == PreBrushStep.world) != (_step == PreBrushStep.world)) {
+        _backward = step.index < _step.index;
+      }
       _step = step;
     });
     _headerStep.value = step.index;

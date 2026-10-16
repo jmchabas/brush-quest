@@ -591,6 +591,31 @@ void main() {
     ]);
   });
 
+  testWidgets('WEAPONS as the shop slides back in: the slide does not turn '
+      'round', (tester) async {
+    await pumpScreen(tester, returningKid);
+    await tapGo(tester);
+    await pumpFor(tester, goSettled);
+    await tapGo(tester);
+    await pumpFor(tester, const Duration(milliseconds: 500)); // on the Map
+    await tester.tap(headerTab(PreBrushStep.hero));
+    await tester.pump();
+    await pumpFor(tester, const Duration(milliseconds: 100)); // mid-slide
+    // The shop comes in from the left, the Map leaves to the right. WEAPONS
+    // on the incoming header (the page leaving comes first) only moves the
+    // shop's own tab: both pages keep sliding the way they were.
+    expect(header, findsNWidgets(2));
+    await tester.tap(headerTab(PreBrushStep.weapon).last);
+    await tester.pump();
+    expect(stepIs(PreBrushStep.weapon), findsOneWidget);
+    expect(tester.getTopLeft(find.byType(HeroShopScreen)).dx, lessThan(0));
+    expect(tester.getTopLeft(find.byType(WorldMapScreen)).dx, greaterThan(0));
+    await pumpFor(tester, const Duration(milliseconds: 500));
+    expect(find.byType(WorldMapScreen), findsNothing);
+    expect(tester.getTopLeft(find.byType(HeroShopScreen)).dx, 0);
+    expect(tabIndex(tester), 1);
+  });
+
   testWidgets('a swipe to the other tab is a step change too', (tester) async {
     await pumpScreen(tester, returningKid);
     await tester.fling(find.byType(TabBarView), const Offset(-300, 0), 1500);
