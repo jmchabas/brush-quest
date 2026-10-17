@@ -23,6 +23,10 @@ class FakeReminderPlatform implements ReminderPlatform {
   /// Ids whose scheduling throws, as the plugin does for a past date.
   Set<int> failScheduleFor = {};
 
+  /// When set, [pendingIds] throws it (the plugin can't list what waits);
+  /// every other call still works.
+  Error? pendingIdsError;
+
   /// When set, the next [schedule] call waits for it (overlap tests).
   Completer<void>? holdSchedule;
 
@@ -85,6 +89,8 @@ class FakeReminderPlatform implements ReminderPlatform {
   @override
   Future<List<int>> pendingIds() async {
     _enter('pendingIds');
+    final error = pendingIdsError;
+    if (error != null) throw error;
     return pending.keys.toList();
   }
 

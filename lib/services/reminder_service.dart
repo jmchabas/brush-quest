@@ -190,7 +190,10 @@ class ReminderService {
         await _try(() => _platform.cancel(id));
       }
     } else {
-      for (final id in await _safe(_platform.pendingIds, const <int>[])) {
+      // Nothing is on: cancel what waits, and only our own ids. If the plugin
+      // can't list what waits, every id we use, so "off" still means off.
+      final waiting = await _safe(_platform.pendingIds, allReminderIds());
+      for (final id in waiting) {
         if (isReminderId(id)) await _try(() => _platform.cancel(id));
       }
     }

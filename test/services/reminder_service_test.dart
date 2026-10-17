@@ -218,6 +218,19 @@ void main() {
       },
     );
 
+    test('turning everything off still clears every reminder when the plugin '
+        'cannot list what waits', () async {
+      final s = await service(prefs: eveningOn);
+      await s.onAppPaused();
+      expect(platform.pendingTimes, nights(15, 21));
+      platform
+        ..pendingIdsError = StateError('cannot list')
+        ..cancelled.clear();
+      await s.saveSettings(const ReminderSettings());
+      expect(platform.pending, isEmpty);
+      expect(platform.cancelled.toSet(), allReminderIds().toSet());
+    });
+
     test('one instant that fails to schedule does not stop the rest', () async {
       platform.failScheduleFor = {
         reminderIdFor(ReminderSlot.evening, DateTime(2026, 10, 17)),
