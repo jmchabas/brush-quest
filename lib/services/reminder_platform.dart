@@ -178,21 +178,50 @@ class PluginReminderPlatform implements ReminderPlatform {
       request.id,
   ];
 
+  /// The Android alarm mode, worked out on the first reminder and kept: the
+  /// answer does not change while the app runs.
+  Future<AndroidScheduleMode>? _scheduleMode;
+
+  /// Exact where Android needs no permission for an exact alarm (below
+  /// Android 12, API 31): the plugin's canScheduleExactNotifications says so.
+  /// There an inexact alarm can come late by up to three quarters of the time
+  /// left when it was set, so a bedtime reminder set a day ahead could arrive
+  /// near midnight; only from Android 12 is the delay held to about an hour.
+  /// From Android 12 an exact alarm needs the exact-alarm permission, which
+  /// Play allows only for alarm and calendar apps and this app never
+  /// declares: the plugin says no, and the alarm is inexact, up to about an
+  /// hour late (spec §5). If the check itself fails, inexact too. iOS has no
+  /// such mode.
+  Future<AndroidScheduleMode> _androidScheduleMode() =>
+      _scheduleMode ??= _chooseScheduleMode();
+
+  Future<AndroidScheduleMode> _chooseScheduleMode() async {
+    try {
+      final exactAllowed =
+          await _android?.canScheduleExactNotifications() ?? false;
+      if (exactAllowed) return AndroidScheduleMode.exactAllowWhileIdle;
+    } on Object catch (e) {
+      debugPrint('Exact alarms not checked, scheduling inexact: $e');
+    }
+    return AndroidScheduleMode.inexactAllowWhileIdle;
+  }
+
   @override
-  Future<void> schedule(PlannedReminder reminder) => _plugin.zonedSchedule(
-    id: reminder.id,
-    title: reminder.title,
-    body: reminder.body,
-    // An absolute instant: the plan built it in local time for its own date,
-    // so no time-zone database is needed, and a trip abroad is put right the
-    // next time the app opens.
-    scheduledDate: tz.TZDateTime.from(reminder.at, tz.UTC),
-    notificationDetails: _details,
-    // Inexact: Play allows exact alarms only for alarm and calendar apps.
-    // Android may deliver up to about an hour late (spec §5).
-    androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-    payload: reminder.slot.name,
-  );
+  Future<void> schedule(PlannedReminder reminder) async {
+    final mode = await _androidScheduleMode();
+    await _plugin.zonedSchedule(
+      id: reminder.id,
+      title: reminder.title,
+      body: reminder.body,
+      // An absolute instant: the plan built it in local time for its own date,
+      // so no time-zone database is needed, and a trip abroad is put right the
+      // next time the app opens.
+      scheduledDate: tz.TZDateTime.from(reminder.at, tz.UTC),
+      notificationDetails: _details,
+      androidScheduleMode: mode,
+      payload: reminder.slot.name,
+    );
+  }
 
   @override
   Future<void> cancel(int id) => _plugin.cancel(id: id);

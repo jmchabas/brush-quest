@@ -67,8 +67,8 @@ void main() {
     expect(keep, contains('@drawable/ic_reminder_large'));
   });
 
-  test('the plugin asks nothing at start-up, schedules inexact one-shots, '
-      'never badges', () {
+  test('the plugin asks nothing at start-up, schedules one-shots (exact only '
+      'where Android needs no permission for it), never badges', () {
     final platform = read('lib/services/reminder_platform.dart');
     for (final flag in [
       'requestAlertPermission: false',
@@ -85,8 +85,20 @@ void main() {
     ]) {
       expect(platform, contains(flag), reason: flag);
     }
+    // Inexact is the mode wherever exact alarms would need a permission
+    // (Android 12 and up). Exact appears only behind the plugin's own check,
+    // which is true below Android 12, where exact alarms need no permission;
+    // reminder_platform_test.dart pins what each answer does.
     expect(platform, contains('AndroidScheduleMode.inexactAllowWhileIdle'));
-    expect(platform, isNot(contains('AndroidScheduleMode.exact')));
+    expect(platform, contains('canScheduleExactNotifications()'));
+    expect(platform, contains('AndroidScheduleMode.exactAllowWhileIdle'));
+    // No other exact mode: the plain one is not allowed while idle, and the
+    // alarm clock one needs the exact-alarm permission.
+    expect(
+      RegExp(r'AndroidScheduleMode\.exact\b').hasMatch(platform),
+      isFalse,
+      reason: 'AndroidScheduleMode.exact',
+    );
     expect(platform, isNot(contains('alarmClock')));
     expect(platform, isNot(contains('matchDateTimeComponents')));
     expect(platform, contains("channelId = 'brush_reminders'"));
