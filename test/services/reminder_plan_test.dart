@@ -152,8 +152,10 @@ void main() {
         settings: evenings,
         pauseUntil: DateTime(2026, 10, 18),
       );
+      // The week starts on the day the Pause ends: the four nights the old
+      // window held (18 to 21), then the three after them.
       expect(times(plan), [
-        for (var d = 18; d <= 21; d++) DateTime(2026, 10, d, 19, 30),
+        for (var d = 18; d <= 24; d++) DateTime(2026, 10, d, 19, 30),
       ]);
     });
 
@@ -182,6 +184,168 @@ void main() {
         settings: evenings,
       );
       expect(plan.last.at, DateTime(2027, 1, 4, 19, 30));
+    });
+  });
+
+  group('the week after a Pause', () {
+    // The Pause picker sets the end to the start of a date, up to 14 days
+    // ahead. The week of reminders starts on the day the Pause ends, so a
+    // family back from a trip is reminded without opening the app first.
+    DateTime endIn(int days) => DateTime(2026, 10, 15 + days);
+
+    test('a 10-day Pause plans exactly the 7 evenings from the day it ends '
+        '(dates, ids, times)', () {
+      final plan = planReminders(
+        now: thursday,
+        settings: evenings,
+        pauseUntil: endIn(10),
+      );
+      expect(times(plan), [
+        for (var d = 25; d <= 31; d++) DateTime(2026, 10, d, 19, 30),
+      ]);
+      // Ids follow the date (day number % 7), and 7 in a row never repeat.
+      expect([for (final r in plan) r.id], [103, 104, 105, 106, 100, 101, 102]);
+      expect(plan.every((r) => r.slot == ReminderSlot.evening), isTrue);
+    });
+
+    test('a 14-day Pause: the same, from its own end, over a month end', () {
+      final plan = planReminders(
+        now: thursday,
+        settings: evenings,
+        pauseUntil: endIn(14),
+      );
+      expect(times(plan), [
+        for (var i = 0; i < 7; i++) DateTime(2026, 10, 29 + i, 19, 30),
+      ]);
+      expect(times(plan).last, DateTime(2026, 11, 4, 19, 30));
+      expect([for (final r in plan) r.id], [100, 101, 102, 103, 104, 105, 106]);
+    });
+
+    for (final days in [3, 6, 7, 10, 14]) {
+      test('a $days-day Pause: the plan is the one made on the morning it '
+          'ends', () {
+        final end = endIn(days);
+        final plan = planReminders(
+          now: thursday,
+          settings: both,
+          pauseUntil: end,
+        );
+        expect(plan, hasLength(14));
+        expect(
+          plan,
+          planReminders(
+            now: DateTime(end.year, end.month, end.day, 6),
+            settings: both,
+          ),
+        );
+      });
+    }
+
+    test("a Pause ending today is no Pause for today's later slots", () {
+      final morning = DateTime(2026, 10, 15, 6);
+      final end = DateTime(2026, 10, 15);
+      expect(
+        times(
+          planReminders(now: morning, settings: both, pauseUntil: end),
+        ).take(3),
+        [
+          DateTime(2026, 10, 15, 7),
+          DateTime(2026, 10, 15, 19, 30),
+          DateTime(2026, 10, 16, 7),
+        ],
+      );
+      // The rules about today still apply: today is in the week.
+      for (final (foreground, morningDone, eveningDone) in [
+        (false, false, false),
+        (true, false, false),
+        (false, true, false),
+        (false, false, true),
+      ]) {
+        expect(
+          planReminders(
+            now: morning,
+            settings: both,
+            pauseUntil: end,
+            appInForeground: foreground,
+            morningDoneToday: morningDone,
+            eveningDoneToday: eveningDone,
+          ),
+          planReminders(
+            now: morning,
+            settings: both,
+            appInForeground: foreground,
+            morningDoneToday: morningDone,
+            eveningDoneToday: eveningDone,
+          ),
+          reason:
+              'foreground $foreground, morning done $morningDone, '
+              'evening done $eveningDone',
+        );
+      }
+    });
+
+    test('the rules about today leave a week that starts later alone', () {
+      final end = endIn(3);
+      final plain = planReminders(
+        now: thursday,
+        settings: both,
+        pauseUntil: end,
+      );
+      expect(plain, hasLength(14));
+      expect(
+        planReminders(
+          now: thursday,
+          settings: both,
+          pauseUntil: end,
+          appInForeground: true,
+          morningDoneToday: true,
+          eveningDoneToday: true,
+        ),
+        plain,
+      );
+    });
+
+    test('a reminder at the very moment the Pause ends is kept, one before '
+        'it is not', () {
+      final atTheMoment = planReminders(
+        now: thursday,
+        settings: evenings,
+        pauseUntil: DateTime(2026, 10, 18, 19, 30),
+      );
+      expect(times(atTheMoment), [
+        for (var d = 18; d <= 24; d++) DateTime(2026, 10, d, 19, 30),
+      ]);
+      final aMinuteLater = planReminders(
+        now: thursday,
+        settings: evenings,
+        pauseUntil: DateTime(2026, 10, 18, 19, 31),
+      );
+      expect(times(aMinuteLater), [
+        for (var d = 19; d <= 24; d++) DateTime(2026, 10, d, 19, 30),
+      ]);
+    });
+
+    test('with a gift coming, every night of a week that starts later is a '
+        'gift night; tonight stays the exception', () {
+      final later = planReminders(
+        now: thursday,
+        settings: evenings,
+        pauseUntil: endIn(3),
+        morningDoneToday: true, // today's sticker is placed
+        nextStickerOpensGift: true,
+      );
+      expect(later, hasLength(7));
+      expect({for (final r in later) r.body}, {kEveningCopyGift.body});
+      final today = planReminders(
+        now: thursday,
+        settings: evenings,
+        pauseUntil: endIn(0),
+        morningDoneToday: true,
+        nextStickerOpensGift: true,
+      );
+      expect(today.first.at, DateTime(2026, 10, 15, 19, 30));
+      expect(today.first.body, isNot(kEveningCopyGift.body));
+      expect({for (final r in today.skip(1)) r.body}, {kEveningCopyGift.body});
     });
   });
 
@@ -222,6 +386,37 @@ void main() {
           {(7, 0)},
         );
       });
+
+      // A Pause of 3 days puts the week on 25 Oct, 1 Nov, 13 Mar and 28 Mar:
+      // the first day or the day before a clock change in some zone.
+      test(
+        'from ${start.month}/${start.day} with a 3-day Pause: the week '
+        "from the day it ends, each at its own date's 7:30 pm and 7:00 am",
+        () {
+          final end = DateTime(start.year, start.month, start.day + 3);
+          final plan = planReminders(
+            now: start,
+            settings: both,
+            pauseUntil: end,
+          );
+          final nights = only(plan, ReminderSlot.evening);
+          expect(nights, hasLength(7));
+          for (var i = 0; i < nights.length; i++) {
+            expect(
+              nights[i].at,
+              DateTime(end.year, end.month, end.day + i, 19, 30),
+            );
+          }
+          expect(
+            {
+              for (final r in only(plan, ReminderSlot.morning))
+                (r.at.hour, r.at.minute),
+            },
+            {(7, 0)},
+          );
+          expect({for (final r in plan) r.id}.length, 14);
+        },
+      );
     }
 
     final usChange =

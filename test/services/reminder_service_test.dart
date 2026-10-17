@@ -159,7 +159,21 @@ void main() {
         },
       );
       await s.onAppPaused();
-      expect(platform.pendingTimes, nights(18, 21));
+      // The week starts on the day the Pause ends.
+      expect(platform.pendingTimes, nights(18, 24));
+    });
+
+    test('a Pause of a week or more still leaves the week after it planned, '
+        'with nothing opened in between', () async {
+      final s = await service(
+        prefs: {
+          ...eveningOn,
+          'streak_pause_until': DateTime(2026, 10, 25).toIso8601String(),
+        },
+      );
+      await s.onAppPaused();
+      // Seven nights, seven ids: a repeated id would have replaced a night.
+      expect(platform.pendingTimes, nights(25, 31));
     });
 
     test(
@@ -174,7 +188,7 @@ void main() {
           DateTime(2026, 10, 18).toIso8601String(),
         );
         await s.reschedule();
-        expect(platform.pendingTimes, nights(18, 21));
+        expect(platform.pendingTimes, nights(18, 24));
       },
     );
 

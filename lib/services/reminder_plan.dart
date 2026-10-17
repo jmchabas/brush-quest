@@ -15,8 +15,9 @@ const ReminderTime kDefaultEveningTime = (hour: 19, minute: 30);
 /// The morning reminder's time before the parent picks one (spec §3.2).
 const ReminderTime kDefaultMorningTime = (hour: 7, minute: 0);
 
-/// Days planned at a time, today included: a week without opening the app
-/// means at most a week of reminders, then silence (spec §4).
+/// Days planned at a time, from today (or from the day a Pause ends, if that
+/// is later): a week without opening the app means at most a week of
+/// reminders, then silence (spec §4).
 const kReminderHorizonDays = 7;
 
 /// Minutes after midnight: how a time is saved.
@@ -193,22 +194,37 @@ class PlannedReminder {
   String toString() => 'PlannedReminder($id ${slot.name} $at "$title")';
 }
 
-/// The reminders for the next [kReminderHorizonDays] days, soonest first
-/// (spec §4–§5). Rolling one-shots, so a brushed day can be skipped:
+/// The first date to plan reminders for: today, or the date the Pause ends if
+/// that is later. A week that always began today would leave a Pause of a
+/// week or more with nothing planned after it, until the app is opened again.
+DateTime _firstPlannedDay(DateTime now, DateTime? pauseUntil) {
+  final pauseEnds = pauseUntil?.toLocal();
+  return pauseEnds != null && _dayNumber(pauseEnds) > _dayNumber(now)
+      ? pauseEnds
+      : now;
+}
+
+/// The reminders for [kReminderHorizonDays] days, soonest first (spec
+/// §4–§5): the next week, or the week from the day the Pause ends if that is
+/// later. Rolling one-shots, so a brushed day can be skipped:
 ///
 /// * each instant is built in local time for its own date, so a
 ///   daylight-saving change needs nothing special;
-/// * nothing for a time that has passed, nor for a slot already brushed
-///   today ([morningDoneToday], [eveningDoneToday]; morning is before noon,
-///   as in the streak service);
-/// * nothing today while [appInForeground]: a reminder never shows while the
-///   app is open, and leaving the app plans the week again;
+/// * the week starts today, or on the date [pauseUntil] falls on if that is
+///   later: a Pause of any length is followed by a full week, planned
+///   without the app being opened first;
 /// * nothing before [pauseUntil] (the parent Pause);
+/// * the rules about today apply only when today is in the week: nothing for
+///   a time that has passed, nor for a slot already brushed today
+///   ([morningDoneToday], [eveningDoneToday]; morning is before noon, as in
+///   the streak service), nor while [appInForeground] (a reminder never shows
+///   while the app is open, and leaving the app plans the week again);
 /// * the evening line alternates by date; on a gift night it is the gift
 ///   line. [nextStickerOpensGift] says the next sticker the card places is
 ///   the 3rd or the 7th. The first finished brush of a day places that day's
 ///   sticker, so tonight is a gift night only if nothing was brushed yet
 ///   today, and every later night is one (a brush first plans it all again).
+///   A week that starts after today has no "tonight": all its nights are.
 List<PlannedReminder> planReminders({
   required DateTime now,
   required ReminderSettings settings,
@@ -219,10 +235,13 @@ List<PlannedReminder> planReminders({
   bool appInForeground = false,
 }) {
   final brushedToday = morningDoneToday || eveningDoneToday;
+  final today = _dayNumber(now);
+  final first = _firstPlannedDay(now, pauseUntil);
   final plan = <PlannedReminder>[];
   for (var dayIndex = 0; dayIndex < kReminderHorizonDays; dayIndex++) {
     // DateTime turns Oct 32 into Nov 1.
-    final day = DateTime(now.year, now.month, now.day + dayIndex);
+    final day = DateTime(first.year, first.month, first.day + dayIndex);
+    final isToday = _dayNumber(day) == today;
     for (final slot in ReminderSlot.values) {
       final evening = slot == ReminderSlot.evening;
       if (!(evening ? settings.eveningOn : settings.morningOn)) continue;
@@ -230,12 +249,12 @@ List<PlannedReminder> planReminders({
       final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
       if (!at.isAfter(now)) continue;
       final brushedThisSlot = evening ? eveningDoneToday : morningDoneToday;
-      if (dayIndex == 0 && (appInForeground || brushedThisSlot)) continue;
+      if (isToday && (appInForeground || brushedThisSlot)) continue;
       if (pauseUntil != null && at.isBefore(pauseUntil)) continue;
       final copy = _copyFor(
         slot,
         day,
-        giftNight: nextStickerOpensGift && (dayIndex > 0 || !brushedToday),
+        giftNight: nextStickerOpensGift && (!isToday || !brushedToday),
       );
       plan.add(
         PlannedReminder(
