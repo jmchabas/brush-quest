@@ -23,7 +23,7 @@ Before shipping any screen or flow, do a first-person walkthrough as the end use
 - **Concept**: Gamified 2-minute timer (4 x configurable quadrants), defeat cavity monsters
 - **Theme**: Space + Monsters. Kid is a "Space Ranger"
 - **Tech stack**: Flutter/Dart, Android-only for now
-- **Dependencies**: audioplayers, shared_preferences, google_fonts (Fredoka), wakelock_plus, camera, permission_handler, firebase_core, firebase_auth, cloud_firestore, google_sign_in
+- **Dependencies**: audioplayers, shared_preferences, google_fonts (Fredoka), wakelock_plus, camera, permission_handler, firebase_core, firebase_auth, cloud_firestore, google_sign_in, flutter_local_notifications + timezone (the parent bedtime reminder: local notifications only, no FCM)
 - **Design**: Dark space background, neon purple/cyan palette, large touch targets
 - **Audio**: ElevenLabs TTS for voice prompts and encouragements. 3-player SFX pool. Music uses pre-looped 2-min file with periodic health check. SFX suppressed during voice playback.
 - **Art**: DALL-E generated monster illustrations (4 base images, tinted/varied procedurally)
@@ -44,6 +44,9 @@ lib/
     world_map_screen.dart      # World progression map
     hero_shop_screen.dart      # Hero/weapon shop
     settings_screen.dart       # Settings: account, timer, camera, sound, stats, reset
+    reminder_handoff_screen.dart  # After DONE, once or twice ever: Buddy calls a grown-up; the lock opens the GROWN-UP CHECK
+    reminder_parent_screen.dart   # The parent's reminder screen (behind the gate): time, morning too, TURN ON / Not now
+    after_brush_home.dart         # The fade to Home after a brush (victory and the reminder screens)
   services/
     audio_service.dart         # Singleton SFX pool + voice + music playback + health check
     streak_service.dart        # SharedPreferences-based streak/star tracking + auto cloud sync
@@ -54,6 +57,9 @@ lib/
     camera_service.dart        # Front camera motion detection for brushing
     auth_service.dart          # Firebase Auth + Google Sign-In singleton
     sync_service.dart          # Firestore cloud sync (upload/download/smart merge)
+    reminder_plan.dart         # Bedtime reminder rules: the week's one-shots, copy, offers, default time (pure)
+    reminder_platform.dart     # flutter_local_notifications behind ReminderPlatform (the only plugin user)
+    reminder_service.dart      # Bedtime reminder: settings, offers, guarded weekly reschedule, analytics
   widgets/
     space_background.dart      # Reusable space background
     mute_button.dart           # Audio mute toggle
@@ -61,6 +67,9 @@ lib/
     achievement_popup.dart     # Overlay popup for achievements
     asset_preloader.dart       # Loading screen with progress
     mouth_guide.dart           # Visual mouth/teeth diagram for quadrant guidance
+    parent_gate_dialog.dart    # The GROWN-UP CHECK (onboarding camera page, reminder hand-off)
+    reminder_settings_card.dart # Parents > Settings > Reminders
+    reminder_time_dropdown.dart # Quarter-hour time picker for the reminders
 assets/
   images/                      # Monster PNGs, hero PNGs, planet PNGs, space background
   audio/                       # SFX, voice lines (11 encouragements), battle music loop
@@ -77,6 +86,7 @@ assets/
 ## Settings Page
 - **Account**: Google Sign-In, Save to Cloud, Restore from Cloud
 - **Brushing**: Timer per zone (15s/20s/30s), motion camera toggle, sound toggle
+- **Reminders**: bedtime reminder and an optional morning one, each with its time; turning one on asks the OS; if notifications are off in the phone, a note and Open phone settings
 - **Stats**: Total brushes, best streak
 - **Other**: Replay tutorial, reset all progress (with confirmation)
 
@@ -94,7 +104,8 @@ assets/
    - Companion bubbles show icons (no text) since kids can't read
    - Music health check every 5s recovers stuck AudioPlayer
 5. Victory → stars fly in → flame beat (bonus stars from the streak flame, with the line that explains them) → chest (wooden/silver/gold by streak) → goal fill with one-tap unlock → trophy and world rockets → flame closing strip and line → DONE
-6. Progress auto-synced to cloud if signed in
+6. After DONE, once or twice ever (the first brush; once more from the 3rd, on a later day, if the first was skipped): the bedtime-reminder hand-off. A picture (his hero → a grown-up with a phone) and Buddy: "Great mission! Grown-ups, tap the lock for a bedtime reminder." The lock opens the GROWN-UP CHECK, then the parent's screen (time, optional morning reminder, TURN ON asks the OS / Not now). The arrow, back or 15 s without a touch go Home. Reminders are local notifications at the parent's time, only if that brush hasn't happened, never while the app is open, planned a week ahead
+7. Progress auto-synced to cloud if signed in
 
 ## Audio System
 - 3-player SFX pool for parallel playback

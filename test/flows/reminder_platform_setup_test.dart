@@ -119,4 +119,20 @@ void main() {
     expect(delegate, contains('setupAudioSessionObservers()'));
     expect(delegate, isNot(contains('requestAuthorization')));
   });
+
+  test('the live privacy policy says the reminders stay on the device', () {
+    // docs/ is what GitHub Pages serves at brushquest.app.
+    final policy = read('docs/privacy-policy.html');
+    expect(
+      policy,
+      contains('<h3>Bedtime reminders (optional, off by default)</h3>'),
+    );
+    expect(
+      policy,
+      contains(
+        'Optional bedtime reminders are scheduled and shown entirely on your '
+        'device; no information is sent to us.',
+      ),
+    );
+  });
 }
