@@ -23,7 +23,9 @@ import '../widgets/item_silhouette.dart';
 import '../services/analytics_service.dart';
 import '../services/auth_service.dart';
 import '../services/sync_service.dart';
-import 'home_screen.dart';
+import '../services/reminder_service.dart';
+import 'after_brush_home.dart';
+import 'reminder_handoff_screen.dart';
 
 enum _ChestRewardType { confetti, dance, bonusStar, doubleStar, jackpot }
 
@@ -515,6 +517,9 @@ class _VictoryScreenState extends State<VictoryScreen>
       heroId: hero.id,
       worldId: _world.id,
     );
+    // The brush cancels today's reminder for its slot, and the week is
+    // planned again (bedtime reminder spec §5).
+    unawaited(ReminderService().reschedule());
     _starsEarnedThisSession = outcome.starsEarned;
     _dailyBonus = outcome.breakdown.dailyBonus;
     _streakMultiplierBonus = outcome.breakdown.streakMultiplierBonus;
@@ -1463,15 +1468,16 @@ class _VictoryScreenState extends State<VictoryScreen>
           .timeout(const Duration(seconds: 5), onTimeout: () {});
     }
     await AudioService().stopVoice();
+    // Once or twice ever, the bedtime-reminder hand-off comes between this
+    // screen and Home: after the closing line, before Home (bedtime reminder
+    // spec §2).
+    final offer = await ReminderService().offerDue();
     if (!mounted) return;
     unawaited(
       Navigator.of(context).pushAndRemoveUntil(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const HomeScreen(skipGreeting: true),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              FadeTransition(opacity: animation, child: child),
-        ),
+        offer == null
+            ? AfterBrushHome.route()
+            : AfterBrushHome.fadeTo((_) => ReminderHandoffScreen(offer: offer)),
         (route) => false,
       ),
     );

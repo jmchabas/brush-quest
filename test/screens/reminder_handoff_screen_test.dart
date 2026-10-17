@@ -55,11 +55,14 @@ void main() {
     for (final e in recorder.named('reminder_offer_result')) e['result'],
   ];
 
+  /// Screen A on screen. With [viaFade] it arrives as it does from the
+  /// victory screen: pushed over another page, fading in.
   Future<void> pumpScreen(
     WidgetTester tester, {
     ReminderOffer offer = ReminderOffer.first,
     Size size = const Size(430, 932),
     List<NavigatorObserver> observers = const [],
+    bool viaFade = false,
   }) async {
     SharedPreferences.setMockInitialValues({
       'total_brushes': 1,
@@ -85,10 +88,21 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         navigatorObservers: observers,
-        home: ReminderHandoffScreen(offer: offer),
+        home: viaFade ? const SizedBox() : ReminderHandoffScreen(offer: offer),
       ),
     );
     await tester.pump();
+    if (viaFade) {
+      unawaited(
+        tester
+            .state<NavigatorState>(find.byType(Navigator))
+            .pushAndRemoveUntil(
+              AfterBrushHome.fadeTo((_) => ReminderHandoffScreen(offer: offer)),
+              (route) => false,
+            ),
+      );
+      await tester.pump();
+    }
   }
 
   /// Lets Buddy's line end, then drops the screen. A Timer still pending at
@@ -130,6 +144,48 @@ void main() {
     expect(key('handoff_lock'), findsOneWidget);
     expect(key('handoff_skip'), findsOneWidget);
     await leave(tester);
+  });
+
+  testWidgets('arriving with the fade: Buddy waits for it to end', (
+    tester,
+  ) async {
+    // The page before this one stays under it until the fade ends, and its
+    // dispose then stops the voice channel: a line started on entry is cut.
+    await pumpScreen(tester, viaFade: true);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(audio.playedVoiceLines, isEmpty, reason: 'still fading in');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(audio.playedVoiceLines, [ReminderHandoffScreen.voiceLine]);
+    expect(audio.voiceNamed(ReminderHandoffScreen.voiceLine)!.cut, isFalse);
+    await leave(tester);
+  });
+
+  testWidgets('the arrow while it fades in: Home, and Buddy never starts', (
+    tester,
+  ) async {
+    await pumpScreen(tester, viaFade: true);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(key('handoff_skip'));
+    // In frames, not one jump: this page finishes fading in while Home is
+    // still fading in over it, and is still mounted when its fade ends.
+    for (var i = 0; i < 14; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.text('HOME'), findsOneWidget);
+    expect(audio.playedVoiceLines, isEmpty);
+    expect(results(), ['skipped']);
+  });
+
+  testWidgets('the lock while it fades in: Buddy never starts over the '
+      'GROWN-UP CHECK', (tester) async {
+    await pumpScreen(tester, viaFade: true);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(key('handoff_lock'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('GROWN-UP CHECK'), findsOneWidget);
+    expect(audio.playedVoiceLines, isEmpty);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('notes the offer: its number, today, the shown event', (

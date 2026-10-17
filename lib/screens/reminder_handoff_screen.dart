@@ -47,6 +47,9 @@ class _ReminderHandoffScreenState extends State<ReminderHandoffScreen>
   /// The 15 s without a touch. Stopped while the gate or the parent's screen
   /// is up; cancelled in dispose.
   Timer? _idleTimer;
+
+  /// This page's entrance transition, while Buddy waits for it to end.
+  Animation<double>? _entrance;
   bool _gateOpen = false;
   bool _leaving = false;
   String _heroId = 'blaze';
@@ -58,15 +61,48 @@ class _ReminderHandoffScreenState extends State<ReminderHandoffScreen>
     super.initState();
     unawaited(_loadHero());
     unawaited(ReminderService().noteOfferShown(widget.offer));
-    unawaited(AudioService().playVoice(ReminderHandoffScreen.voiceLine));
+    // The route can't be read until the first frame is built.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _speakWhenSettled());
     _restartIdle();
   }
 
   @override
   void dispose() {
     _idleTimer?.cancel();
+    _entrance?.removeStatusListener(_onEntranceStatus);
     _pulse.dispose();
     super.dispose();
+  }
+
+  /// Buddy's line, once, when this page has settled. The page before it (the
+  /// victory screen) does not go at once: the navigator keeps it under this
+  /// one until this one has finished fading in, and its dispose then stops
+  /// the voice channel. A line started on entry would be cut about 300 ms in.
+  void _speakWhenSettled() {
+    if (!mounted) return;
+    final entrance = ModalRoute.of(context)?.animation;
+    if (entrance == null || entrance.isCompleted) {
+      _speak();
+      return;
+    }
+    _entrance = entrance;
+    entrance.addStatusListener(_onEntranceStatus);
+  }
+
+  void _onEntranceStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    _entrance?.removeStatusListener(_onEntranceStatus);
+    _entrance = null;
+    // The page before this one is disposed in the frame in which the fade
+    // ends, so the line starts after that frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _speak());
+  }
+
+  /// Not if the grown-up was quicker: the lock or the arrow already stopped
+  /// the voice, and the line must not start over the check.
+  void _speak() {
+    if (!mounted || _leaving || _gateOpen) return;
+    unawaited(AudioService().playVoice(ReminderHandoffScreen.voiceLine));
   }
 
   Future<void> _loadHero() async {

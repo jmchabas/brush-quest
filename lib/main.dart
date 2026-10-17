@@ -17,6 +17,7 @@ import 'firebase_options.dart';
 import 'route_observer.dart';
 import 'services/analytics_service.dart';
 import 'services/audio_service.dart';
+import 'services/reminder_service.dart';
 import 'services/streak_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -57,6 +58,11 @@ void main() async {
 
   await StreakService.migrateToWalletEconomy();
 
+  // The parent bedtime reminder: sets the plugin up (it never asks for a
+  // permission here) and plans the week. Not awaited: a slow or failing
+  // plugin must not hold up or break the start.
+  unawaited(ReminderService().init());
+
   // Belt-and-suspenders: clear the shared purchase mutex on every cold start so
   // a prior crash between the set-true and the finally block can't silently
   // brick all subsequent purchases for the app's lifetime.
@@ -93,6 +99,8 @@ class _BrushQuestAppState extends State<BrushQuestApp>
       // Backgrounded on both platforms — kill all audio, snapshotting the
       // current track so resume can restore it.
       AudioService().stopAllAudioForLifecycle();
+      // The app was left: today's bedtime reminder is planned again.
+      unawaited(ReminderService().onAppPaused());
     } else if (state == AppLifecycleState.inactive && !Platform.isIOS) {
       // Android: 'inactive' precedes paused. Kill audio.
       // iOS: 'inactive' is transient (Control Center pull, notification banner,
@@ -105,6 +113,9 @@ class _BrushQuestAppState extends State<BrushQuestApp>
       // Screens don't rebuild on resume, so without this the music that was
       // playing before the phone slept never comes back (Jim's v24 feedback).
       AudioService().resumeAfterWake();
+      // Back in the app: no reminder shows today while it is open (bedtime
+      // reminder spec §4), and the week is planned again from now.
+      unawaited(ReminderService().onAppResumed());
     }
   }
 
