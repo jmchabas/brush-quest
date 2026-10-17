@@ -11,7 +11,9 @@ import '../services/auth_service.dart';
 import '../services/streak_service.dart';
 import '../services/sync_service.dart';
 import '../services/analytics_service.dart';
+import '../services/reminder_service.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/reminder_settings_card.dart';
 import '../widgets/space_background.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
@@ -1207,6 +1209,9 @@ class _SettingsScreenState extends State<SettingsScreen>
         await prefs.remove(key);
       }
     }
+    // The bedtime reminder: every notification cancelled, its settings and
+    // offers forgotten.
+    await ReminderService().resetAll();
     // Also delete cloud data if signed in
     await SyncService().deleteCloudData();
 
@@ -1560,7 +1565,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                   },
                 );
                 if (picked != null) {
+                  // The bedtime reminder waits for the Pause to end.
                   await StreakService().setStreakPause(picked);
+                  unawaited(ReminderService().reschedule());
                   setState(() {
                     _streakPaused = true;
                     _pauseEnd = picked;
@@ -1568,6 +1575,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 }
               } else {
                 await StreakService().clearStreakPause();
+                unawaited(ReminderService().reschedule());
                 setState(() {
                   _streakPaused = false;
                   _pauseEnd = null;
@@ -1879,6 +1887,17 @@ class _SettingsScreenState extends State<SettingsScreen>
 
         const SizedBox(height: 24),
 
+        // ── REMINDERS (the parent bedtime reminder) ──────────
+        const _SectionHeader(
+          icon: Icons.notifications_active,
+          label: 'REMINDERS',
+          color: Color(0xFFFFD54F),
+        ),
+        const SizedBox(height: 8),
+        ReminderSettingsCard(onInteraction: _resetInactivityTimer),
+
+        const SizedBox(height: 24),
+
         // ── OTHER ────────────────────────────────────────────
         const _SectionHeader(
           icon: Icons.settings,
@@ -2113,6 +2132,19 @@ class _SettingsScreenState extends State<SettingsScreen>
           Icons.star,
           Colors.yellow,
         ),
+        _buildGuideSection(
+          'Bedtime Reminder',
+          'In Settings > Reminders you can turn on one reminder on this phone '
+              'each evening, and a morning one too. It comes around the time '
+              'you pick, only if that brush hasn\'t happened yet, and not while '
+              'the streak is paused. If Brush Quest isn\'t opened for a week, '
+              'the reminders stop by themselves.\n\n'
+              'Reminders are scheduled and shown entirely on this phone; '
+              'nothing is sent to us. You can also turn them off in your '
+              'phone\'s notification settings.',
+          Icons.notifications_active,
+          const Color(0xFFFFD54F),
+        ),
         const SizedBox(height: 32),
       ],
     );
@@ -2166,8 +2198,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Widget _buildParentGate() {
+    // Scrolls, so a small phone's number keypad doesn't overflow the page.
+    // With the keypad closed it is centred, exactly as before.
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,

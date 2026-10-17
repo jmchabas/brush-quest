@@ -141,4 +141,93 @@ void main() {
 
     await tester.binding.setSurfaceSize(null);
   });
+
+  group('the Parent Check beside the number keypad', () {
+    // Parents reach Parents > Settings > Reminders through this gate. On a
+    // small phone its content is taller than what the keypad leaves, so the
+    // page must scroll (it showed "BOTTOM OVERFLOWED BY 52 PIXELS").
+    const keypad = 300.0;
+
+    Future<void> useSmallPhone(
+      WidgetTester tester, {
+      required double keypadHeight,
+    }) async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      await tester.binding.setSurfaceSize(const Size(360, 640));
+      tester.view.viewInsets = FakeViewPadding(
+        bottom: keypadHeight * tester.view.devicePixelRatio,
+      );
+      addTearDown(() async {
+        tester.view.resetViewInsets();
+        await tester.binding.setSurfaceSize(null);
+      });
+      await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    testWidgets('keypad up on a 360 x 640 phone: no overflow, and the field '
+        'and UNLOCK can be reached', (tester) async {
+      await useSmallPhone(tester, keypadHeight: keypad);
+      expect(tester.takeException(), isNull);
+
+      await tester.ensureVisible(find.byType(TextField));
+      await tester.pump();
+      await tester.ensureVisible(find.text('UNLOCK'));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      // Both are above the keypad once brought into view.
+      expect(
+        tester.getBottomLeft(find.byType(TextField)).dy,
+        lessThanOrEqualTo(640 - keypad),
+      );
+      expect(
+        tester.getBottomLeft(find.text('UNLOCK')).dy,
+        lessThanOrEqualTo(640 - keypad),
+      );
+
+      // A tap on UNLOCK lands: a wrong answer is turned down...
+      await tester.enterText(
+        find.byType(TextField),
+        '${extractCorrectAnswer(tester) + 1}',
+      );
+      await tester.tap(find.text('UNLOCK'));
+      await tester.pump();
+      expect(find.text('Try again!'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      // ...and the right one opens the settings.
+      await tester.enterText(
+        find.byType(TextField),
+        '${extractCorrectAnswer(tester)}',
+      );
+      await tester.ensureVisible(find.text('UNLOCK'));
+      await tester.pump();
+      await tester.tap(find.text('UNLOCK'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Parent Check'), findsNothing);
+      expect(find.text('Dashboard'), findsOneWidget);
+    });
+
+    testWidgets('keypad closed: the page is laid out as before, centred in '
+        'its space', (tester) async {
+      await useSmallPhone(tester, keypadHeight: 0);
+      expect(tester.takeException(), isNull);
+
+      final space = tester.getRect(
+        find
+            .ancestor(
+              of: find.text('Parent Check'),
+              matching: find.byType(Center),
+            )
+            .first,
+      );
+      final top = tester.getTopLeft(find.byIcon(Icons.lock_outline)).dy;
+      final bottom = tester.getBottomLeft(find.text('Go back')).dy;
+      expect(top, greaterThan(space.top));
+      expect(bottom, lessThan(space.bottom));
+      expect(top - space.top, closeTo(space.bottom - bottom, 0.5));
+    });
+  });
 }

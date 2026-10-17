@@ -100,6 +100,16 @@ const _starsAndShopBody =
     'Your child\'s Ranger Rank (lifetime total) never goes down — only '
     'the spendable wallet changes when they buy something.';
 
+const _bedtimeReminderBody =
+    'In Settings > Reminders you can turn on one reminder on this phone '
+    'each evening, and a morning one too. It comes around the time '
+    'you pick, only if that brush hasn\'t happened yet, and not while '
+    'the streak is paused. If Brush Quest isn\'t opened for a week, '
+    'the reminders stop by themselves.\n\n'
+    'Reminders are scheduled and shown entirely on this phone; '
+    'nothing is sent to us. You can also turn them off in your '
+    'phone\'s notification settings.';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -461,6 +471,16 @@ void main() {
       await openGuide(tester);
 
       expect(inGuide(find.text(_ourPromiseBody)), findsOneWidget);
+    });
+
+    testWidgets('the Bedtime Reminder paragraph, word for word', (
+      tester,
+    ) async {
+      await openGuide(tester);
+
+      expect(inGuide(find.text('Bedtime Reminder')), findsOneWidget);
+      expect(inGuide(find.byIcon(Icons.notifications_active)), findsOneWidget);
+      expect(inGuide(find.text(_bedtimeReminderBody)), findsOneWidget);
     });
   });
 }
