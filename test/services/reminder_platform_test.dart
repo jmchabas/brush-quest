@@ -195,6 +195,10 @@ void main() {
     });
 
     test('the check fails: inexact', () async {
+      // The failure is logged; not printed into the test run.
+      final originalDebugPrint = debugPrint;
+      debugPrint = (message, {wrapWidth}) {};
+      addTearDown(() => debugPrint = originalDebugPrint);
       exactAlarmCheckFails = true;
       expect(await scheduledMode(), 'inexactAllowWhileIdle');
     });
