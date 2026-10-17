@@ -124,18 +124,20 @@ class _ReminderHandoffScreenState extends State<ReminderHandoffScreen>
     if (_gateOpen || _leaving) return;
     _idleTimer = Timer(
       ReminderHandoffScreen.idleTimeout,
-      () => unawaited(_leave(ReminderOfferResult.timeout)),
+      () => _leave(ReminderOfferResult.timeout),
     );
   }
 
-  /// Home as usual: the arrow, the back gesture, or the 15 s.
-  Future<void> _leave(ReminderOfferResult result) async {
+  /// Home as usual: the arrow, the back gesture, or the 15 s. Nothing here
+  /// waits for the voice to stop: AudioService.stopVoice catches only
+  /// Exception, and a stop that fails with an Error or never reports back
+  /// would otherwise leave the child on his only route with no way out.
+  void _leave(ReminderOfferResult result) {
     if (_leaving || !mounted) return;
     _leaving = true;
     _idleTimer?.cancel();
     unawaited(ReminderService().noteOfferResult(result));
-    await AudioService().stopVoice();
-    if (!mounted) return;
+    unawaited(AudioService().stopVoice());
     unawaited(AfterBrushHome.go(context));
   }
 
@@ -184,7 +186,7 @@ class _ReminderHandoffScreenState extends State<ReminderHandoffScreen>
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) unawaited(_leave(ReminderOfferResult.skipped));
+        if (!didPop) _leave(ReminderOfferResult.skipped);
       },
       child: Scaffold(
         body: Listener(
@@ -208,8 +210,7 @@ class _ReminderHandoffScreenState extends State<ReminderHandoffScreen>
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(0, 0, 24, 24),
                       child: _SkipArrow(
-                        onTap: () =>
-                            unawaited(_leave(ReminderOfferResult.skipped)),
+                        onTap: () => _leave(ReminderOfferResult.skipped),
                       ),
                     ),
                   ),

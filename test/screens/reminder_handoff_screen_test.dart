@@ -56,13 +56,15 @@ void main() {
   ];
 
   /// Screen A on screen. With [viaFade] it arrives as it does from the
-  /// victory screen: pushed over another page, fading in.
+  /// victory screen: pushed over another page, fading in. [withAudio] is the
+  /// voice channel to use instead of the plain timed fake.
   Future<void> pumpScreen(
     WidgetTester tester, {
     ReminderOffer offer = ReminderOffer.first,
     Size size = const Size(430, 932),
     List<NavigatorObserver> observers = const [],
     bool viaFade = false,
+    TimedFakeAudioService? withAudio,
   }) async {
     SharedPreferences.setMockInitialValues({
       'total_brushes': 1,
@@ -70,11 +72,13 @@ void main() {
       'unlocked_heroes': ['blaze', 'frost'],
       'muted': false,
     });
-    audio = TimedFakeAudioService(
-      lengths: const {
-        ReminderHandoffScreen.voiceLine: Duration(milliseconds: 3900),
-      },
-    );
+    audio =
+        withAudio ??
+        TimedFakeAudioService(
+          lengths: const {
+            ReminderHandoffScreen.voiceLine: Duration(milliseconds: 3900),
+          },
+        );
     final start = tester.binding.clock.now();
     audio.clock = () => tester.binding.clock.now().difference(start);
     AudioService.testInstance = audio;
@@ -245,6 +249,55 @@ void main() {
     expect(find.text('HOME'), findsOneWidget);
     expect(results(), ['skipped']);
   });
+
+  // AudioService.stopVoice catches only Exception. An Error from it, or a stop
+  // that never reports back, must not keep a child on this route: the arrow,
+  // the back gesture and the 15 s are his only ways out. Nothing waits for it.
+  for (final stop in <_StopCase>[
+    (name: 'never reports back', audio: _StuckStopAudio.new, fails: false),
+    (name: 'fails with an Error', audio: _FailingStopAudio.new, fails: true),
+  ]) {
+    for (final exit in <_ExitCase>[
+      (
+        name: 'the arrow',
+        result: 'skipped',
+        go: (tester) => tester.tap(key('handoff_skip')),
+      ),
+      (
+        name: 'the back button',
+        result: 'skipped',
+        go: (tester) async => unawaited(
+          tester.state<NavigatorState>(find.byType(Navigator)).maybePop(),
+        ),
+      ),
+      (
+        name: 'the 15 s',
+        result: 'timeout',
+        go: (tester) => tester.pump(
+          ReminderHandoffScreen.idleTimeout + const Duration(milliseconds: 100),
+        ),
+      ),
+    ]) {
+      testWidgets('${exit.name}: Home even if the voice stop ${stop.name}', (
+        tester,
+      ) async {
+        // An Error in a call nobody awaits is an uncaught error, as for any
+        // unawaited call (the app reports it); flutter_test would fail the
+        // test for it, so the zone collects it here. The expectations stay
+        // outside the zone: a failure thrown inside it hangs the test.
+        final uncaught = <Object>[];
+        await runZonedGuarded(() async {
+          await pumpScreen(tester, withAudio: stop.audio());
+          await tester.pump(const Duration(seconds: 1));
+          await exit.go(tester);
+          await fadeHome(tester);
+        }, (error, _) => uncaught.add(error));
+        expect(find.text('HOME'), findsOneWidget);
+        expect(results(), [exit.result]);
+        expect(uncaught, stop.fails ? [isStateError] : isEmpty);
+      });
+    }
+  }
 
   testWidgets('the lock: Buddy stops, the GROWN-UP CHECK, then the parent '
       'screen; no timeout behind it', (tester) async {
@@ -418,6 +471,20 @@ void main() {
   });
 }
 
+/// A way the voice stop can go wrong, for the exits that must not wait on it.
+typedef _StopCase = ({
+  String name,
+  TimedFakeAudioService Function() audio,
+  bool fails,
+});
+
+/// A way off this screen, and the offer result it records.
+typedef _ExitCase = ({
+  String name,
+  String result,
+  Future<void> Function(WidgetTester) go,
+});
+
 /// The routes pushed on the navigator, in order.
 class _PushedRoutes extends NavigatorObserver {
   final List<Route<dynamic>> pushed = [];
@@ -425,4 +492,38 @@ class _PushedRoutes extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
       pushed.add(route);
+}
+
+/// A voice channel whose stop is sent but never reports back, as a stuck
+/// platform call would.
+class _StuckStopAudio extends TimedFakeAudioService {
+  _StuckStopAudio()
+    : super(
+        lengths: const {
+          ReminderHandoffScreen.voiceLine: Duration(milliseconds: 3900),
+        },
+      );
+
+  @override
+  Future<void> stopVoice() async {
+    await super.stopVoice();
+    await Completer<void>().future;
+  }
+}
+
+/// A voice channel whose stop fails with an Error, which the real
+/// AudioService.stopVoice (it catches only Exception) would let through.
+class _FailingStopAudio extends TimedFakeAudioService {
+  _FailingStopAudio()
+    : super(
+        lengths: const {
+          ReminderHandoffScreen.voiceLine: Duration(milliseconds: 3900),
+        },
+      );
+
+  @override
+  Future<void> stopVoice() async {
+    await super.stopVoice();
+    throw StateError('the voice player is gone');
+  }
 }
