@@ -197,8 +197,10 @@ void main() {
   testWidgets('Buddy\'s hand-off line plays to its end: the victory screen '
       'leaving does not cut it', (tester) async {
     // A voice channel that takes time, like the real one, on the test's fake
-    // clock. The victory screen's dispose() calls stopVoice() in the very
-    // frame the hand-off's initState starts the line.
+    // clock. The victory screen stays under the hand-off until the hand-off's
+    // ~300 ms fade-in ends, and its dispose() then calls stopVoice(): the
+    // hand-off speaks after its own fade-in, and the line must play on to its
+    // end (see ReminderHandoffScreen._speakWhenSettled).
     final timed = TimedFakeAudioService(
       lengths: {
         ReminderHandoffScreen.voiceLine: const Duration(milliseconds: 3900),
