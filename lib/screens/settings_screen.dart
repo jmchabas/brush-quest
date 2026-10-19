@@ -31,6 +31,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _cameraEnabled = false;
   int _totalBrushes = 0;
   int _bestStreak = 0;
+  // Ranger Rank: every star ever earned (never drops). Kids see only the
+  // wallet; this is where a parent sees it.
+  int _rangerRank = 0;
   bool _signingIn = false;
   bool _syncing = false;
   bool _parentUnlocked = false;
@@ -145,6 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final paused = await streakSvc.isStreakPaused();
     final pauseEnd = await streakSvc.getStreakPauseEnd();
     final currentStreak = await streakSvc.getStreak();
+    final rangerRank = await streakSvc.getRangerRank();
 
     if (mounted) {
       setState(() {
@@ -158,6 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         _streakPaused = paused;
         _pauseEnd = pauseEnd;
         _currentStreak = currentStreak;
+        _rangerRank = rangerRank;
         _lastCloudSave = prefs.getString('last_cloud_save');
       });
     }
@@ -1429,6 +1434,33 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               Text(
                 '$_totalBrushes',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Ranger Rank: every star ever earned (spending never lowers it)
+          Row(
+            key: const ValueKey('dashboard_ranger_rank'),
+            children: [
+              const Icon(
+                Icons.military_tech,
+                color: Color(0xFF7C4DFF),
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Ranger Rank (stars ever earned)',
+                  style: TextStyle(color: Colors.white70, fontSize: 15),
+                ),
+              ),
+              Text(
+                '$_rangerRank',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

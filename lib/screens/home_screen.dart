@@ -52,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen>
 
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
-  int _totalStars = 0; // Ranger Rank (lifetime total)
   int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
@@ -256,13 +255,11 @@ class _HomeScreenState extends State<HomeScreen>
   /// Refresh stats without re-triggering greeting / music. Used on app resume.
   Future<void> _refreshStats() async {
     final wallet = await _streakService.getWallet();
-    final rank = await _streakService.getRangerRank();
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
     final trophyCount = await _trophyService.getTotalCaptured();
     if (!mounted) return;
     setState(() {
-      _totalStars = rank;
       _wallet = wallet;
       _streak = streak;
       _totalBrushes = totalBrushes;
@@ -318,7 +315,6 @@ class _HomeScreenState extends State<HomeScreen>
     // shows the pre-bonus amount.  The bonus is claimed after the
     // greeting dismisses, and the wallet pill animates the bump.
     final wallet = await _streakService.getWallet();
-    final rank = await _streakService.getRangerRank();
     final hero = await _heroService.getSelectedHero();
     final weapon = await _weaponService.getSelectedWeapon();
     final evolutionStage = await _heroService.getEvolutionStage(hero.id);
@@ -328,7 +324,6 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (mounted) {
       setState(() {
-        _totalStars = rank;
         _wallet = wallet;
         _selectedHero = hero;
         _evolutionStage = evolutionStage;
@@ -1216,8 +1211,9 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 16),
 
-                    // Stats row: streak, rank, wallet, trophies
-                    // Use Row with Expanded so all 4 pills are equal width
+                    // Stats row: streak, wallet, trophies. Ranger Rank (the
+                    // lifetime total) is for parents: Parent Dashboard only.
+                    // Use Row with Expanded so the pills are equal width
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Row(
@@ -1320,53 +1316,6 @@ class _HomeScreenState extends State<HomeScreen>
                                     ],
                                   ),
                                 ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          // Ranger Rank pill (shield — the "pride number")
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: const Color(
-                                    0xFF7C4DFF,
-                                  ).withValues(alpha: 0.6),
-                                  width: 2,
-                                ),
-                                color: const Color(
-                                  0xFF7C4DFF,
-                                ).withValues(alpha: 0.12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.military_tech,
-                                    color: Color(0xFF7C4DFF),
-                                    size: 26,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '$_totalStars',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 22,
-                                      shadows: [
-                                        Shadow(
-                                          color: Color(0x807C4DFF),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ),

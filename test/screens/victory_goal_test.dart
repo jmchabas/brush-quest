@@ -58,6 +58,9 @@ typedef _Phone = ({Size size, double top, double bottom});
 const _small = (size: Size(360, 640), top: 24.0, bottom: 48.0);
 const _big = (size: Size(430, 932), top: 59.0, bottom: 34.0);
 
+/// Jim's phone (about 412x915 dp).
+const _jim = (size: Size(412, 915), top: 32.0, bottom: 24.0);
+
 /// A small old phone: the monster card alone nearly fills what it shows.
 const _tiny = (size: Size(320, 568), top: 24.0, bottom: 48.0);
 
@@ -297,7 +300,7 @@ void main() {
     /// The part of the screen the scroll view shows, below the top bar.
     Rect shown(_Phone phone) => Rect.fromLTRB(
       0,
-      phone.top + 56, // the pills row: 8 px down, 48 px high at most
+      phone.top + 64, // the pills row: 8 px down, 56 px high
       phone.size.width,
       phone.size.height - phone.bottom,
     );
@@ -1105,6 +1108,58 @@ void main() {
         );
         await drain(tester);
       });
+
+      // Jim's device test of 1.1.0+42 (2026-10-19): one star counter at the
+      // top, and the pills never drawn over the hero's picture.
+      for (final (name, phone) in [('360x640', _small), ('412x915', _jim)]) {
+        testWidgets('$name: the top bar holds only the streak and the wallet, '
+            'and nothing scrolls under it', (tester) async {
+          SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
+          await pumpVictory(tester, phone: phone, trophy: 'cc_t1');
+          await pumpToChest(tester);
+          await tester.tap(chestKey);
+          final done = find.text('DONE');
+          for (var i = 0; i < 600 && done.evaluate().isEmpty; i++) {
+            await tester.pump(const Duration(milliseconds: 50));
+          }
+          // Scrolled toward DONE: the hero has gone up, under where the
+          // pills are.
+          await frames(tester, const Duration(milliseconds: 450));
+
+          final bar = find.byKey(const ValueKey('victory_top_bar'));
+          expect(find.byIcon(Icons.diamond), findsNothing);
+          expect(
+            find.descendant(of: bar, matching: find.byType(FlameIcon)),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(of: bar, matching: find.byIcon(Icons.star)),
+            findsOneWidget,
+          );
+          // The scroll view (so the hero, scrolled up) starts below the bar.
+          final scroll = tester.getRect(
+            find.byKey(const ValueKey('victory_scroll')),
+          );
+          final barRect = tester.getRect(bar);
+          expect(scroll.top, greaterThanOrEqualTo(barRect.bottom));
+          // The pills are drawn whole inside the bar, at full size.
+          final row = find.descendant(of: bar, matching: find.byType(Row));
+          final rowRect = tester.getRect(row.first);
+          expect(rowRect.top, greaterThanOrEqualTo(barRect.top));
+          expect(rowRect.bottom, lessThanOrEqualTo(barRect.bottom + 0.5));
+          final fitted = tester.widget<FittedBox>(
+            find.descendant(of: bar, matching: find.byType(FittedBox)).first,
+          );
+          expect(fitted.fit, BoxFit.scaleDown);
+          final rowSize = tester.getSize(row.first);
+          expect(
+            rowSize.height,
+            lessThanOrEqualTo(barRect.height),
+            reason: 'the pills fit without being scaled down',
+          );
+          await drain(tester);
+        });
+      }
 
       testWidgets('the top bar\'s streak flame follows the streak', (
         tester,

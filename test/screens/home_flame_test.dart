@@ -240,7 +240,6 @@ void main() {
             'last_daily_bonus_date': day(0),
           });
           final pill = heightOf(tester, find.byType(FlameIcon));
-          expect(heightOf(tester, find.byIcon(Icons.military_tech)), pill);
           expect(heightOf(tester, find.byIcon(Icons.star).first), pill);
           expect(heightOf(tester, find.byType(Image).first), pill);
 

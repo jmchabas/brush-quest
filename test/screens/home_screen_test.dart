@@ -52,7 +52,8 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'selected_hero': 'blaze',
       'selected_weapon': 'star_blaster',
-      'total_stars': 7,
+      'total_stars': 99,
+      'star_wallet': 7,
       'current_streak': 2,
       'last_brush_date': today,
       'morning_done_date': today,
@@ -97,8 +98,19 @@ void main() {
 
     // Star icon is present (may be multiple: stats bar + SunMoonTracker center star)
     expect(find.byIcon(Icons.star), findsWidgets);
-    // Star count value "7" is rendered
+    // The wallet (spendable stars) "7" is rendered
     expect(find.text('7'), findsOneWidget);
+
+    await tester.binding.setSurfaceSize(null);
+  });
+
+  testWidgets('no Ranger Rank pill: the lifetime total is for parents', (
+    tester,
+  ) async {
+    await pumpHome(tester);
+
+    expect(find.byIcon(Icons.military_tech), findsNothing);
+    expect(find.text('99'), findsNothing);
 
     await tester.binding.setSurfaceSize(null);
   });

@@ -1105,9 +1105,10 @@ class _VictoryScreenState extends State<VictoryScreen>
     if (mounted) setState(() => _newWallet = wallet);
   }
 
-  /// Height of the fixed pills row over the top of the scroll view (8 px
-  /// down, 48 px high).
-  static const double _topBarHeight = 56;
+  /// Height of the fixed pills row (8 px down, 56 px high: the pills are
+  /// about 46-51 px tall, so they fit unscaled). The scroll view starts below
+  /// it.
+  static const double _topBarHeight = 64;
 
   /// Scrolls just enough to show [key]'s widget below the top bar and above
   /// the bottom edge (up or down), but never so far that a goal he can still
@@ -1123,9 +1124,10 @@ class _VictoryScreenState extends State<VictoryScreen>
       final viewport = RenderAbstractViewport.maybeOf(box);
       if (position == null || viewport == null) return;
       // The scroll offsets at which the widget's top sits just under the top
-      // bar, and at which its bottom sits on the bottom edge.
+      // bar (the scroll view's top edge), and at which its bottom sits on the
+      // bottom edge.
       double topUnderBar(RenderBox b) =>
-          viewport.getOffsetToReveal(b, 0).offset - _topBarHeight;
+          viewport.getOffsetToReveal(b, 0).offset;
       double bottomOnEdge(RenderBox b) =>
           viewport.getOffsetToReveal(b, 1).offset;
 
@@ -1522,339 +1524,352 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ),
                   ),
 
-                Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Extra top padding to clear the fixed top bar
-                          const SizedBox(height: 48),
-
-                          // Flame beat (spec §6 step 2), directly under the pill
-                          // row. Its room is reserved from the start.
-                          SizedBox(
-                            height: _flameBeatHeight,
-                            child: _showFlameBeat ? _buildFlameBeat() : null,
-                          ),
-
-                          Text(
-                            'GREAT JOB!',
-                            style: Theme.of(context).textTheme.headlineLarge
-                                ?.copyWith(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: const Color(
-                                        0xFFFFD54F,
-                                      ).withValues(alpha: 0.8),
-                                      blurRadius: 20,
-                                    ),
-                                  ],
-                                ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Hero celebration (replaces StarRain)
-                          AnimatedBuilder(
-                            animation: Listenable.merge([
-                              _heroScaleAnim,
-                              _heroGlowController,
-                            ]),
-                            builder: (context, _) {
-                              final glowPulse = _heroGlowController.value;
-                              return Transform.scale(
-                                scale: _heroScaleAnim.value.clamp(0.0, 1.0),
-                                child: SizedBox(
-                                  width: 160,
-                                  height: 160,
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      // Pulsing glow in hero's primary color
-                                      Container(
-                                        width: 140,
-                                        height: 140,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: _selectedHero.primaryColor
-                                                  .withValues(
-                                                    alpha:
-                                                        0.3 + glowPulse * 0.3,
-                                                  ),
-                                              blurRadius: 30 + glowPulse * 15,
-                                              spreadRadius: 5 + glowPulse * 5,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Hero image
-                                      Container(
-                                        width: 120,
-                                        height: 120,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: _selectedHero.primaryColor
-                                                .withValues(
-                                                  alpha: 0.6 + glowPulse * 0.4,
-                                                ),
-                                            width: 3,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: _selectedHero.primaryColor
-                                                  .withValues(alpha: 0.4),
-                                              blurRadius: 16,
-                                              spreadRadius: 2,
-                                            ),
-                                          ],
-                                        ),
-                                        child: ClipOval(
-                                          child: HeroService.buildHeroImage(
-                                            _selectedHero.id,
-                                            stage: _heroEvolutionStage,
-                                            weaponId: _heroWeaponId,
-                                            size: 120,
-                                          ),
-                                        ),
-                                      ),
-                                      // Sparkle icons at different positions
-                                      Positioned(
-                                        top: 4,
-                                        right: 12,
-                                        child: Opacity(
-                                          opacity: (glowPulse * 1.2).clamp(
-                                            0.0,
-                                            1.0,
-                                          ),
-                                          child: Icon(
-                                            Icons.auto_awesome,
-                                            color: _selectedHero.primaryColor
-                                                .withValues(alpha: 0.8),
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        bottom: 8,
-                                        left: 8,
-                                        child: Opacity(
-                                          opacity: ((1.0 - glowPulse) * 1.2)
-                                              .clamp(0.0, 1.0),
-                                          child: Icon(
-                                            Icons.auto_awesome,
-                                            color: _selectedHero.primaryColor
-                                                .withValues(alpha: 0.8),
-                                            size: 16,
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 20,
-                                        left: 4,
-                                        child: Opacity(
-                                          opacity:
-                                              ((glowPulse - 0.3).abs() < 0.5
-                                                      ? glowPulse
-                                                      : 1.0 - glowPulse)
-                                                  .clamp(0.0, 1.0),
-                                          child: Icon(
-                                            Icons.auto_awesome,
-                                            color: _selectedHero.primaryColor
-                                                .withValues(alpha: 0.6),
-                                            size: 14,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // TREASURE CHEST
-                          if (_showChest) _buildChest(),
-
-                          // Goal fill (spec §6 step 4)
-                          if (_showGoal && _goal != null) _buildGoal(),
-
-                          // Flame hook strip (spec §6 step 6): the flame and
-                          // the days to its next step, under the goal so a
-                          // small phone shows both. Scaled down on narrow
-                          // phones (day 7 is the widest).
-                          if (_showFlameStrip)
-                            KeyedSubtree(
-                              key: _closingAnchorKey,
-                              child: Padding(
-                                // The bottom margin keeps it clear of the
-                                // screen's edge when scrolled into view.
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  16,
-                                ),
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: FlameStrip(streak: _newStreak),
-                                ),
-                              ),
+                // The scroll view starts under the fixed top bar, not behind
+                // it: content scrolled up is clipped at the bar's bottom edge
+                // instead of being drawn under the pills (Jim's device test,
+                // 2026-10-19: the pills sat over the hero's picture).
+                Padding(
+                  padding: const EdgeInsets.only(top: _topBarHeight),
+                  child: Center(
+                    child: SingleChildScrollView(
+                      key: const ValueKey('victory_scroll'),
+                      physics: const BouncingScrollPhysics(),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8, bottom: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Flame beat (spec §6 step 2), directly under the pill
+                            // row. Its room is reserved from the start.
+                            SizedBox(
+                              height: _flameBeatHeight,
+                              child: _showFlameBeat ? _buildFlameBeat() : null,
                             ),
 
-                          // Trophy collection progress
-                          if (_chestOpened &&
-                              _totalTrophies < TrophyService.allTrophies.length)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: 16,
-                                left: 40,
-                                right: 40,
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.emoji_events,
-                                    color: Color(0xFF00E5FF),
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(7),
-                                      child: SizedBox(
-                                        height: 14,
-                                        child: LinearProgressIndicator(
-                                          value:
-                                              (_totalTrophies /
-                                                      TrophyService
-                                                          .allTrophies
-                                                          .length)
-                                                  .clamp(0.0, 1.0),
-                                          backgroundColor: Colors.white
-                                              .withValues(alpha: 0.15),
-                                          valueColor:
-                                              const AlwaysStoppedAnimation(
-                                                Color(0xFF00E5FF),
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '$_totalTrophies/${TrophyService.allTrophies.length}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          // Trophy reveal — tappable for all trophy cards
-                          if (_showTrophyReveal && _revealedTrophy != null)
-                            KeyedSubtree(
-                              key: _cardAnchorKey,
-                              child: Padding(
-                                // Kept clear of the screen's edge when it is
-                                // scrolled into view.
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: GestureDetector(
-                                  onTap: _showTrophyCardDetail,
-                                  child: _buildTrophyReveal(),
-                                ),
-                              ),
-                            ),
-
-                          const SizedBox(height: 24),
-
-                          // Buttons (only after full reward sequence)
-                          if (_showDoneButton) ...[
-                            AnimatedBuilder(
-                              animation: _doneButtonController,
-                              builder: (context, child) => Transform.scale(
-                                scale: 1.0 + _doneButtonController.value * 0.05,
-                                child: child,
-                              ),
-                              child: GestureDetector(
-                                onTap: _goHome,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 60,
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFF7C4DFF),
-                                        Color(0xFF9C27B0),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(40),
-                                    boxShadow: [
-                                      BoxShadow(
+                            Text(
+                              'GREAT JOB!',
+                              style: Theme.of(context).textTheme.headlineLarge
+                                  ?.copyWith(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
                                         color: const Color(
-                                          0xFF7C4DFF,
-                                        ).withValues(alpha: 0.5),
+                                          0xFFFFD54F,
+                                        ).withValues(alpha: 0.8),
                                         blurRadius: 20,
                                       ),
                                     ],
                                   ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.home,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'DONE',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                              letterSpacing: 4,
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Hero celebration (replaces StarRain)
+                            AnimatedBuilder(
+                              animation: Listenable.merge([
+                                _heroScaleAnim,
+                                _heroGlowController,
+                              ]),
+                              builder: (context, _) {
+                                final glowPulse = _heroGlowController.value;
+                                return Transform.scale(
+                                  scale: _heroScaleAnim.value.clamp(0.0, 1.0),
+                                  child: SizedBox(
+                                    width: 160,
+                                    height: 160,
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // Pulsing glow in hero's primary color
+                                        Container(
+                                          width: 140,
+                                          height: 140,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: _selectedHero
+                                                    .primaryColor
+                                                    .withValues(
+                                                      alpha:
+                                                          0.3 + glowPulse * 0.3,
+                                                    ),
+                                                blurRadius: 30 + glowPulse * 15,
+                                                spreadRadius: 5 + glowPulse * 5,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Hero image
+                                        Container(
+                                          width: 120,
+                                          height: 120,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: _selectedHero.primaryColor
+                                                  .withValues(
+                                                    alpha:
+                                                        0.6 + glowPulse * 0.4,
+                                                  ),
+                                              width: 3,
                                             ),
-                                      ),
-                                    ],
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: _selectedHero
+                                                    .primaryColor
+                                                    .withValues(alpha: 0.4),
+                                                blurRadius: 16,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
+                                          ),
+                                          child: ClipOval(
+                                            child: HeroService.buildHeroImage(
+                                              _selectedHero.id,
+                                              stage: _heroEvolutionStage,
+                                              weaponId: _heroWeaponId,
+                                              size: 120,
+                                            ),
+                                          ),
+                                        ),
+                                        // Sparkle icons at different positions
+                                        Positioned(
+                                          top: 4,
+                                          right: 12,
+                                          child: Opacity(
+                                            opacity: (glowPulse * 1.2).clamp(
+                                              0.0,
+                                              1.0,
+                                            ),
+                                            child: Icon(
+                                              Icons.auto_awesome,
+                                              color: _selectedHero.primaryColor
+                                                  .withValues(alpha: 0.8),
+                                              size: 20,
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: 8,
+                                          left: 8,
+                                          child: Opacity(
+                                            opacity: ((1.0 - glowPulse) * 1.2)
+                                                .clamp(0.0, 1.0),
+                                            child: Icon(
+                                              Icons.auto_awesome,
+                                              color: _selectedHero.primaryColor
+                                                  .withValues(alpha: 0.8),
+                                              size: 16,
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 20,
+                                          left: 4,
+                                          child: Opacity(
+                                            opacity:
+                                                ((glowPulse - 0.3).abs() < 0.5
+                                                        ? glowPulse
+                                                        : 1.0 - glowPulse)
+                                                    .clamp(0.0, 1.0),
+                                            child: Icon(
+                                              Icons.auto_awesome,
+                                              color: _selectedHero.primaryColor
+                                                  .withValues(alpha: 0.6),
+                                              size: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // TREASURE CHEST
+                            if (_showChest) _buildChest(),
+
+                            // Goal fill (spec §6 step 4)
+                            if (_showGoal && _goal != null) _buildGoal(),
+
+                            // Flame hook strip (spec §6 step 6): the flame and
+                            // the days to its next step, under the goal so a
+                            // small phone shows both. Scaled down on narrow
+                            // phones (day 7 is the widest).
+                            if (_showFlameStrip)
+                              KeyedSubtree(
+                                key: _closingAnchorKey,
+                                child: Padding(
+                                  // The bottom margin keeps it clear of the
+                                  // screen's edge when scrolled into view.
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    16,
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: FlameStrip(streak: _newStreak),
                                   ),
                                 ),
                               ),
-                            ),
-                            // Scrolled into view (with this margin) when DONE
-                            // appears.
-                            SizedBox(key: _doneAnchorKey, height: 12),
+
+                            // Trophy collection progress
+                            if (_chestOpened &&
+                                _totalTrophies <
+                                    TrophyService.allTrophies.length)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 16,
+                                  left: 40,
+                                  right: 40,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.emoji_events,
+                                      color: Color(0xFF00E5FF),
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(7),
+                                        child: SizedBox(
+                                          height: 14,
+                                          child: LinearProgressIndicator(
+                                            value:
+                                                (_totalTrophies /
+                                                        TrophyService
+                                                            .allTrophies
+                                                            .length)
+                                                    .clamp(0.0, 1.0),
+                                            backgroundColor: Colors.white
+                                                .withValues(alpha: 0.15),
+                                            valueColor:
+                                                const AlwaysStoppedAnimation(
+                                                  Color(0xFF00E5FF),
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '$_totalTrophies/${TrophyService.allTrophies.length}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // Trophy reveal — tappable for all trophy cards
+                            if (_showTrophyReveal && _revealedTrophy != null)
+                              KeyedSubtree(
+                                key: _cardAnchorKey,
+                                child: Padding(
+                                  // Kept clear of the screen's edge when it is
+                                  // scrolled into view.
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: GestureDetector(
+                                    onTap: _showTrophyCardDetail,
+                                    child: _buildTrophyReveal(),
+                                  ),
+                                ),
+                              ),
+
+                            const SizedBox(height: 24),
+
+                            // Buttons (only after full reward sequence)
+                            if (_showDoneButton) ...[
+                              AnimatedBuilder(
+                                animation: _doneButtonController,
+                                builder: (context, child) => Transform.scale(
+                                  scale:
+                                      1.0 + _doneButtonController.value * 0.05,
+                                  child: child,
+                                ),
+                                child: GestureDetector(
+                                  onTap: _goHome,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 60,
+                                      vertical: 14,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF7C4DFF),
+                                          Color(0xFF9C27B0),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(40),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(
+                                            0xFF7C4DFF,
+                                          ).withValues(alpha: 0.5),
+                                          blurRadius: 20,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.home,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'DONE',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge
+                                              ?.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                                letterSpacing: 4,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // Scrolled into view (with this margin) when DONE
+                              // appears.
+                              SizedBox(key: _doneAnchorKey, height: 12),
+                            ],
+                            const SizedBox(height: 28),
                           ],
-                          const SizedBox(height: 28),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
 
-                // Fixed top bar with streak, rank, and wallet pills
+                // Fixed top bar: the streak and wallet pills. Ranger Rank (the
+                // lifetime total) is for parents: Parent Dashboard only.
                 Positioned(
+                  key: const ValueKey('victory_top_bar'),
                   top: 8,
                   left: 0,
                   right: 0,
+                  height: _topBarHeight - 8,
                   // Scaled down rather than overflowing on very narrow phones.
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
@@ -1907,58 +1922,6 @@ class _VictoryScreenState extends State<VictoryScreen>
                                     shadows: [
                                       Shadow(
                                         color: Color(0x80FF9800),
-                                        blurRadius: 8,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // Rank pill (diamond icon + total stars, purple) — secondary size
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: const Color(
-                                0xFF7C4DFF,
-                              ).withValues(alpha: 0.6),
-                              width: 2,
-                            ),
-                            color: const Color(
-                              0xFF7C4DFF,
-                            ).withValues(alpha: 0.12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.diamond,
-                                color: Color(0xFF7C4DFF),
-                                size: 22,
-                              ),
-                              const SizedBox(width: 4),
-                              TweenAnimationBuilder<int>(
-                                tween: IntTween(
-                                  begin: _previousStars,
-                                  end: _newStars,
-                                ),
-                                duration: const Duration(milliseconds: 1500),
-                                builder: (context, val, _) => Text(
-                                  '$val',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                    shadows: [
-                                      Shadow(
-                                        color: Color(0x807C4DFF),
                                         blurRadius: 8,
                                       ),
                                     ],

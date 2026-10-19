@@ -79,4 +79,38 @@ void main() {
 
     await tester.binding.setSurfaceSize(null);
   });
+
+  testWidgets('the Dashboard shows Ranger Rank, the lifetime stars', (
+    tester,
+  ) async {
+    // Kids see only the wallet pill now; Ranger Rank lives here, for parents.
+    SharedPreferences.setMockInitialValues({
+      'total_brushes': 10,
+      'best_streak': 5,
+      'total_stars': 715,
+      'star_wallet': 358,
+      'muted': false,
+    });
+    await tester.binding.setSurfaceSize(const Size(430, 3200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final challenge = tester.widget<Text>(find.textContaining('×')).data!;
+    final m = RegExp(r'(\d+)\s*×\s*(\d+)').firstMatch(challenge)!;
+    await tester.enterText(
+      find.byType(TextField),
+      '${int.parse(m.group(1)!) * int.parse(m.group(2)!)}',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final row = find.byKey(const ValueKey('dashboard_ranger_rank'));
+    expect(row, findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: find.text('715')),
+      findsOneWidget,
+    );
+  });
 }
