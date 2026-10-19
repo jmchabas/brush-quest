@@ -93,4 +93,26 @@ void main() {
       expect(h.callsOf('setSourceUrl'), isEmpty);
     });
   });
+
+  test('a voice after mute + unmute plays at once, not after the cut voice '
+      'times out', () {
+    // Muting stopped the player but not the pump's wait on that line, so the
+    // next line waited out the 15 s voice timeout (found while tracing Jim's
+    // unheard hand-off line, 2026-10-19).
+    AudioHarness.run((h) {
+      final s = h.service;
+      unawaited(s.playVoice('voice_super.mp3'));
+      h.elapseMs(500);
+      unawaited(s.toggleMute());
+      h.elapseMs(1000);
+      unawaited(s.toggleMute());
+      h.elapseMs(500);
+      unawaited(s.playVoice('voice_reminder_handoff.mp3'));
+      h.elapseMs(1000);
+      expect(
+        h.callsOf('setSourceUrl', label: 'V').last,
+        endsWith('voice_reminder_handoff.mp3'),
+      );
+    }, voiceDurations: const {'voice_super.mp3': Duration(seconds: 3)});
+  });
 }

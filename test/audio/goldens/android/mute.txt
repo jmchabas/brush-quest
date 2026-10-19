@@ -18,7 +18,9 @@
    120ms V.getCurrentPosition
    120ms V.resume
    120ms V.getCurrentPosition
+   600ms print audio issue: op=voice_timeout file=voice_victory_arc1_beat1.mp3 err=none
    600ms S0.stop
+   600ms M1.setVolume 0.18
    600ms S0.getCurrentPosition
    600ms S1.stop
    600ms S1.getCurrentPosition

@@ -663,6 +663,10 @@ class AudioService {
     _muted = !_muted;
     if (_muted) {
       _clearVoiceQueue();
+      // End the pump's wait on the line being cut, as stopVoice does: without
+      // it the pump sat on that line until the 15 s timeout, and a line asked
+      // for after unmuting waited behind it.
+      _fireVoiceStop();
       for (final p in _sfxPool) {
         try {
           await p.stop();
