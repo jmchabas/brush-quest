@@ -24,7 +24,8 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'selected_hero': 'frost',
       'selected_weapon': 'star_blaster',
-      'total_stars': 12,
+      'total_stars': 40,
+      'star_wallet': 12,
       'current_streak': 3,
       'last_brush_date': today,
       'morning_done_date': today,
@@ -52,7 +53,7 @@ void main() {
   ) async {
     await pumpHomeScreen(tester);
 
-    // Stats display: star pill shows 22px font (uniform across all pills)
+    // Stats display: wallet star pill shows 22px font (uniform across pills)
     final starsText = tester.widget<Text>(find.text('12'));
     expect(starsText.style?.fontSize, 22);
     // Streak pill shows at 22px (matching all pill format)
