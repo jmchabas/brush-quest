@@ -356,9 +356,10 @@ class _VictoryScreenState extends State<VictoryScreen>
   bool _showWorldProgress = false;
   bool _worldJustCompleted = false;
 
-  // Closing beat (spec §6 step 6): the flame strip and its line.
+  // Closing beat (spec §6 step 6): the closing line. Its flame strip was
+  // removed (Jim, 2026-10-19: the icons couldn't be understood); the line
+  // speaks of the streak flame in the top bar.
   bool _forwardHookFired = false;
-  bool _showFlameStrip = false;
 
   // Goal beat (spec §6 step 4): the closest unlock, filled by this brush's
   // stars; one tap unlocks it when it is full.
@@ -376,9 +377,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   final _unfinishedMustHear = <String>{};
   _QuietWait? _quietWait;
   bool _goingHome = false;
-  // The closing line has been queued, with its strip on screen.
+  // The closing line has been queued.
   bool _closingBeatShown = false;
-  final _closingAnchorKey = GlobalKey();
   final _doneAnchorKey = GlobalKey();
 
   // The screen scrolls, and on small phones the newest beat lands below the
@@ -940,25 +940,24 @@ class _VictoryScreenState extends State<VictoryScreen>
     });
   }
 
-  /// The closing beat (spec §6 step 6): the flame strip, and the line for
-  /// the next flame, or "see you tonight" for a twice-a-day child brushing in
+  /// The closing beat (spec §6 step 6): the line for the next flame, or "see you tonight" for a twice-a-day child brushing in
   /// the morning (spec §7.3).
   Future<void> _showForwardHookSequence() async {
     if (_forwardHookFired) return;
     _forwardHookFired = true;
-    // The monster card's lines may still be queued: the strip comes with its
-    // own line, after them (capped, as every wait on a voice is).
+    // The monster card's lines may still be queued: the closing line comes
+    // after them (capped, as every wait on a voice is).
     await _voiceIdle(const Duration(seconds: 8));
     // He tapped DONE meanwhile (the safety-timer DONE): _goHome plays it.
     if (!mounted || _goingHome) return;
     final line = await _closingLine();
     if (!mounted || _goingHome) return;
-    _showClosingStrip();
+    _closingBeatShown = true;
     _queueMustHear(line);
     // DONE comes after this: once the queue is quiet (an "It's yours!" may
     // have queued the line again), but never more than a few seconds.
     await _voiceIdle(const Duration(seconds: 6));
-    // A DONE already up (the safety timer) moved down when the strip came in.
+    // A DONE already up (the safety timer): make sure it is in view.
     if (mounted && _showDoneButton) _revealInView(_doneAnchorKey);
   }
 
@@ -976,13 +975,6 @@ class _VictoryScreenState extends State<VictoryScreen>
       yesterdayBoth: yesterdayBoth,
       newStreak: _newStreak,
     );
-  }
-
-  /// Shows the flame strip and brings it into view: its line is about it.
-  void _showClosingStrip() {
-    _closingBeatShown = true;
-    setState(() => _showFlameStrip = true);
-    _revealInView(_closingAnchorKey);
   }
 
   /// The rockets' goal: the furthest unfinished planet, or null once every
@@ -1090,11 +1082,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     // What is queued now plays before the closing beat goes on.
     _quietWait?.restartCap();
     // The goal no longer holds the screen: show the end of it if it is up.
-    if (_showDoneButton) {
-      _revealInView(_doneAnchorKey);
-    } else if (_showFlameStrip) {
-      _revealInView(_closingAnchorKey);
-    }
+    if (_showDoneButton) _revealInView(_doneAnchorKey);
     unawaited(
       analytics.logGoalUnlocked(
         category: goal.category.name,
@@ -1113,8 +1101,8 @@ class _VictoryScreenState extends State<VictoryScreen>
   /// Scrolls just enough to show [key]'s widget below the top bar and above
   /// the bottom edge (up or down), but never so far that a goal he can still
   /// tap leaves the screen. On a small phone, with a goal to tap, that shows
-  /// the goal and the top of the monster card, and the flame strip under the
-  /// goal; DONE further down waits for the tap. On a tall phone everything
+  /// the goal and the top of the monster card; DONE further down waits for
+  /// the tap. On a tall phone everything
   /// shows without scrolling.
   void _revealInView(GlobalKey key) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1464,7 +1452,7 @@ class _VictoryScreenState extends State<VictoryScreen>
     if (!_closingBeatShown) {
       await _audio.stopVoice();
       final line = await _closingLine();
-      if (mounted) _showClosingStrip();
+      _closingBeatShown = true;
       await _audio
           .playVoice(line)
           .timeout(const Duration(seconds: 5), onTimeout: () {});
@@ -1697,29 +1685,6 @@ class _VictoryScreenState extends State<VictoryScreen>
 
                             // Goal fill (spec §6 step 4)
                             if (_showGoal && _goal != null) _buildGoal(),
-
-                            // Flame hook strip (spec §6 step 6): the flame and
-                            // the days to its next step, under the goal so a
-                            // small phone shows both. Scaled down on narrow
-                            // phones (day 7 is the widest).
-                            if (_showFlameStrip)
-                              KeyedSubtree(
-                                key: _closingAnchorKey,
-                                child: Padding(
-                                  // The bottom margin keeps it clear of the
-                                  // screen's edge when scrolled into view.
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    16,
-                                  ),
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: FlameStrip(streak: _newStreak),
-                                  ),
-                                ),
-                              ),
 
                             // Trophy collection progress
                             if (_chestOpened &&

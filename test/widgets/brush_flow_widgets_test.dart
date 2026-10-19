@@ -72,14 +72,6 @@ void main() {
       await tester.pumpWidget(_wrap(const FlameIcon(tier: FlameTier.golden)));
       expect(sizeFor(FlameTier.golden), greaterThan(small));
     });
-    testWidgets('FlameStrip shows days left to the next step', (tester) async {
-      await tester.pumpWidget(_wrap(const FlameStrip(streak: 1)));
-      expect(find.byKey(const ValueKey('flame_day_empty')), findsNWidgets(2));
-      await tester.pumpWidget(_wrap(const FlameStrip(streak: 13)));
-      expect(find.byKey(const ValueKey('flame_day_empty')), findsNWidgets(1));
-      await tester.pumpWidget(_wrap(const FlameStrip(streak: 20)));
-      expect(find.byKey(const ValueKey('flame_day_empty')), findsNothing);
-    });
   });
 
   // ---- Added in the Task 6 self-review: requirements the brief's tests
@@ -140,43 +132,6 @@ void main() {
           BlendMode.srcATop,
         ),
       );
-    });
-
-    testWidgets('FlameStrip shows the next flame and its chest tier', (
-      tester,
-    ) async {
-      Future<(List<FlameTier>, Color?)> strip(int streak) async {
-        await tester.pumpWidget(_wrap(FlameStrip(streak: streak)));
-        final tiers = [
-          for (final f in tester.widgetList<FlameIcon>(find.byType(FlameIcon)))
-            f.tier,
-        ];
-        final chest = tester.widget<Icon>(find.byIcon(Icons.inventory_2));
-        return (tiers, chest.color);
-      }
-
-      final (tiers1, chest1) = await strip(1);
-      expect(tiers1, [FlameTier.small, FlameTier.big]);
-      final (tiers5, chest5) = await strip(5);
-      expect(tiers5, [FlameTier.big, FlameTier.hot]);
-      final (tiers9, chest9) = await strip(9);
-      expect(tiers9, [FlameTier.hot, FlameTier.golden]);
-      // Chest steps: silver at the 3-day step, gold from the 7-day step on.
-      expect(chest1, isNot(chest5));
-      expect(chest5, chest9);
-    });
-
-    testWidgets('at the golden flame the strip is the flame alone', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_wrap(const FlameStrip(streak: 14)));
-      expect(find.byType(FlameIcon), findsOneWidget);
-      expect(
-        tester.widget<FlameIcon>(find.byType(FlameIcon)).tier,
-        FlameTier.golden,
-      );
-      expect(find.byIcon(Icons.arrow_forward), findsNothing);
-      expect(find.byIcon(Icons.inventory_2), findsNothing);
     });
   });
 

@@ -61,9 +61,6 @@ const _big = (size: Size(430, 932), top: 59.0, bottom: 34.0);
 /// Jim's phone (about 412x915 dp).
 const _jim = (size: Size(412, 915), top: 32.0, bottom: 24.0);
 
-/// A small old phone: the monster card alone nearly fills what it shows.
-const _tiny = (size: Size(320, 568), top: 24.0, bottom: 48.0);
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -112,7 +109,7 @@ void main() {
     });
   });
 
-  group('goal beat, world rockets and closing strip (widget)', () {
+  group('goal beat, world rockets and closing line (widget)', () {
     late FakeAudioService fakeAudio;
     late _RecordingAnalytics recorder;
 
@@ -309,6 +306,17 @@ void main() {
         area.contains(r.topLeft) && area.contains(r.bottomRight);
 
     List<String> voices() => fakeAudio.playedVoiceLines;
+
+    bool isClosingFile(String file) =>
+        file.startsWith('voice_flame_see_you_') ||
+        file == 'voice_forward_tonight.mp3';
+
+    /// The flame strip that sat under the chest (removed 2026-10-19): its
+    /// arrow and chest badge.
+    void expectNoFlameStrip() {
+      expect(find.byIcon(Icons.arrow_forward), findsNothing);
+      expect(find.byIcon(Icons.inventory_2), findsNothing);
+    }
 
     AudioCall voiceCall(String file) => fakeAudio
         .callsFor('playVoice')
@@ -580,9 +588,9 @@ void main() {
         }
         expect(goalKey, findsNothing);
         expect(printed.join(), contains('Goal beat skipped'));
-        // The rest of the sequence still runs: the closing strip and DONE.
+        // The rest of the sequence still runs: the closing line and DONE.
         await tester.pump(const Duration(seconds: 10));
-        expect(find.byType(FlameStrip), findsOneWidget);
+        expect(voices().any(isClosingFile), isTrue, reason: '${voices()}');
         expect(find.text('DONE'), findsOneWidget);
         await drain(tester);
       });
@@ -787,31 +795,24 @@ void main() {
           v.file.startsWith('voice_flame_see_you_') ||
           v.file == 'voice_forward_tonight.mp3';
 
-      testWidgets('the strip comes with its line, and DONE only after the '
-          'line has played', (tester) async {
+      testWidgets('the closing line plays in full, after the card\'s lines, '
+          'and DONE only after it', (tester) async {
         final timed = useTimedVoices(tester);
         SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
         await pumpVictory(tester, trophy: 'cc_t1');
         await openChestWhenItComes(tester);
-        Duration? stripAt;
         Duration? doneAt;
         for (var i = 0; i < 600 && doneAt == null; i++) {
           await tester.pump(const Duration(milliseconds: 100));
-          if (stripAt == null &&
-              find.byType(FlameStrip).evaluate().isNotEmpty) {
-            stripAt = timed.clock();
-          }
           if (find.text('DONE').evaluate().isNotEmpty) doneAt = timed.clock();
         }
         final closing = timed.voices.lastWhere(isClosing);
         expect(doneAt, isNotNull);
         expect(closing.cut || closing.dropped, isFalse, reason: '$closing');
-        // The card's lines were queued before it: the strip waits for them.
-        expect(
-          closing.startedAt! - stripAt!,
-          lessThan(const Duration(milliseconds: 200)),
-          reason: 'strip at $stripAt, ${timed.voices}',
-        );
+        // The card's lines were queued before it: it waits for them.
+        final name = timed.voiceNamed('voice_card_cc_01.mp3')!;
+        expect(closing.startedAt! >= name.endedAt!, isTrue);
+        expectNoFlameStrip();
         expect(
           doneAt,
           greaterThanOrEqualTo(closing.endedAt!),
@@ -902,8 +903,8 @@ void main() {
         await drain(tester);
       });
 
-      testWidgets('a tap late in the monster\'s name: the strip still comes '
-          'with its line, and DONE after it', (tester) async {
+      testWidgets('a tap late in the monster\'s name: the closing line still '
+          'plays in full, and DONE after it', (tester) async {
         final timed = useTimedVoices(tester);
         SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
         await pumpVictory(tester, trophy: 'cc_t1');
@@ -914,23 +915,13 @@ void main() {
           'voice_card_cc_01.mp3',
           const Duration(seconds: 4),
         );
-        Duration? stripAt;
         Duration? doneAt;
         for (var i = 0; i < 600 && doneAt == null; i++) {
           await tester.pump(const Duration(milliseconds: 100));
-          if (stripAt == null &&
-              find.byType(FlameStrip).evaluate().isNotEmpty) {
-            stripAt = timed.clock();
-          }
           if (find.text('DONE').evaluate().isNotEmpty) doneAt = timed.clock();
         }
         final closing = timed.voices.lastWhere(isClosing);
         expect(closing.cut || closing.dropped, isFalse, reason: '$closing');
-        expect(
-          closing.startedAt! - stripAt!,
-          lessThan(const Duration(milliseconds: 200)),
-          reason: 'strip at $stripAt, ${timed.voices}',
-        );
         expect(
           doneAt,
           greaterThanOrEqualTo(closing.endedAt!),
@@ -997,28 +988,24 @@ void main() {
       for (final phone in const [_small, _big]) {
         final name = '${phone.size.width.toInt()}x${phone.size.height.toInt()}';
 
-        testWidgets('$name: when the closing line starts, its strip and a goal '
-            'he can still tap are both on screen', (tester) async {
+        testWidgets('$name: when the closing line starts, a goal he can still '
+            'tap is on screen', (tester) async {
           final timed = useTimedVoices(tester);
           SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
           await pumpVictory(tester, phone: phone, trophy: 'cc_t1');
           await openChestWhenItComes(tester);
-          final strip = find.byType(FlameStrip);
-          for (var i = 0; i < 800 && strip.evaluate().isEmpty; i++) {
+          bool closingStarted() =>
+              timed.voices.any((v) => isClosing(v) && v.startedAt != null);
+          for (var i = 0; i < 800 && !closingStarted(); i++) {
             await tester.pump(const Duration(milliseconds: 50));
           }
-          expect(strip, findsOneWidget);
-          await frames(tester, const Duration(milliseconds: 450)); // its scroll
+          await frames(tester, const Duration(milliseconds: 450));
           final closing = timed.voices.lastWhere(isClosing);
           expect(closing.startedAt, isNotNull);
           expect(closing.endedAt, isNull, reason: 'the line is playing');
           expect(find.text('DONE'), findsNothing);
+          expectNoFlameStrip();
           final area = shown(phone);
-          expect(
-            fullyIn(area, tester.getRect(strip)),
-            isTrue,
-            reason: 'strip ${tester.getRect(strip)} vs $area',
-          );
           expect(
             fullyIn(area, tester.getRect(goalKey)),
             isTrue,
@@ -1027,46 +1014,6 @@ void main() {
           await drain(tester);
         });
       }
-
-      testWidgets(
-        '320x568, nothing left to unlock, scrolled down: the strip comes '
-        'back into view for its line',
-        (tester) async {
-          // No goal holds the screen; he scrolls down past the strip's place
-          // to the monster card, and the closing beat brings the strip back.
-          final timed = useTimedVoices(tester);
-          SharedPreferences.setMockInitialValues({
-            ...allOwned(),
-            'star_wallet': 3,
-          });
-          await pumpVictory(tester, phone: _tiny, trophy: 'cc_t1');
-          await openChestWhenItComes(tester);
-          // He scrolls down himself to look at the monster card.
-          final badge = find.textContaining(RegExp('CAUGHT!|HIT!'));
-          for (var i = 0; i < 200 && badge.evaluate().isEmpty; i++) {
-            await tester.pump(const Duration(milliseconds: 50));
-          }
-          await frames(tester, const Duration(milliseconds: 450));
-          await tester.drag(
-            find.byType(SingleChildScrollView),
-            const Offset(0, -600),
-          );
-          await frames(tester, const Duration(seconds: 1));
-          final strip = find.byType(FlameStrip);
-          for (var i = 0; i < 800 && strip.evaluate().isEmpty; i++) {
-            await tester.pump(const Duration(milliseconds: 50));
-          }
-          expect(strip, findsOneWidget);
-          await frames(tester, const Duration(milliseconds: 450));
-          expect(timed.voices.lastWhere(isClosing).endedAt, isNull);
-          expect(
-            fullyIn(shown(_tiny), tester.getRect(strip)),
-            isTrue,
-            reason: '${tester.getRect(strip)} vs ${shown(_tiny)}',
-          );
-          await drain(tester);
-        },
-      );
 
       testWidgets('360x640: with a goal to tap, DONE waits below; the tap '
           'brings DONE into view', (tester) async {
@@ -1251,8 +1198,7 @@ void main() {
             reason: '${goalRect()} vs $area',
           );
           // The sequence goes on: the monster card comes in below the goal.
-          // Check as soon as it is in (and scrolled to), before the closing
-          // beat brings the flame strip into view at the bottom.
+          // Check as soon as it is in (and scrolled to).
           final badge = find.textContaining(RegExp('CAUGHT!|HIT!'));
           for (var i = 0; i < 200 && badge.evaluate().isEmpty; i++) {
             await tester.pump(const Duration(milliseconds: 50));
@@ -1410,8 +1356,8 @@ void main() {
       });
     });
 
-    group('the closing strip and line', () {
-      testWidgets('the closing line plays and the flame strip shows', (
+    group('the closing line', () {
+      testWidgets('the closing line plays; no flame strip under the chest', (
         tester,
       ) async {
         SharedPreferences.setMockInitialValues(base());
@@ -1426,8 +1372,7 @@ void main() {
           isTrue,
           reason: 'last voice was $last',
         );
-        expect(find.byType(FlameStrip), findsOneWidget);
-        expect(tester.widget<FlameStrip>(find.byType(FlameStrip)).streak, 2);
+        expectNoFlameStrip();
         await drain(tester);
       });
 
@@ -1510,7 +1455,6 @@ void main() {
           debugPrint = original;
         }
         expect(find.text('DONE'), findsOneWidget);
-        expect(find.byType(FlameStrip), findsOneWidget);
         expect(voices().last, 'voice_flame_see_you_next.mp3');
         expect(printed.join(), contains('Yesterday\'s slots unavailable'));
         await drain(tester);
@@ -1548,7 +1492,7 @@ void main() {
         }
         expect(printed.join(), contains('Victory chest sequence error'));
         expect(find.text('DONE'), findsOneWidget);
-        expect(find.byType(FlameStrip), findsNothing); // never reached
+        expect(voices().where(isClosingFile), isEmpty); // never reached
         await prefs.setStringList('trophy_captured', []); // for Home
         await frames(tester, const Duration(milliseconds: 500));
         await tester.tap(find.text('DONE'), warnIfMissed: false);
@@ -1573,50 +1517,9 @@ void main() {
         await tester.tap(chestKey);
         await tester.pump(const Duration(seconds: 15));
         expect(find.text('DONE'), findsOneWidget);
-        expect(find.byType(FlameStrip), findsOneWidget);
+        expectNoFlameStrip();
         await drain(tester);
       });
-
-      testWidgets('the strip sits above DONE and below the goal', (
-        tester,
-      ) async {
-        SharedPreferences.setMockInitialValues({...base(), 'star_wallet': 3});
-        await pumpVictory(tester, size: const Size(430, 1600));
-        await pumpToChest(tester);
-        await tester.tap(chestKey);
-        await tester.pump(const Duration(seconds: 15));
-        final strip = tester.getRect(find.byType(FlameStrip));
-        expect(strip.bottom, lessThan(tester.getRect(find.text('DONE')).top));
-        expect(strip.top, greaterThan(tester.getRect(goalKey).bottom));
-        await drain(tester);
-      });
-
-      for (final width in [320.0, 280.0]) {
-        testWidgets('the strip cannot overflow at ${width.toInt()} dp, even on '
-            'day 7 (the longest)', (tester) async {
-          // Streak 6 -> 7: the hot flame with 7 days to go, 282 px wide.
-          SharedPreferences.setMockInitialValues({
-            ...base(),
-            'current_streak': 6,
-            'last_brush_date': day(-1),
-            'today_brush_count': 0,
-            'today_date': day(-1),
-            'star_wallet': 3,
-          });
-          await pumpVictory(tester, size: Size(width, 700));
-          await pumpToChest(tester);
-          await tester.tap(chestKey);
-          await tester.pump(const Duration(seconds: 15));
-          final strip = find.byType(FlameStrip);
-          expect(strip, findsOneWidget);
-          expect(tester.widget<FlameStrip>(strip).streak, 7);
-          expect(tester.takeException(), isNull);
-          final rect = tester.getRect(strip);
-          expect(rect.left, greaterThanOrEqualTo(0));
-          expect(rect.right, lessThanOrEqualTo(width));
-          await drain(tester);
-        });
-      }
     });
   });
 }
