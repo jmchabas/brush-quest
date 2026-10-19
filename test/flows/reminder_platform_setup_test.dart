@@ -142,8 +142,9 @@ void main() {
     expect(
       policy,
       contains(
-        'Optional bedtime reminders are scheduled and shown entirely on your '
-        'device; no information is sent to us.',
+        'Optional bedtime reminders are scheduled and shown on your device; '
+        'apart from the anonymous usage analytics described below (Android '
+        'only), no information about them is sent to us.',
       ),
     );
   });

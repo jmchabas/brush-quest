@@ -102,7 +102,7 @@ void main() {
     expect(
       find.text(
         "One reminder on this phone each evening, only if brushing hasn't "
-        'happened yet. It stays on this device; nothing is sent to us.',
+        'happened yet. Your reminder times stay on this phone.',
       ),
       findsOneWidget,
     );
@@ -169,7 +169,7 @@ void main() {
     expect(saved.getBool(ReminderService.keyMorningEnabled), isTrue);
     expect(saved.getInt(ReminderService.keyMorningTime), 6 * 60 + 45);
     expect(recorder.named('reminder_enabled'), [
-      {'name': 'reminder_enabled', 'evening_hour': 19, 'morning': 1},
+      {'name': 'reminder_enabled', 'morning': 1},
     ]);
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();

@@ -26,7 +26,7 @@ State in prefs: `reminder_offer_count`, `reminder_offer_last_date`, `reminder_de
 - The 15 s timer is a `Timer?` field cancelled in `dispose`.
 
 ### 3.2 Screen B: the parent pre-permission screen (behind the gate)
-- Title: "Want a bedtime brushing reminder?" Text: "One reminder on this phone each evening, only if brushing hasn't happened yet. It stays on this device; nothing is sent to us."
+- Title: "Want a bedtime brushing reminder?" Text: "One reminder on this phone each evening, only if brushing hasn't happened yet. Your reminder times stay on this phone." (Jim, 2026-10-19: was "It stays on this device; nothing is sent to us.", untrue next to the Android analytics)
 - "Remind me at" a time picker. The default is 7:30 pm. If the first brush was between 5:30 and 9:30 pm, the default is that time minus 30 minutes, rounded to the quarter hour and kept between 6:30 and 9:00 pm.
 - "Morning reminder too", unticked by default, 7:00 am.
 - **TURN ON:**
@@ -76,13 +76,13 @@ State in prefs: `reminder_offer_count`, `reminder_offer_last_date`, `reminder_de
   - Re-run `scripts/check_ios_kids_binary.sh`, since the plugin adds a pod. The privacy manifest must still declare no tracking and no collected data.
 - **Privacy:**
   - The App Store label is unchanged ("Data Not Collected").
-  - Add one sentence to the privacy policy (legal copy, Jim's review): "Optional bedtime reminders are scheduled and shown entirely on your device; no information is sent to us."
+  - Add one sentence to the privacy policy (legal copy, Jim's review): "Optional bedtime reminders are scheduled and shown on your device; apart from the anonymous usage analytics described below (Android only), no information about them is sent to us."
 
 ## 6. Analytics (Android only)
 - Events:
   - `reminder_offer_shown {offer: 1|2|parent_zone}`
   - `reminder_offer_result {result: gate_opened|skipped|timeout|not_now|os_denied|enabled}`
-  - `reminder_enabled {evening_hour, morning}`
+  - `reminder_enabled {morning}` (evening_hour dropped 2026-10-19)
   - `app_open_from_reminder {slot}`
 - User property `reminder_on`.
 - Nothing identifying.

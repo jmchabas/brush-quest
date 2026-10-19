@@ -21,8 +21,9 @@ Future<bool> noStickerGifts() async => false;
 /// The parent bedtime reminder (spec
 /// docs/superpowers/specs/2026-10-15-bedtime-reminder-design.md): the
 /// parent's settings, the hand-off offers, and a rolling week of one-shot
-/// notifications ([planReminders]). Everything stays on this device; none of
-/// its keys is synced. No call into the notification system may break the
+/// notifications ([planReminders]). The settings stay on this device; none of
+/// its keys is synced (on Android, only on/off and offer results go to
+/// analytics). No call into the notification system may break the
 /// app: each one is guarded, and nothing is scheduled before [init].
 class ReminderService {
   factory ReminderService() => _testInstance ?? _instance;
@@ -235,12 +236,7 @@ class ReminderService {
     unawaited(_analytics.logReminderOfferResult(result: result.analyticsName));
     if (!granted) return false;
     await _writeSettings(prefs, wanted);
-    unawaited(
-      _analytics.logReminderEnabled(
-        eveningHour: wanted.evening.hour,
-        morning: wanted.morningOn,
-      ),
-    );
+    unawaited(_analytics.logReminderEnabled(morning: wanted.morningOn));
     unawaited(_analytics.setReminderOn(on: wanted.anyOn));
     await reschedule();
     return true;

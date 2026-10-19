@@ -315,7 +315,7 @@ void main() {
       expect(saved.getBool(ReminderService.keyDecided), isTrue);
       expect(results(), ['enabled']);
       expect(recorder.named('reminder_enabled'), [
-        {'name': 'reminder_enabled', 'evening_hour': 19, 'morning': 0},
+        {'name': 'reminder_enabled', 'morning': 0},
       ]);
       expect(recorder.properties['reminder_on'], 'true');
       // The app is open (Screen B): tonight waits for it to be left.

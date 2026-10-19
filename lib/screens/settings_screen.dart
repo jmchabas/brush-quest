@@ -2139,8 +2139,8 @@ class _SettingsScreenState extends State<SettingsScreen>
               'you pick, only if that brush hasn\'t happened yet, and not while '
               'the streak is paused. If Brush Quest isn\'t opened for a week, '
               'the reminders stop by themselves.\n\n'
-              'Reminders are scheduled and shown entirely on this phone; '
-              'nothing is sent to us. You can also turn them off in your '
+              'Reminders are scheduled and shown on this phone, and your '
+              'reminder times stay on it. You can also turn them off in your '
               'phone\'s notification settings.',
           Icons.notifications_active,
           const Color(0xFFFFD54F),

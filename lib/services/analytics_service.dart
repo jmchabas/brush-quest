@@ -235,14 +235,11 @@ class AnalyticsService {
     );
   }
 
-  Future<void> logReminderEnabled({
-    required int eveningHour,
-    required bool morning,
-  }) async {
+  Future<void> logReminderEnabled({required bool morning}) async {
     if (!_enabled) return;
     await _fa.logEvent(
       name: 'reminder_enabled',
-      parameters: {'evening_hour': eveningHour, 'morning': morning ? 1 : 0},
+      parameters: {'morning': morning ? 1 : 0},
     );
   }
 

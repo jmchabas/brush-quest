@@ -114,8 +114,8 @@ class _ReminderParentScreenState extends State<ReminderParentScreen> {
                         const SizedBox(height: 12),
                         Text(
                           "One reminder on this phone each evening, only if "
-                          "brushing hasn't happened yet. It stays on this "
-                          'device; nothing is sent to us.',
+                          "brushing hasn't happened yet. Your reminder "
+                          'times stay on this phone.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.8),
