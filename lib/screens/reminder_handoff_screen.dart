@@ -17,9 +17,10 @@ import 'reminder_parent_screen.dart';
 /// Screen A of the bedtime reminder (spec
 /// docs/superpowers/specs/2026-10-15-bedtime-reminder-design.md §3.1):
 /// between the victory screen and Home, once or twice ever. For the child,
-/// who can't read: a picture (his hero, an arrow, a grown-up with a phone)
-/// and Buddy's line. The lock opens the GROWN-UP CHECK, then the parent's
-/// screen. The arrow, the back gesture, or [idleTimeout] without a touch go
+/// who can't read: a picture (his hero, an arrow, a grown-up with a
+/// reminder bell) and Buddy's line. For a grown-up who missed the line, one
+/// short caption under the lock ([grownUpCaption]). The lock opens the
+/// GROWN-UP CHECK, then the parent's screen. The arrow, the back gesture, or [idleTimeout] without a touch go
 /// Home as usual. Home itself is not changed.
 class ReminderHandoffScreen extends StatefulWidget {
   const ReminderHandoffScreen({super.key, required this.offer});
@@ -29,6 +30,10 @@ class ReminderHandoffScreen extends StatefulWidget {
 
   /// "Great mission! Grown-ups, tap the lock for a bedtime reminder."
   static const voiceLine = 'voice_reminder_handoff.mp3';
+
+  /// The one line of text, for grown-ups (Jim, 2026-10-19): a parent who
+  /// missed Buddy's line could not tell what the screen was. Not a button.
+  static const grownUpCaption = 'Grown-ups: set a bedtime brushing reminder';
 
   /// This long without a touch: Home.
   static const idleTimeout = Duration(seconds: 15);
@@ -204,6 +209,8 @@ class _ReminderHandoffScreenState extends State<ReminderHandoffScreen>
                   ),
                   const Spacer(),
                   _LockButton(pulse: _pulse, onTap: _openLock),
+                  const SizedBox(height: 20),
+                  const _GrownUpCaption(),
                   const Spacer(),
                   Align(
                     alignment: Alignment.centerRight,
@@ -224,8 +231,8 @@ class _ReminderHandoffScreenState extends State<ReminderHandoffScreen>
   }
 }
 
-/// His hero, an arrow, a grown-up holding a phone: "give the phone to a
-/// grown-up". Not a button.
+/// His hero, an arrow, a grown-up with a ringing bell: "a grown-up sets a
+/// reminder". Not a button.
 class _HandOffPicture extends StatelessWidget {
   const _HandOffPicture({
     required this.heroId,
@@ -262,18 +269,43 @@ class _HandOffPicture extends StatelessWidget {
             children: [
               Icon(Icons.person_rounded, color: Colors.white, size: 110),
               Positioned(
-                right: 4,
-                bottom: 10,
+                right: 0,
+                top: 2,
                 child: Icon(
-                  Icons.smartphone_rounded,
-                  color: Color(0xFF00E5FF),
-                  size: 44,
+                  Icons.notifications_active_rounded,
+                  color: Color(0xFFFFD54F),
+                  size: 48,
+                  shadows: [Shadow(color: Color(0xCC000000), blurRadius: 6)],
                 ),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The caption under the lock, for a grown-up who missed Buddy's line:
+/// calm, readable, and not a button (the lock is).
+class _GrownUpCaption extends StatelessWidget {
+  const _GrownUpCaption();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Text(
+        ReminderHandoffScreen.grownUpCaption,
+        key: const ValueKey('handoff_caption'),
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.75),
+          fontSize: 18,
+          fontWeight: FontWeight.w500,
+          height: 1.3,
+        ),
+      ),
     );
   }
 }

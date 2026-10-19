@@ -140,10 +140,52 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
-  testWidgets("Buddy's line, once; not one word on screen", (tester) async {
+  testWidgets("Buddy's line, once; one line of text, for grown-ups", (
+    tester,
+  ) async {
     await pumpScreen(tester);
     expect(audio.playedVoiceLines, [ReminderHandoffScreen.voiceLine]);
-    expect(find.byType(Text), findsNothing);
+    // A parent who missed Buddy can read what it is (Jim, 2026-10-19). It is
+    // the only text, it sits under the lock, and it is not a button.
+    expect(find.byType(Text), findsOneWidget);
+    final caption = find.text(ReminderHandoffScreen.grownUpCaption);
+    expect(caption, findsOneWidget);
+    expect(
+      ReminderHandoffScreen.grownUpCaption,
+      'Grown-ups: set a bedtime brushing reminder',
+    );
+    expect(
+      tester.getRect(caption).top,
+      greaterThan(tester.getRect(key('handoff_lock')).bottom),
+    );
+    expect(
+      find.ancestor(of: caption, matching: find.byType(InkWell)),
+      findsNothing,
+    );
+    expect(
+      find.ancestor(of: caption, matching: find.byType(GestureDetector)),
+      findsNothing,
+    );
+    expect(
+      tester.widget<Text>(caption).style!.fontSize,
+      greaterThanOrEqualTo(16),
+    );
+    // The picture says "reminder": the grown-up with a bell, not a phone.
+    final picture = key('handoff_picture');
+    expect(
+      find.descendant(
+        of: picture,
+        matching: find.byIcon(Icons.notifications_active_rounded),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: picture,
+        matching: find.byIcon(Icons.smartphone_rounded),
+      ),
+      findsNothing,
+    );
     expect(key('handoff_picture'), findsOneWidget);
     expect(key('handoff_lock'), findsOneWidget);
     expect(key('handoff_skip'), findsOneWidget);
@@ -424,7 +466,7 @@ void main() {
     expect(results(), ['gate_opened', 'enabled']);
   });
 
-  for (final size in const [Size(360, 640), Size(320, 568)]) {
+  for (final size in const [Size(360, 640), Size(320, 568), Size(412, 915)]) {
     testWidgets('${size.width.toInt()}x${size.height.toInt()}: it all fits, '
         'the arrow big enough for small fingers', (tester) async {
       await pumpScreen(tester, size: size);
@@ -435,6 +477,13 @@ void main() {
       expect(skip.bottom, lessThanOrEqualTo(size.height));
       expect(skip.width, greaterThanOrEqualTo(48));
       expect(lock.overlaps(skip), isFalse);
+      final caption = tester.getRect(
+        find.text(ReminderHandoffScreen.grownUpCaption),
+      );
+      expect(caption.overlaps(skip), isFalse);
+      expect(caption.overlaps(lock), isFalse);
+      expect(caption.left, greaterThanOrEqualTo(0));
+      expect(caption.right, lessThanOrEqualTo(size.width));
       await leave(tester);
     });
   }
