@@ -686,6 +686,17 @@ class AudioService {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('muted', _muted);
+    // Unmute brings the screen's music back. Muting stopped it, and the
+    // health check skips a track it believes is stopped, so without this the
+    // screen stayed silent until it called playMusic itself (Jim, 2026-10-19).
+    // _currentMusicFile is the track the screen wants: muting keeps it,
+    // stopMusic clears it, and playMusic records it while muted.
+    final file = _currentMusicFile;
+    if (!_muted && file != null && !_musicPlaying) {
+      final volume = _musicTargetVolume;
+      await playMusic(file);
+      if (volume != _musicVolume) await setMusicVolume(volume);
+    }
   }
 
   Future<void> playSfx(String fileName) async {
@@ -990,7 +1001,11 @@ class AudioService {
   Future<void> playMusic(String fileName, {bool isRetry = false}) async {
     if (_trace) _t('MUSIC play $fileName retry=$isRetry muted=$_muted');
     if (isIOS) _iosReleaseMusicHold();
-    if (_muted) return;
+    if (_muted) {
+      // Not now, but this is the track the screen wants: unmute starts it.
+      _currentMusicFile = fileName;
+      return;
+    }
     // iOS: serialize starts. Overlapping calls (main.dart resumeAfterWake vs
     // a screen's own playMusic vs a health-check restart) each stop and
     // dispose the same _musicPlayer and create their own, disposing one
