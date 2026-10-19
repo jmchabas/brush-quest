@@ -81,7 +81,9 @@ void main() {
     expect(find.text('Bedtime reminder'), findsOneWidget);
     expect(find.text('Morning reminder'), findsOneWidget);
     expect(
-      find.text("Only if that brush hasn't happened yet. Stays on this phone."),
+      find.text(
+        "Only if that brush hasn't happened yet. Your times stay on this phone.",
+      ),
       findsOneWidget,
     );
     expect(switchOn(tester, 'reminder_evening_switch'), isFalse);

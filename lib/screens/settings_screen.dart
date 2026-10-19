@@ -2138,7 +2138,8 @@ class _SettingsScreenState extends State<SettingsScreen>
               'each evening, and a morning one too. It comes around the time '
               'you pick, only if that brush hasn\'t happened yet, and not while '
               'the streak is paused. If Brush Quest isn\'t opened for a week, '
-              'the reminders stop by themselves.\n\n'
+              'the reminders stop by themselves (after a Pause, that week starts '
+              'the day the Pause ends).\n\n'
               'Reminders are scheduled and shown on this phone, and your '
               'reminder times stay on it. You can also turn them off in your '
               'phone\'s notification settings.',

@@ -134,7 +134,7 @@ class _ReminderSettingsCardState extends State<ReminderSettingsCard>
           ],
           const SizedBox(height: 8),
           Text(
-            "Only if that brush hasn't happened yet. Stays on this phone.",
+            "Only if that brush hasn't happened yet. Your times stay on this phone.",
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
               fontSize: 12,
