@@ -48,14 +48,12 @@ class _HomeScreenState extends State<HomeScreen>
   final _streakService = StreakService();
   final _heroService = HeroService();
   final _weaponService = WeaponService();
-  final _trophyService = TrophyService();
 
   final _greetingService = GreetingService();
   bool _greetingChecked = false;
   int _wallet = 0;
   int _streak = 0;
   int _totalBrushes = 0;
-  int _trophyCount = 0;
   HeroCharacter _selectedHero = HeroService.allHeroes[0];
   int _evolutionStage = 1;
   WeaponItem _selectedWeapon = WeaponService.allWeapons[0];
@@ -257,13 +255,11 @@ class _HomeScreenState extends State<HomeScreen>
     final wallet = await _streakService.getWallet();
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
-    final trophyCount = await _trophyService.getTotalCaptured();
     if (!mounted) return;
     setState(() {
       _wallet = wallet;
       _streak = streak;
       _totalBrushes = totalBrushes;
-      _trophyCount = trophyCount;
     });
     // Daily bonus is idempotent by date — safe to attempt on every resume. It
     // speaks and flies stars, so only while Home is what the child sees; under
@@ -320,7 +316,6 @@ class _HomeScreenState extends State<HomeScreen>
     final evolutionStage = await _heroService.getEvolutionStage(hero.id);
     final streak = await _streakService.getStreak();
     final totalBrushes = await _streakService.getTotalBrushes();
-    final trophyCount = await _trophyService.getTotalCaptured();
 
     if (mounted) {
       setState(() {
@@ -330,7 +325,6 @@ class _HomeScreenState extends State<HomeScreen>
         _selectedWeapon = weapon;
         _streak = streak;
         _totalBrushes = totalBrushes;
-        _trophyCount = trophyCount;
       });
       // The flame is on screen: has it grown since Home last showed it? Only
       // the first load of this Home asks; the recorded step makes a repeat
@@ -1211,8 +1205,9 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     const SizedBox(height: 16),
 
-                    // Stats row: streak, wallet, trophies. Ranger Rank (the
-                    // lifetime total) is for parents: Parent Dashboard only.
+                    // Stats row: streak and wallet. Ranger Rank (the
+                    // lifetime total) is for parents: Parent Dashboard only; monsters
+                    // caught live behind the MONSTERS button.
                     // Use Row with Expanded so the pills are equal width
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1422,53 +1417,6 @@ class _HomeScreenState extends State<HomeScreen>
                                     ),
                                   ),
                               ],
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          // Trophy count pill (monsters captured)
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: const Color(
-                                    0xFFFF80AB,
-                                  ).withValues(alpha: 0.6),
-                                  width: 2,
-                                ),
-                                color: const Color(
-                                  0xFFFF80AB,
-                                ).withValues(alpha: 0.12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Image.asset(
-                                    'assets/images/icon_monsters.png',
-                                    width: 22,
-                                    height: 22,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '$_trophyCount',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 22,
-                                      shadows: [
-                                        Shadow(
-                                          color: Color(0x80FF80AB),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ),
                           ),
                         ],

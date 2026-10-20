@@ -241,7 +241,6 @@ void main() {
           });
           final pill = heightOf(tester, find.byType(FlameIcon));
           expect(heightOf(tester, find.byIcon(Icons.star).first), pill);
-          expect(heightOf(tester, find.byType(Image).first), pill);
 
           // The flame still paints at its full size, inside the pill's border.
           final flame = tester.getRect(find.byType(FlameIcon));
